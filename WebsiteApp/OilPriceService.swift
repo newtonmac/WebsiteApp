@@ -19,7 +19,7 @@ class OilPriceService: ObservableObject {
         // Using the EIA (U.S. Energy Information Administration) API
         // Get a free API key at: https://www.eia.gov/opendata/register.php
         // Replace "DEMO_KEY" with your actual key for production use
-        let apiKey = "DEMO_KEY"
+        let apiKey = "q9kHzRa6tXnuEZOOPw0bbsdgfu9Mq5J0FJmIOrj6"
 
         async let wtiResult = fetchEIASeries(
             seriesId: "PET.RWTC.D",
