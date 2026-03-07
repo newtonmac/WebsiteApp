@@ -228,7 +228,7 @@
 <body>
     <div class="header">
         <h1>Crude Oil Tracker</h1>
-        <p>Live data &bull; EIA &amp; Federal Reserve (FRED)</p>
+        <p>Live data &bull; EIA &amp; FRED &bull; Updated daily</p>
     </div>
 
     <div class="container">
@@ -237,6 +237,8 @@
                 <div class="btn-group" id="oilType">
                     <button class="active" data-type="wti">WTI</button>
                     <button data-type="brent">Brent</button>
+                    <button data-type="canadian">Canada</button>
+                    <button data-type="maya">Maya</button>
                 </div>
                 <button class="refresh-btn" id="refreshBtn">&#8635;</button>
             </div>
@@ -358,12 +360,15 @@ function drawChart(canvasId, prices, color) {
 
 // ---- App logic ----
 const API_KEY = 'q9kHzRa6tXnuEZOOPw0bbsdgfu9Mq5J0FJmIOrj6';
-const EIA_BASE = 'https://api.eia.gov/v2/petroleum/pri/spt/data/';
+const EIA_SPOT = 'https://api.eia.gov/v2/petroleum/pri/spt/data/';
+const EIA_IMPORT = 'https://api.eia.gov/v2/petroleum/pri/imc2/data/';
 const FRED_KEY = 'DEMO_KEY';
 const FRED_BASE = 'https://api.stlouisfed.org/fred/series/observations';
 
 let wtiPrices = [];
 let brentPrices = [];
+let canadianPrices = [];
+let mayaPrices = [];
 let selectedType = 'wti';
 let selectedRange = 30;
 let lastUpdated = null;
@@ -400,7 +405,30 @@ async function fetchEIASeries(seriesId) {
     });
     params.append('facets[series][]', seriesId);
 
-    const resp = await fetch(EIA_BASE + '?' + params.toString());
+    const resp = await fetch(EIA_SPOT + '?' + params.toString());
+    const json = await resp.json();
+
+    if (json.response && json.response.data) {
+        return json.response.data
+            .filter(d => d.value != null && d.value !== '')
+            .map(d => ({ date: d.period, price: parseFloat(d.value), source: 'EIA' }))
+            .reverse();
+    }
+    return [];
+}
+
+async function fetchEIAImportSeries(seriesId) {
+    const params = new URLSearchParams({
+        api_key: API_KEY,
+        frequency: 'monthly',
+        'data[0]': 'value',
+        'sort[0][column]': 'period',
+        'sort[0][direction]': 'desc',
+        length: '36'
+    });
+    params.append('facets[series][]', seriesId);
+
+    const resp = await fetch(EIA_IMPORT + '?' + params.toString());
     const json = await resp.json();
 
     if (json.response && json.response.data) {
@@ -458,11 +486,13 @@ async function fetchAllPrices() {
     try {
         dataSources = [];
 
-        const [eiaWti, eiaBrent, fredWti, fredBrent] = await Promise.allSettled([
+        const [eiaWti, eiaBrent, fredWti, fredBrent, eiaCanadian, eiaMaya] = await Promise.allSettled([
             fetchEIASeries('RWTC'),
             fetchEIASeries('RBRTE'),
             fetchFREDSeries('DCOILWTICO'),
-            fetchFREDSeries('DCOILBRENTEU')
+            fetchFREDSeries('DCOILBRENTEU'),
+            fetchEIAImportSeries('I19263000004'),
+            fetchEIAImportSeries('IMX2810004')
         ]);
 
         const eiaWtiData = eiaWti.status === 'fulfilled' ? eiaWti.value : [];
@@ -475,10 +505,16 @@ async function fetchAllPrices() {
 
         wtiPrices = mergePrices(eiaWtiData, fredWtiData);
         brentPrices = mergePrices(eiaBrentData, fredBrentData);
+        canadianPrices = eiaCanadian.status === 'fulfilled' ? eiaCanadian.value : [];
+        mayaPrices = eiaMaya.status === 'fulfilled' ? eiaMaya.value : [];
+
+        if (canadianPrices.length > 0 || mayaPrices.length > 0) {
+            if (!dataSources.includes('EIA')) dataSources.push('EIA');
+        }
 
         lastUpdated = new Date();
 
-        if (wtiPrices.length === 0 && brentPrices.length === 0) {
+        if (wtiPrices.length === 0 && brentPrices.length === 0 && canadianPrices.length === 0 && mayaPrices.length === 0) {
             document.getElementById('content').innerHTML =
                 '<div class="error-msg">Unable to fetch data from any source. Check your connection.</div>';
             return;
@@ -491,7 +527,13 @@ async function fetchAllPrices() {
 }
 
 function getFiltered() {
-    const all = selectedType === 'wti' ? wtiPrices : brentPrices;
+    const typeMap = { wti: wtiPrices, brent: brentPrices, canadian: canadianPrices, maya: mayaPrices };
+    const all = typeMap[selectedType] || wtiPrices;
+    // Monthly data (canadian/maya) - use all available or filter by range
+    if (selectedType === 'canadian' || selectedType === 'maya') {
+        const months = Math.ceil(selectedRange / 30);
+        return all.slice(-Math.max(months, 3));
+    }
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - selectedRange);
     return all.filter(p => new Date(p.date) >= cutoff);
@@ -513,8 +555,11 @@ function render() {
     const variance = prices.reduce((s, p) => s + Math.pow(p.price - avg, 2), 0) / (prices.length - 1);
     const vol = (Math.sqrt(variance) / avg) * 100;
 
-    const label = selectedType === 'wti' ? 'WTI Crude Oil' : 'Brent Crude Oil';
-    const color = selectedType === 'wti' ? '#3b82f6' : '#f59e0b';
+    const labels = { wti: 'WTI Crude Oil', brent: 'Brent Crude Oil', canadian: 'Canadian Light Sour Blend', maya: 'Mexican Maya Crude' };
+    const colors = { wti: '#3b82f6', brent: '#f59e0b', canadian: '#ef4444', maya: '#10b981' };
+    const label = labels[selectedType];
+    const color = colors[selectedType];
+    const isMonthly = selectedType === 'canadian' || selectedType === 'maya';
 
     const latestDate = latest.date;
     const updatedStr = lastUpdated ? lastUpdated.toLocaleString('en-US', {
@@ -527,7 +572,7 @@ function render() {
 
     document.getElementById('content').innerHTML = `
         <div class="data-status">
-            <div>Latest data: <strong>${latestDate}</strong> &bull; Updated: <strong>${updatedStr}</strong></div>
+            <div>Latest data: <strong>${latestDate}</strong>${isMonthly ? ' (monthly)' : ''} &bull; Updated: <strong>${updatedStr}</strong></div>
             <div>Sources: ${sourcesTags}</div>
         </div>
         <div class="price-hero">
