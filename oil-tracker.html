@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Crude Oil Tracker</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f1117;
+            color: #e1e4e8;
+            min-height: 100vh;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1d28, #252836);
+            padding: 20px 16px;
+            border-bottom: 1px solid #2d3040;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header p { color: #8b8fa3; margin-top: 4px; font-size: 12px; }
+
+        .container { max-width: 800px; margin: 0 auto; padding: 16px; }
+
+        .controls { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+
+        .controls-row { display: flex; gap: 8px; align-items: center; }
+
+        .btn-group {
+            display: flex;
+            background: #1a1d28;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #2d3040;
+            flex: 1;
+        }
+
+        .btn-group button {
+            flex: 1;
+            padding: 10px 8px;
+            background: transparent;
+            color: #8b8fa3;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .btn-group button.active {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-group button:hover:not(.active) {
+            color: #e1e4e8;
+            background: #252836;
+        }
+
+        .refresh-btn {
+            padding: 10px 16px;
+            background: #1a1d28;
+            color: #8b8fa3;
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 18px;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .price-hero {
+            padding: 20px;
+            background: #1a1d28;
+            border-radius: 16px;
+            border: 1px solid #2d3040;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .oil-label { font-size: 14px; color: #8b8fa3; margin-bottom: 4px; }
+
+        .current-price { font-size: 42px; font-weight: 700; display: block; }
+
+        .price-change { font-size: 16px; font-weight: 600; margin-top: 4px; display: block; }
+        .price-change.up { color: #34d399; }
+        .price-change.down { color: #f87171; }
+
+        .chart-box {
+            background: #1a1d28;
+            border-radius: 16px;
+            border: 1px solid #2d3040;
+            padding: 16px;
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+
+        canvas { width: 100% !important; height: 280px !important; display: block; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .stat-card {
+            background: #1a1d28;
+            border-radius: 12px;
+            border: 1px solid #2d3040;
+            padding: 16px;
+        }
+
+        .stat-card .label {
+            font-size: 11px;
+            color: #8b8fa3;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .stat-card .value { font-size: 20px; font-weight: 700; }
+        .stat-card .value.green { color: #34d399; }
+        .stat-card .value.red { color: #f87171; }
+        .stat-card .value.blue { color: #60a5fa; }
+        .stat-card .value.purple { color: #a78bfa; }
+
+        .recent-table {
+            background: #1a1d28;
+            border-radius: 16px;
+            border: 1px solid #2d3040;
+            padding: 16px;
+        }
+
+        .recent-table h3 { margin-bottom: 12px; font-size: 16px; }
+
+        .recent-table table { width: 100%; border-collapse: collapse; }
+
+        .recent-table th {
+            text-align: left;
+            padding: 8px 6px;
+            color: #8b8fa3;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #2d3040;
+        }
+
+        .recent-table td {
+            padding: 10px 6px;
+            border-bottom: 1px solid #1e2130;
+            font-size: 13px;
+        }
+
+        .recent-table tr:last-child td { border-bottom: none; }
+        .recent-table .up { color: #34d399; }
+        .recent-table .down { color: #f87171; }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #8b8fa3;
+        }
+
+        .spinner {
+            width: 36px; height: 36px;
+            border: 3px solid #2d3040;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .error-msg {
+            background: #1a1d28;
+            border: 1px solid #f8717133;
+            color: #f87171;
+            padding: 12px 16px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Crude Oil Tracker</h1>
+        <p>Live data &bull; U.S. Energy Information Administration</p>
+    </div>
+
+    <div class="container">
+        <div class="controls">
+            <div class="controls-row">
+                <div class="btn-group" id="oilType">
+                    <button class="active" data-type="wti">WTI</button>
+                    <button data-type="brent">Brent</button>
+                </div>
+                <button class="refresh-btn" id="refreshBtn">&#8635;</button>
+            </div>
+            <div class="btn-group" id="timeRange">
+                <button data-range="7">1W</button>
+                <button class="active" data-range="30">1M</button>
+                <button data-range="90">3M</button>
+                <button data-range="180">6M</button>
+                <button data-range="365">1Y</button>
+            </div>
+        </div>
+        <div id="content">
+            <div class="loading"><div class="spinner"></div>Loading live prices...</div>
+        </div>
+    </div>
+
+<script>
+// ---- Minimal canvas chart (no external libraries) ----
+function drawChart(canvasId, prices, color) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    const W = rect.width;
+    const H = rect.height;
+
+    const vals = prices.map(p => p.price);
+    const minV = Math.min(...vals);
+    const maxV = Math.max(...vals);
+    const range = maxV - minV || 1;
+    const padTop = 20, padBot = 30, padLeft = 50, padRight = 16;
+    const chartW = W - padLeft - padRight;
+    const chartH = H - padTop - padBot;
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Grid lines & Y labels
+    ctx.strokeStyle = '#2d304060';
+    ctx.fillStyle = '#8b8fa3';
+    ctx.font = '11px -apple-system, sans-serif';
+    ctx.textAlign = 'right';
+    const ySteps = 5;
+    for (let i = 0; i <= ySteps; i++) {
+        const y = padTop + (chartH / ySteps) * i;
+        const val = maxV - (range / ySteps) * i;
+        ctx.beginPath();
+        ctx.setLineDash([4, 4]);
+        ctx.moveTo(padLeft, y);
+        ctx.lineTo(W - padRight, y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillText('$' + val.toFixed(0), padLeft - 8, y + 4);
+    }
+
+    // X labels
+    ctx.textAlign = 'center';
+    const labelCount = Math.min(5, prices.length);
+    for (let i = 0; i < labelCount; i++) {
+        const idx = Math.floor(i * (prices.length - 1) / (labelCount - 1));
+        const x = padLeft + (idx / (prices.length - 1)) * chartW;
+        const d = new Date(prices[idx].date);
+        const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        ctx.fillText(label, x, H - 8);
+    }
+
+    if (prices.length < 2) return;
+
+    // Build path points
+    const points = prices.map((p, i) => ({
+        x: padLeft + (i / (prices.length - 1)) * chartW,
+        y: padTop + (1 - (p.price - minV) / range) * chartH
+    }));
+
+    // Area fill
+    const grad = ctx.createLinearGradient(0, padTop, 0, padTop + chartH);
+    grad.addColorStop(0, color + '35');
+    grad.addColorStop(1, color + '05');
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) {
+        const prev = points[i - 1];
+        const curr = points[i];
+        const cpx = (prev.x + curr.x) / 2;
+        ctx.bezierCurveTo(cpx, prev.y, cpx, curr.y, curr.x, curr.y);
+    }
+    ctx.lineTo(points[points.length - 1].x, padTop + chartH);
+    ctx.lineTo(points[0].x, padTop + chartH);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Line
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) {
+        const prev = points[i - 1];
+        const curr = points[i];
+        const cpx = (prev.x + curr.x) / 2;
+        ctx.bezierCurveTo(cpx, prev.y, cpx, curr.y, curr.x, curr.y);
+    }
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Latest dot
+    const last = points[points.length - 1];
+    ctx.beginPath();
+    ctx.arc(last.x, last.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.strokeStyle = '#0f1117';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+}
+
+// ---- App logic ----
+const API_KEY = 'q9kHzRa6tXnuEZOOPw0bbsdgfu9Mq5J0FJmIOrj6';
+const EIA_BASE = 'https://api.eia.gov/v2/petroleum/pri/spt/data/';
+
+let wtiPrices = [];
+let brentPrices = [];
+let selectedType = 'wti';
+let selectedRange = 30;
+
+document.querySelectorAll('#oilType button').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('#oilType button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedType = btn.dataset.type;
+        render();
+    });
+});
+
+document.querySelectorAll('#timeRange button').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('#timeRange button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedRange = parseInt(btn.dataset.range);
+        render();
+    });
+});
+
+document.getElementById('refreshBtn').addEventListener('click', fetchAllPrices);
+
+async function fetchSeries(seriesId) {
+    const params = new URLSearchParams({
+        api_key: API_KEY,
+        frequency: 'daily',
+        'data[0]': 'value',
+        'sort[0][column]': 'period',
+        'sort[0][direction]': 'desc',
+        length: '365'
+    });
+    params.append('facets[series][]', seriesId);
+
+    const resp = await fetch(EIA_BASE + '?' + params.toString());
+    const json = await resp.json();
+
+    if (json.response && json.response.data) {
+        return json.response.data
+            .filter(d => d.value != null && d.value !== '')
+            .map(d => ({ date: d.period, price: parseFloat(d.value) }))
+            .reverse();
+    }
+    return [];
+}
+
+async function fetchAllPrices() {
+    document.getElementById('content').innerHTML =
+        '<div class="loading"><div class="spinner"></div>Loading live prices...</div>';
+
+    try {
+        const [wti, brent] = await Promise.all([
+            fetchSeries('RWTC'),
+            fetchSeries('RBRTE')
+        ]);
+        wtiPrices = wti;
+        brentPrices = brent;
+
+        if (wtiPrices.length === 0 && brentPrices.length === 0) {
+            document.getElementById('content').innerHTML =
+                '<div class="error-msg">Unable to fetch data. Check your connection or API key.</div>';
+            return;
+        }
+        render();
+    } catch (err) {
+        document.getElementById('content').innerHTML =
+            '<div class="error-msg">Error: ' + err.message + '</div>';
+    }
+}
+
+function getFiltered() {
+    const all = selectedType === 'wti' ? wtiPrices : brentPrices;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - selectedRange);
+    return all.filter(p => new Date(p.date) >= cutoff);
+}
+
+function render() {
+    const prices = getFiltered();
+    if (prices.length === 0) return;
+
+    const latest = prices[prices.length - 1];
+    const prev = prices.length >= 2 ? prices[prices.length - 2] : null;
+    const change = prev ? latest.price - prev.price : 0;
+    const pct = prev ? (change / prev.price) * 100 : 0;
+    const isUp = change >= 0;
+
+    const high = Math.max(...prices.map(p => p.price));
+    const low = Math.min(...prices.map(p => p.price));
+    const avg = prices.reduce((s, p) => s + p.price, 0) / prices.length;
+    const variance = prices.reduce((s, p) => s + Math.pow(p.price - avg, 2), 0) / (prices.length - 1);
+    const vol = (Math.sqrt(variance) / avg) * 100;
+
+    const label = selectedType === 'wti' ? 'WTI Crude Oil' : 'Brent Crude Oil';
+    const color = selectedType === 'wti' ? '#3b82f6' : '#f59e0b';
+
+    document.getElementById('content').innerHTML = `
+        <div class="price-hero">
+            <div class="oil-label">${label}</div>
+            <span class="current-price">$${latest.price.toFixed(2)}</span>
+            <span class="price-change ${isUp ? 'up' : 'down'}">
+                ${isUp ? '\u25B2' : '\u25BC'}
+                ${change >= 0 ? '+' : ''}${change.toFixed(2)}
+                (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)
+            </span>
+        </div>
+
+        <div class="chart-box">
+            <canvas id="priceChart"></canvas>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card"><div class="label">High</div><div class="value green">$${high.toFixed(2)}</div></div>
+            <div class="stat-card"><div class="label">Low</div><div class="value red">$${low.toFixed(2)}</div></div>
+            <div class="stat-card"><div class="label">Average</div><div class="value blue">$${avg.toFixed(2)}</div></div>
+            <div class="stat-card"><div class="label">Volatility</div><div class="value purple">${vol.toFixed(2)}%</div></div>
+        </div>
+
+        <div class="recent-table">
+            <h3>Recent Prices</h3>
+            <table>
+                <thead><tr><th>Date</th><th>Price</th><th>Change</th></tr></thead>
+                <tbody>
+                    ${prices.slice(-15).reverse().map((p, i, arr) => {
+                        const nxt = i < arr.length - 1 ? arr[i + 1] : null;
+                        const dc = nxt ? p.price - nxt.price : 0;
+                        const dp = nxt ? (dc / nxt.price) * 100 : 0;
+                        const cls = dc >= 0 ? 'up' : 'down';
+                        return `<tr>
+                            <td>${p.date}</td>
+                            <td><strong>$${p.price.toFixed(2)}</strong></td>
+                            <td class="${cls}">${dc >= 0 ? '+' : ''}${dc.toFixed(2)} (${dp >= 0 ? '+' : ''}${dp.toFixed(2)}%)</td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>`;
+
+    drawChart('priceChart', prices, color);
+}
+
+fetchAllPrices();
+</script>
+</body>
+</html>
