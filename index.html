@@ -233,12 +233,40 @@
             margin-bottom: 24px;
             font-size: 14px;
         }
+
+        .data-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 12px 20px;
+            background: #1a1d28;
+            border-radius: 12px;
+            border: 1px solid #2d3040;
+            margin-bottom: 24px;
+            font-size: 13px;
+            color: #8b8fa3;
+        }
+
+        .data-status .source-tag {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .data-status .source-eia { background: #3b82f620; color: #60a5fa; }
+        .data-status .source-fred { background: #f59e0b20; color: #fbbf24; }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>Crude Oil Price Tracker</h1>
-        <p>Live data from U.S. Energy Information Administration</p>
+        <p>Live data from EIA &amp; Federal Reserve (FRED)</p>
     </div>
 
     <div class="container">
@@ -268,12 +296,16 @@
     <script>
         const API_KEY = 'q9kHzRa6tXnuEZOOPw0bbsdgfu9Mq5J0FJmIOrj6';
         const EIA_BASE = 'https://api.eia.gov/v2/petroleum/pri/spt/data/';
+        const FRED_KEY = 'DEMO_KEY';
+        const FRED_BASE = 'https://api.stlouisfed.org/fred/series/observations';
 
         let wtiPrices = [];
         let brentPrices = [];
         let selectedType = 'wti';
         let selectedRange = 30;
         let chart = null;
+        let lastUpdated = null;
+        let dataSources = [];
 
         // Controls
         document.querySelectorAll('#oilType button').forEach(btn => {
@@ -296,7 +328,7 @@
 
         document.getElementById('refreshBtn').addEventListener('click', fetchAllPrices);
 
-        async function fetchSeries(seriesId) {
+        async function fetchEIASeries(seriesId) {
             const params = new URLSearchParams({
                 api_key: API_KEY,
                 frequency: 'daily',
@@ -316,33 +348,87 @@
                     .filter(d => d.value != null && d.value !== '')
                     .map(d => ({
                         date: d.period,
-                        price: parseFloat(d.value)
+                        price: parseFloat(d.value),
+                        source: 'EIA'
                     }))
                     .reverse();
             }
             return [];
         }
 
+        async function fetchFREDSeries(seriesId) {
+            try {
+                const oneYearAgo = new Date();
+                oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+                const startDate = oneYearAgo.toISOString().split('T')[0];
+
+                const params = new URLSearchParams({
+                    series_id: seriesId,
+                    api_key: FRED_KEY,
+                    file_type: 'json',
+                    observation_start: startDate,
+                    sort_order: 'asc'
+                });
+
+                const resp = await fetch(FRED_BASE + '?' + params.toString());
+                const json = await resp.json();
+
+                if (json.observations) {
+                    return json.observations
+                        .filter(d => d.value !== '.' && d.value != null)
+                        .map(d => ({ date: d.date, price: parseFloat(d.value), source: 'FRED' }));
+                }
+            } catch (e) {
+                console.warn('FRED fetch failed:', e.message);
+            }
+            return [];
+        }
+
+        function mergePrices(eiaPrices, fredPrices) {
+            const dateMap = new Map();
+            eiaPrices.forEach(p => dateMap.set(p.date, p));
+            fredPrices.forEach(p => {
+                if (!dateMap.has(p.date)) {
+                    dateMap.set(p.date, p);
+                }
+            });
+            return Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+        }
+
         async function fetchAllPrices() {
             document.getElementById('content').innerHTML = `
                 <div class="loading">
                     <div class="spinner"></div>
-                    Loading live crude oil prices...
+                    Loading from multiple sources...
                 </div>`;
 
             try {
-                const [wti, brent] = await Promise.all([
-                    fetchSeries('RWTC'),
-                    fetchSeries('RBRTE')
+                dataSources = [];
+
+                const [eiaWti, eiaBrent, fredWti, fredBrent] = await Promise.allSettled([
+                    fetchEIASeries('RWTC'),
+                    fetchEIASeries('RBRTE'),
+                    fetchFREDSeries('DCOILWTICO'),
+                    fetchFREDSeries('DCOILBRENTEU')
                 ]);
 
-                wtiPrices = wti;
-                brentPrices = brent;
+                const eiaWtiData = eiaWti.status === 'fulfilled' ? eiaWti.value : [];
+                const eiaBrentData = eiaBrent.status === 'fulfilled' ? eiaBrent.value : [];
+                const fredWtiData = fredWti.status === 'fulfilled' ? fredWti.value : [];
+                const fredBrentData = fredBrent.status === 'fulfilled' ? fredBrent.value : [];
+
+                if (eiaWtiData.length > 0 || eiaBrentData.length > 0) dataSources.push('EIA');
+                if (fredWtiData.length > 0 || fredBrentData.length > 0) dataSources.push('FRED');
+
+                wtiPrices = mergePrices(eiaWtiData, fredWtiData);
+                brentPrices = mergePrices(eiaBrentData, fredBrentData);
+
+                lastUpdated = new Date();
 
                 if (wtiPrices.length === 0 && brentPrices.length === 0) {
                     document.getElementById('content').innerHTML = `
                         <div class="error-msg">
-                            Unable to fetch live data. Please check your API key or try again later.
+                            Unable to fetch data from any source. Check your connection.
                         </div>`;
                     return;
                 }
@@ -382,7 +468,20 @@
             const typeLabel = selectedType === 'wti' ? 'WTI Crude Oil' : 'Brent Crude Oil';
             const color = selectedType === 'wti' ? '#3b82f6' : '#f59e0b';
 
+            const latestDate = latest.date;
+            const updatedStr = lastUpdated ? lastUpdated.toLocaleString('en-US', {
+                month: 'short', day: 'numeric', year: 'numeric',
+                hour: 'numeric', minute: '2-digit', hour12: true
+            }) : '—';
+            const sourcesTags = dataSources.map(s =>
+                `<span class="source-tag source-${s.toLowerCase()}">${s}</span>`
+            ).join(' ');
+
             document.getElementById('content').innerHTML = `
+                <div class="data-status">
+                    <div>Latest data: <strong>${latestDate}</strong> &bull; Updated: <strong>${updatedStr}</strong></div>
+                    <div>Sources: ${sourcesTags}</div>
+                </div>
                 <div class="price-hero">
                     <div>
                         <div class="oil-label">${typeLabel}</div>
