@@ -254,7 +254,7 @@ header{
 }
 .upload-zone h3{font-size:0.95rem;font-weight:600;margin-bottom:0.3rem;letter-spacing:-0.01em;}
 .upload-zone p{font-size:0.78rem;color:var(--mid);}
-.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;z-index:10;}
 .file-types{
   display:flex;gap:5px;justify-content:center;margin-top:0.8rem;flex-wrap:wrap;
 }
@@ -755,7 +755,7 @@ let previewScene = null;
 let previewCamera = null;
 let previewAnim = null;
 let previewSpherical = { theta: 0.5, phi: 1.1, radius: 5 };
-let previewTarget = new THREE.Vector3();
+let previewTarget = typeof THREE !== 'undefined' ? new THREE.Vector3() : {x:0,y:0,z:0};
 let previewDragging = false, previewRight = false, previewPrev = {x:0,y:0};
 let previewAutoRot = true;
 let previewGrid = null;
@@ -766,12 +766,13 @@ let measurePoints = [];
 let measureMarkers = [];
 let measureLine = null;
 let measureLabel = null;
-let raycaster = new THREE.Raycaster();
-let mouse = new THREE.Vector2();
+let raycaster = typeof THREE !== 'undefined' ? new THREE.Raycaster() : null;
+let mouse = typeof THREE !== 'undefined' ? new THREE.Vector2() : {x:0,y:0};
 // ── File upload ────────────────────────────────────────────────────────────
 const fileInput = document.getElementById('file-input');
 const uploadZone = document.getElementById('upload-zone');
-fileInput.addEventListener('change', e => e.target.files[0] && handleFile(e.target.files[0]));
+fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+uploadZone.addEventListener('click', e => { if (e.target !== fileInput) fileInput.click(); });
 uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
 uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
 uploadZone.addEventListener('drop', e => {
