@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crude Oil Price Tracker</title>
+    <title>Gold, Silver &amp; Bitcoin Price Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
     <style>
@@ -25,7 +25,7 @@
         .header h1 {
             font-size: 28px;
             font-weight: 700;
-            background: linear-gradient(90deg, #60a5fa, #a78bfa);
+            background: linear-gradient(90deg, #fbbf24, #f59e0b);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -69,7 +69,7 @@
         }
 
         .btn-group button.active {
-            background: #3b82f6;
+            background: #f59e0b;
             color: white;
         }
 
@@ -104,6 +104,7 @@
             background: #1a1d28;
             border-radius: 16px;
             border: 1px solid #2d3040;
+            flex-wrap: wrap;
         }
 
         .price-hero .current-price {
@@ -119,9 +120,14 @@
         .price-hero .price-change.up { color: #34d399; }
         .price-hero .price-change.down { color: #f87171; }
 
-        .price-hero .oil-label {
+        .price-hero .metal-label {
             font-size: 16px;
             color: #8b8fa3;
+        }
+
+        .price-hero .metal-icon {
+            font-size: 28px;
+            margin-right: 4px;
         }
 
         .chart-container {
@@ -173,6 +179,7 @@
         .stat-card .value.red { color: #f87171; }
         .stat-card .value.blue { color: #60a5fa; }
         .stat-card .value.purple { color: #a78bfa; }
+        .stat-card .value.amber { color: #fbbf24; }
 
         .recent-table {
             background: #1a1d28;
@@ -222,7 +229,7 @@
             width: 40px;
             height: 40px;
             border: 3px solid #2d3040;
-            border-top-color: #3b82f6;
+            border-top-color: #f59e0b;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
             margin: 0 auto 16px;
@@ -265,7 +272,6 @@
             letter-spacing: 0.5px;
         }
 
-        .data-status .source-eia { background: #3b82f620; color: #60a5fa; }
         .data-status .source-fred { background: #f59e0b20; color: #fbbf24; }
         .data-status .source-alphavantage { background: #8b5cf620; color: #a78bfa; }
 
@@ -287,20 +293,19 @@
 </head>
 <body>
     <div class="header">
-        <h1>Crude Oil Price Tracker</h1>
-        <p>Live data &bull; EIA, FRED &amp; Alpha Vantage &bull; Updated daily</p>
-        <a href="flight-tracker.html" class="nav-link">Flight Tracker &rarr;</a>
+        <h1>Gold, Silver &amp; Bitcoin Tracker</h1>
+        <p>Live data &bull; FRED &amp; Alpha Vantage &bull; Updated daily</p>
+        <a href="index.html" class="nav-link">&larr; Oil Tracker</a>
         <a href="currency-tracker.html" class="nav-link">MXN/USD Tracker &rarr;</a>
-        <a href="gold-tracker.html" class="nav-link">Gold/Silver/BTC &rarr;</a>
+        <a href="flight-tracker.html" class="nav-link">Flight Tracker &rarr;</a>
     </div>
 
     <div class="container">
         <div class="controls">
-            <div class="btn-group" id="oilType">
-                <button class="active" data-type="wti">WTI Crude</button>
-                <button data-type="brent">Brent Crude</button>
-                <button data-type="canadian">Canadian</button>
-                <button data-type="maya">Mexican Maya</button>
+            <div class="btn-group" id="metalType">
+                <button class="active" data-type="gold">Gold</button>
+                <button data-type="silver">Silver</button>
+                <button data-type="bitcoin">Bitcoin</button>
             </div>
             <div class="btn-group" id="timeRange">
                 <button data-range="7">1W</button>
@@ -315,35 +320,36 @@
         <div id="content">
             <div class="loading">
                 <div class="spinner"></div>
-                Loading live crude oil prices...
+                Loading live precious metal prices...
             </div>
         </div>
     </div>
 
     <script>
-        const API_KEY = 'q9kHzRa6tXnuEZOOPw0bbsdgfu9Mq5J0FJmIOrj6';
-        const EIA_SPOT = 'https://api.eia.gov/v2/petroleum/pri/spt/data/';
-        const EIA_IMPORT = 'https://api.eia.gov/v2/petroleum/pri/imc2/data/';
         const FRED_KEY = 'b157e132862f8b31185abd4da930b21a';
         const FRED_BASE = 'https://api.stlouisfed.org/fred/series/observations';
-
-        // Alpha Vantage: https://www.alphavantage.co/support/#api-key (25 req/day free)
         const ALPHA_VANTAGE_KEY = 'T01QSR206V2E0IR2';
 
-        let wtiPrices = [];
-        let brentPrices = [];
-        let canadianPrices = [];
-        let mayaPrices = [];
-        let selectedType = 'wti';
+        // FRED series IDs for precious metals and crypto
+        const FRED_SERIES = {
+            gold: 'GOLDAMGBD228NLBM',    // Gold Fixing Price, London Bullion Market
+            silver: 'SLVPRUSD',           // Silver Fixing Price, London Bullion Market
+            bitcoin: 'CBBTCUSD'           // Coinbase Bitcoin Price (USD)
+        };
+
+        let goldPrices = [];
+        let silverPrices = [];
+        let bitcoinPrices = [];
+        let selectedType = 'gold';
         let selectedRange = 30;
         let chart = null;
         let lastUpdated = null;
         let dataSources = [];
 
         // Controls
-        document.querySelectorAll('#oilType button').forEach(btn => {
+        document.querySelectorAll('#metalType button').forEach(btn => {
             btn.addEventListener('click', () => {
-                document.querySelectorAll('#oilType button').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('#metalType button').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 selectedType = btn.dataset.type;
                 render();
@@ -361,60 +367,11 @@
 
         document.getElementById('refreshBtn').addEventListener('click', fetchAllPrices);
 
-        async function fetchEIASeries(seriesId) {
-            const params = new URLSearchParams({
-                api_key: API_KEY,
-                frequency: 'daily',
-                'data[0]': 'value',
-                'sort[0][column]': 'period',
-                'sort[0][direction]': 'desc',
-                length: '365'
-            });
-            params.append(`facets[series][]`, seriesId);
-
-            const url = `${EIA_SPOT}?${params.toString()}`;
-            const response = await fetch(url);
-            const json = await response.json();
-
-            if (json.response && json.response.data) {
-                return json.response.data
-                    .filter(d => d.value != null && d.value !== '')
-                    .map(d => ({
-                        date: d.period,
-                        price: parseFloat(d.value),
-                        source: 'EIA'
-                    }))
-                    .reverse();
+        function formatPrice(value) {
+            if (selectedType === 'bitcoin') {
+                return '$' + value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             }
-            return [];
-        }
-
-        async function fetchEIAImportSeries(seriesId) {
-            const params = new URLSearchParams({
-                api_key: API_KEY,
-                frequency: 'monthly',
-                'data[0]': 'value',
-                'sort[0][column]': 'period',
-                'sort[0][direction]': 'desc',
-                length: '36'
-            });
-            params.append(`facets[series][]`, seriesId);
-
-            const url = `${EIA_IMPORT}?${params.toString()}`;
-            const response = await fetch(url);
-            const json = await response.json();
-
-            if (json.response && json.response.data) {
-                return json.response.data
-                    .filter(d => d.value != null && d.value !== '')
-                    .map(d => ({
-                        date: d.period.length === 7 ? d.period + '-01' : d.period,
-                        price: parseFloat(d.value),
-                        source: 'EIA'
-                    }))
-                    .reverse();
-            }
-            return [];
+            return '$' + value.toFixed(2);
         }
 
         async function fetchFREDSeries(seriesId) {
@@ -445,9 +402,9 @@
             return [];
         }
 
-        // Alpha Vantage - daily commodity prices with history
-        async function fetchAlphaVantage(func) {
+        async function fetchAlphaVantageMetal(symbol) {
             try {
+                const func = symbol === 'gold' ? 'GOLD' : 'SILVER';
                 const resp = await fetch(
                     'https://www.alphavantage.co/query?function=' + func +
                     '&interval=daily&apikey=' + ALPHA_VANTAGE_KEY
@@ -461,6 +418,35 @@
                 }
             } catch (e) {
                 console.warn('Alpha Vantage fetch failed:', e.message);
+            }
+            return [];
+        }
+
+        async function fetchAlphaVantageCrypto() {
+            try {
+                const resp = await fetch(
+                    'https://www.alphavantage.co/query?function=DIGITAL_CURRENCY_DAILY' +
+                    '&symbol=BTC&market=USD&apikey=' + ALPHA_VANTAGE_KEY
+                );
+                const json = await resp.json();
+                const timeSeries = json['Time Series (Digital Currency Daily)'];
+                if (timeSeries) {
+                    const oneYearAgo = new Date();
+                    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+                    const startDate = oneYearAgo.toISOString().split('T')[0];
+
+                    return Object.entries(timeSeries)
+                        .filter(([date]) => date >= startDate)
+                        .map(([date, values]) => ({
+                            date,
+                            price: parseFloat(values['4a. close (USD)'] || values['4. close']),
+                            source: 'AlphaVantage'
+                        }))
+                        .filter(d => !isNaN(d.price))
+                        .sort((a, b) => a.date.localeCompare(b.date));
+                }
+            } catch (e) {
+                console.warn('Alpha Vantage crypto fetch failed:', e.message);
             }
             return [];
         }
@@ -488,46 +474,36 @@
                 dataSources = [];
 
                 const [
-                    eiaWti, eiaBrent, fredWti, fredBrent, eiaCanadian, eiaMaya,
-                    avWti, avBrent
+                    fredGold, fredSilver, fredBitcoin,
+                    avGold, avSilver, avBitcoin
                 ] = await Promise.allSettled([
-                    fetchEIASeries('RWTC'),
-                    fetchEIASeries('RBRTE'),
-                    fetchFREDSeries('DCOILWTICO'),
-                    fetchFREDSeries('DCOILBRENTEU'),
-                    fetchEIAImportSeries('I19263000004'),
-                    fetchEIAImportSeries('IMX2810004'),
-                    // Alpha Vantage
-                    fetchAlphaVantage('WTI'),
-                    fetchAlphaVantage('BRENT')
+                    fetchFREDSeries(FRED_SERIES.gold),
+                    fetchFREDSeries(FRED_SERIES.silver),
+                    fetchFREDSeries(FRED_SERIES.bitcoin),
+                    fetchAlphaVantageMetal('gold'),
+                    fetchAlphaVantageMetal('silver'),
+                    fetchAlphaVantageCrypto()
                 ]);
 
                 const val = r => r.status === 'fulfilled' ? r.value : [];
 
-                const eiaWtiData = val(eiaWti);
-                const eiaBrentData = val(eiaBrent);
-                const fredWtiData = val(fredWti);
-                const fredBrentData = val(fredBrent);
-                const avWtiData = val(avWti);
-                const avBrentData = val(avBrent);
+                const fredGoldData = val(fredGold);
+                const fredSilverData = val(fredSilver);
+                const fredBitcoinData = val(fredBitcoin);
+                const avGoldData = val(avGold);
+                const avSilverData = val(avSilver);
+                const avBitcoinData = val(avBitcoin);
 
-                if (eiaWtiData.length > 0 || eiaBrentData.length > 0) dataSources.push('EIA');
-                if (fredWtiData.length > 0 || fredBrentData.length > 0) dataSources.push('FRED');
-                if (avWtiData.length > 0 || avBrentData.length > 0) dataSources.push('AlphaVantage');
+                if (fredGoldData.length > 0 || fredSilverData.length > 0 || fredBitcoinData.length > 0) dataSources.push('FRED');
+                if (avGoldData.length > 0 || avSilverData.length > 0 || avBitcoinData.length > 0) dataSources.push('AlphaVantage');
 
-                // Merge all sources: EIA first (most authoritative), then FRED, Alpha Vantage
-                wtiPrices = mergePrices(eiaWtiData, fredWtiData, avWtiData);
-                brentPrices = mergePrices(eiaBrentData, fredBrentData, avBrentData);
-                canadianPrices = val(eiaCanadian);
-                mayaPrices = val(eiaMaya);
-
-                if (canadianPrices.length > 0 || mayaPrices.length > 0) {
-                    if (!dataSources.includes('EIA')) dataSources.push('EIA');
-                }
+                goldPrices = mergePrices(fredGoldData, avGoldData);
+                silverPrices = mergePrices(fredSilverData, avSilverData);
+                bitcoinPrices = mergePrices(fredBitcoinData, avBitcoinData);
 
                 lastUpdated = new Date();
 
-                if (wtiPrices.length === 0 && brentPrices.length === 0 && canadianPrices.length === 0 && mayaPrices.length === 0) {
+                if (goldPrices.length === 0 && silverPrices.length === 0 && bitcoinPrices.length === 0) {
                     document.getElementById('content').innerHTML = `
                         <div class="error-msg">
                             Unable to fetch data from any source. Check your connection.
@@ -545,14 +521,8 @@
         }
 
         function getFilteredPrices() {
-            const typeMap = { wti: wtiPrices, brent: brentPrices, canadian: canadianPrices, maya: mayaPrices };
-            const all = typeMap[selectedType] || wtiPrices;
-            // Monthly data (canadian/maya) - map time ranges to useful month counts
-            if (selectedType === 'canadian' || selectedType === 'maya') {
-                const rangeToMonths = { 7: 6, 30: 12, 90: 18, 180: 24, 365: 36 };
-                const months = rangeToMonths[selectedRange] || 12;
-                return all.slice(-months);
-            }
+            const typeMap = { gold: goldPrices, silver: silverPrices, bitcoin: bitcoinPrices };
+            const all = typeMap[selectedType] || goldPrices;
             const cutoff = new Date();
             cutoff.setDate(cutoff.getDate() - selectedRange);
             return all.filter(p => new Date(p.date) >= cutoff);
@@ -574,11 +544,15 @@
             const variance = prices.reduce((s, p) => s + Math.pow(p.price - avg, 2), 0) / (prices.length - 1);
             const volatility = (Math.sqrt(variance) / avg) * 100;
 
-            const typeLabels = { wti: 'WTI Crude Oil', brent: 'Brent Crude Oil', canadian: 'Canadian Light Sour Blend', maya: 'Mexican Maya Crude' };
-            const typeColors = { wti: '#3b82f6', brent: '#f59e0b', canadian: '#ef4444', maya: '#10b981' };
+            // Period change (first to last)
+            const first = prices[0];
+            const periodChange = latest.price - first.price;
+            const periodPct = (periodChange / first.price) * 100;
+
+            const typeLabels = { gold: 'Gold (XAU/USD)', silver: 'Silver (XAG/USD)', bitcoin: 'Bitcoin (BTC/USD)' };
+            const typeColors = { gold: '#fbbf24', silver: '#94a3b8', bitcoin: '#f7931a' };
             const typeLabel = typeLabels[selectedType];
             const color = typeColors[selectedType];
-            const isMonthly = selectedType === 'canadian' || selectedType === 'maya';
 
             const latestDate = latest.date;
             const updatedStr = lastUpdated ? lastUpdated.toLocaleString('en-US', {
@@ -591,17 +565,17 @@
 
             document.getElementById('content').innerHTML = `
                 <div class="data-status">
-                    <div>Latest data: <strong>${latestDate}</strong>${isMonthly ? ' (monthly)' : ''} &bull; Updated: <strong>${updatedStr}</strong></div>
+                    <div>Latest data: <strong>${latestDate}</strong> &bull; Updated: <strong>${updatedStr}</strong></div>
                     <div>Sources: ${sourcesTags}</div>
                 </div>
                 <div class="price-hero">
                     <div>
-                        <div class="oil-label">${typeLabel}</div>
-                        <span class="current-price">$${latest.price.toFixed(2)}</span>
+                        <div class="metal-label">${typeLabel}</div>
+                        <span class="current-price">${formatPrice(latest.price)}</span>
                     </div>
                     <div class="price-change ${isUp ? 'up' : 'down'}">
                         ${isUp ? '&#9650;' : '&#9660;'}
-                        ${change >= 0 ? '+' : ''}${change.toFixed(2)}
+                        ${change >= 0 ? '+' : ''}${formatPrice(Math.abs(change)).replace('$', change < 0 ? '-$' : '$')}
                         (${pctChange >= 0 ? '+' : ''}${pctChange.toFixed(2)}%)
                     </div>
                 </div>
@@ -613,19 +587,30 @@
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="label">High</div>
-                        <div class="value green">$${high.toFixed(2)}</div>
+                        <div class="value green">${formatPrice(high)}</div>
                     </div>
                     <div class="stat-card">
                         <div class="label">Low</div>
-                        <div class="value red">$${low.toFixed(2)}</div>
+                        <div class="value red">${formatPrice(low)}</div>
                     </div>
                     <div class="stat-card">
                         <div class="label">Average</div>
-                        <div class="value blue">$${avg.toFixed(2)}</div>
+                        <div class="value blue">${formatPrice(avg)}</div>
                     </div>
                     <div class="stat-card">
                         <div class="label">Volatility</div>
                         <div class="value purple">${volatility.toFixed(2)}%</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Period Change</div>
+                        <div class="value ${periodChange >= 0 ? 'green' : 'red'}">
+                            ${periodChange >= 0 ? '+' : '-'}${formatPrice(Math.abs(periodChange))}
+                            (${periodPct >= 0 ? '+' : ''}${periodPct.toFixed(2)}%)
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Spread (High-Low)</div>
+                        <div class="value amber">${formatPrice(high - low)}</div>
                     </div>
                 </div>
 
@@ -647,9 +632,9 @@
                                 const cls = dayChange >= 0 ? 'up' : 'down';
                                 return `<tr>
                                     <td>${p.date}</td>
-                                    <td><strong>$${p.price.toFixed(2)}</strong></td>
+                                    <td><strong>${formatPrice(p.price)}</strong></td>
                                     <td class="price-change ${cls}">
-                                        ${dayChange >= 0 ? '+' : ''}${dayChange.toFixed(2)}
+                                        ${dayChange >= 0 ? '+' : '-'}${formatPrice(Math.abs(dayChange)).replace('$','')}
                                         (${dayPct >= 0 ? '+' : ''}${dayPct.toFixed(2)}%)
                                     </td>
                                 </tr>`;
@@ -707,7 +692,7 @@
                             padding: 12,
                             displayColors: false,
                             callbacks: {
-                                label: ctx => `$${ctx.parsed.y.toFixed(2)}`
+                                label: ctx => formatPrice(ctx.parsed.y)
                             }
                         }
                     },
@@ -736,7 +721,7 @@
                             },
                             ticks: {
                                 color: '#8b8fa3',
-                                callback: v => '$' + v
+                                callback: v => '$' + v.toLocaleString('en-US')
                             }
                         }
                     }
