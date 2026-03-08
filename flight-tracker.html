@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Flight Tracker - 91980</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f1117;
+            color: #e1e4e8;
+            min-height: 100vh;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1d28, #252836);
+            padding: 20px 16px;
+            border-bottom: 1px solid #2d3040;
+            text-align: center;
+            position: relative;
+            z-index: 1000;
+        }
+
+        .header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header p { color: #8b8fa3; margin-top: 4px; font-size: 12px; }
+
+        .container { max-width: 1000px; margin: 0 auto; padding: 16px; }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-group {
+            display: flex;
+            background: #1a1d28;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #2d3040;
+        }
+
+        .btn-group button {
+            padding: 10px 14px;
+            background: transparent;
+            color: #8b8fa3;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+            white-space: nowrap;
+        }
+
+        .btn-group button.active {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-group button:hover:not(.active) {
+            color: #e1e4e8;
+            background: #252836;
+        }
+
+        .refresh-btn {
+            padding: 10px 16px;
+            background: #1a1d28;
+            color: #8b8fa3;
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 18px;
+            -webkit-tap-highlight-color: transparent;
+            margin-left: auto;
+        }
+
+        .refresh-btn:hover { background: #252836; color: #e1e4e8; }
+
+        .map-container {
+            background: #1a1d28;
+            border-radius: 16px;
+            border: 1px solid #2d3040;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+
+        #map { width: 100%; height: 500px; }
+
+        .stats-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .stat-chip {
+            background: #1a1d28;
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            padding: 12px 16px;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .stat-chip .label {
+            font-size: 11px;
+            color: #8b8fa3;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .stat-chip .value { font-size: 22px; font-weight: 700; }
+        .stat-chip .value.blue { color: #60a5fa; }
+        .stat-chip .value.green { color: #34d399; }
+        .stat-chip .value.purple { color: #a78bfa; }
+        .stat-chip .value.amber { color: #fbbf24; }
+
+        .flight-list {
+            background: #1a1d28;
+            border-radius: 16px;
+            border: 1px solid #2d3040;
+            padding: 16px;
+        }
+
+        .flight-list h3 { margin-bottom: 12px; font-size: 16px; }
+
+        .flight-list table { width: 100%; border-collapse: collapse; }
+
+        .flight-list th {
+            text-align: left;
+            padding: 8px 6px;
+            color: #8b8fa3;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #2d3040;
+        }
+
+        .flight-list td {
+            padding: 10px 6px;
+            border-bottom: 1px solid #1e2130;
+            font-size: 13px;
+        }
+
+        .flight-list tr:last-child td { border-bottom: none; }
+
+        .flight-list .callsign {
+            font-weight: 700;
+            color: #60a5fa;
+        }
+
+        .flight-list tr { cursor: pointer; transition: background 0.15s; }
+        .flight-list tbody tr:hover { background: #252836; }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #8b8fa3;
+        }
+
+        .spinner {
+            width: 36px; height: 36px;
+            border: 3px solid #2d3040;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .error-msg {
+            background: #1a1d28;
+            border: 1px solid #f8717133;
+            color: #f87171;
+            padding: 12px 16px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .data-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 10px 16px;
+            background: #1a1d28;
+            border-radius: 10px;
+            border: 1px solid #2d3040;
+            margin-bottom: 16px;
+            font-size: 11px;
+            color: #8b8fa3;
+        }
+
+        .data-status .source-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: #3b82f620;
+            color: #60a5fa;
+        }
+
+        .auto-refresh-label {
+            font-size: 11px;
+            color: #8b8fa3;
+            padding: 10px 12px;
+            background: #1a1d28;
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+        }
+
+        /* Leaflet dark theme overrides */
+        .nav-link {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 6px 14px;
+            background: #252836;
+            color: #60a5fa;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            border: 1px solid #2d3040;
+            transition: all 0.2s;
+        }
+        .nav-link:hover { background: #2d3040; color: #a78bfa; }
+
+        /* Leaflet dark theme overrides */
+        .leaflet-control-zoom a {
+            background: #1a1d28 !important;
+            color: #e1e4e8 !important;
+            border-color: #2d3040 !important;
+        }
+        .leaflet-control-attribution {
+            background: #1a1d28cc !important;
+            color: #8b8fa3 !important;
+        }
+        .leaflet-control-attribution a { color: #60a5fa !important; }
+        .leaflet-popup-content-wrapper {
+            background: #1a1d28 !important;
+            color: #e1e4e8 !important;
+            border-radius: 12px !important;
+            border: 1px solid #2d3040 !important;
+        }
+        .leaflet-popup-tip { background: #1a1d28 !important; }
+        .leaflet-popup-content { font-family: -apple-system, sans-serif; font-size: 13px; }
+        .leaflet-popup-content strong { color: #60a5fa; }
+
+        @media (max-width: 600px) {
+            #map { height: 380px; }
+            .stats-bar { gap: 6px; }
+            .stat-chip { padding: 10px 12px; min-width: 80px; }
+            .stat-chip .value { font-size: 18px; }
+            .flight-list { overflow-x: auto; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Flight Tracker</h1>
+        <p>Live flights near 91980 &bull; Tecate, CA &bull; OpenSky Network</p>
+        <a href="index.html" class="nav-link">&larr; Oil Tracker</a>
+    </div>
+
+    <div class="container">
+        <div class="controls">
+            <div class="btn-group" id="radiusSelect">
+                <button data-radius="25">25 mi</button>
+                <button class="active" data-radius="50">50 mi</button>
+                <button data-radius="100">100 mi</button>
+                <button data-radius="150">150 mi</button>
+            </div>
+            <span class="auto-refresh-label" id="countdown">Auto-refresh: 15s</span>
+            <button class="refresh-btn" id="refreshBtn">&#8635;</button>
+        </div>
+
+        <div id="content">
+            <div class="loading"><div class="spinner"></div>Scanning airspace...</div>
+        </div>
+    </div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ---- Config ----
+const ZIP_CENTER = { lat: 32.5730, lng: -116.6267 }; // 91980 Tecate, CA
+const MI_TO_DEG = 1 / 69.0; // rough miles to degrees latitude
+
+let map = null;
+let flightMarkers = [];
+let radiusCircle = null;
+let selectedRadius = 50; // miles
+let flights = [];
+let lastUpdated = null;
+let refreshInterval = null;
+let countdownVal = 15;
+let countdownTimer = null;
+
+// ---- Plane icon as SVG data URI ----
+function createPlaneIcon(heading, onGround) {
+    const color = onGround ? '#8b8fa3' : '#60a5fa';
+    const rotation = heading || 0;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28" style="transform: rotate(${rotation}deg)">
+        <path d="M12 2L8 9H3l2 3.5L3 16h5l4 6 4-6h5l-2-3.5L21 9h-5L12 2z" fill="${color}" stroke="#0f1117" stroke-width="0.8"/>
+    </svg>`;
+    return L.divIcon({
+        html: svg,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+        className: ''
+    });
+}
+
+// ---- Map setup ----
+function initMap() {
+    map = L.map('map', {
+        center: [ZIP_CENTER.lat, ZIP_CENTER.lng],
+        zoom: 9,
+        zoomControl: true
+    });
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 19
+    }).addTo(map);
+
+    // Center marker for 91980
+    L.circleMarker([ZIP_CENTER.lat, ZIP_CENTER.lng], {
+        radius: 6,
+        color: '#a78bfa',
+        fillColor: '#a78bfa',
+        fillOpacity: 0.9,
+        weight: 2
+    }).addTo(map).bindPopup('<strong>91980</strong><br>Tecate, CA');
+
+    drawRadiusCircle();
+}
+
+function drawRadiusCircle() {
+    if (radiusCircle) map.removeLayer(radiusCircle);
+    const radiusMeters = selectedRadius * 1609.34;
+    radiusCircle = L.circle([ZIP_CENTER.lat, ZIP_CENTER.lng], {
+        radius: radiusMeters,
+        color: '#3b82f6',
+        fillColor: '#3b82f6',
+        fillOpacity: 0.04,
+        weight: 1,
+        dashArray: '6 4'
+    }).addTo(map);
+}
+
+// ---- Fetch flights from OpenSky Network ----
+async function fetchFlights() {
+    const radiusDeg = selectedRadius * MI_TO_DEG;
+    const lamin = ZIP_CENTER.lat - radiusDeg;
+    const lamax = ZIP_CENTER.lat + radiusDeg;
+    const lomin = ZIP_CENTER.lng - radiusDeg / Math.cos(ZIP_CENTER.lat * Math.PI / 180);
+    const lomax = ZIP_CENTER.lng + radiusDeg / Math.cos(ZIP_CENTER.lat * Math.PI / 180);
+
+    const url = `https://opensky-network.org/api/states/all?lamin=${lamin}&lomin=${lomin}&lamax=${lamax}&lomax=${lomax}`;
+
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`OpenSky API returned ${resp.status}`);
+    const json = await resp.json();
+
+    if (!json.states) return [];
+
+    return json.states.map(s => ({
+        icao24: s[0],
+        callsign: (s[1] || '').trim(),
+        country: s[2],
+        lng: s[5],
+        lat: s[6],
+        altitude: s[7], // meters (barometric)
+        onGround: s[8],
+        velocity: s[9], // m/s
+        heading: s[10],
+        verticalRate: s[11],
+        geoAltitude: s[13]
+    })).filter(f => f.lat != null && f.lng != null);
+}
+
+// ---- Render ----
+function clearMarkers() {
+    flightMarkers.forEach(m => map.removeLayer(m));
+    flightMarkers = [];
+}
+
+function plotFlights() {
+    clearMarkers();
+
+    flights.forEach(f => {
+        const icon = createPlaneIcon(f.heading, f.onGround);
+        const altFt = f.altitude != null ? Math.round(f.altitude * 3.281) : '—';
+        const speedKts = f.velocity != null ? Math.round(f.velocity * 1.944) : '—';
+        const vrFpm = f.verticalRate != null ? Math.round(f.verticalRate * 196.85) : '—';
+        const vrSign = f.verticalRate > 0 ? '+' : '';
+
+        const popup = `
+            <div style="min-width: 160px;">
+                <strong style="font-size:15px;">${f.callsign || 'N/A'}</strong><br>
+                <span style="color:#8b8fa3;font-size:11px;">${f.icao24.toUpperCase()} &bull; ${f.country}</span>
+                <hr style="border:none;border-top:1px solid #2d3040;margin:6px 0;">
+                <div style="font-size:12px;line-height:1.8;">
+                    Altitude: <strong>${altFt.toLocaleString()} ft</strong><br>
+                    Speed: <strong>${speedKts} kts</strong><br>
+                    Heading: <strong>${f.heading != null ? Math.round(f.heading) + '°' : '—'}</strong><br>
+                    V/S: <strong>${vrSign}${vrFpm} fpm</strong><br>
+                    ${f.onGround ? '<span style="color:#fbbf24;">On Ground</span>' : '<span style="color:#34d399;">Airborne</span>'}
+                </div>
+            </div>`;
+
+        const marker = L.marker([f.lat, f.lng], { icon })
+            .addTo(map)
+            .bindPopup(popup);
+
+        flightMarkers.push(marker);
+    });
+}
+
+function renderUI() {
+    const airborne = flights.filter(f => !f.onGround).length;
+    const onGround = flights.filter(f => f.onGround).length;
+    const avgAlt = airborne > 0
+        ? Math.round(flights.filter(f => !f.onGround && f.altitude != null)
+            .reduce((s, f) => s + f.altitude * 3.281, 0) / airborne)
+        : 0;
+
+    const updatedStr = lastUpdated ? lastUpdated.toLocaleString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric',
+        hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
+    }) : '—';
+
+    document.getElementById('content').innerHTML = `
+        <div class="data-status">
+            <div>Updated: <strong>${updatedStr}</strong> &bull; Radius: <strong>${selectedRadius} mi</strong></div>
+            <div>Source: <span class="source-tag">OpenSky</span></div>
+        </div>
+
+        <div class="stats-bar">
+            <div class="stat-chip"><div class="label">Total Flights</div><div class="value blue">${flights.length}</div></div>
+            <div class="stat-chip"><div class="label">Airborne</div><div class="value green">${airborne}</div></div>
+            <div class="stat-chip"><div class="label">On Ground</div><div class="value amber">${onGround}</div></div>
+            <div class="stat-chip"><div class="label">Avg Altitude</div><div class="value purple">${avgAlt.toLocaleString()} ft</div></div>
+        </div>
+
+        <div class="map-container"><div id="map"></div></div>
+
+        <div class="flight-list">
+            <h3>Flights in Area</h3>
+            <table>
+                <thead><tr>
+                    <th>Callsign</th>
+                    <th>Country</th>
+                    <th>Altitude</th>
+                    <th>Speed</th>
+                    <th>Heading</th>
+                    <th>Status</th>
+                </tr></thead>
+                <tbody>
+                    ${flights.length === 0 ? '<tr><td colspan="6" style="text-align:center;color:#8b8fa3;padding:20px;">No flights detected in this area</td></tr>' : ''}
+                    ${flights.slice(0, 50).map(f => {
+                        const altFt = f.altitude != null ? Math.round(f.altitude * 3.281).toLocaleString() : '—';
+                        const speedKts = f.velocity != null ? Math.round(f.velocity * 1.944) : '—';
+                        const hdg = f.heading != null ? Math.round(f.heading) + '°' : '—';
+                        const status = f.onGround
+                            ? '<span style="color:#fbbf24;">Ground</span>'
+                            : '<span style="color:#34d399;">Airborne</span>';
+                        return `<tr data-icao="${f.icao24}">
+                            <td class="callsign">${f.callsign || '—'}</td>
+                            <td>${f.country}</td>
+                            <td>${altFt} ft</td>
+                            <td>${speedKts} kts</td>
+                            <td>${hdg}</td>
+                            <td>${status}</td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>`;
+
+    initMap();
+    plotFlights();
+
+    // Click table row to fly to plane on map
+    document.querySelectorAll('.flight-list tbody tr[data-icao]').forEach(row => {
+        row.addEventListener('click', () => {
+            const icao = row.dataset.icao;
+            const f = flights.find(fl => fl.icao24 === icao);
+            if (f) {
+                map.setView([f.lat, f.lng], 11);
+                const marker = flightMarkers.find(m => {
+                    const ll = m.getLatLng();
+                    return Math.abs(ll.lat - f.lat) < 0.001 && Math.abs(ll.lng - f.lng) < 0.001;
+                });
+                if (marker) marker.openPopup();
+            }
+        });
+    });
+}
+
+async function loadFlights() {
+    try {
+        if (!lastUpdated) {
+            document.getElementById('content').innerHTML =
+                '<div class="loading"><div class="spinner"></div>Scanning airspace near 91980...</div>';
+        }
+        flights = await fetchFlights();
+        lastUpdated = new Date();
+        renderUI();
+    } catch (err) {
+        if (!lastUpdated) {
+            document.getElementById('content').innerHTML =
+                `<div class="error-msg">Failed to fetch flight data: ${err.message}. The OpenSky API may be temporarily unavailable — try again in a moment.</div>`;
+        }
+        console.error('Fetch error:', err);
+    }
+    resetCountdown();
+}
+
+// ---- Controls ----
+document.querySelectorAll('#radiusSelect button').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('#radiusSelect button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedRadius = parseInt(btn.dataset.radius);
+        loadFlights();
+    });
+});
+
+document.getElementById('refreshBtn').addEventListener('click', loadFlights);
+
+// ---- Auto-refresh countdown ----
+function resetCountdown() {
+    countdownVal = 15;
+    if (countdownTimer) clearInterval(countdownTimer);
+    countdownTimer = setInterval(() => {
+        countdownVal--;
+        const el = document.getElementById('countdown');
+        if (el) el.textContent = `Auto-refresh: ${countdownVal}s`;
+        if (countdownVal <= 0) {
+            loadFlights();
+        }
+    }, 1000);
+}
+
+// ---- Init ----
+loadFlights();
+</script>
+</body>
+</html>
