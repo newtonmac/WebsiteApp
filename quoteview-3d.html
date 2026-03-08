@@ -1675,15 +1675,15 @@ kbd{background:rgba(0,0,0,0.05);border:1px solid var(--border);padding:1px 5px;b
     <div class="sb-section">
       <div class="sb-label">Part Details</div>
       <div class="part-name">${escHtml(partname)}</div>
-      ${quotenum ? \`<div class="quote-num">Quote: ${escHtml(quotenum)}</div>\` : ''}
+      ${quotenum ? `<div class="quote-num">Quote: ${escHtml(quotenum)}</div>` : ''}
     </div>
-    ${notes ? \`<div class="sb-section"><div class="sb-label">Notes</div><div class="notes-text">${escHtml(notes).replace(/
-/g,'<br>')}</div></div>\` : ''}
+    ${notes ? `<div class="sb-section"><div class="sb-label">Notes</div><div class="notes-text">${escHtml(notes).replace(/
+/g,'<br>')}</div></div>` : ''}
     <div class="sb-section">
       <div class="sb-label">Contact</div>
-      ${rep ? \`<div class="contact-row"><div class="contact-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div><div class="contact-val">${escHtml(rep)}</div></div>\` : ''}
-      ${email ? \`<div class="contact-row"><div class="contact-icon"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 7l10 7 10-7"/></svg></div><div class="contact-val"><a href="mailto:${escHtml(email)}">${escHtml(email)}</a></div></div>\` : ''}
-      ${phone ? \`<div class="contact-row"><div class="contact-icon"><svg viewBox="0 0 24 24"><path d="M6 2a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V4a2 2 0 00-2-2H6zm6 17a1 1 0 110-2 1 1 0 010 2z"/></svg></div><div class="contact-val">${escHtml(phone)}</div></div>\` : ''}
+      ${rep ? `<div class="contact-row"><div class="contact-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div><div class="contact-val">${escHtml(rep)}</div></div>` : ''}
+      ${email ? `<div class="contact-row"><div class="contact-icon"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 7l10 7 10-7"/></svg></div><div class="contact-val"><a href="mailto:${escHtml(email)}">${escHtml(email)}</a></div></div>` : ''}
+      ${phone ? `<div class="contact-row"><div class="contact-icon"><svg viewBox="0 0 24 24"><path d="M6 2a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V4a2 2 0 00-2-2H6zm6 17a1 1 0 110-2 1 1 0 010 2z"/></svg></div><div class="contact-val">${escHtml(phone)}</div></div>` : ''}
     </div>
     <div class="controls-section">
       <div class="sb-label">Lighting</div>
@@ -1710,7 +1710,7 @@ kbd{background:rgba(0,0,0,0.05);border:1px solid var(--border);padding:1px 5px;b
       <button class="tbtn" id="qv-side" style="font-size:0.55rem;padding:5px 2px;">SIDE</button>
       <button class="tbtn" id="qv-iso" style="font-size:0.55rem;padding:5px 2px;">ISO</button>
     </div>
-    ${email ? \`<a class="cta-btn" href="mailto:${escHtml(email)}?subject=Re: Quote ${escHtml(quotenum)}&body=Hi ${escHtml(rep)},%0D%0A%0D%0AI've reviewed the 3D model for ${escHtml(partname)}.">Reply to Quote</a>\` : ''}
+    ${email ? `<a class="cta-btn" href="mailto:${escHtml(email)}?subject=Re: Quote ${escHtml(quotenum)}&body=Hi ${escHtml(rep)},%0D%0A%0D%0AI've reviewed the 3D model for ${escHtml(partname)}.">Reply to Quote</a>` : ''}
     <div class="hints">
       <div class="hint"><kbd>drag</kbd> Rotate</div>
       <div class="hint"><kbd>scroll</kbd> Zoom</div>
