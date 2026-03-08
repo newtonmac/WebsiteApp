@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MXN/USD Currency Exchange Tracker</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -570,6 +569,7 @@
 
                 <div class="chart-container">
                     <canvas id="rateChart"></canvas>
+                    <div id="chartError" style="color:#f87171;font-size:13px;text-align:center;margin-top:8px;"></div>
                 </div>
 
                 <div class="stats-grid">
@@ -631,7 +631,11 @@
                 </div>
             `;
 
-            renderChart(rates, color, decimals, currencySymbol);
+            try {
+                renderChart(rates, color, decimals, currencySymbol);
+            } catch (e) {
+                document.getElementById('chartError').textContent = 'Chart error: ' + e.message;
+            }
         }
 
         function formatDateLabel(dateStr) {
@@ -641,82 +645,95 @@
         }
 
         function renderChart(rates, color, decimals, symbol) {
-            const ctx = document.getElementById('rateChart').getContext('2d');
+            const canvas = document.getElementById('rateChart');
+            if (!canvas) return;
 
-            if (chart) chart.destroy();
+            // Draw chart manually on canvas (no Chart.js dependency)
+            if (chart && chart.destroy) chart.destroy();
 
-            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            const parent = canvas.parentElement;
+            const w = parent.clientWidth - 48; // padding
+            const h = parent.clientHeight - 48;
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+            canvas.style.width = w + 'px';
+            canvas.style.height = h + 'px';
+
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+
+            const data = rates.map(r => getDisplayRate(r.rate));
+            const labels = rates.map(r => r.date);
+            const minVal = Math.min(...data);
+            const maxVal = Math.max(...data);
+            const range = maxVal - minVal || 0.001;
+            const padTop = 30;
+            const padBottom = 40;
+            const padLeft = 70;
+            const padRight = 20;
+            const chartW = w - padLeft - padRight;
+            const chartH = h - padTop - padBottom;
+
+            // Grid lines and Y-axis labels
+            ctx.strokeStyle = '#2d304040';
+            ctx.fillStyle = '#8b8fa3';
+            ctx.font = '11px -apple-system, sans-serif';
+            ctx.textAlign = 'right';
+            const ySteps = 5;
+            for (let i = 0; i <= ySteps; i++) {
+                const y = padTop + (chartH / ySteps) * i;
+                const val = maxVal - (range / ySteps) * i;
+                ctx.beginPath();
+                ctx.setLineDash([4, 4]);
+                ctx.moveTo(padLeft, y);
+                ctx.lineTo(w - padRight, y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.fillText(symbol + val.toFixed(decimals), padLeft - 8, y + 4);
+            }
+
+            // X-axis labels
+            ctx.textAlign = 'center';
+            const xLabelCount = Math.min(8, data.length);
+            for (let i = 0; i < xLabelCount; i++) {
+                const idx = Math.round((data.length - 1) * i / (xLabelCount - 1));
+                const x = padLeft + (chartW * idx / (data.length - 1));
+                ctx.fillText(formatDateLabel(labels[idx]), x, h - 8);
+            }
+
+            // Area fill
+            const gradient = ctx.createLinearGradient(0, padTop, 0, padTop + chartH);
             gradient.addColorStop(0, color + '40');
             gradient.addColorStop(1, color + '05');
 
-            const labels = rates.map(r => formatDateLabel(r.date));
+            ctx.beginPath();
+            ctx.moveTo(padLeft, padTop + chartH);
+            for (let i = 0; i < data.length; i++) {
+                const x = padLeft + (chartW * i / (data.length - 1));
+                const y = padTop + chartH - ((data[i] - minVal) / range) * chartH;
+                ctx.lineTo(x, y);
+            }
+            ctx.lineTo(padLeft + chartW, padTop + chartH);
+            ctx.closePath();
+            ctx.fillStyle = gradient;
+            ctx.fill();
 
-            chart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Exchange Rate',
-                        data: rates.map(r => getDisplayRate(r.rate)),
-                        borderColor: color,
-                        backgroundColor: gradient,
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 0,
-                        pointHitRadius: 10,
-                        pointHoverRadius: 5,
-                        pointHoverBackgroundColor: color
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        intersect: false,
-                        mode: 'index'
-                    },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: '#252836',
-                            titleColor: '#e1e4e8',
-                            bodyColor: '#e1e4e8',
-                            borderColor: '#2d3040',
-                            borderWidth: 1,
-                            padding: 12,
-                            displayColors: false,
-                            callbacks: {
-                                title: ctx => rates[ctx[0].dataIndex].date,
-                                label: ctx => `${symbol}${ctx.parsed.y.toFixed(decimals)}`
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            grid: {
-                                color: '#2d304040',
-                                drawBorder: false
-                            },
-                            ticks: {
-                                color: '#8b8fa3',
-                                maxTicksLimit: 8,
-                                maxRotation: 0
-                            }
-                        },
-                        y: {
-                            grid: {
-                                color: '#2d304040',
-                                drawBorder: false
-                            },
-                            ticks: {
-                                color: '#8b8fa3',
-                                callback: v => symbol + v.toFixed(decimals)
-                            }
-                        }
-                    }
-                }
-            });
+            // Line
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.lineJoin = 'round';
+            for (let i = 0; i < data.length; i++) {
+                const x = padLeft + (chartW * i / (data.length - 1));
+                const y = padTop + chartH - ((data[i] - minVal) / range) * chartH;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Store reference for cleanup
+            chart = { destroy: () => {} };
         }
 
         // Initial load
