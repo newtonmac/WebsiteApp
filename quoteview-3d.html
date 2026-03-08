@@ -622,11 +622,11 @@ textarea{resize:vertical;min-height:80px;line-height:1.5;}
     <div class="bin-prompt" id="bin-prompt">
       <div class="bin-prompt-title">⚠️ Companion <code id="bin-filename">.bin</code> required</div>
       <div class="bin-prompt-desc">Your file is a GLTF (JSON) referencing an external binary. Select the companion .bin file.</div>
-      <input type="file" id="bin-input" accept=".bin,.BIN" onchange="handleBinFile(this.files[0])" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0,0,0,0);">
-      <label class="btn-bin" for="bin-input">
+      <input type="file" id="bin-input" accept=".bin,.BIN" style="display:none;">
+      <button type="button" class="btn-bin" id="bin-btn">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
         Select .bin file
-      </label>
+      </button>
     </div>
   </div>
   <div class="card">
@@ -764,6 +764,13 @@ let selectedColor = '#d4522a';
   });
   window._fileInput = fileInput;
   window._uploadZone = uploadZone;
+  // .bin file picker
+  var binBtn = document.getElementById('bin-btn');
+  var binInput = document.getElementById('bin-input');
+  if (binBtn && binInput) {
+    binBtn.addEventListener('click', function() { binInput.value = ''; binInput.click(); });
+    binInput.addEventListener('change', function() { if (binInput.files && binInput.files[0]) handleBinFile(binInput.files[0]); });
+  }
 })();
 function handleFile(file) {
   const ext = file.name.split('.').pop().toLowerCase();
