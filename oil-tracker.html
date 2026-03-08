@@ -454,7 +454,7 @@ async function fetchEIAImportSeries(seriesId) {
     if (json.response && json.response.data) {
         return json.response.data
             .filter(d => d.value != null && d.value !== '')
-            .map(d => ({ date: d.period, price: parseFloat(d.value), source: 'EIA' }))
+            .map(d => ({ date: d.period.length === 7 ? d.period + '-01' : d.period, price: parseFloat(d.value), source: 'EIA' }))
             .reverse();
     }
     return [];
