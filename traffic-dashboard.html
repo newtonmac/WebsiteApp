@@ -419,12 +419,15 @@ let countdownVal = 60;
 let countdownTimer = null;
 
 // ---- Data source configuration ----
+// CORS proxies needed for CHP (no CORS headers). Caltrans supports CORS natively.
 const CORS_PROXIES = [
     url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
     url => `https://corsproxy.io/?${encodeURIComponent(url)}`
 ];
 
+// Real data feed URLs
 const CALTRANS_D11_URL = 'https://cwwp2.dot.ca.gov/data/d11/lcs/lcsStatusD11.json';
+const CHP_INCIDENTS_URL = 'https://media.chp.ca.gov/sa_xml/sa.xml';
 
 // East County San Diego bounding box for filtering
 const EAST_COUNTY_BOUNDS = {
@@ -435,7 +438,7 @@ const EAST_COUNTY_BOUNDS = {
 // Track which data sources are live vs simulated
 let dataSourceStatus = {
     caltrans: 'loading',  // 'live', 'simulated', 'loading'
-    traffic: 'simulated', // CHP has no public API
+    traffic: 'loading',   // CHP sa.xml feed
     police: 'simulated'   // No free real-time crime API
 };
 
@@ -603,11 +606,108 @@ function findNearestArea(lat, lng) {
     return nearest;
 }
 
-// ---- Fetch REAL Caltrans D11 lane closure data ----
-async function fetchCaltransData() {
+// ---- Fetch REAL CHP traffic incident data ----
+async function fetchCHPData() {
     for (const proxyFn of CORS_PROXIES) {
         try {
-            const url = proxyFn(CALTRANS_D11_URL);
+            const url = proxyFn(CHP_INCIDENTS_URL);
+            const response = await fetch(url, { signal: AbortSignal.timeout(12000) });
+            if (!response.ok) continue;
+            const xmlText = await response.text();
+
+            const parser = new DOMParser();
+            const xml = parser.parseFromString(xmlText, 'text/xml');
+            if (xml.querySelector('parsererror')) continue;
+
+            const logs = xml.querySelectorAll('Log');
+            const now = Date.now();
+            const results = [];
+
+            logs.forEach((log, idx) => {
+                const latlon = log.querySelector('LATLON')?.textContent?.trim() || '';
+                if (!latlon || latlon === '0:0') return;
+
+                // CHP format: "32777808:117056969" → 32.777808, -117.056969
+                const parts = latlon.split(':');
+                if (parts.length !== 2) return;
+                const lat = parseFloat(parts[0]) / 1000000;
+                const lng = -parseFloat(parts[1]) / 1000000;
+
+                // Filter for East County bounding box
+                if (lat < EAST_COUNTY_BOUNDS.minLat || lat > EAST_COUNTY_BOUNDS.maxLat ||
+                    lng < EAST_COUNTY_BOUNDS.minLng || lng > EAST_COUNTY_BOUNDS.maxLng) return;
+
+                const logType = log.querySelector('LogType')?.textContent?.trim() || 'Incident';
+                const location = log.querySelector('Location')?.textContent?.trim() || 'Unknown';
+                const locationDesc = log.querySelector('LocationDesc')?.textContent?.trim() || '';
+                const logTime = log.querySelector('LogTime')?.textContent?.trim() || '';
+                const areaField = log.querySelector('Area')?.textContent?.trim() || '';
+
+                // Parse CHP log type (e.g. "1125-Traffic Hazard", "1179-Collision")
+                const typeMatch = logType.match(/^\d+-(.+)$/);
+                const incidentType = typeMatch ? typeMatch[1].trim() : logType;
+
+                // Determine severity from type
+                let severity = 'minor';
+                const typeLower = incidentType.toLowerCase();
+                if (typeLower.includes('fatal') || typeLower.includes('major')) severity = 'critical';
+                else if (typeLower.includes('collision') || typeLower.includes('hit and run') || typeLower.includes('pursuit')) severity = 'major';
+                else if (typeLower.includes('hazard') || typeLower.includes('blocking') || typeLower.includes('disabled')) severity = 'moderate';
+
+                // Parse time
+                let reportedAt = new Date();
+                let minsAgo = 0;
+                if (logTime) {
+                    const parsed = new Date(logTime);
+                    if (!isNaN(parsed.getTime())) {
+                        reportedAt = parsed;
+                        minsAgo = Math.max(0, Math.floor((now - parsed.getTime()) / 60000));
+                    }
+                }
+
+                const area = findNearestArea(lat, lng);
+                const crossStreet = locationDesc || (areaField ? `${areaField} area` : '');
+
+                results.push({
+                    id: 3000 + idx,
+                    category: 'traffic',
+                    type: incidentType,
+                    description: `${incidentType} - ${location}${locationDesc ? '. ' + locationDesc : ''}`,
+                    severity,
+                    area: area.key,
+                    areaName: area.name,
+                    road: location,
+                    crossStreet: crossStreet || `near ${area.name}`,
+                    location: `${location} ${crossStreet}`,
+                    lat,
+                    lng,
+                    reportedAt,
+                    minsAgo,
+                    sourceUrl: 'https://cad.chp.ca.gov/Traffic.aspx',
+                    sourceLabel: 'CHP Traffic Incidents',
+                    isLive: true
+                });
+            });
+
+            return results;
+        } catch (e) {
+            console.warn('CHP proxy failed, trying next:', e.message);
+            continue;
+        }
+    }
+    console.error('All CORS proxies failed for CHP data');
+    return null;
+}
+
+// ---- Fetch REAL Caltrans D11 lane closure data (CORS-enabled, no proxy needed) ----
+async function fetchCaltransData() {
+    // Try direct first (Caltrans supports CORS), then fall back to proxies
+    const urlsToTry = [
+        CALTRANS_D11_URL,
+        ...CORS_PROXIES.map(fn => fn(CALTRANS_D11_URL))
+    ];
+    for (const url of urlsToTry) {
+        try {
             const response = await fetch(url, { signal: AbortSignal.timeout(10000) });
             if (!response.ok) continue;
             const json = await response.json();
@@ -674,11 +774,11 @@ async function fetchCaltransData() {
                 };
             });
         } catch (e) {
-            console.warn('CORS proxy failed, trying next:', e.message);
+            console.warn('Caltrans fetch failed, trying next:', e.message);
             continue;
         }
     }
-    console.error('All CORS proxies failed for Caltrans data');
+    console.error('All Caltrans endpoints failed');
     return null; // Will fall back to simulated
 }
 
@@ -937,26 +1037,42 @@ function renderUI() {
 async function loadIncidents() {
     if (!lastUpdated) {
         document.getElementById('content').innerHTML =
-            '<div class="loading"><div class="spinner"></div>Fetching live traffic data...</div>';
+            '<div class="loading"><div class="spinner"></div>Fetching live data from CHP &amp; Caltrans...</div>';
     }
 
-    // Fetch real Caltrans data
-    const caltransData = await fetchCaltransData();
+    // Fetch both real data sources in parallel
+    const [chpData, caltransData] = await Promise.all([
+        fetchCHPData(),
+        fetchCaltransData()
+    ]);
 
-    // Generate simulated data for categories without real APIs
+    // Generate simulated fallback data
     const simulatedAll = generateIncidents();
-    const simulatedTraffic = simulatedAll.filter(i => i.category === 'traffic');
-    const simulatedPolice = simulatedAll.filter(i => i.category === 'police');
+    const combined = [];
 
+    // CHP traffic incidents (real or simulated fallback)
+    if (chpData && chpData.length > 0) {
+        dataSourceStatus.traffic = 'live';
+        combined.push(...chpData);
+    } else {
+        dataSourceStatus.traffic = 'simulated';
+        combined.push(...simulatedAll.filter(i => i.category === 'traffic'));
+    }
+
+    // Caltrans lane closures (real or simulated fallback)
     if (caltransData && caltransData.length > 0) {
         dataSourceStatus.caltrans = 'live';
-        // Use real Caltrans + simulated traffic & police
-        incidents = [...caltransData, ...simulatedTraffic, ...simulatedPolice];
+        combined.push(...caltransData);
     } else {
         dataSourceStatus.caltrans = 'simulated';
-        // Fallback: all simulated
-        incidents = simulatedAll;
+        combined.push(...simulatedAll.filter(i => i.category === 'caltrans'));
     }
+
+    // Police (always simulated - no free API)
+    dataSourceStatus.police = 'simulated';
+    combined.push(...simulatedAll.filter(i => i.category === 'police'));
+
+    incidents = combined;
 
     // Re-sort by most recent
     incidents.sort((a, b) => a.minsAgo - b.minsAgo);
