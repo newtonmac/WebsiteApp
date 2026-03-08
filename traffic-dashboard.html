@@ -890,35 +890,31 @@ async function fetchCaltransData() {
 }
 
 // ---- Map icons ----
-function createIncidentIcon(category, severity) {
+function getIncidentStyle(category, severity) {
     const colors = {
-        traffic: { bg: '#f87171', border: '#dc2626' },
-        caltrans: { bg: '#fbbf24', border: '#d97706' },
-        police: { bg: '#60a5fa', border: '#2563eb' }
+        traffic: { fill: '#f87171', stroke: '#dc2626' },
+        caltrans: { fill: '#fbbf24', stroke: '#d97706' },
+        police: { fill: '#60a5fa', stroke: '#2563eb' }
     };
 
-    const sizes = {
-        critical: 16,
-        major: 13,
-        moderate: 10,
-        minor: 8
+    const radii = {
+        critical: 9,
+        major: 7,
+        moderate: 5,
+        minor: 4
     };
 
     const c = colors[category] || colors.traffic;
-    const size = sizes[severity] || 10;
-    const pulse = severity === 'critical' ? `<animate attributeName="r" values="${size/2};${size/2+4};${size/2}" dur="1.5s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.8;0.2;0.8" dur="1.5s" repeatCount="indefinite"/>` : '';
+    const radius = radii[severity] || 5;
 
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size*2+8} ${size*2+8}" width="${size*2+8}" height="${size*2+8}">
-        <circle cx="${size+4}" cy="${size+4}" r="${size/2+3}" fill="${c.bg}" opacity="0.2">${pulse}</circle>
-        <circle cx="${size+4}" cy="${size+4}" r="${size/2}" fill="${c.bg}" stroke="${c.border}" stroke-width="1.5" opacity="0.9"/>
-    </svg>`;
-
-    return L.divIcon({
-        html: svg,
-        iconSize: [size*2+8, size*2+8],
-        iconAnchor: [size+4, size+4],
-        className: ''
-    });
+    return {
+        radius: radius,
+        fillColor: c.fill,
+        color: c.stroke,
+        weight: 1.5,
+        opacity: 0.9,
+        fillOpacity: 0.8
+    };
 }
 
 // ---- Map setup ----
@@ -1007,7 +1003,7 @@ function plotIncidents() {
             // Skip invalid coordinates
             if (typeof inc.lat !== 'number' || typeof inc.lng !== 'number' || isNaN(inc.lat) || isNaN(inc.lng)) return;
 
-            const icon = createIncidentIcon(inc.category, inc.severity);
+            const style = getIncidentStyle(inc.category, inc.severity);
             const timeStr = inc.reportedAt instanceof Date && !isNaN(inc.reportedAt)
                 ? inc.reportedAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
                 : '--';
@@ -1042,7 +1038,7 @@ function plotIncidents() {
                     </div>
                 </div>`;
 
-            const marker = L.marker([inc.lat, inc.lng], { icon })
+            const marker = L.circleMarker([inc.lat, inc.lng], style)
                 .addTo(map)
                 .bindPopup(popup, { maxWidth: 300 });
 
