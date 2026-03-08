@@ -497,14 +497,17 @@
             const pairLabel = isMxnToUsd ? '1 MXN in USD' : '1 USD in MXN';
             const decimals = isMxnToUsd ? 4 : 2;
 
+            const rangeLabels = { 7: '1W', 30: '1M', 90: '3M', 180: '6M', 365: '1Y' };
+            const rangeLabel = rangeLabels[selectedRange] || selectedRange + 'd';
+
             const latest = rates[rates.length - 1];
-            const prev = rates.length >= 2 ? rates[rates.length - 2] : null;
+            const first = rates[0];
 
             const latestRate = getDisplayRate(latest.rate);
-            const prevRate = prev ? getDisplayRate(prev.rate) : null;
+            const firstRate = getDisplayRate(first.rate);
 
-            const change = prevRate ? latestRate - prevRate : 0;
-            const pctChange = prevRate ? (change / prevRate) * 100 : 0;
+            const change = latestRate - firstRate;
+            const pctChange = firstRate ? (change / firstRate) * 100 : 0;
             const isUp = change >= 0;
 
             const displayRates = rates.map(r => getDisplayRate(r.rate));
@@ -514,12 +517,7 @@
             const variance = displayRates.reduce((s, r) => s + Math.pow(r - avg, 2), 0) / (displayRates.length - 1);
             const volatility = (Math.sqrt(variance) / avg) * 100;
 
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-            const oldRate = rateData.find(r => new Date(r.date) >= thirtyDaysAgo);
-            const monthChange = oldRate
-                ? ((latestRate - getDisplayRate(oldRate.rate)) / getDisplayRate(oldRate.rate)) * 100
-                : 0;
+            const periodChange = pctChange;
 
             const inverseRate = isMxnToUsd ? (1 / latest.rate).toFixed(2) : (latest.rate).toFixed(4);
             const inverseLabel = isMxnToUsd ? `1 USD = ${inverseRate} MXN` : `1 MXN = ${inverseRate} USD`;
@@ -575,8 +573,8 @@
                         <div class="value purple">${volatility.toFixed(2)}%</div>
                     </div>
                     <div class="stat-card">
-                        <div class="label">30-Day Change</div>
-                        <div class="value ${monthChange >= 0 ? 'green' : 'red'}">${monthChange >= 0 ? '+' : ''}${monthChange.toFixed(2)}%</div>
+                        <div class="label">${rangeLabel} Change</div>
+                        <div class="value ${periodChange >= 0 ? 'green' : 'red'}">${periodChange >= 0 ? '+' : ''}${periodChange.toFixed(2)}%</div>
                     </div>
                     <div class="stat-card">
                         <div class="label">Spread (H-L)</div>
