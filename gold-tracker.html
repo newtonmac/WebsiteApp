@@ -272,8 +272,8 @@
             letter-spacing: 0.5px;
         }
 
-        .data-status .source-fred { background: #f59e0b20; color: #fbbf24; }
         .data-status .source-freegoldapi { background: #fbbf2420; color: #fbbf24; }
+        .data-status .source-coingecko { background: #8dc63f20; color: #8dc63f; }
 
         .nav-link {
             display: inline-block;
@@ -294,7 +294,7 @@
 <body>
     <div class="header">
         <h1>Gold, Silver &amp; Bitcoin Tracker</h1>
-        <p>Live data &bull; FreeGoldAPI &amp; FRED &bull; Updated daily</p>
+        <p>Live data &bull; FreeGoldAPI &amp; CoinGecko &bull; Updated daily</p>
         <a href="index.html" class="nav-link">&larr; Oil Tracker</a>
         <a href="currency-tracker.html" class="nav-link">MXN/USD Tracker &rarr;</a>
         <a href="flight-tracker.html" class="nav-link">Flight Tracker &rarr;</a>
@@ -326,9 +326,6 @@
     </div>
 
     <script>
-        const FRED_KEY = 'b157e132862f8b31185abd4da930b21a';
-        const FRED_BASE = 'https://api.stlouisfed.org/fred/series/observations';
-
         let goldPrices = [];
         let silverPrices = [];
         let bitcoinPrices = [];
@@ -367,15 +364,20 @@
         }
 
         // Free Gold API - no key required, CORS enabled
+        // Try CSV first (has silver data), fall back to JSON (gold only)
         async function fetchGoldSilverPrices() {
-            try {
-                const resp = await fetch('https://freegoldapi.com/data/gold_silver_ratio_enriched.csv');
-                const text = await resp.text();
-                const lines = text.trim().split('\n').slice(1); // skip header
+            const oneYearAgo = new Date();
+            oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+            const startDate = oneYearAgo.toISOString().split('T')[0];
 
-                const oneYearAgo = new Date();
-                oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-                const startDate = oneYearAgo.toISOString().split('T')[0];
+            // Attempt 1: CSV with gold + silver ratio data
+            try {
+                console.log('Fetching gold/silver CSV from freegoldapi.com...');
+                const resp = await fetch('https://freegoldapi.com/data/gold_silver_ratio_enriched.csv');
+                if (!resp.ok) throw new Error('CSV HTTP ' + resp.status);
+                const text = await resp.text();
+                console.log('CSV fetched, length:', text.length);
+                const lines = text.trim().split('\n').slice(1);
 
                 const gold = [];
                 const silver = [];
@@ -397,38 +399,54 @@
                     }
                 }
 
-                return { gold, silver };
+                console.log('Parsed gold:', gold.length, 'silver:', silver.length);
+                if (gold.length > 0) return { gold, silver };
             } catch (e) {
-                console.warn('FreeGoldAPI fetch failed:', e.message);
-                return { gold: [], silver: [] };
+                console.warn('FreeGoldAPI CSV failed:', e.message);
             }
+
+            // Attempt 2: JSON endpoint (gold only, no silver ratios)
+            try {
+                console.log('Trying JSON fallback from freegoldapi.com...');
+                const resp = await fetch('https://freegoldapi.com/data/latest.json');
+                if (!resp.ok) throw new Error('JSON HTTP ' + resp.status);
+                const data = await resp.json();
+                console.log('JSON fetched, entries:', data.length);
+
+                const gold = data
+                    .filter(d => d.date >= startDate && d.price > 0 && d.source && d.source.includes('yahoo'))
+                    .map(d => ({ date: d.date, price: d.price, source: 'FreeGoldAPI' }));
+
+                console.log('JSON gold entries:', gold.length);
+                return { gold, silver: [] };
+            } catch (e) {
+                console.warn('FreeGoldAPI JSON also failed:', e.message);
+            }
+
+            return { gold: [], silver: [] };
         }
 
-        // FRED for Bitcoin (CBBTCUSD - confirmed working)
-        async function fetchFREDBitcoin() {
+        // CoinGecko for Bitcoin (free, CORS enabled, no API key)
+        async function fetchBitcoin() {
             try {
-                const oneYearAgo = new Date();
-                oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-                const startDate = oneYearAgo.toISOString().split('T')[0];
-
-                const params = new URLSearchParams({
-                    series_id: 'CBBTCUSD',
-                    api_key: FRED_KEY,
-                    file_type: 'json',
-                    observation_start: startDate,
-                    sort_order: 'asc'
-                });
-
-                const resp = await fetch(FRED_BASE + '?' + params.toString());
+                console.log('Fetching Bitcoin from CoinGecko...');
+                const resp = await fetch(
+                    'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=365&interval=daily'
+                );
+                if (!resp.ok) throw new Error('CoinGecko HTTP ' + resp.status);
                 const json = await resp.json();
 
-                if (json.observations) {
-                    return json.observations
-                        .filter(d => d.value !== '.' && d.value != null)
-                        .map(d => ({ date: d.date, price: parseFloat(d.value), source: 'FRED' }));
+                if (json.prices) {
+                    const results = json.prices.map(([timestamp, price]) => {
+                        const d = new Date(timestamp);
+                        const date = d.toISOString().split('T')[0];
+                        return { date, price, source: 'CoinGecko' };
+                    });
+                    console.log('Bitcoin entries:', results.length);
+                    return results;
                 }
             } catch (e) {
-                console.warn('FRED Bitcoin fetch failed:', e.message);
+                console.warn('CoinGecko fetch failed:', e.message);
             }
             return [];
         }
@@ -445,14 +463,19 @@
 
                 const [metalsResult, btcResult] = await Promise.allSettled([
                     fetchGoldSilverPrices(),
-                    fetchFREDBitcoin()
+                    fetchBitcoin()
                 ]);
 
                 const metals = metalsResult.status === 'fulfilled' ? metalsResult.value : { gold: [], silver: [] };
                 const btcData = btcResult.status === 'fulfilled' ? btcResult.value : [];
 
+                console.log('Metals result:', metalsResult.status, 'gold:', metals.gold.length, 'silver:', metals.silver.length);
+                console.log('BTC result:', btcResult.status, 'count:', btcData.length);
+                if (metalsResult.status === 'rejected') console.error('Metals error:', metalsResult.reason);
+                if (btcResult.status === 'rejected') console.error('BTC error:', btcResult.reason);
+
                 if (metals.gold.length > 0 || metals.silver.length > 0) dataSources.push('FreeGoldAPI');
-                if (btcData.length > 0) dataSources.push('FRED');
+                if (btcData.length > 0) dataSources.push('CoinGecko');
 
                 goldPrices = metals.gold;
                 silverPrices = metals.silver;
@@ -461,9 +484,13 @@
                 lastUpdated = new Date();
 
                 if (goldPrices.length === 0 && silverPrices.length === 0 && bitcoinPrices.length === 0) {
+                    const errors = [];
+                    if (metalsResult.status === 'rejected') errors.push('Gold/Silver: ' + metalsResult.reason);
+                    if (btcResult.status === 'rejected') errors.push('Bitcoin: ' + btcResult.reason);
                     document.getElementById('content').innerHTML = `
                         <div class="error-msg">
-                            Unable to fetch data from any source. Check your connection.
+                            Unable to fetch data from any source. Check your connection and browser console for details.
+                            ${errors.length ? '<br>' + errors.join('<br>') : ''}
                         </div>`;
                     return;
                 }
