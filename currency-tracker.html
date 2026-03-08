@@ -372,25 +372,49 @@
         document.getElementById('refreshBtn').addEventListener('click', fetchRates);
 
         // Frankfurter API - free, no key required, ECB data
+        // Fetch in quarterly chunks to get daily granularity (long ranges return weekly)
         async function fetchFrankfurter() {
             try {
-                const endDate = new Date().toISOString().split('T')[0];
-                const startDate = new Date();
-                startDate.setFullYear(startDate.getFullYear() - 1);
-                const startStr = startDate.toISOString().split('T')[0];
+                const end = new Date();
+                const endDate = end.toISOString().split('T')[0];
+                const start = new Date();
+                start.setFullYear(start.getFullYear() - 1);
 
-                const resp = await fetch(
-                    `https://api.frankfurter.dev/${startStr}..${endDate}?from=MXN&to=USD`
-                );
-                const json = await resp.json();
-
-                if (json.rates) {
-                    return Object.entries(json.rates).map(([date, rates]) => ({
-                        date,
-                        rate: rates.USD,
-                        source: 'Frankfurter'
-                    })).sort((a, b) => a.date.localeCompare(b.date));
+                // Break into ~3 month chunks for daily data
+                const chunks = [];
+                const chunkStart = new Date(start);
+                while (chunkStart < end) {
+                    const chunkEnd = new Date(chunkStart);
+                    chunkEnd.setMonth(chunkEnd.getMonth() + 3);
+                    if (chunkEnd > end) chunkEnd.setTime(end.getTime());
+                    chunks.push({
+                        from: chunkStart.toISOString().split('T')[0],
+                        to: chunkEnd.toISOString().split('T')[0]
+                    });
+                    chunkStart.setTime(chunkEnd.getTime());
+                    chunkStart.setDate(chunkStart.getDate() + 1);
                 }
+
+                const results = await Promise.allSettled(
+                    chunks.map(c =>
+                        fetch(`https://api.frankfurter.app/${c.from}..${c.to}?from=MXN&to=USD`)
+                            .then(r => r.json())
+                    )
+                );
+
+                let allRates = [];
+                for (const r of results) {
+                    if (r.status === 'fulfilled' && r.value.rates) {
+                        const entries = Object.entries(r.value.rates).map(([date, rates]) => ({
+                            date,
+                            rate: rates.USD,
+                            source: 'Frankfurter'
+                        }));
+                        allRates = allRates.concat(entries);
+                    }
+                }
+
+                return allRates.sort((a, b) => a.date.localeCompare(b.date));
             } catch (e) {
                 console.warn('Frankfurter fetch failed:', e.message);
             }
