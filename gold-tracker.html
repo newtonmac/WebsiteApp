@@ -273,7 +273,7 @@
         }
 
         .data-status .source-fred { background: #f59e0b20; color: #fbbf24; }
-        .data-status .source-alphavantage { background: #8b5cf620; color: #a78bfa; }
+        .data-status .source-freegoldapi { background: #fbbf2420; color: #fbbf24; }
 
         .nav-link {
             display: inline-block;
@@ -294,7 +294,7 @@
 <body>
     <div class="header">
         <h1>Gold, Silver &amp; Bitcoin Tracker</h1>
-        <p>Live data &bull; FRED &amp; Alpha Vantage &bull; Updated daily</p>
+        <p>Live data &bull; FreeGoldAPI &amp; FRED &bull; Updated daily</p>
         <a href="index.html" class="nav-link">&larr; Oil Tracker</a>
         <a href="currency-tracker.html" class="nav-link">MXN/USD Tracker &rarr;</a>
         <a href="flight-tracker.html" class="nav-link">Flight Tracker &rarr;</a>
@@ -328,14 +328,6 @@
     <script>
         const FRED_KEY = 'b157e132862f8b31185abd4da930b21a';
         const FRED_BASE = 'https://api.stlouisfed.org/fred/series/observations';
-        const ALPHA_VANTAGE_KEY = 'T01QSR206V2E0IR2';
-
-        // FRED series IDs for precious metals and crypto
-        const FRED_SERIES = {
-            gold: 'GOLDAMGBD228NLBM',    // Gold Fixing Price, London Bullion Market
-            silver: 'SLVPRUSD',           // Silver Fixing Price, London Bullion Market
-            bitcoin: 'CBBTCUSD'           // Coinbase Bitcoin Price (USD)
-        };
 
         let goldPrices = [];
         let silverPrices = [];
@@ -374,14 +366,53 @@
             return '$' + value.toFixed(2);
         }
 
-        async function fetchFREDSeries(seriesId) {
+        // Free Gold API - no key required, CORS enabled
+        async function fetchGoldSilverPrices() {
+            try {
+                const resp = await fetch('https://freegoldapi.com/data/gold_silver_ratio_enriched.csv');
+                const text = await resp.text();
+                const lines = text.trim().split('\n').slice(1); // skip header
+
+                const oneYearAgo = new Date();
+                oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+                const startDate = oneYearAgo.toISOString().split('T')[0];
+
+                const gold = [];
+                const silver = [];
+
+                for (const line of lines) {
+                    const [date, price, currency, ratio] = line.split(',');
+                    if (currency !== 'USD' || !price || date < startDate) continue;
+
+                    const goldPrice = parseFloat(price);
+                    if (isNaN(goldPrice)) continue;
+
+                    gold.push({ date, price: goldPrice, source: 'FreeGoldAPI' });
+
+                    if (ratio) {
+                        const silverPrice = goldPrice / parseFloat(ratio);
+                        if (!isNaN(silverPrice)) {
+                            silver.push({ date, price: silverPrice, source: 'FreeGoldAPI' });
+                        }
+                    }
+                }
+
+                return { gold, silver };
+            } catch (e) {
+                console.warn('FreeGoldAPI fetch failed:', e.message);
+                return { gold: [], silver: [] };
+            }
+        }
+
+        // FRED for Bitcoin (CBBTCUSD - confirmed working)
+        async function fetchFREDBitcoin() {
             try {
                 const oneYearAgo = new Date();
                 oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
                 const startDate = oneYearAgo.toISOString().split('T')[0];
 
                 const params = new URLSearchParams({
-                    series_id: seriesId,
+                    series_id: 'CBBTCUSD',
                     api_key: FRED_KEY,
                     file_type: 'json',
                     observation_start: startDate,
@@ -397,70 +428,9 @@
                         .map(d => ({ date: d.date, price: parseFloat(d.value), source: 'FRED' }));
                 }
             } catch (e) {
-                console.warn('FRED fetch failed:', e.message);
+                console.warn('FRED Bitcoin fetch failed:', e.message);
             }
             return [];
-        }
-
-        async function fetchAlphaVantageMetal(symbol) {
-            try {
-                const func = symbol === 'gold' ? 'GOLD' : 'SILVER';
-                const resp = await fetch(
-                    'https://www.alphavantage.co/query?function=' + func +
-                    '&interval=daily&apikey=' + ALPHA_VANTAGE_KEY
-                );
-                const json = await resp.json();
-                if (json.data) {
-                    return json.data
-                        .filter(d => d.value && d.value !== '.')
-                        .map(d => ({ date: d.date, price: parseFloat(d.value), source: 'AlphaVantage' }))
-                        .sort((a, b) => a.date.localeCompare(b.date));
-                }
-            } catch (e) {
-                console.warn('Alpha Vantage fetch failed:', e.message);
-            }
-            return [];
-        }
-
-        async function fetchAlphaVantageCrypto() {
-            try {
-                const resp = await fetch(
-                    'https://www.alphavantage.co/query?function=DIGITAL_CURRENCY_DAILY' +
-                    '&symbol=BTC&market=USD&apikey=' + ALPHA_VANTAGE_KEY
-                );
-                const json = await resp.json();
-                const timeSeries = json['Time Series (Digital Currency Daily)'];
-                if (timeSeries) {
-                    const oneYearAgo = new Date();
-                    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-                    const startDate = oneYearAgo.toISOString().split('T')[0];
-
-                    return Object.entries(timeSeries)
-                        .filter(([date]) => date >= startDate)
-                        .map(([date, values]) => ({
-                            date,
-                            price: parseFloat(values['4a. close (USD)'] || values['4. close']),
-                            source: 'AlphaVantage'
-                        }))
-                        .filter(d => !isNaN(d.price))
-                        .sort((a, b) => a.date.localeCompare(b.date));
-                }
-            } catch (e) {
-                console.warn('Alpha Vantage crypto fetch failed:', e.message);
-            }
-            return [];
-        }
-
-        function mergePrices(...priceSets) {
-            const dateMap = new Map();
-            priceSets.forEach(prices => {
-                prices.forEach(p => {
-                    if (!dateMap.has(p.date)) {
-                        dateMap.set(p.date, p);
-                    }
-                });
-            });
-            return Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date));
         }
 
         async function fetchAllPrices() {
@@ -473,33 +443,20 @@
             try {
                 dataSources = [];
 
-                const [
-                    fredGold, fredSilver, fredBitcoin,
-                    avGold, avSilver, avBitcoin
-                ] = await Promise.allSettled([
-                    fetchFREDSeries(FRED_SERIES.gold),
-                    fetchFREDSeries(FRED_SERIES.silver),
-                    fetchFREDSeries(FRED_SERIES.bitcoin),
-                    fetchAlphaVantageMetal('gold'),
-                    fetchAlphaVantageMetal('silver'),
-                    fetchAlphaVantageCrypto()
+                const [metalsResult, btcResult] = await Promise.allSettled([
+                    fetchGoldSilverPrices(),
+                    fetchFREDBitcoin()
                 ]);
 
-                const val = r => r.status === 'fulfilled' ? r.value : [];
+                const metals = metalsResult.status === 'fulfilled' ? metalsResult.value : { gold: [], silver: [] };
+                const btcData = btcResult.status === 'fulfilled' ? btcResult.value : [];
 
-                const fredGoldData = val(fredGold);
-                const fredSilverData = val(fredSilver);
-                const fredBitcoinData = val(fredBitcoin);
-                const avGoldData = val(avGold);
-                const avSilverData = val(avSilver);
-                const avBitcoinData = val(avBitcoin);
+                if (metals.gold.length > 0 || metals.silver.length > 0) dataSources.push('FreeGoldAPI');
+                if (btcData.length > 0) dataSources.push('FRED');
 
-                if (fredGoldData.length > 0 || fredSilverData.length > 0 || fredBitcoinData.length > 0) dataSources.push('FRED');
-                if (avGoldData.length > 0 || avSilverData.length > 0 || avBitcoinData.length > 0) dataSources.push('AlphaVantage');
-
-                goldPrices = mergePrices(fredGoldData, avGoldData);
-                silverPrices = mergePrices(fredSilverData, avSilverData);
-                bitcoinPrices = mergePrices(fredBitcoinData, avBitcoinData);
+                goldPrices = metals.gold;
+                silverPrices = metals.silver;
+                bitcoinPrices = btcData;
 
                 lastUpdated = new Date();
 
