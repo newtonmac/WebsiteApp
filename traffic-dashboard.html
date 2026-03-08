@@ -667,16 +667,20 @@ async function fetchCaltransData() {
             if (!response.ok) continue;
             const json = await response.json();
 
+            const now = Date.now();
             const entries = (json.data || [])
                 .map(entry => entry.lcs)
                 .filter(lcs => {
                     const lat = parseFloat(lcs.location.begin.beginLatitude);
                     const lng = parseFloat(lcs.location.begin.beginLongitude);
-                    return lat >= EAST_COUNTY_BOUNDS.minLat && lat <= EAST_COUNTY_BOUNDS.maxLat &&
-                           lng >= EAST_COUNTY_BOUNDS.minLng && lng <= EAST_COUNTY_BOUNDS.maxLng;
+                    // Filter by East County bounding box
+                    if (lat < EAST_COUNTY_BOUNDS.minLat || lat > EAST_COUNTY_BOUNDS.maxLat ||
+                        lng < EAST_COUNTY_BOUNDS.minLng || lng > EAST_COUNTY_BOUNDS.maxLng) return false;
+                    // Only include currently active closures (started and not yet ended)
+                    const startMs = parseInt(lcs.closure.closureTimestamp.closureStartEpoch) * 1000;
+                    const endMs = parseInt(lcs.closure.closureTimestamp.closureEndEpoch) * 1000;
+                    return startMs <= now && endMs >= now;
                 });
-
-            const now = Date.now();
             return entries.map((lcs, idx) => {
                 const loc = lcs.location;
                 const closure = lcs.closure;
