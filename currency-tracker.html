@@ -141,6 +141,10 @@
             border-radius: 16px;
             border: 1px solid #2d3040;
             padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .chart-container {
             position: relative;
             height: 350px;
             margin-bottom: 24px;
@@ -274,17 +278,12 @@
             letter-spacing: 0.5px;
         }
 
+        .data-status .source-fred { background: #f59e0b20; color: #fbbf24; }
         .data-status .source-frankfurter { background: #10b98120; color: #34d399; }
-        .data-status .source-exchangerate { background: #f59e0b20; color: #fbbf24; }
-
-        .nav-links {
-            display: flex;
-            gap: 8px;
-            margin-top: 8px;
-        }
 
         .nav-link {
             display: inline-block;
+            margin-top: 8px;
             padding: 6px 14px;
             background: #252836;
             color: #60a5fa;
@@ -296,26 +295,14 @@
             transition: all 0.2s;
         }
         .nav-link:hover { background: #2d3040; color: #a78bfa; }
-
-        @media (max-width: 600px) {
-            .header { padding: 20px 16px; }
-            .header h1 { font-size: 22px; }
-            .container { padding: 16px; }
-            .price-hero .current-price { font-size: 36px; }
-            .chart-container { height: 280px; }
-            .stats-grid { grid-template-columns: repeat(2, 1fr); }
-            .stat-card .value { font-size: 20px; }
-        }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>MXN / USD Exchange Rate Tracker</h1>
-        <p>Mexican Peso to US Dollar &bull; Frankfurter &amp; ExchangeRate API &bull; Updated daily</p>
-        <div class="nav-links">
-            <a href="index.html" class="nav-link">&larr; Oil Tracker</a>
-            <a href="flight-tracker.html" class="nav-link">Flight Tracker &rarr;</a>
-        </div>
+        <p>Mexican Peso to US Dollar &bull; FRED &amp; Frankfurter &bull; Updated daily</p>
+        <a href="index.html" class="nav-link">&larr; Oil Tracker</a>
+        <a href="flight-tracker.html" class="nav-link">Flight Tracker &rarr;</a>
     </div>
 
     <div class="container">
@@ -343,9 +330,12 @@
     </div>
 
     <script>
-        let rateData = []; // { date, rate } where rate = 1 MXN in USD
+        const FRED_KEY = 'b157e132862f8b31185abd4da930b21a';
+        const FRED_BASE = 'https://api.stlouisfed.org/fred/series/observations';
+
+        let rateData = [];
         let selectedRange = 30;
-        let selectedMode = 'mxn-usd'; // 'mxn-usd' or 'usd-mxn'
+        let selectedMode = 'mxn-usd';
         let chart = null;
         let lastUpdated = null;
         let dataSources = [];
@@ -371,7 +361,40 @@
 
         document.getElementById('refreshBtn').addEventListener('click', fetchRates);
 
-        // Frankfurter API - free, no key required, ECB data
+        // FRED API - DEXMXUS series (MXN per 1 USD, daily business days)
+        async function fetchFRED() {
+            try {
+                const oneYearAgo = new Date();
+                oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+                const startDate = oneYearAgo.toISOString().split('T')[0];
+
+                const params = new URLSearchParams({
+                    series_id: 'DEXMXUS',
+                    api_key: FRED_KEY,
+                    file_type: 'json',
+                    observation_start: startDate,
+                    sort_order: 'asc'
+                });
+
+                const resp = await fetch(FRED_BASE + '?' + params.toString());
+                const json = await resp.json();
+
+                if (json.observations) {
+                    return json.observations
+                        .filter(d => d.value !== '.' && d.value != null)
+                        .map(d => ({
+                            date: d.date,
+                            rate: 1 / parseFloat(d.value),
+                            source: 'FRED'
+                        }));
+                }
+            } catch (e) {
+                console.warn('FRED fetch failed:', e.message);
+            }
+            return [];
+        }
+
+        // Frankfurter API - free, no key required, ECB data (backup)
         async function fetchFrankfurter() {
             try {
                 const endDate = new Date().toISOString().split('T')[0];
@@ -380,7 +403,7 @@
                 const startStr = startDate.toISOString().split('T')[0];
 
                 const resp = await fetch(
-                    `https://api.frankfurter.dev/${startStr}..${endDate}?from=MXN&to=USD`
+                    `https://api.frankfurter.app/${startStr}..${endDate}?from=MXN&to=USD`
                 );
                 const json = await resp.json();
 
@@ -393,26 +416,6 @@
                 }
             } catch (e) {
                 console.warn('Frankfurter fetch failed:', e.message);
-            }
-            return [];
-        }
-
-        // ExchangeRate API - free tier, no key needed for basic access
-        async function fetchExchangeRateAPI() {
-            try {
-                const resp = await fetch('https://open.er-api.com/v6/latest/MXN');
-                const json = await resp.json();
-
-                if (json.result === 'success' && json.rates && json.rates.USD) {
-                    const today = new Date().toISOString().split('T')[0];
-                    return [{
-                        date: today,
-                        rate: json.rates.USD,
-                        source: 'ExchangeRate'
-                    }];
-                }
-            } catch (e) {
-                console.warn('ExchangeRate API fetch failed:', e.message);
             }
             return [];
         }
@@ -439,20 +442,20 @@
             try {
                 dataSources = [];
 
-                const [frankfurterResult, exchangeRateResult] = await Promise.allSettled([
-                    fetchFrankfurter(),
-                    fetchExchangeRateAPI()
+                const [fredResult, frankfurterResult] = await Promise.allSettled([
+                    fetchFRED(),
+                    fetchFrankfurter()
                 ]);
 
                 const val = r => r.status === 'fulfilled' ? r.value : [];
 
+                const fredData = val(fredResult);
                 const frankfurterData = val(frankfurterResult);
-                const exchangeRateData = val(exchangeRateResult);
 
+                if (fredData.length > 0) dataSources.push('FRED');
                 if (frankfurterData.length > 0) dataSources.push('Frankfurter');
-                if (exchangeRateData.length > 0) dataSources.push('ExchangeRate');
 
-                rateData = mergePrices(frankfurterData, exchangeRateData);
+                rateData = mergePrices(fredData, frankfurterData);
 
                 lastUpdated = new Date();
 
@@ -492,7 +495,6 @@
 
             const isMxnToUsd = selectedMode === 'mxn-usd';
             const pairLabel = isMxnToUsd ? '1 MXN in USD' : '1 USD in MXN';
-            const currencySymbol = isMxnToUsd ? '$' : '$';
             const decimals = isMxnToUsd ? 4 : 2;
 
             const latest = rates[rates.length - 1];
@@ -512,7 +514,6 @@
             const variance = displayRates.reduce((s, r) => s + Math.pow(r - avg, 2), 0) / (displayRates.length - 1);
             const volatility = (Math.sqrt(variance) / avg) * 100;
 
-            // 30-day change
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
             const oldRate = rateData.find(r => new Date(r.date) >= thirtyDaysAgo);
@@ -542,7 +543,7 @@
                 <div class="price-hero">
                     <div>
                         <div class="pair-label"><span class="flag-pair">🇲🇽🇺🇸</span> ${pairLabel}</div>
-                        <span class="current-price">${currencySymbol}${latestRate.toFixed(decimals)}</span>
+                        <span class="current-price">$${latestRate.toFixed(decimals)}</span>
                         <div class="inverse-rate">${inverseLabel}</div>
                     </div>
                     <div class="price-change ${isUp ? 'up' : 'down'}">
@@ -559,15 +560,15 @@
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="label">High</div>
-                        <div class="value green">${currencySymbol}${high.toFixed(decimals)}</div>
+                        <div class="value green">$${high.toFixed(decimals)}</div>
                     </div>
                     <div class="stat-card">
                         <div class="label">Low</div>
-                        <div class="value red">${currencySymbol}${low.toFixed(decimals)}</div>
+                        <div class="value red">$${low.toFixed(decimals)}</div>
                     </div>
                     <div class="stat-card">
                         <div class="label">Average</div>
-                        <div class="value blue">${currencySymbol}${avg.toFixed(decimals)}</div>
+                        <div class="value blue">$${avg.toFixed(decimals)}</div>
                     </div>
                     <div class="stat-card">
                         <div class="label">Volatility</div>
@@ -579,7 +580,7 @@
                     </div>
                     <div class="stat-card">
                         <div class="label">Spread (H-L)</div>
-                        <div class="value amber">${currencySymbol}${(high - low).toFixed(decimals)}</div>
+                        <div class="value amber">$${(high - low).toFixed(decimals)}</div>
                     </div>
                 </div>
 
@@ -595,15 +596,15 @@
                         </thead>
                         <tbody>
                             ${rates.slice(-15).reverse().map((r, i, arr) => {
-                                const displayRate = getDisplayRate(r.rate);
+                                const dr = getDisplayRate(r.rate);
                                 const next = i < arr.length - 1 ? arr[i + 1] : null;
-                                const nextRate = next ? getDisplayRate(next.rate) : null;
-                                const dayChange = nextRate ? displayRate - nextRate : 0;
-                                const dayPct = nextRate ? (dayChange / nextRate) * 100 : 0;
+                                const nr = next ? getDisplayRate(next.rate) : null;
+                                const dayChange = nr ? dr - nr : 0;
+                                const dayPct = nr ? (dayChange / nr) * 100 : 0;
                                 const cls = dayChange >= 0 ? 'up' : 'down';
                                 return `<tr>
                                     <td>${r.date}</td>
-                                    <td><strong>${currencySymbol}${displayRate.toFixed(decimals)}</strong></td>
+                                    <td><strong>$${dr.toFixed(decimals)}</strong></td>
                                     <td class="price-change ${cls}">
                                         ${dayChange >= 0 ? '+' : ''}${dayChange.toFixed(decimals)}
                                         (${dayPct >= 0 ? '+' : ''}${dayPct.toFixed(2)}%)
@@ -615,10 +616,10 @@
                 </div>
             `;
 
-            renderChart(rates, color, decimals, currencySymbol);
+            renderChart(rates, color, decimals);
         }
 
-        function renderChart(rates, color, decimals, symbol) {
+        function renderChart(prices, color, decimals) {
             const ctx = document.getElementById('rateChart').getContext('2d');
 
             if (chart) chart.destroy();
@@ -630,10 +631,10 @@
             chart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: rates.map(r => r.date),
+                    labels: prices.map(p => p.date),
                     datasets: [{
-                        label: 'Exchange Rate',
-                        data: rates.map(r => getDisplayRate(r.rate)),
+                        label: 'Rate',
+                        data: prices.map(p => getDisplayRate(p.rate)),
                         borderColor: color,
                         backgroundColor: gradient,
                         borderWidth: 2,
@@ -663,7 +664,7 @@
                             padding: 12,
                             displayColors: false,
                             callbacks: {
-                                label: ctx => `${symbol}${ctx.parsed.y.toFixed(decimals)}`
+                                label: ctx => `$${ctx.parsed.y.toFixed(decimals)}`
                             }
                         }
                     },
@@ -692,7 +693,7 @@
                             },
                             ticks: {
                                 color: '#8b8fa3',
-                                callback: v => symbol + v.toFixed(decimals)
+                                callback: v => '$' + v.toFixed(decimals)
                             }
                         }
                     }
