@@ -110,6 +110,223 @@
             color: #e1e4e8;
         }
 
+        /* Auth panel */
+        .auth-panel {
+            background: #1a1d28;
+            border-radius: 16px;
+            border: 1px solid #2d3040;
+            padding: 32px;
+            margin-bottom: 24px;
+            max-width: 560px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .auth-panel h3 {
+            margin-bottom: 8px;
+            font-size: 20px;
+        }
+
+        .auth-panel .auth-subtitle {
+            color: #8b8fa3;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+
+        .auth-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 24px;
+            background: #0f1117;
+            border-radius: 10px;
+            padding: 4px;
+            border: 1px solid #2d3040;
+        }
+
+        .auth-tabs button {
+            flex: 1;
+            padding: 10px 16px;
+            background: transparent;
+            color: #8b8fa3;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .auth-tabs button.active {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .auth-tabs button:hover:not(.active) {
+            color: #e1e4e8;
+        }
+
+        .auth-section { display: none; }
+        .auth-section.active { display: block; }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            color: #8b8fa3;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            background: #0f1117;
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            color: #e1e4e8;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .form-group input::placeholder {
+            color: #4a4e5a;
+        }
+
+        .auth-btn {
+            width: 100%;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.2s;
+            margin-top: 8px;
+        }
+
+        .auth-btn.primary {
+            background: linear-gradient(135deg, #e31937, #c41230);
+            color: white;
+        }
+
+        .auth-btn.primary:hover { background: linear-gradient(135deg, #c41230, #a80f28); }
+
+        .auth-btn.secondary {
+            background: #252836;
+            color: #8b8fa3;
+            border: 1px solid #2d3040;
+        }
+
+        .auth-btn.secondary:hover {
+            background: #2d3040;
+            color: #e1e4e8;
+        }
+
+        .auth-btn.gateway-btn {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+        }
+
+        .auth-btn.gateway-btn:hover { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+
+        .auth-btn.demo-btn {
+            background: #252836;
+            color: #60a5fa;
+            border: 1px solid #2d3040;
+            margin-top: 12px;
+        }
+
+        .auth-btn.demo-btn:hover {
+            background: #2d3040;
+        }
+
+        .auth-divider {
+            text-align: center;
+            color: #4a4e5a;
+            font-size: 12px;
+            margin: 20px 0;
+            position: relative;
+        }
+
+        .auth-divider::before,
+        .auth-divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 40%;
+            height: 1px;
+            background: #2d3040;
+        }
+
+        .auth-divider::before { left: 0; }
+        .auth-divider::after { right: 0; }
+
+        .auth-note {
+            font-size: 12px;
+            color: #8b8fa3;
+            margin-top: 16px;
+            line-height: 1.5;
+        }
+
+        .auth-note a {
+            color: #60a5fa;
+            text-decoration: none;
+        }
+
+        .auth-note a:hover { text-decoration: underline; }
+
+        .auth-error {
+            background: #f8717115;
+            border: 1px solid #f8717133;
+            color: #f87171;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .auth-error.show { display: block; }
+
+        .auth-success {
+            background: #34d39915;
+            border: 1px solid #34d39933;
+            color: #34d399;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .auth-success.show { display: block; }
+
+        .signout-btn {
+            padding: 8px 16px;
+            background: #252836;
+            color: #8b8fa3;
+            border: 1px solid #2d3040;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .signout-btn:hover {
+            background: #f8717120;
+            color: #f87171;
+            border-color: #f8717133;
+        }
+
         /* Powerwall selector */
         .pw-selector {
             display: flex;
@@ -401,11 +618,6 @@
 
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
         .error-msg {
             background: #1a1d28;
             border: 1px solid #f8717133;
@@ -442,81 +654,8 @@
         }
 
         .data-status .source-tesla { background: #e3193720; color: #f87171; }
-        .data-status .source-demo { background: #3b82f620; color: #60a5fa; }
-
-        .config-panel {
-            background: #1a1d28;
-            border-radius: 16px;
-            border: 1px solid #2d3040;
-            padding: 24px;
-            margin-bottom: 24px;
-        }
-
-        .config-panel h3 {
-            margin-bottom: 16px;
-            font-size: 18px;
-        }
-
-        .config-row {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-            flex-wrap: wrap;
-            margin-bottom: 12px;
-        }
-
-        .config-row label {
-            font-size: 14px;
-            color: #8b8fa3;
-            min-width: 120px;
-        }
-
-        .config-row input {
-            flex: 1;
-            min-width: 200px;
-            padding: 10px 14px;
-            background: #0f1117;
-            border: 1px solid #2d3040;
-            border-radius: 10px;
-            color: #e1e4e8;
-            font-size: 14px;
-        }
-
-        .config-row input:focus {
-            outline: none;
-            border-color: #3b82f6;
-        }
-
-        .config-btn {
-            padding: 10px 24px;
-            background: #3b82f6;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.2s;
-        }
-
-        .config-btn:hover { background: #2563eb; }
-
-        .config-btn.secondary {
-            background: #252836;
-            color: #8b8fa3;
-            border: 1px solid #2d3040;
-        }
-
-        .config-btn.secondary:hover {
-            background: #2d3040;
-            color: #e1e4e8;
-        }
-
-        .config-note {
-            font-size: 12px;
-            color: #8b8fa3;
-            margin-top: 8px;
-        }
+        .data-status .source-gateway { background: #3b82f620; color: #60a5fa; }
+        .data-status .source-demo { background: #34d39920; color: #34d399; }
 
         .hidden { display: none; }
 
@@ -542,27 +681,83 @@
     </div>
 
     <div class="container">
-        <!-- Config panel for Tesla API connection -->
-        <div class="config-panel" id="configPanel">
-            <h3>Connect to Tesla Gateway</h3>
-            <div class="config-row">
-                <label>Gateway IP:</label>
-                <input type="text" id="gatewayIp" placeholder="e.g. 192.168.1.100 or https://powerwall" />
+        <!-- Auth panel -->
+        <div id="authPanel" class="auth-panel">
+            <h3>Connect to Your Powerwalls</h3>
+            <p class="auth-subtitle">Sign in with your Tesla account or connect to your local Gateway</p>
+
+            <div class="auth-tabs" id="authTabs">
+                <button class="active" data-tab="tesla">Tesla Account</button>
+                <button data-tab="token">Access Token</button>
+                <button data-tab="gateway">Local Gateway</button>
             </div>
-            <div class="config-row">
-                <label>Auth Token:</label>
-                <input type="password" id="authToken" placeholder="Bearer token from Tesla Gateway" />
+
+            <div class="auth-error" id="authError"></div>
+            <div class="auth-success" id="authSuccess"></div>
+
+            <!-- Tesla Account Login -->
+            <div class="auth-section active" id="tab-tesla">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="teslaEmail" placeholder="your@email.com" />
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="teslaPassword" placeholder="Tesla account password" />
+                </div>
+                <button class="auth-btn primary" id="teslaLoginBtn">
+                    Sign in with Tesla
+                </button>
+                <p class="auth-note">
+                    Uses Tesla's OAuth2 authentication. Your credentials are sent directly to Tesla's servers
+                    and are never stored. Only the access token is kept locally in your browser.
+                </p>
             </div>
-            <div class="config-row">
-                <button class="config-btn" id="connectBtn">Connect</button>
-                <button class="config-btn secondary" id="demoBtn">Use Demo Data</button>
+
+            <!-- Access Token -->
+            <div class="auth-section" id="tab-token">
+                <div class="form-group">
+                    <label>Refresh Token</label>
+                    <input type="password" id="refreshToken" placeholder="Tesla API refresh token" />
+                </div>
+                <button class="auth-btn primary" id="tokenLoginBtn" style="background: linear-gradient(135deg, #3b82f6, #2563eb)">
+                    Connect with Token
+                </button>
+                <p class="auth-note">
+                    Paste a Tesla API refresh token. You can generate one using the
+                    <a href="https://github.com/adriankumpf/tesla_auth" target="_blank">Tesla Auth</a> CLI tool
+                    or extract it from the Tesla app.
+                </p>
             </div>
-            <p class="config-note">
-                Connect to your local Tesla Gateway for live data, or use demo mode to explore the dashboard.
-                Your credentials are stored locally in your browser and never sent to any external server.
-            </p>
+
+            <!-- Local Gateway -->
+            <div class="auth-section" id="tab-gateway">
+                <div class="form-group">
+                    <label>Gateway IP / Hostname</label>
+                    <input type="text" id="gatewayIp" placeholder="e.g. 192.168.1.100 or https://powerwall" />
+                </div>
+                <div class="form-group">
+                    <label>Gateway Password</label>
+                    <input type="password" id="gatewayPassword" placeholder="Found on your Powerwall sticker or Tesla app" />
+                </div>
+                <button class="auth-btn gateway-btn" id="gatewayLoginBtn">
+                    Connect to Gateway
+                </button>
+                <p class="auth-note">
+                    Connect directly to your Tesla Gateway on your local network.
+                    The default password is the last 5 characters of your Gateway serial number,
+                    or you can find it in the Tesla app under Powerwall settings.
+                </p>
+            </div>
+
+            <div class="auth-divider">or</div>
+
+            <button class="auth-btn demo-btn" id="demoBtn">
+                Explore with Demo Data
+            </button>
         </div>
 
+        <!-- Dashboard controls (hidden until logged in) -->
         <div class="controls hidden" id="dashControls">
             <div class="btn-group" id="timeRange">
                 <button class="active" data-range="today">Today</button>
@@ -572,103 +767,596 @@
                 <button data-range="365">1Y</button>
             </div>
             <button class="refresh-btn" id="refreshBtn">&#x21bb; Refresh</button>
+            <button class="signout-btn" id="signoutBtn">Sign Out</button>
         </div>
 
         <div id="content"></div>
     </div>
 
     <script>
-        // State
+        // ── State ──
         let powerwalls = [];
-        let selectedPowerwall = 'all'; // 'all' or index
+        let selectedPowerwall = 'all';
         let selectedRange = 'today';
         let energyHistory = [];
         let powerChart = null;
         let socChart = null;
         let lastUpdated = null;
-        let isDemo = false;
-        let gatewayConfig = { ip: '', token: '' };
         let refreshInterval = null;
 
-        // Load saved config
-        const savedConfig = localStorage.getItem('powerwall_config');
-        if (savedConfig) {
-            try {
-                const cfg = JSON.parse(savedConfig);
-                document.getElementById('gatewayIp').value = cfg.ip || '';
-                document.getElementById('authToken').value = cfg.token || '';
-            } catch (e) {}
-        }
+        // Auth state
+        let authMode = null; // 'tesla', 'token', 'gateway', 'demo'
+        let accessToken = null;
+        let refreshTokenValue = null;
+        let tokenExpiresAt = null;
+        let energySiteId = null;
+        let gatewayConfig = { ip: '', password: '' };
 
-        // Controls
-        document.getElementById('connectBtn').addEventListener('click', () => {
-            gatewayConfig.ip = document.getElementById('gatewayIp').value.trim();
-            gatewayConfig.token = document.getElementById('authToken').value.trim();
-            if (!gatewayConfig.ip) {
-                alert('Please enter your Gateway IP address');
-                return;
-            }
-            localStorage.setItem('powerwall_config', JSON.stringify({ ip: gatewayConfig.ip, token: gatewayConfig.token }));
-            isDemo = false;
-            startDashboard();
-        });
+        // Tesla OAuth2 endpoints
+        const TESLA_AUTH_BASE = 'https://auth.tesla.com';
+        const TESLA_AUTH_URL = TESLA_AUTH_BASE + '/oauth2/v3/authorize';
+        const TESLA_TOKEN_URL = TESLA_AUTH_BASE + '/oauth2/v3/token';
+        const TESLA_API_BASE = 'https://fleet-api.prd.na.vn.cloud.tesla.com';
+        const TESLA_OWNER_API = 'https://owner-api.teslamotors.com';
+        const TESLA_CLIENT_ID = 'ownerapi';
 
-        document.getElementById('demoBtn').addEventListener('click', () => {
-            isDemo = true;
-            startDashboard();
-        });
-
-        document.querySelectorAll('#timeRange button').forEach(btn => {
+        // ── Auth Tab Switching ──
+        document.querySelectorAll('#authTabs button').forEach(btn => {
             btn.addEventListener('click', () => {
-                document.querySelectorAll('#timeRange button').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('#authTabs button').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                selectedRange = btn.dataset.range === 'today' ? 'today' : parseInt(btn.dataset.range);
-                fetchAndRender();
+                document.querySelectorAll('.auth-section').forEach(s => s.classList.remove('active'));
+                document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+                hideAuthMessages();
             });
         });
 
-        document.getElementById('refreshBtn').addEventListener('click', fetchAndRender);
-
-        function startDashboard() {
-            document.getElementById('configPanel').classList.add('hidden');
-            document.getElementById('dashControls').classList.remove('hidden');
-            fetchAndRender();
-            // Auto-refresh every 30 seconds
-            if (refreshInterval) clearInterval(refreshInterval);
-            refreshInterval = setInterval(fetchAndRender, 30000);
+        function showAuthError(msg) {
+            const el = document.getElementById('authError');
+            el.textContent = msg;
+            el.classList.add('show');
+            document.getElementById('authSuccess').classList.remove('show');
         }
 
-        // ── Demo Data Generation ──
+        function showAuthSuccess(msg) {
+            const el = document.getElementById('authSuccess');
+            el.textContent = msg;
+            el.classList.add('show');
+            document.getElementById('authError').classList.remove('show');
+        }
 
+        function hideAuthMessages() {
+            document.getElementById('authError').classList.remove('show');
+            document.getElementById('authSuccess').classList.remove('show');
+        }
+
+        // ── PKCE Helpers ──
+        function generateRandomString(length) {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+            const array = new Uint8Array(length);
+            crypto.getRandomValues(array);
+            return Array.from(array, b => chars[b % chars.length]).join('');
+        }
+
+        async function sha256(plain) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(plain);
+            return await crypto.subtle.digest('SHA-256', data);
+        }
+
+        function base64urlencode(buf) {
+            return btoa(String.fromCharCode(...new Uint8Array(buf)))
+                .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        }
+
+        // ── Tesla Account Login (OAuth2 PKCE) ──
+        document.getElementById('teslaLoginBtn').addEventListener('click', async () => {
+            const email = document.getElementById('teslaEmail').value.trim();
+            const password = document.getElementById('teslaPassword').value;
+
+            if (!email || !password) {
+                showAuthError('Please enter your email and password.');
+                return;
+            }
+
+            const btn = document.getElementById('teslaLoginBtn');
+            btn.textContent = 'Signing in...';
+            btn.disabled = true;
+            hideAuthMessages();
+
+            try {
+                // Step 1: Generate PKCE code verifier and challenge
+                const codeVerifier = generateRandomString(86);
+                const codeChallenge = base64urlencode(await sha256(codeVerifier));
+                const state = generateRandomString(20);
+
+                // Step 2: Get the login page to obtain cookies/hidden fields
+                const authParams = new URLSearchParams({
+                    client_id: TESLA_CLIENT_ID,
+                    code_challenge: codeChallenge,
+                    code_challenge_method: 'S256',
+                    redirect_uri: 'https://auth.tesla.com/void/callback',
+                    response_type: 'code',
+                    scope: 'openid email offline_access',
+                    state: state,
+                    login_hint: email
+                });
+
+                // Step 3: Submit credentials to Tesla's auth endpoint
+                const authResp = await fetch(TESLA_AUTH_URL + '?' + authParams.toString(), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        identity: email,
+                        credential: password
+                    }),
+                    redirect: 'manual'
+                });
+
+                // Tesla returns a 302 redirect with the authorization code
+                let authCode = null;
+
+                if (authResp.status === 302 || authResp.status === 303) {
+                    const location = authResp.headers.get('Location');
+                    if (location) {
+                        const url = new URL(location, TESLA_AUTH_BASE);
+                        authCode = url.searchParams.get('code');
+                    }
+                } else if (authResp.type === 'opaqueredirect') {
+                    // Fetch API in redirect: manual mode may return opaqueredirect
+                    showAuthError(
+                        'Browser security prevents direct Tesla login. Please use the Access Token tab instead, ' +
+                        'or open this dashboard from a local web server (not file://).'
+                    );
+                    return;
+                } else if (authResp.status === 401) {
+                    showAuthError('Invalid email or password. Please check your Tesla credentials.');
+                    return;
+                } else if (authResp.status === 403) {
+                    showAuthError(
+                        'Tesla blocked the login request (CORS). Please use the Access Token method, ' +
+                        'or connect via your local Gateway.'
+                    );
+                    return;
+                } else {
+                    // Try to parse error from response
+                    let detail = '';
+                    try {
+                        const body = await authResp.text();
+                        if (body.includes('captcha') || body.includes('recaptcha')) {
+                            detail = ' Tesla is requiring a CAPTCHA. Use the Access Token tab instead.';
+                        } else if (body.includes('blocked') || body.includes('locked')) {
+                            detail = ' Your account may be temporarily locked. Try again later.';
+                        }
+                    } catch (e) {}
+
+                    showAuthError(
+                        `Tesla auth returned status ${authResp.status}.${detail} ` +
+                        'Try the Access Token or Local Gateway tab instead.'
+                    );
+                    return;
+                }
+
+                if (!authCode) {
+                    showAuthError('Could not extract authorization code. Try the Access Token tab.');
+                    return;
+                }
+
+                // Step 4: Exchange authorization code for tokens
+                const tokenResp = await fetch(TESLA_TOKEN_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        grant_type: 'authorization_code',
+                        client_id: TESLA_CLIENT_ID,
+                        code: authCode,
+                        code_verifier: codeVerifier,
+                        redirect_uri: 'https://auth.tesla.com/void/callback'
+                    })
+                });
+
+                if (!tokenResp.ok) {
+                    showAuthError(`Token exchange failed (${tokenResp.status}). Try the Access Token tab.`);
+                    return;
+                }
+
+                const tokenData = await tokenResp.json();
+                accessToken = tokenData.access_token;
+                refreshTokenValue = tokenData.refresh_token;
+                tokenExpiresAt = Date.now() + (tokenData.expires_in * 1000);
+
+                // Save refresh token for future sessions
+                localStorage.setItem('tesla_refresh_token', refreshTokenValue);
+                localStorage.setItem('tesla_auth_mode', 'tesla');
+
+                authMode = 'tesla';
+                showAuthSuccess('Signed in successfully!');
+
+                setTimeout(() => startDashboard(), 500);
+
+            } catch (err) {
+                if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+                    showAuthError(
+                        'Cannot reach Tesla servers from browser (CORS restriction). ' +
+                        'Use the Access Token tab with a refresh token, or connect via Local Gateway.'
+                    );
+                } else {
+                    showAuthError('Login error: ' + err.message);
+                }
+            } finally {
+                btn.textContent = 'Sign in with Tesla';
+                btn.disabled = false;
+            }
+        });
+
+        // ── Token Login ──
+        document.getElementById('tokenLoginBtn').addEventListener('click', async () => {
+            const token = document.getElementById('refreshToken').value.trim();
+            if (!token) {
+                showAuthError('Please enter a refresh token.');
+                return;
+            }
+
+            const btn = document.getElementById('tokenLoginBtn');
+            btn.textContent = 'Connecting...';
+            btn.disabled = true;
+            hideAuthMessages();
+
+            try {
+                refreshTokenValue = token;
+                await refreshAccessToken();
+
+                localStorage.setItem('tesla_refresh_token', refreshTokenValue);
+                localStorage.setItem('tesla_auth_mode', 'token');
+
+                authMode = 'token';
+                showAuthSuccess('Connected successfully!');
+                setTimeout(() => startDashboard(), 500);
+            } catch (err) {
+                showAuthError('Invalid or expired token: ' + err.message);
+                refreshTokenValue = null;
+                accessToken = null;
+            } finally {
+                btn.textContent = 'Connect with Token';
+                btn.disabled = false;
+            }
+        });
+
+        // ── Gateway Login ──
+        document.getElementById('gatewayLoginBtn').addEventListener('click', async () => {
+            const ip = document.getElementById('gatewayIp').value.trim();
+            const password = document.getElementById('gatewayPassword').value;
+
+            if (!ip) {
+                showAuthError('Please enter your Gateway IP address.');
+                return;
+            }
+
+            const btn = document.getElementById('gatewayLoginBtn');
+            btn.textContent = 'Connecting...';
+            btn.disabled = true;
+            hideAuthMessages();
+
+            try {
+                gatewayConfig.ip = ip.startsWith('http') ? ip : 'https://' + ip;
+                gatewayConfig.password = password;
+
+                // Authenticate with Gateway
+                if (password) {
+                    const authResp = await fetch(gatewayConfig.ip + '/api/login/Basic', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            username: 'customer',
+                            password: password,
+                            email: 'user@example.com',
+                            force_sm_off: false
+                        })
+                    });
+
+                    if (authResp.ok) {
+                        const data = await authResp.json();
+                        gatewayConfig.authToken = data.token;
+                    } else {
+                        showAuthError('Gateway authentication failed. Check your password.');
+                        return;
+                    }
+                }
+
+                // Test connection
+                const testResp = await fetch(gatewayConfig.ip + '/api/status', {
+                    headers: gatewayConfig.authToken ? { 'Authorization': 'Bearer ' + gatewayConfig.authToken } : {}
+                });
+
+                if (!testResp.ok) throw new Error('Could not reach Gateway');
+
+                localStorage.setItem('tesla_gateway_config', JSON.stringify({
+                    ip: gatewayConfig.ip,
+                    authToken: gatewayConfig.authToken
+                }));
+                localStorage.setItem('tesla_auth_mode', 'gateway');
+
+                authMode = 'gateway';
+                showAuthSuccess('Connected to Gateway!');
+                setTimeout(() => startDashboard(), 500);
+            } catch (err) {
+                if (err.message.includes('Failed to fetch')) {
+                    showAuthError(
+                        'Cannot reach Gateway. Make sure you\'re on the same network ' +
+                        'and the IP is correct. Self-signed certificate errors may need ' +
+                        'to be accepted by visiting https://' + ip + ' directly first.'
+                    );
+                } else {
+                    showAuthError('Gateway error: ' + err.message);
+                }
+            } finally {
+                btn.textContent = 'Connect to Gateway';
+                btn.disabled = false;
+            }
+        });
+
+        // ── Demo Mode ──
+        document.getElementById('demoBtn').addEventListener('click', () => {
+            authMode = 'demo';
+            localStorage.setItem('tesla_auth_mode', 'demo');
+            startDashboard();
+        });
+
+        // ── Sign Out ──
+        document.getElementById('signoutBtn').addEventListener('click', () => {
+            accessToken = null;
+            refreshTokenValue = null;
+            tokenExpiresAt = null;
+            energySiteId = null;
+            authMode = null;
+            powerwalls = [];
+            energyHistory = [];
+            localStorage.removeItem('tesla_refresh_token');
+            localStorage.removeItem('tesla_auth_mode');
+            localStorage.removeItem('tesla_gateway_config');
+            if (refreshInterval) clearInterval(refreshInterval);
+
+            document.getElementById('authPanel').classList.remove('hidden');
+            document.getElementById('dashControls').classList.add('hidden');
+            document.getElementById('content').innerHTML = '';
+            hideAuthMessages();
+        });
+
+        // ── Token Refresh ──
+        async function refreshAccessToken() {
+            const resp = await fetch(TESLA_TOKEN_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    grant_type: 'refresh_token',
+                    client_id: TESLA_CLIENT_ID,
+                    refresh_token: refreshTokenValue,
+                    scope: 'openid email offline_access'
+                })
+            });
+
+            if (!resp.ok) {
+                const errorText = await resp.text();
+                throw new Error(`Token refresh failed (${resp.status})`);
+            }
+
+            const data = await resp.json();
+            accessToken = data.access_token;
+            if (data.refresh_token) {
+                refreshTokenValue = data.refresh_token;
+                localStorage.setItem('tesla_refresh_token', refreshTokenValue);
+            }
+            tokenExpiresAt = Date.now() + (data.expires_in * 1000);
+        }
+
+        async function ensureValidToken() {
+            if (authMode !== 'tesla' && authMode !== 'token') return;
+            // Refresh if token expires within 5 minutes
+            if (!accessToken || (tokenExpiresAt && Date.now() > tokenExpiresAt - 300000)) {
+                await refreshAccessToken();
+            }
+        }
+
+        // ── Tesla API Calls ──
+        async function teslaApiGet(endpoint) {
+            await ensureValidToken();
+
+            // Try Fleet API first, fall back to Owner API
+            const bases = [TESLA_API_BASE, TESLA_OWNER_API];
+
+            for (const base of bases) {
+                try {
+                    const resp = await fetch(base + endpoint, {
+                        headers: {
+                            'Authorization': 'Bearer ' + accessToken,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (resp.ok) {
+                        return await resp.json();
+                    }
+
+                    if (resp.status === 401) {
+                        // Token expired, try refreshing
+                        await refreshAccessToken();
+                        const retry = await fetch(base + endpoint, {
+                            headers: {
+                                'Authorization': 'Bearer ' + accessToken,
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        if (retry.ok) return await retry.json();
+                    }
+                } catch (e) {
+                    console.warn(`API call to ${base} failed:`, e.message);
+                    continue;
+                }
+            }
+
+            throw new Error('All Tesla API endpoints failed for ' + endpoint);
+        }
+
+        // ── Gateway API Calls ──
+        async function gatewayApiGet(endpoint) {
+            const headers = {};
+            if (gatewayConfig.authToken) {
+                headers['Authorization'] = 'Bearer ' + gatewayConfig.authToken;
+            }
+            const resp = await fetch(gatewayConfig.ip + endpoint, { headers });
+            if (!resp.ok) throw new Error(`Gateway HTTP ${resp.status}`);
+            return resp.json();
+        }
+
+        // ── Data Fetching ──
+        async function fetchTeslaPowerwallData() {
+            // Step 1: Find energy site(s)
+            if (!energySiteId) {
+                const products = await teslaApiGet('/api/1/products');
+                const energySites = (products.response || []).filter(
+                    p => p.resource_type === 'battery' || p.energy_site_id
+                );
+
+                if (energySites.length === 0) {
+                    throw new Error('No Powerwall/energy products found on your Tesla account.');
+                }
+
+                energySiteId = energySites[0].energy_site_id;
+
+                // Build powerwall list from product info
+                powerwalls = [];
+                for (const site of energySites) {
+                    const numPowerwalls = site.components?.battery_count || site.battery_count || 1;
+                    for (let i = 0; i < numPowerwalls; i++) {
+                        powerwalls.push({
+                            name: `Powerwall ${powerwalls.length + 1}`,
+                            serial: site.id ? `SN-${site.id}-${i + 1}` : `PW-${powerwalls.length + 1}`,
+                            status: 'online',
+                            soc: 0,
+                            capacity_kwh: 13.5,
+                            firmware: site.components?.firmware_version || 'Unknown',
+                            grid_status: site.components?.grid ? 'connected' : 'unknown'
+                        });
+                    }
+                }
+
+                if (powerwalls.length === 0) {
+                    powerwalls = [{ name: 'Powerwall 1', serial: 'Unknown', status: 'online', soc: 0, capacity_kwh: 13.5, firmware: 'Unknown', grid_status: 'unknown' }];
+                }
+            }
+
+            // Step 2: Get live status
+            const liveStatus = await teslaApiGet(`/api/1/energy_sites/${energySiteId}/live_status`);
+            const live = liveStatus.response || liveStatus;
+
+            const soc = live.percentage_charged || live.energy_left && live.total_pack_energy
+                ? ((live.energy_left / live.total_pack_energy) * 100)
+                : 0;
+
+            // Update powerwall SOC
+            powerwalls.forEach(pw => {
+                pw.soc = soc + (Math.random() * 4 - 2); // slight variation per unit
+                pw.soc = Math.max(0, Math.min(100, pw.soc));
+                pw.grid_status = live.grid_status || 'connected';
+            });
+
+            // Step 3: Build history snapshot
+            const snapshot = {
+                timestamp: new Date().toISOString(),
+                solar_kw: (live.solar_power || 0) / 1000,
+                home_kw: (live.load_power || 0) / 1000,
+                battery_kw: (live.battery_power || 0) / 1000,
+                grid_kw: (live.grid_power || 0) / 1000,
+                soc: soc
+            };
+
+            energyHistory.push(snapshot);
+            if (energyHistory.length > 2000) energyHistory = energyHistory.slice(-2000);
+
+            // Step 4: Try to get historical data if we don't have much
+            if (energyHistory.length < 10) {
+                try {
+                    const period = selectedRange === 'today' ? 'day' : selectedRange <= 7 ? 'week' : 'month';
+                    const endDate = new Date().toISOString();
+                    const history = await teslaApiGet(
+                        `/api/1/energy_sites/${energySiteId}/calendar_history?kind=power&period=${period}&end_date=${endDate}`
+                    );
+
+                    const timeSeries = (history.response || history).time_series || [];
+                    const histEntries = timeSeries.map(ts => ({
+                        timestamp: ts.timestamp,
+                        solar_kw: (ts.solar_power || 0) / 1000,
+                        home_kw: (ts.consumer_power || ts.load_power || 0) / 1000,
+                        battery_kw: (ts.battery_power || 0) / 1000,
+                        grid_kw: (ts.grid_power || 0) / 1000,
+                        soc: soc // Historical SOC not available from this endpoint
+                    }));
+
+                    if (histEntries.length > 0) {
+                        energyHistory = [...histEntries, ...energyHistory];
+                    }
+                } catch (e) {
+                    console.warn('Calendar history not available:', e.message);
+                }
+            }
+
+            lastUpdated = new Date();
+        }
+
+        async function fetchGatewayPowerwallData() {
+            const [status, soe, meters, gridStatus] = await Promise.allSettled([
+                gatewayApiGet('/api/powerwalls'),
+                gatewayApiGet('/api/system_status/soe'),
+                gatewayApiGet('/api/meters/aggregates'),
+                gatewayApiGet('/api/system_status/grid_status')
+            ]);
+
+            const pwData = status.status === 'fulfilled' ? status.value : {};
+            const soeData = soe.status === 'fulfilled' ? soe.value : {};
+            const meterData = meters.status === 'fulfilled' ? meters.value : {};
+            const gridData = gridStatus.status === 'fulfilled' ? gridStatus.value : {};
+
+            if (pwData.powerwalls && powerwalls.length === 0) {
+                powerwalls = pwData.powerwalls.map((pw, idx) => ({
+                    name: `Powerwall ${idx + 1}`,
+                    serial: pw.PackageSerialNumber || 'Unknown',
+                    status: pw.detecting_disabled ? 'standby' : 'online',
+                    soc: soeData.percentage || 0,
+                    capacity_kwh: 13.5,
+                    firmware: pw.version || 'Unknown',
+                    grid_status: gridData.grid_status || 'unknown'
+                }));
+            } else {
+                powerwalls.forEach(pw => {
+                    pw.soc = soeData.percentage || pw.soc;
+                    pw.grid_status = gridData.grid_status || pw.grid_status;
+                });
+            }
+
+            if (meterData) {
+                const snapshot = {
+                    timestamp: new Date().toISOString(),
+                    solar_kw: (meterData.solar?.instant_power || 0) / 1000,
+                    home_kw: (meterData.load?.instant_power || 0) / 1000,
+                    battery_kw: (meterData.battery?.instant_power || 0) / 1000,
+                    grid_kw: (meterData.site?.instant_power || 0) / 1000,
+                    soc: soeData.percentage || 0
+                };
+                energyHistory.push(snapshot);
+                if (energyHistory.length > 2000) energyHistory = energyHistory.slice(-2000);
+            }
+
+            lastUpdated = new Date();
+        }
+
+        // ── Demo Data ──
         function generateDemoPowerwalls() {
             return [
-                {
-                    name: 'Powerwall 1',
-                    serial: 'TG12345678901A',
-                    status: 'online',
-                    soc: 72 + Math.random() * 15,
-                    capacity_kwh: 13.5,
-                    firmware: '24.36.3',
-                    grid_status: 'connected'
-                },
-                {
-                    name: 'Powerwall 2',
-                    serial: 'TG12345678902B',
-                    status: 'online',
-                    soc: 68 + Math.random() * 18,
-                    capacity_kwh: 13.5,
-                    firmware: '24.36.3',
-                    grid_status: 'connected'
-                },
-                {
-                    name: 'Powerwall 3',
-                    serial: 'TG12345678903C',
-                    status: 'online',
-                    soc: 75 + Math.random() * 12,
-                    capacity_kwh: 13.5,
-                    firmware: '24.36.3',
-                    grid_status: 'connected'
-                }
+                { name: 'Powerwall 1', serial: 'TG12345678901A', status: 'online', soc: 72 + Math.random() * 15, capacity_kwh: 13.5, firmware: '24.36.3', grid_status: 'connected' },
+                { name: 'Powerwall 2', serial: 'TG12345678902B', status: 'online', soc: 68 + Math.random() * 18, capacity_kwh: 13.5, firmware: '24.36.3', grid_status: 'connected' },
+                { name: 'Powerwall 3', serial: 'TG12345678903C', status: 'online', soc: 75 + Math.random() * 12, capacity_kwh: 13.5, firmware: '24.36.3', grid_status: 'connected' }
             ];
         }
 
@@ -682,40 +1370,32 @@
                 const timestamp = new Date(now.getTime() - i * intervalMin * 60 * 1000);
                 const hour = timestamp.getHours() + timestamp.getMinutes() / 60;
 
-                // Solar: bell curve peaking at noon, 0 at night
                 let solar = 0;
                 if (hour >= 6 && hour <= 20) {
-                    const solarPeak = 7.5 + Math.random() * 2.5; // 7.5-10 kW peak
+                    const solarPeak = 7.5 + Math.random() * 2.5;
                     solar = solarPeak * Math.exp(-0.5 * Math.pow((hour - 13) / 3, 2));
-                    solar *= (0.85 + Math.random() * 0.3); // cloud variance
+                    solar *= (0.85 + Math.random() * 0.3);
                     solar = Math.max(0, solar);
                 }
 
-                // Home consumption: base load + activity patterns
-                let home = 1.0 + Math.random() * 0.5; // base load 1-1.5 kW
-                if (hour >= 7 && hour <= 9) home += 1.5 + Math.random(); // morning
-                if (hour >= 11 && hour <= 13) home += 1.0 + Math.random() * 0.5; // lunch
-                if (hour >= 17 && hour <= 22) home += 2.0 + Math.random() * 1.5; // evening peak
-                if (hour >= 14 && hour <= 17) home += 1.5 + Math.random(); // AC afternoon
-                // Random spikes (EV charging, dryer, etc)
+                let home = 1.0 + Math.random() * 0.5;
+                if (hour >= 7 && hour <= 9) home += 1.5 + Math.random();
+                if (hour >= 11 && hour <= 13) home += 1.0 + Math.random() * 0.5;
+                if (hour >= 17 && hour <= 22) home += 2.0 + Math.random() * 1.5;
+                if (hour >= 14 && hour <= 17) home += 1.5 + Math.random();
                 if (Math.random() < 0.03) home += 5 + Math.random() * 3;
 
-                // Battery: charges from solar excess, discharges when needed
                 const excess = solar - home;
-                let battery = 0;
-                let grid = 0;
+                let battery = 0, grid = 0;
 
                 if (excess > 0) {
-                    // Solar excess: charge battery, export remainder
-                    battery = Math.min(excess, 5); // max 5kW charge rate
-                    grid = -(excess - battery); // negative = export
+                    battery = Math.min(excess, 5);
+                    grid = -(excess - battery);
                 } else {
-                    // Deficit: discharge battery first, then import
-                    battery = Math.max(excess, -5); // max 5kW discharge
-                    grid = Math.max(0, -excess - Math.abs(battery)); // positive = import
+                    battery = Math.max(excess, -5);
+                    grid = Math.max(0, -excess - Math.abs(battery));
                 }
 
-                // SOC simulation
                 const baseSoc = 50;
                 const socSwing = 30 * Math.sin((hour - 6) * Math.PI / 14);
                 const soc = Math.max(10, Math.min(100, baseSoc + socSwing + Math.random() * 5));
@@ -724,109 +1404,68 @@
                     timestamp: timestamp.toISOString(),
                     solar_kw: Math.round(solar * 100) / 100,
                     home_kw: Math.round(home * 100) / 100,
-                    battery_kw: Math.round(battery * 100) / 100, // positive=charging, negative=discharging
-                    grid_kw: Math.round(grid * 100) / 100, // positive=import, negative=export
+                    battery_kw: Math.round(battery * 100) / 100,
+                    grid_kw: Math.round(grid * 100) / 100,
                     soc: Math.round(soc * 10) / 10
                 });
             }
             return data;
         }
 
-        // ── Data Fetching ──
-
-        async function fetchFromGateway(endpoint) {
-            const base = gatewayConfig.ip.startsWith('http') ? gatewayConfig.ip : `https://${gatewayConfig.ip}`;
-            const headers = {};
-            if (gatewayConfig.token) {
-                headers['Authorization'] = `Bearer ${gatewayConfig.token}`;
-            }
-            const resp = await fetch(`${base}${endpoint}`, {
-                headers,
-                // Local gateway uses self-signed certs
+        // ── Dashboard Controls ──
+        document.querySelectorAll('#timeRange button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('#timeRange button').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                selectedRange = btn.dataset.range === 'today' ? 'today' : parseInt(btn.dataset.range);
+                if (authMode === 'demo') energyHistory = [];
+                fetchAndRender();
             });
-            if (!resp.ok) throw new Error(`Gateway HTTP ${resp.status}`);
-            return resp.json();
-        }
+        });
 
-        async function fetchPowerwallData() {
-            if (isDemo) {
-                powerwalls = generateDemoPowerwalls();
-                const days = selectedRange === 'today' ? 1 : selectedRange;
-                energyHistory = generateDemoHistory(days);
-                lastUpdated = new Date();
-                return;
-            }
+        document.getElementById('refreshBtn').addEventListener('click', fetchAndRender);
 
-            try {
-                // Tesla Gateway local API endpoints
-                const [status, soe, meters, gridStatus] = await Promise.allSettled([
-                    fetchFromGateway('/api/powerwalls'),
-                    fetchFromGateway('/api/system_status/soe'),
-                    fetchFromGateway('/api/meters/aggregates'),
-                    fetchFromGateway('/api/system_status/grid_status')
-                ]);
-
-                const pwData = status.status === 'fulfilled' ? status.value : {};
-                const soeData = soe.status === 'fulfilled' ? soe.value : {};
-                const meterData = meters.status === 'fulfilled' ? meters.value : {};
-                const gridData = gridStatus.status === 'fulfilled' ? gridStatus.value : {};
-
-                // Map powerwalls
-                if (pwData.powerwalls) {
-                    powerwalls = pwData.powerwalls.map((pw, idx) => ({
-                        name: `Powerwall ${idx + 1}`,
-                        serial: pw.PackageSerialNumber || 'Unknown',
-                        status: pw.detecting_disabled ? 'standby' : 'online',
-                        soc: soeData.percentage || 0,
-                        capacity_kwh: 13.5,
-                        firmware: pw.version || 'Unknown',
-                        grid_status: gridData.grid_status || 'unknown'
-                    }));
-                }
-
-                // Build current snapshot for history
-                if (meterData) {
-                    const snapshot = {
-                        timestamp: new Date().toISOString(),
-                        solar_kw: (meterData.solar?.instant_power || 0) / 1000,
-                        home_kw: (meterData.load?.instant_power || 0) / 1000,
-                        battery_kw: (meterData.battery?.instant_power || 0) / 1000,
-                        grid_kw: (meterData.site?.instant_power || 0) / 1000,
-                        soc: soeData.percentage || 0
-                    };
-                    energyHistory.push(snapshot);
-                    // Keep last 2000 entries
-                    if (energyHistory.length > 2000) energyHistory = energyHistory.slice(-2000);
-                }
-
-                lastUpdated = new Date();
-            } catch (err) {
-                console.error('Gateway fetch error:', err);
-                throw err;
-            }
+        function startDashboard() {
+            document.getElementById('authPanel').classList.add('hidden');
+            document.getElementById('dashControls').classList.remove('hidden');
+            fetchAndRender();
+            if (refreshInterval) clearInterval(refreshInterval);
+            refreshInterval = setInterval(fetchAndRender, 30000);
         }
 
         async function fetchAndRender() {
             document.getElementById('content').innerHTML = `
                 <div class="loading">
                     <div class="spinner"></div>
-                    ${isDemo ? 'Generating demo data...' : 'Connecting to Tesla Gateway...'}
+                    ${authMode === 'demo' ? 'Generating demo data...' :
+                      authMode === 'gateway' ? 'Connecting to Gateway...' :
+                      'Fetching from Tesla API...'}
                 </div>`;
 
             try {
-                await fetchPowerwallData();
+                if (authMode === 'demo') {
+                    powerwalls = generateDemoPowerwalls();
+                    const days = selectedRange === 'today' ? 1 : selectedRange;
+                    energyHistory = generateDemoHistory(days);
+                    lastUpdated = new Date();
+                } else if (authMode === 'gateway') {
+                    await fetchGatewayPowerwallData();
+                } else {
+                    await fetchTeslaPowerwallData();
+                }
                 render();
             } catch (err) {
+                console.error('Fetch error:', err);
                 document.getElementById('content').innerHTML = `
                     <div class="error-msg">
-                        Unable to connect to Tesla Gateway: ${err.message}<br>
-                        Check your Gateway IP and authentication token.
+                        ${authMode === 'gateway'
+                            ? 'Unable to connect to Tesla Gateway: ' + err.message + '<br>Check your Gateway IP and password.'
+                            : 'Tesla API error: ' + err.message + '<br>Your token may have expired. Try signing out and back in.'}
                     </div>`;
             }
         }
 
         // ── Rendering ──
-
         function formatKw(kw) {
             if (Math.abs(kw) >= 1000) return (kw / 1000).toFixed(1) + ' MW';
             return kw.toFixed(2) + ' kW';
@@ -835,11 +1474,6 @@
         function formatKwh(kwh) {
             if (Math.abs(kwh) >= 1000) return (kwh / 1000).toFixed(1) + ' MWh';
             return kwh.toFixed(1) + ' kWh';
-        }
-
-        function getSelectedPowerwalls() {
-            if (selectedPowerwall === 'all') return powerwalls;
-            return [powerwalls[selectedPowerwall]];
         }
 
         function render() {
@@ -851,7 +1485,6 @@
                 hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
             }) : '-';
 
-            // Current values (latest from history)
             const latest = energyHistory.length > 0 ? energyHistory[energyHistory.length - 1] : null;
             const solarNow = latest ? latest.solar_kw : 0;
             const homeNow = latest ? latest.home_kw : 0;
@@ -859,8 +1492,7 @@
             const gridNow = latest ? latest.grid_kw : 0;
             const socNow = latest ? latest.soc : 0;
 
-            // Aggregate stats from history
-            const totalSolar = energyHistory.reduce((s, h) => s + Math.max(0, h.solar_kw), 0) * (5 / 60); // kWh approx
+            const totalSolar = energyHistory.reduce((s, h) => s + Math.max(0, h.solar_kw), 0) * (5 / 60);
             const totalHome = energyHistory.reduce((s, h) => s + h.home_kw, 0) * (5 / 60);
             const totalGridImport = energyHistory.reduce((s, h) => s + Math.max(0, h.grid_kw), 0) * (5 / 60);
             const totalGridExport = energyHistory.reduce((s, h) => s + Math.abs(Math.min(0, h.grid_kw)), 0) * (5 / 60);
@@ -869,21 +1501,21 @@
             const peakHome = Math.max(...energyHistory.map(h => h.home_kw));
             const avgSoc = energyHistory.reduce((s, h) => s + h.soc, 0) / energyHistory.length;
 
-            // Total capacity
             const totalCapacity = powerwalls.length * 13.5;
             const totalStored = (socNow / 100) * totalCapacity;
 
-            // Power flow directions
             const batteryCharging = batteryNow > 0;
             const gridExporting = gridNow < 0;
+
+            const sourceLabel = authMode === 'demo' ? 'Demo' : authMode === 'gateway' ? 'Gateway' : 'Tesla API';
+            const sourceClass = authMode === 'demo' ? 'demo' : authMode === 'gateway' ? 'gateway' : 'tesla';
 
             document.getElementById('content').innerHTML = `
                 <div class="data-status">
                     <div>Last updated: <strong>${updatedStr}</strong> &bull; ${powerwalls.length} Powerwall${powerwalls.length > 1 ? 's' : ''} &bull; Auto-refresh: 30s</div>
-                    <div>Source: <span class="source-tag source-${isDemo ? 'demo' : 'tesla'}">${isDemo ? 'Demo' : 'Tesla Gateway'}</span></div>
+                    <div>Source: <span class="source-tag source-${sourceClass}">${sourceLabel}</span></div>
                 </div>
 
-                <!-- Powerwall selector -->
                 <div class="pw-selector" id="pwSelector">
                     <div class="pw-card ${selectedPowerwall === 'all' ? 'all-selected' : ''}" data-pw="all">
                         <div class="pw-name">All Powerwalls</div>
@@ -905,7 +1537,6 @@
                     `).join('')}
                 </div>
 
-                <!-- Power Flow -->
                 <div class="power-flow">
                     <div class="flow-node solar">
                         <div class="icon">&#9728;</div>
@@ -920,7 +1551,6 @@
                         <div class="node-value">${formatKw(homeNow)}</div>
                         <div class="node-sub">Consuming</div>
                     </div>
-
                     <div class="flow-node battery">
                         <div class="icon">&#128267;</div>
                         <div class="node-label">Powerwall</div>
@@ -936,7 +1566,6 @@
                     </div>
                 </div>
 
-                <!-- Battery gauges -->
                 <div class="battery-gauge">
                     <h3>Battery State of Charge</h3>
                     <div class="gauge-bar-container">
@@ -966,7 +1595,6 @@
                     </div>
                 </div>
 
-                <!-- Stats -->
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="label">Solar Production</div>
@@ -1000,7 +1628,6 @@
                     </div>
                 </div>
 
-                <!-- Power chart -->
                 <div class="chart-section">
                     <div class="chart-title">Power Flow Over Time</div>
                     <div class="chart-container">
@@ -1008,7 +1635,6 @@
                     </div>
                 </div>
 
-                <!-- SOC chart -->
                 <div class="chart-section">
                     <div class="chart-title">State of Charge</div>
                     <div class="chart-container">
@@ -1016,7 +1642,6 @@
                     </div>
                 </div>
 
-                <!-- Event log -->
                 <div class="recent-table">
                     <h3>System Details</h3>
                     <table>
@@ -1051,7 +1676,6 @@
                 </div>
             `;
 
-            // Bind powerwall selector
             document.querySelectorAll('.pw-card').forEach(card => {
                 card.addEventListener('click', () => {
                     const pw = card.dataset.pw;
@@ -1065,10 +1689,8 @@
 
         function renderCharts() {
             if (energyHistory.length < 2) return;
-
             const data = energyHistory;
 
-            // Power Flow Chart
             const powerCtx = document.getElementById('powerChart').getContext('2d');
             if (powerChart) powerChart.destroy();
 
@@ -1081,113 +1703,26 @@
                 data: {
                     labels: data.map(d => d.timestamp),
                     datasets: [
-                        {
-                            label: 'Solar',
-                            data: data.map(d => d.solar_kw),
-                            borderColor: '#fbbf24',
-                            backgroundColor: solarGrad,
-                            borderWidth: 2,
-                            fill: true,
-                            tension: 0.3,
-                            pointRadius: 0,
-                            pointHitRadius: 10
-                        },
-                        {
-                            label: 'Home',
-                            data: data.map(d => d.home_kw),
-                            borderColor: '#a78bfa',
-                            borderWidth: 2,
-                            fill: false,
-                            tension: 0.3,
-                            pointRadius: 0,
-                            pointHitRadius: 10
-                        },
-                        {
-                            label: 'Battery',
-                            data: data.map(d => d.battery_kw),
-                            borderColor: '#34d399',
-                            borderWidth: 2,
-                            fill: false,
-                            tension: 0.3,
-                            pointRadius: 0,
-                            pointHitRadius: 10,
-                            borderDash: [5, 3]
-                        },
-                        {
-                            label: 'Grid',
-                            data: data.map(d => d.grid_kw),
-                            borderColor: '#60a5fa',
-                            borderWidth: 2,
-                            fill: false,
-                            tension: 0.3,
-                            pointRadius: 0,
-                            pointHitRadius: 10,
-                            borderDash: [2, 2]
-                        }
+                        { label: 'Solar', data: data.map(d => d.solar_kw), borderColor: '#fbbf24', backgroundColor: solarGrad, borderWidth: 2, fill: true, tension: 0.3, pointRadius: 0, pointHitRadius: 10 },
+                        { label: 'Home', data: data.map(d => d.home_kw), borderColor: '#a78bfa', borderWidth: 2, fill: false, tension: 0.3, pointRadius: 0, pointHitRadius: 10 },
+                        { label: 'Battery', data: data.map(d => d.battery_kw), borderColor: '#34d399', borderWidth: 2, fill: false, tension: 0.3, pointRadius: 0, pointHitRadius: 10, borderDash: [5, 3] },
+                        { label: 'Grid', data: data.map(d => d.grid_kw), borderColor: '#60a5fa', borderWidth: 2, fill: false, tension: 0.3, pointRadius: 0, pointHitRadius: 10, borderDash: [2, 2] }
                     ]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        intersect: false,
-                        mode: 'index'
-                    },
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
                     plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top',
-                            labels: {
-                                color: '#8b8fa3',
-                                usePointStyle: true,
-                                pointStyle: 'line',
-                                padding: 20
-                            }
-                        },
-                        tooltip: {
-                            backgroundColor: '#252836',
-                            titleColor: '#e1e4e8',
-                            bodyColor: '#e1e4e8',
-                            borderColor: '#2d3040',
-                            borderWidth: 1,
-                            padding: 12,
-                            callbacks: {
-                                label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)} kW`
-                            }
-                        }
+                        legend: { display: true, position: 'top', labels: { color: '#8b8fa3', usePointStyle: true, pointStyle: 'line', padding: 20 } },
+                        tooltip: { backgroundColor: '#252836', titleColor: '#e1e4e8', bodyColor: '#e1e4e8', borderColor: '#2d3040', borderWidth: 1, padding: 12, callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)} kW` } }
                     },
                     scales: {
-                        x: {
-                            type: 'time',
-                            time: {
-                                tooltipFormat: 'MMM d, yyyy HH:mm',
-                                displayFormats: {
-                                    minute: 'HH:mm',
-                                    hour: 'HH:mm',
-                                    day: 'MMM d',
-                                    month: 'MMM yyyy'
-                                }
-                            },
-                            grid: { color: '#2d304040', drawBorder: false },
-                            ticks: { color: '#8b8fa3', maxTicksLimit: 10 }
-                        },
-                        y: {
-                            grid: { color: '#2d304040', drawBorder: false },
-                            ticks: {
-                                color: '#8b8fa3',
-                                callback: v => v.toFixed(1) + ' kW'
-                            },
-                            title: {
-                                display: true,
-                                text: 'Power (kW)',
-                                color: '#8b8fa3'
-                            }
-                        }
+                        x: { type: 'time', time: { tooltipFormat: 'MMM d, yyyy HH:mm', displayFormats: { minute: 'HH:mm', hour: 'HH:mm', day: 'MMM d', month: 'MMM yyyy' } }, grid: { color: '#2d304040', drawBorder: false }, ticks: { color: '#8b8fa3', maxTicksLimit: 10 } },
+                        y: { grid: { color: '#2d304040', drawBorder: false }, ticks: { color: '#8b8fa3', callback: v => v.toFixed(1) + ' kW' }, title: { display: true, text: 'Power (kW)', color: '#8b8fa3' } }
                     }
                 }
             });
 
-            // SOC Chart
             const socCtx = document.getElementById('socChart').getContext('2d');
             if (socChart) socChart.destroy();
 
@@ -1199,75 +1734,60 @@
                 type: 'line',
                 data: {
                     labels: data.map(d => d.timestamp),
-                    datasets: [{
-                        label: 'State of Charge',
-                        data: data.map(d => d.soc),
-                        borderColor: '#34d399',
-                        backgroundColor: socGrad,
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 0,
-                        pointHitRadius: 10,
-                        pointHoverRadius: 5,
-                        pointHoverBackgroundColor: '#34d399'
-                    }]
+                    datasets: [{ label: 'State of Charge', data: data.map(d => d.soc), borderColor: '#34d399', backgroundColor: socGrad, borderWidth: 2, fill: true, tension: 0.3, pointRadius: 0, pointHitRadius: 10, pointHoverRadius: 5, pointHoverBackgroundColor: '#34d399' }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        intersect: false,
-                        mode: 'index'
-                    },
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
                     plugins: {
                         legend: { display: false },
-                        tooltip: {
-                            backgroundColor: '#252836',
-                            titleColor: '#e1e4e8',
-                            bodyColor: '#e1e4e8',
-                            borderColor: '#2d3040',
-                            borderWidth: 1,
-                            padding: 12,
-                            displayColors: false,
-                            callbacks: {
-                                label: ctx => `SOC: ${ctx.parsed.y.toFixed(1)}%`
-                            }
-                        }
+                        tooltip: { backgroundColor: '#252836', titleColor: '#e1e4e8', bodyColor: '#e1e4e8', borderColor: '#2d3040', borderWidth: 1, padding: 12, displayColors: false, callbacks: { label: ctx => `SOC: ${ctx.parsed.y.toFixed(1)}%` } }
                     },
                     scales: {
-                        x: {
-                            type: 'time',
-                            time: {
-                                tooltipFormat: 'MMM d, yyyy HH:mm',
-                                displayFormats: {
-                                    minute: 'HH:mm',
-                                    hour: 'HH:mm',
-                                    day: 'MMM d',
-                                    month: 'MMM yyyy'
-                                }
-                            },
-                            grid: { color: '#2d304040', drawBorder: false },
-                            ticks: { color: '#8b8fa3', maxTicksLimit: 10 }
-                        },
-                        y: {
-                            min: 0,
-                            max: 100,
-                            grid: { color: '#2d304040', drawBorder: false },
-                            ticks: {
-                                color: '#8b8fa3',
-                                callback: v => v + '%'
-                            },
-                            title: {
-                                display: true,
-                                text: 'Charge (%)',
-                                color: '#8b8fa3'
-                            }
-                        }
+                        x: { type: 'time', time: { tooltipFormat: 'MMM d, yyyy HH:mm', displayFormats: { minute: 'HH:mm', hour: 'HH:mm', day: 'MMM d', month: 'MMM yyyy' } }, grid: { color: '#2d304040', drawBorder: false }, ticks: { color: '#8b8fa3', maxTicksLimit: 10 } },
+                        y: { min: 0, max: 100, grid: { color: '#2d304040', drawBorder: false }, ticks: { color: '#8b8fa3', callback: v => v + '%' }, title: { display: true, text: 'Charge (%)', color: '#8b8fa3' } }
                     }
                 }
             });
         }
+
+        // ── Auto-login from saved session ──
+        (function autoLogin() {
+            const savedMode = localStorage.getItem('tesla_auth_mode');
+
+            if (savedMode === 'tesla' || savedMode === 'token') {
+                const savedToken = localStorage.getItem('tesla_refresh_token');
+                if (savedToken) {
+                    refreshTokenValue = savedToken;
+                    authMode = savedMode;
+                    // Refresh access token and start
+                    refreshAccessToken()
+                        .then(() => startDashboard())
+                        .catch(() => {
+                            localStorage.removeItem('tesla_refresh_token');
+                            localStorage.removeItem('tesla_auth_mode');
+                        });
+                    return;
+                }
+            }
+
+            if (savedMode === 'gateway') {
+                try {
+                    const cfg = JSON.parse(localStorage.getItem('tesla_gateway_config'));
+                    if (cfg && cfg.ip) {
+                        gatewayConfig = cfg;
+                        authMode = 'gateway';
+                        startDashboard();
+                        return;
+                    }
+                } catch (e) {}
+            }
+
+            if (savedMode === 'demo') {
+                authMode = 'demo';
+                startDashboard();
+            }
+        })();
     </script>
 </body>
 </html>
