@@ -744,42 +744,27 @@ textarea{resize:vertical;min-height:80px;line-height:1.5;}
   </div>
 </div>
 <div class="page-footer">QuoteView 3D · v6.0 · Self-contained HTML generation</div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-// ── State ──────────────────────────────────────────────────────────────────
+// ── File upload (no Three.js dependency) ──────────────────────────────────
 let uploadedFile = null;
 let uploadedBinFile = null;
 let selectedColor = '#d4522a';
-let previewRenderer = null;
-let previewScene = null;
-let previewCamera = null;
-let previewAnim = null;
-let previewSpherical = { theta: 0.5, phi: 1.1, radius: 5 };
-let previewTarget = typeof THREE !== 'undefined' ? new THREE.Vector3() : {x:0,y:0,z:0};
-let previewDragging = false, previewRight = false, previewPrev = {x:0,y:0};
-let previewAutoRot = true;
-let previewGrid = null;
-let previewModel = null;
-let previewInitR = 5;
-let measureMode = false;
-let measurePoints = [];
-let measureMarkers = [];
-let measureLine = null;
-let measureLabel = null;
-let raycaster = typeof THREE !== 'undefined' ? new THREE.Raycaster() : null;
-let mouse = typeof THREE !== 'undefined' ? new THREE.Vector2() : {x:0,y:0};
-// ── File upload ────────────────────────────────────────────────────────────
-const fileInput = document.getElementById('file-input');
-const uploadZone = document.getElementById('upload-zone');
-fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
-uploadZone.addEventListener('click', e => { if (e.target !== fileInput) fileInput.click(); });
-uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
-uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
-uploadZone.addEventListener('drop', e => {
-  e.preventDefault();
-  uploadZone.classList.remove('dragover');
-  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
-});
+(function initUpload() {
+  const fileInput = document.getElementById('file-input');
+  const uploadZone = document.getElementById('upload-zone');
+  if (!fileInput || !uploadZone) { console.error('Upload elements not found'); return; }
+  fileInput.addEventListener('change', function(e) { if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]); });
+  uploadZone.addEventListener('click', function(e) { if (e.target !== fileInput) { e.preventDefault(); e.stopPropagation(); fileInput.value = ''; fileInput.click(); } });
+  uploadZone.addEventListener('dragover', function(e) { e.preventDefault(); uploadZone.classList.add('dragover'); });
+  uploadZone.addEventListener('dragleave', function() { uploadZone.classList.remove('dragover'); });
+  uploadZone.addEventListener('drop', function(e) {
+    e.preventDefault();
+    uploadZone.classList.remove('dragover');
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+  window._fileInput = fileInput;
+  window._uploadZone = uploadZone;
+})();
 function handleFile(file) {
   const ext = file.name.split('.').pop().toLowerCase();
   if (!['glb','gltf','stl','obj','step','stp'].includes(ext)) {
@@ -790,25 +775,26 @@ function handleFile(file) {
   uploadedBinFile = null;
   document.getElementById('loaded-name').textContent = file.name;
   document.getElementById('loaded-size').textContent = formatBytes(file.size);
-  uploadZone.style.display = 'none';
+  var uz = window._uploadZone || document.getElementById('upload-zone');
+  uz.style.display = 'none';
   document.getElementById('file-loaded').classList.add('show');
   document.getElementById('bin-prompt').classList.remove('show');
   if (ext === 'glb') {
-    const reader = new FileReader();
-    reader.onload = e => {
-      const header = new Uint8Array(e.target.result);
-      const magic = (header[0] | (header[1]<<8) | (header[2]<<16) | (header[3]<<24)) >>> 0;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var header = new Uint8Array(e.target.result);
+      var magic = (header[0] | (header[1]<<8) | (header[2]<<16) | (header[3]<<24)) >>> 0;
       if (magic !== 0x46546c67 && magic !== 0x46546C67) {
         showBinPrompt(file.name.replace(/\.glb$/i, '.bin'));
       } else {
         setStep(2);
-        loadPreview(file);
+        if (typeof loadPreview === 'function') loadPreview(file);
       }
     };
     reader.readAsArrayBuffer(file.slice(0, 4));
   } else {
     setStep(2);
-    loadPreview(file);
+    if (typeof loadPreview === 'function') loadPreview(file);
   }
 }
 function showBinPrompt(binName) {
@@ -816,6 +802,58 @@ function showBinPrompt(binName) {
   document.getElementById('bin-filename').textContent = binName;
   document.getElementById('bin-prompt').classList.add('show');
 }
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
+  return (b/1024/1024).toFixed(1) + ' MB';
+}
+function resetFile() {
+  uploadedFile = null;
+  var uz = window._uploadZone || document.getElementById('upload-zone');
+  uz.style.display = '';
+  document.getElementById('file-loaded').classList.remove('show');
+  document.getElementById('bin-prompt').classList.remove('show');
+  var fi = window._fileInput || document.getElementById('file-input');
+  fi.value = '';
+  document.getElementById('preview-card').classList.remove('show');
+  if (typeof previewAnim !== 'undefined' && previewAnim) cancelAnimationFrame(previewAnim);
+  if (typeof previewRenderer !== 'undefined' && previewRenderer) {
+    previewRenderer.dispose();
+    document.getElementById('preview-canvas-container').innerHTML = '';
+    previewRenderer = null;
+  }
+  setStep(1);
+}
+function setStep(n) {
+  ['step1','step2','step3'].forEach(function(id,i) {
+    var el = document.getElementById(id);
+    if (el) el.className = 'stepper-item' + (i+1 < n ? ' done' : i+1 === n ? ' active' : '');
+  });
+}
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ── 3D State ──────────────────────────────────────────────────────────────
+const fileInput = window._fileInput || document.getElementById('file-input');
+const uploadZone = window._uploadZone || document.getElementById('upload-zone');
+let previewRenderer = null;
+let previewScene = null;
+let previewCamera = null;
+let previewAnim = null;
+let previewSpherical = { theta: 0.5, phi: 1.1, radius: 5 };
+let previewTarget = new THREE.Vector3();
+let previewDragging = false, previewRight = false, previewPrev = {x:0,y:0};
+let previewAutoRot = true;
+let previewGrid = null;
+let previewModel = null;
+let previewInitR = 5;
+let measureMode = false;
+let measurePoints = [];
+let measureMarkers = [];
+let measureLine = null;
+let measureLabel = null;
+let raycaster = new THREE.Raycaster();
+let mouse = new THREE.Vector2();
 function handleBinFile(file) {
   if (!file.name.endsWith('.bin')) { alert('Please select the .bin companion file.'); return; }
   uploadedBinFile = file;
@@ -859,26 +897,6 @@ function mergeGltfBin(gltfBuf, binBuf) {
     return out;
   } catch(e) { console.error('merge error:', e); return null; }
 }
-function resetFile() {
-  uploadedFile = null;
-  uploadZone.style.display = '';
-  document.getElementById('file-loaded').classList.remove('show');
-  document.getElementById('bin-prompt').classList.remove('show');
-  fileInput.value = '';
-  document.getElementById('preview-card').classList.remove('show');
-  if (previewAnim) cancelAnimationFrame(previewAnim);
-  if (previewRenderer) {
-    previewRenderer.dispose();
-    document.getElementById('preview-canvas-container').innerHTML = '';
-    previewRenderer = null;
-  }
-  setStep(1);
-}
-function formatBytes(b) {
-  if (b < 1024) return b + ' B';
-  if (b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
-  return (b/1024/1024).toFixed(1) + ' MB';
-}
 // ── Color picker ───────────────────────────────────────────────────────────
 document.getElementById('color-row').addEventListener('click', e => {
   const sw = e.target.closest('.color-swatch');
@@ -891,13 +909,6 @@ document.getElementById('custom-color').addEventListener('input', e => {
   selectedColor = e.target.value;
   document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
 });
-// ── Steps ──────────────────────────────────────────────────────────────────
-function setStep(n) {
-  ['step1','step2','step3'].forEach((id,i) => {
-    const el = document.getElementById(id);
-    el.className = 'stepper-item' + (i+1 < n ? ' done' : i+1 === n ? ' active' : '');
-  });
-}
 // ── Preview ────────────────────────────────────────────────────────────────
 function loadPreview(file) {
   const ext = file.name.split('.').pop().toLowerCase();
