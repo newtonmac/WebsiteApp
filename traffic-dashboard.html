@@ -415,6 +415,7 @@ let areaCircles = [];
 let incidents = [];
 let lastUpdated = null;
 let activeCategory = 'all';
+let activeArea = null; // null = all areas, or an area key like 'jamul'
 let countdownVal = 60;
 let countdownTimer = null;
 
@@ -1051,9 +1052,24 @@ function plotIncidents() {
 
 function flyToArea(areaKey) {
     const area = AREAS[areaKey];
-    if (area && map) {
-        map.flyTo([area.lat, area.lng], area.zoom, { duration: 0.8 });
+    if (!area) return;
+
+    // Toggle: clicking same area again clears the filter
+    if (activeArea === areaKey) {
+        activeArea = null;
+        if (map) map.flyTo([MAP_CENTER.lat, MAP_CENTER.lng], 10, { duration: 0.8 });
+    } else {
+        activeArea = areaKey;
+        if (map) map.flyTo([area.lat, area.lng], area.zoom, { duration: 0.8 });
     }
+
+    // Update area tag highlight
+    document.querySelectorAll('.area-tag').forEach(tag => {
+        tag.style.background = tag.dataset.area === activeArea ? '#252836' : '';
+        tag.style.borderColor = tag.dataset.area === activeArea ? AREAS[tag.dataset.area]?.color || '#2d3040' : '';
+    });
+
+    if (lastUpdated) renderUI();
 }
 
 function formatTime(date) {
@@ -1064,9 +1080,13 @@ function formatTime(date) {
 function esc(s) { return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
 function renderUI() {
-    const filtered = activeCategory === 'all'
+    let filtered = activeCategory === 'all'
         ? incidents
         : incidents.filter(inc => inc.category === activeCategory);
+
+    if (activeArea) {
+        filtered = filtered.filter(inc => inc.area === activeArea);
+    }
 
     const trafficCount = incidents.filter(i => i.category === 'traffic').length;
     const caltransCount = incidents.filter(i => i.category === 'caltrans').length;
@@ -1109,7 +1129,7 @@ function renderUI() {
         <div class="map-container"><div id="map"></div></div>
 
         <div class="incident-list">
-            <h3>Active Incidents ${activeCategory !== 'all' ? '(' + activeCategory.charAt(0).toUpperCase() + activeCategory.slice(1) + ')' : ''}</h3>
+            <h3>Active Incidents ${activeArea ? '- ' + AREAS[activeArea].name : ''} ${activeCategory !== 'all' ? '(' + activeCategory.charAt(0).toUpperCase() + activeCategory.slice(1) + ')' : ''}</h3>
             <table>
                 <thead><tr>
                     <th>Type</th>
