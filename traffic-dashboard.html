@@ -995,7 +995,7 @@ function initMap() {
 
 function plotIncidents() {
     // Clear existing markers
-    incidentMarkers.forEach(m => map.removeLayer(m));
+    incidentMarkers.forEach(m => { try { map.removeLayer(m); } catch(e) {} });
     incidentMarkers = [];
 
     const filtered = activeCategory === 'all'
@@ -1003,39 +1003,53 @@ function plotIncidents() {
         : incidents.filter(inc => inc.category === activeCategory);
 
     filtered.forEach(inc => {
-        const icon = createIncidentIcon(inc.category, inc.severity);
-        const timeStr = inc.reportedAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        try {
+            // Skip invalid coordinates
+            if (typeof inc.lat !== 'number' || typeof inc.lng !== 'number' || isNaN(inc.lat) || isNaN(inc.lng)) return;
 
-        const liveBadge = inc.isLive
-            ? '<span style="font-size:9px;padding:1px 6px;border-radius:4px;background:#34d39930;color:#34d399;font-weight:700;margin-left:6px;">LIVE</span>'
-            : '<span style="font-size:9px;padding:1px 6px;border-radius:4px;background:#8b8fa320;color:#8b8fa3;font-weight:700;margin-left:6px;">SIM</span>';
+            const icon = createIncidentIcon(inc.category, inc.severity);
+            const timeStr = inc.reportedAt instanceof Date && !isNaN(inc.reportedAt)
+                ? inc.reportedAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+                : '--';
 
-        const popup = `
-            <div style="min-width: 200px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                    <strong style="font-size:14px;color:${inc.category === 'traffic' ? '#f87171' : inc.category === 'caltrans' ? '#fbbf24' : '#60a5fa'};">${inc.type}</strong>
-                    <span class="severity-badge ${inc.severity}">${inc.severity}</span>
-                </div>
-                <div style="font-size:12px;color:#8b8fa3;margin-bottom:6px;">${inc.category.toUpperCase()} ${liveBadge}</div>
-                <hr style="border:none;border-top:1px solid #2d3040;margin:6px 0;">
-                <div style="font-size:12px;line-height:1.8;">
-                    <div>${inc.description}</div>
-                    <div style="margin-top:4px;"><strong>Location:</strong> ${inc.road}</div>
-                    <div>${inc.crossStreet}</div>
-                    <div style="margin-top:4px;"><strong>Area:</strong> ${inc.areaName}</div>
-                    <div><strong>Reported:</strong> ${timeStr} (${inc.minsAgo}m ago)</div>
-                    <div style="margin-top:8px;padding-top:6px;border-top:1px solid #2d3040;">
-                        <strong style="font-size:11px;color:#8b8fa3;">Source:</strong><br>
-                        <a href="${inc.sourceUrl}" target="_blank" rel="noopener" style="color:#60a5fa;text-decoration:none;font-size:12px;font-weight:600;">${inc.sourceLabel} &rarr;</a>
+            const liveBadge = inc.isLive
+                ? '<span style="font-size:9px;padding:1px 6px;border-radius:4px;background:#34d39930;color:#34d399;font-weight:700;margin-left:6px;">LIVE</span>'
+                : '<span style="font-size:9px;padding:1px 6px;border-radius:4px;background:#8b8fa320;color:#8b8fa3;font-weight:700;margin-left:6px;">SIM</span>';
+
+            // Escape HTML in description to prevent broken popups
+            const safeDesc = (inc.description || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const safeRoad = (inc.road || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const safeCross = (inc.crossStreet || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+            const popup = `
+                <div style="min-width: 200px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <strong style="font-size:14px;color:${inc.category === 'traffic' ? '#f87171' : inc.category === 'caltrans' ? '#fbbf24' : '#60a5fa'};">${(inc.type || 'Incident').replace(/</g, '&lt;')}</strong>
+                        <span class="severity-badge ${inc.severity}">${inc.severity}</span>
                     </div>
-                </div>
-            </div>`;
+                    <div style="font-size:12px;color:#8b8fa3;margin-bottom:6px;">${inc.category.toUpperCase()} ${liveBadge}</div>
+                    <hr style="border:none;border-top:1px solid #2d3040;margin:6px 0;">
+                    <div style="font-size:12px;line-height:1.8;">
+                        <div>${safeDesc}</div>
+                        <div style="margin-top:4px;"><strong>Location:</strong> ${safeRoad}</div>
+                        <div>${safeCross}</div>
+                        <div style="margin-top:4px;"><strong>Area:</strong> ${(inc.areaName || '').replace(/</g, '&lt;')}</div>
+                        <div><strong>Reported:</strong> ${timeStr} (${inc.minsAgo}m ago)</div>
+                        <div style="margin-top:8px;padding-top:6px;border-top:1px solid #2d3040;">
+                            <strong style="font-size:11px;color:#8b8fa3;">Source:</strong><br>
+                            <a href="${inc.sourceUrl || '#'}" target="_blank" rel="noopener" style="color:#60a5fa;text-decoration:none;font-size:12px;font-weight:600;">${(inc.sourceLabel || 'Source').replace(/</g, '&lt;')} &rarr;</a>
+                        </div>
+                    </div>
+                </div>`;
 
-        const marker = L.marker([inc.lat, inc.lng], { icon })
-            .addTo(map)
-            .bindPopup(popup, { maxWidth: 300 });
+            const marker = L.marker([inc.lat, inc.lng], { icon })
+                .addTo(map)
+                .bindPopup(popup, { maxWidth: 300 });
 
-        incidentMarkers.push(marker);
+            incidentMarkers.push(marker);
+        } catch (e) {
+            console.warn('Failed to plot incident:', inc.id, e.message);
+        }
     });
 }
 
@@ -1049,6 +1063,9 @@ function flyToArea(areaKey) {
 function formatTime(date) {
     return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
+
+// HTML-escape helper for safe rendering of API data
+function esc(s) { return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
 function renderUI() {
     const filtered = activeCategory === 'all'
@@ -1110,10 +1127,10 @@ function renderUI() {
                     ${filtered.length === 0 ? '<tr><td colspan="6" style="text-align:center;color:#8b8fa3;padding:20px;">No active incidents</td></tr>' : ''}
                     ${filtered.map(inc => `
                         <tr data-id="${inc.id}">
-                            <td style="font-weight:600;">${inc.type}</td>
+                            <td style="font-weight:600;">${esc(inc.type)}</td>
                             <td><span class="category-badge ${inc.category}">${inc.category}</span> ${inc.isLive ? '<span style="font-size:8px;padding:1px 4px;border-radius:3px;background:#34d39930;color:#34d399;font-weight:700;">LIVE</span>' : ''}</td>
-                            <td>${inc.road}<br><span style="color:#8b8fa3;font-size:11px;">${inc.crossStreet}</span></td>
-                            <td>${inc.areaName}</td>
+                            <td>${esc(inc.road)}<br><span style="color:#8b8fa3;font-size:11px;">${esc(inc.crossStreet)}</span></td>
+                            <td>${esc(inc.areaName)}</td>
                             <td><span class="severity-badge ${inc.severity}">${inc.severity}</span></td>
                             <td>${formatTime(inc.reportedAt)}<br><span style="color:#8b8fa3;font-size:11px;">${inc.minsAgo}m ago</span></td>
                         </tr>
@@ -1122,8 +1139,13 @@ function renderUI() {
             </table>
         </div>`;
 
-    initMap();
-    plotIncidents();
+    try {
+        initMap();
+        plotIncidents();
+        console.log(`Plotted ${incidentMarkers.length} markers (${incidents.filter(i=>i.isLive).length} live, ${incidents.filter(i=>!i.isLive).length} sim)`);
+    } catch (e) {
+        console.error('Map render error:', e);
+    }
 
     // Click table row to fly to incident on map
     document.querySelectorAll('.incident-list tbody tr[data-id]').forEach(row => {
@@ -1147,50 +1169,64 @@ async function loadIncidents() {
             '<div class="loading"><div class="spinner"></div>Fetching live data from CHP, Caltrans &amp; 511...</div>';
     }
 
-    // Fetch all real data sources in parallel
-    const [chpData, caltransData, data511] = await Promise.all([
-        fetchCHPData(),
-        fetchCaltransData(),
-        fetch511Data()
-    ]);
+    try {
+        // Fetch all real data sources in parallel (each returns null on failure)
+        const [chpData, caltransData, data511] = await Promise.all([
+            fetchCHPData().catch(e => { console.warn('CHP fetch error:', e); return null; }),
+            fetchCaltransData().catch(e => { console.warn('Caltrans fetch error:', e); return null; }),
+            fetch511Data().catch(e => { console.warn('511 fetch error:', e); return null; })
+        ]);
 
-    // Generate simulated fallback data
-    const simulatedAll = generateIncidents();
-    const combined = [];
+        // Generate simulated fallback data
+        const simulatedAll = generateIncidents();
+        const combined = [];
 
-    // CHP traffic incidents + 511 traffic events
-    const realTraffic = [];
-    if (chpData && chpData.length > 0) realTraffic.push(...chpData);
-    if (data511) {
-        realTraffic.push(...data511.filter(e => e.category === 'traffic'));
-    }
-    if (realTraffic.length > 0) {
-        dataSourceStatus.traffic = 'live';
-        combined.push(...realTraffic);
-    } else {
+        // CHP traffic incidents + 511 traffic events
+        const realTraffic = [];
+        if (chpData && chpData.length > 0) realTraffic.push(...chpData);
+        if (data511) {
+            realTraffic.push(...data511.filter(e => e.category === 'traffic'));
+        }
+        if (realTraffic.length > 0) {
+            dataSourceStatus.traffic = 'live';
+            combined.push(...realTraffic);
+        } else {
+            dataSourceStatus.traffic = 'simulated';
+            combined.push(...simulatedAll.filter(i => i.category === 'traffic'));
+        }
+
+        // Caltrans lane closures + 511 construction events
+        const realCaltrans = [];
+        if (caltransData && caltransData.length > 0) realCaltrans.push(...caltransData);
+        if (data511) {
+            realCaltrans.push(...data511.filter(e => e.category === 'caltrans'));
+        }
+        if (realCaltrans.length > 0) {
+            dataSourceStatus.caltrans = 'live';
+            combined.push(...realCaltrans);
+        } else {
+            dataSourceStatus.caltrans = 'simulated';
+            combined.push(...simulatedAll.filter(i => i.category === 'caltrans'));
+        }
+
+        // Police (always simulated - no free API)
+        dataSourceStatus.police = 'simulated';
+        combined.push(...simulatedAll.filter(i => i.category === 'police'));
+
+        // Filter out any entries with invalid coordinates
+        incidents = combined.filter(inc =>
+            typeof inc.lat === 'number' && !isNaN(inc.lat) &&
+            typeof inc.lng === 'number' && !isNaN(inc.lng)
+        );
+
+    } catch (e) {
+        // Total fallback: if anything goes wrong, use simulated data
+        console.error('loadIncidents error, using simulated fallback:', e);
+        incidents = generateIncidents();
         dataSourceStatus.traffic = 'simulated';
-        combined.push(...simulatedAll.filter(i => i.category === 'traffic'));
-    }
-
-    // Caltrans lane closures + 511 construction events
-    const realCaltrans = [];
-    if (caltransData && caltransData.length > 0) realCaltrans.push(...caltransData);
-    if (data511) {
-        realCaltrans.push(...data511.filter(e => e.category === 'caltrans'));
-    }
-    if (realCaltrans.length > 0) {
-        dataSourceStatus.caltrans = 'live';
-        combined.push(...realCaltrans);
-    } else {
         dataSourceStatus.caltrans = 'simulated';
-        combined.push(...simulatedAll.filter(i => i.category === 'caltrans'));
+        dataSourceStatus.police = 'simulated';
     }
-
-    // Police (always simulated - no free API)
-    dataSourceStatus.police = 'simulated';
-    combined.push(...simulatedAll.filter(i => i.category === 'police'));
-
-    incidents = combined;
 
     // Re-sort by most recent
     incidents.sort((a, b) => a.minsAgo - b.minsAgo);
