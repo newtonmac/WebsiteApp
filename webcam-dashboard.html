@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>San Diego Webcams - Mission Bay & Fiesta Island</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f1117;
+            color: #e1e4e8;
+            min-height: 100vh;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1d28, #252836);
+            padding: 20px 16px;
+            border-bottom: 1px solid #2d3040;
+            text-align: center;
+            position: relative;
+            z-index: 1000;
+        }
+
+        .header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header p { color: #8b8fa3; margin-top: 4px; font-size: 12px; }
+
+        .nav-link {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 6px 14px;
+            background: #252836;
+            color: #60a5fa;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            border: 1px solid #2d3040;
+            transition: all 0.2s;
+        }
+        .nav-link:hover { background: #2d3040; color: #a78bfa; }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: 16px 24px; }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-group {
+            display: flex;
+            background: #1a1d28;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #2d3040;
+        }
+
+        .btn-group button {
+            padding: 10px 14px;
+            background: transparent;
+            color: #8b8fa3;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+            white-space: nowrap;
+        }
+
+        .btn-group button.active {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-group button:hover:not(.active) {
+            color: #e1e4e8;
+            background: #252836;
+        }
+
+        .refresh-btn {
+            padding: 10px 16px;
+            background: #1a1d28;
+            color: #8b8fa3;
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 18px;
+            -webkit-tap-highlight-color: transparent;
+            margin-left: auto;
+        }
+        .refresh-btn:hover { background: #252836; color: #e1e4e8; }
+
+        .webcam-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .webcam-card {
+            background: #1a1d28;
+            border-radius: 16px;
+            border: 1px solid #2d3040;
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+
+        .webcam-card:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
+        }
+
+        .webcam-card.featured {
+            grid-column: 1 / -1;
+        }
+
+        .webcam-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            border-bottom: 1px solid #2d3040;
+        }
+
+        .webcam-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #e1e4e8;
+        }
+
+        .webcam-subtitle {
+            font-size: 11px;
+            color: #8b8fa3;
+            margin-top: 2px;
+        }
+
+        .live-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #f87171;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: #f87171;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .webcam-frame {
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%;
+            background: #0f1117;
+        }
+
+        .webcam-frame iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .webcam-frame .placeholder {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #8b8fa3;
+            font-size: 14px;
+            gap: 8px;
+        }
+
+        .placeholder-icon {
+            font-size: 36px;
+            opacity: 0.5;
+        }
+
+        .webcam-footer {
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-top: 1px solid #2d3040;
+        }
+
+        .webcam-location {
+            font-size: 11px;
+            color: #8b8fa3;
+        }
+
+        .webcam-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .webcam-action-btn {
+            padding: 4px 10px;
+            background: #252836;
+            color: #8b8fa3;
+            border: 1px solid #2d3040;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .webcam-action-btn:hover { background: #2d3040; color: #e1e4e8; }
+
+        .map-section {
+            background: #1a1d28;
+            border-radius: 16px;
+            border: 1px solid #2d3040;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+
+        .map-section-header {
+            padding: 14px 16px;
+            border-bottom: 1px solid #2d3040;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        #cam-map { width: 100%; height: 350px; }
+
+        .stats-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .stat-chip {
+            background: #1a1d28;
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            padding: 12px 16px;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .stat-chip .label {
+            font-size: 11px;
+            color: #8b8fa3;
+            text-transform: uppercase;
+        }
+
+        .stat-chip .value {
+            font-size: 20px;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #2d3040;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .hidden { display: none !important; }
+
+        @media (max-width: 768px) {
+            .webcam-grid {
+                grid-template-columns: 1fr;
+            }
+            .container { padding: 12px; }
+            .header { padding: 16px 12px; }
+            .header h1 { font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>San Diego Webcams</h1>
+        <p>Live views of Mission Bay, Fiesta Island & nearby beaches</p>
+        <div>
+            <a href="index.html" class="nav-link">Oil Tracker</a>
+            <a href="flight-tracker.html" class="nav-link">Flight Tracker</a>
+            <a href="traffic-dashboard.html" class="nav-link">Traffic Dashboard</a>
+            <a href="currency-tracker.html" class="nav-link">MXN/USD Tracker</a>
+            <a href="gold-tracker.html" class="nav-link">Gold/Silver/BTC</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="controls">
+            <div class="btn-group" id="viewFilter">
+                <button class="active" data-filter="all">All Cams</button>
+                <button data-filter="mission-bay">Mission Bay</button>
+                <button data-filter="beach">Beach</button>
+                <button data-filter="bay">San Diego Bay</button>
+            </div>
+            <button class="refresh-btn" onclick="reloadCams()" title="Reload all webcams">&#x21bb;</button>
+        </div>
+
+        <div class="stats-bar">
+            <div class="stat-chip">
+                <div class="label">Total Cams</div>
+                <div class="value" id="totalCams">0</div>
+            </div>
+            <div class="stat-chip">
+                <div class="label">Area</div>
+                <div class="value" style="font-size: 14px;">Mission Bay / Fiesta Island</div>
+            </div>
+            <div class="stat-chip">
+                <div class="label">Status</div>
+                <div class="value" style="color: #4ade80; font-size: 14px;">&#9679; Live</div>
+            </div>
+        </div>
+
+        <div class="webcam-grid" id="webcamGrid">
+            <!-- Webcams injected by JS -->
+        </div>
+
+        <div class="map-section">
+            <div class="map-section-header">Camera Locations</div>
+            <div id="cam-map"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const webcams = [
+            {
+                id: 'mission-bay-resort',
+                title: 'SD Mission Bay Resort',
+                subtitle: 'Panoramic views of Mission Bay & Fiesta Island',
+                embedUrl: 'https://hdontap.com/stream/265560/san-diego-mission-bay-resort-live-webcam/embed/',
+                sourceUrl: 'https://hdontap.com/stream/265560/san-diego-mission-bay-resort-live-webcam/',
+                lat: 32.7702,
+                lng: -117.2468,
+                category: 'mission-bay',
+                featured: true
+            },
+            {
+                id: 'sd-bay-airport',
+                title: 'San Diego Bay & Airport',
+                subtitle: 'Live view of SD Bay, Lindbergh Airport & Coronado',
+                embedUrl: 'https://hdontap.com/stream/125276/san-diego-lindbergh-airport-and-bay-live-webcam/embed/',
+                sourceUrl: 'https://hdontap.com/stream/125276/san-diego-lindbergh-airport-and-bay-live-webcam/',
+                lat: 32.7268,
+                lng: -117.1691,
+                category: 'bay',
+                featured: false
+            },
+            {
+                id: 'pacific-beach-surf',
+                title: 'Pacific Beach Surf Cam',
+                subtitle: 'Live surf conditions at Pacific Beach',
+                embedUrl: 'https://hdontap.com/stream/186699/pacific-beach-live-surf-webcam/embed/',
+                sourceUrl: 'https://hdontap.com/stream/186699/pacific-beach-live-surf-webcam/',
+                lat: 32.7995,
+                lng: -117.2578,
+                category: 'beach',
+                featured: false
+            },
+            {
+                id: 'la-jolla-shores',
+                title: 'La Jolla Shores Surf Cam',
+                subtitle: 'Live surf & beach view at La Jolla Shores',
+                embedUrl: 'https://hdontap.com/stream/532541/la-jolla-shores-live-surf-cam/embed/',
+                sourceUrl: 'https://hdontap.com/stream/532541/la-jolla-shores-live-surf-cam/',
+                lat: 32.8567,
+                lng: -117.2570,
+                category: 'beach',
+                featured: false
+            }
+        ];
+
+        let currentFilter = 'all';
+
+        function renderWebcams() {
+            const grid = document.getElementById('webcamGrid');
+            const filtered = webcams.filter(cam =>
+                currentFilter === 'all' || cam.category === currentFilter
+            );
+
+            grid.innerHTML = filtered.map(cam => `
+                <div class="webcam-card ${cam.featured ? 'featured' : ''}" data-category="${cam.category}" id="card-${cam.id}">
+                    <div class="webcam-header">
+                        <div>
+                            <div class="webcam-title">${cam.title}</div>
+                            <div class="webcam-subtitle">${cam.subtitle}</div>
+                        </div>
+                        <div class="live-badge">
+                            <span class="live-dot"></span>
+                            LIVE
+                        </div>
+                    </div>
+                    <div class="webcam-frame">
+                        <iframe
+                            src="${cam.embedUrl}"
+                            allow="autoplay; fullscreen"
+                            allowfullscreen
+                            loading="lazy"
+                            title="${cam.title}"
+                        ></iframe>
+                    </div>
+                    <div class="webcam-footer">
+                        <span class="webcam-location">${cam.lat.toFixed(4)}, ${cam.lng.toFixed(4)}</span>
+                        <div class="webcam-actions">
+                            <a href="${cam.sourceUrl}" target="_blank" rel="noopener" class="webcam-action-btn">Open Full</a>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('totalCams').textContent = filtered.length;
+        }
+
+        function reloadCams() {
+            const iframes = document.querySelectorAll('.webcam-frame iframe');
+            iframes.forEach(iframe => {
+                const src = iframe.src;
+                iframe.src = '';
+                setTimeout(() => { iframe.src = src; }, 100);
+            });
+        }
+
+        // Filter buttons
+        document.getElementById('viewFilter').addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            document.querySelectorAll('#viewFilter button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFilter = btn.dataset.filter;
+            renderWebcams();
+            updateMapMarkers();
+        });
+
+        // Map
+        let map, markers = [];
+
+        function initMap() {
+            map = L.map('cam-map').setView([32.78, -117.23], 12);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+                maxZoom: 19
+            }).addTo(map);
+            updateMapMarkers();
+        }
+
+        function updateMapMarkers() {
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+
+            const filtered = webcams.filter(cam =>
+                currentFilter === 'all' || cam.category === currentFilter
+            );
+
+            filtered.forEach(cam => {
+                const marker = L.circleMarker([cam.lat, cam.lng], {
+                    radius: 8,
+                    fillColor: cam.featured ? '#38bdf8' : '#818cf8',
+                    color: '#1a1d28',
+                    weight: 2,
+                    fillOpacity: 0.9
+                }).addTo(map);
+
+                marker.bindPopup(`
+                    <div style="font-family: -apple-system, sans-serif; min-width: 180px;">
+                        <strong style="font-size: 13px;">${cam.title}</strong>
+                        <p style="font-size: 11px; color: #666; margin: 4px 0;">${cam.subtitle}</p>
+                        <a href="${cam.sourceUrl}" target="_blank" rel="noopener"
+                           style="font-size: 11px; color: #3b82f6;">Open Stream</a>
+                    </div>
+                `);
+
+                markers.push(marker);
+            });
+
+            if (filtered.length > 0) {
+                const bounds = L.latLngBounds(filtered.map(c => [c.lat, c.lng]));
+                map.fitBounds(bounds, { padding: [40, 40], maxZoom: 13 });
+            }
+        }
+
+        // Init
+        renderWebcams();
+        initMap();
+    </script>
+</body>
+</html>
