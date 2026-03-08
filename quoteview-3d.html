@@ -799,6 +799,24 @@ function handleFile(file) {
       }
     };
     reader.readAsArrayBuffer(file.slice(0, 4));
+  } else if (ext === 'gltf') {
+    // GLTF (JSON) files typically reference an external .bin — prompt for it
+    var reader2 = new FileReader();
+    reader2.onload = function(e) {
+      try {
+        var json = JSON.parse(new TextDecoder().decode(e.target.result));
+        if (json.buffers && json.buffers.length > 0 && json.buffers[0].uri) {
+          showBinPrompt(json.buffers[0].uri);
+        } else {
+          setStep(2);
+          if (typeof loadPreview === 'function') loadPreview(file);
+        }
+      } catch(err) {
+        setStep(2);
+        if (typeof loadPreview === 'function') loadPreview(file);
+      }
+    };
+    reader2.readAsArrayBuffer(file);
   } else {
     setStep(2);
     if (typeof loadPreview === 'function') loadPreview(file);
@@ -871,7 +889,7 @@ function handleBinFile(file) {
   r1.onload = e1 => { r2.onload = e2 => {
     const merged = mergeGltfBin(e1.target.result, e2.target.result);
     if (!merged) { alert('Failed to merge GLTF+BIN files.'); return; }
-    uploadedFile = new File([merged], uploadedFile.name.replace(/\.glb$/i,'_merged.glb'), {type:'model/gltf-binary'});
+    uploadedFile = new File([merged], uploadedFile.name.replace(/\.(glb|gltf)$/i,'_merged.glb'), {type:'model/gltf-binary'});
     uploadedBinFile = null;
     document.getElementById('loaded-name').textContent = uploadedFile.name;
     loadPreview(uploadedFile);
