@@ -1677,8 +1677,7 @@ kbd{background:rgba(0,0,0,0.05);border:1px solid var(--border);padding:1px 5px;b
       <div class="part-name">${escHtml(partname)}</div>
       ${quotenum ? `<div class="quote-num">Quote: ${escHtml(quotenum)}</div>` : ''}
     </div>
-    ${notes ? `<div class="sb-section"><div class="sb-label">Notes</div><div class="notes-text">${escHtml(notes).replace(/
-/g,'<br>')}</div></div>` : ''}
+    ${notes ? `<div class="sb-section"><div class="sb-label">Notes</div><div class="notes-text">${escHtml(notes).replace(/\n/g,'<br>')}</div></div>` : ''}
     <div class="sb-section">
       <div class="sb-label">Contact</div>
       ${rep ? `<div class="contact-row"><div class="contact-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div><div class="contact-val">${escHtml(rep)}</div></div>` : ''}
