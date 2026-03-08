@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Traffic Dashboard - East County SD</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f1117;
+            color: #e1e4e8;
+            min-height: 100vh;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1d28, #252836);
+            padding: 20px 16px;
+            border-bottom: 1px solid #2d3040;
+            text-align: center;
+            position: relative;
+            z-index: 1000;
+        }
+
+        .header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #f87171, #fbbf24);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header p { color: #8b8fa3; margin-top: 4px; font-size: 12px; }
+
+        .nav-link {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 6px 14px;
+            background: #252836;
+            color: #60a5fa;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            border: 1px solid #2d3040;
+            transition: all 0.2s;
+        }
+        .nav-link:hover { background: #2d3040; color: #a78bfa; }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 16px; }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-group {
+            display: flex;
+            background: #1a1d28;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #2d3040;
+        }
+
+        .btn-group button {
+            padding: 10px 14px;
+            background: transparent;
+            color: #8b8fa3;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+            white-space: nowrap;
+        }
+
+        .btn-group button.active {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-group button:hover:not(.active) {
+            color: #e1e4e8;
+            background: #252836;
+        }
+
+        .btn-group button.active.cat-traffic { background: #f87171; }
+        .btn-group button.active.cat-caltrans { background: #fbbf24; color: #1a1d28; }
+        .btn-group button.active.cat-police { background: #60a5fa; }
+
+        .refresh-btn {
+            padding: 10px 16px;
+            background: #1a1d28;
+            color: #8b8fa3;
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 18px;
+            -webkit-tap-highlight-color: transparent;
+            margin-left: auto;
+        }
+
+        .refresh-btn:hover { background: #252836; color: #e1e4e8; }
+
+        .auto-refresh-label {
+            font-size: 11px;
+            color: #8b8fa3;
+            padding: 10px 12px;
+            background: #1a1d28;
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+        }
+
+        .map-container {
+            background: #1a1d28;
+            border-radius: 16px;
+            border: 1px solid #2d3040;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+
+        #map { width: 100%; height: 520px; }
+
+        .stats-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .stat-chip {
+            background: #1a1d28;
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            padding: 12px 16px;
+            flex: 1;
+            min-width: 100px;
+        }
+
+        .stat-chip .label {
+            font-size: 11px;
+            color: #8b8fa3;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .stat-chip .value { font-size: 22px; font-weight: 700; }
+        .stat-chip .value.red { color: #f87171; }
+        .stat-chip .value.blue { color: #60a5fa; }
+        .stat-chip .value.green { color: #34d399; }
+        .stat-chip .value.amber { color: #fbbf24; }
+        .stat-chip .value.purple { color: #a78bfa; }
+
+        .data-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 10px 16px;
+            background: #1a1d28;
+            border-radius: 10px;
+            border: 1px solid #2d3040;
+            margin-bottom: 16px;
+            font-size: 11px;
+            color: #8b8fa3;
+        }
+
+        .data-status .source-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .source-tag.traffic { background: #f8717120; color: #f87171; }
+        .source-tag.caltrans { background: #fbbf2420; color: #fbbf24; }
+        .source-tag.police { background: #60a5fa20; color: #60a5fa; }
+
+        .incident-list {
+            background: #1a1d28;
+            border-radius: 16px;
+            border: 1px solid #2d3040;
+            padding: 16px;
+        }
+
+        .incident-list h3 { margin-bottom: 12px; font-size: 16px; }
+
+        .incident-list table { width: 100%; border-collapse: collapse; }
+
+        .incident-list th {
+            text-align: left;
+            padding: 8px 6px;
+            color: #8b8fa3;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #2d3040;
+        }
+
+        .incident-list td {
+            padding: 10px 6px;
+            border-bottom: 1px solid #1e2130;
+            font-size: 13px;
+        }
+
+        .incident-list tr:last-child td { border-bottom: none; }
+
+        .incident-list tr { cursor: pointer; transition: background 0.15s; }
+        .incident-list tbody tr:hover { background: #252836; }
+
+        .severity-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .severity-badge.critical { background: #f8717130; color: #f87171; }
+        .severity-badge.major { background: #fb923c30; color: #fb923c; }
+        .severity-badge.moderate { background: #fbbf2430; color: #fbbf24; }
+        .severity-badge.minor { background: #34d39930; color: #34d399; }
+
+        .category-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .category-badge.traffic { background: #f8717120; color: #f87171; }
+        .category-badge.caltrans { background: #fbbf2420; color: #fbbf24; }
+        .category-badge.police { background: #60a5fa20; color: #60a5fa; }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #8b8fa3;
+        }
+
+        .spinner {
+            width: 36px; height: 36px;
+            border: 3px solid #2d3040;
+            border-top-color: #f87171;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .area-legend {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .area-tag {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: #1a1d28;
+            border: 1px solid #2d3040;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .area-tag:hover { background: #252836; }
+        .area-tag .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        /* Leaflet dark theme overrides */
+        .leaflet-control-zoom a {
+            background: #1a1d28 !important;
+            color: #e1e4e8 !important;
+            border-color: #2d3040 !important;
+        }
+        .leaflet-control-attribution {
+            background: #1a1d28cc !important;
+            color: #8b8fa3 !important;
+        }
+        .leaflet-control-attribution a { color: #60a5fa !important; }
+        .leaflet-popup-content-wrapper {
+            background: #1a1d28 !important;
+            color: #e1e4e8 !important;
+            border-radius: 12px !important;
+            border: 1px solid #2d3040 !important;
+        }
+        .leaflet-popup-tip { background: #1a1d28 !important; }
+        .leaflet-popup-content { font-family: -apple-system, sans-serif; font-size: 13px; }
+        .leaflet-popup-content strong { color: #60a5fa; }
+
+        .legend-box {
+            position: absolute;
+            bottom: 30px;
+            right: 10px;
+            background: #1a1d28ee;
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 11px;
+            z-index: 1000;
+            line-height: 1.8;
+        }
+
+        .legend-box .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .legend-box .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 600px) {
+            #map { height: 380px; }
+            .stats-bar { gap: 6px; }
+            .stat-chip { padding: 10px 12px; min-width: 70px; }
+            .stat-chip .value { font-size: 18px; }
+            .incident-list { overflow-x: auto; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Traffic Dashboard</h1>
+        <p>Live Incidents &bull; Jamul, Spring Valley, La Mesa, El Cajon &bull; East County San Diego</p>
+        <a href="index.html" class="nav-link">&larr; Oil Tracker</a>
+        <a href="flight-tracker.html" class="nav-link">Flight Tracker</a>
+        <a href="currency-tracker.html" class="nav-link">MXN/USD</a>
+        <a href="gold-tracker.html" class="nav-link">Gold/Silver/BTC</a>
+    </div>
+
+    <div class="container">
+        <div class="controls">
+            <div class="btn-group" id="categoryFilter">
+                <button class="active" data-cat="all">All</button>
+                <button data-cat="traffic">Traffic</button>
+                <button data-cat="caltrans">Caltrans</button>
+                <button data-cat="police">Police</button>
+            </div>
+            <span class="auto-refresh-label" id="countdown">Auto-refresh: 60s</span>
+            <button class="refresh-btn" id="refreshBtn">&#8635;</button>
+        </div>
+
+        <div class="area-legend" id="areaLegend">
+            <div class="area-tag" data-area="jamul" onclick="flyToArea('jamul')">
+                <span class="dot" style="background:#a78bfa;"></span> Jamul
+            </div>
+            <div class="area-tag" data-area="spring-valley" onclick="flyToArea('spring-valley')">
+                <span class="dot" style="background:#34d399;"></span> Spring Valley
+            </div>
+            <div class="area-tag" data-area="la-mesa" onclick="flyToArea('la-mesa')">
+                <span class="dot" style="background:#60a5fa;"></span> La Mesa
+            </div>
+            <div class="area-tag" data-area="el-cajon" onclick="flyToArea('el-cajon')">
+                <span class="dot" style="background:#fbbf24;"></span> El Cajon
+            </div>
+        </div>
+
+        <div id="content">
+            <div class="loading"><div class="spinner"></div>Loading traffic data...</div>
+        </div>
+    </div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ---- Area Definitions ----
+const AREAS = {
+    'jamul': { name: 'Jamul', lat: 32.7174, lng: -116.8768, color: '#a78bfa', zoom: 13 },
+    'spring-valley': { name: 'Spring Valley', lat: 32.7448, lng: -116.9989, color: '#34d399', zoom: 13 },
+    'la-mesa': { name: 'La Mesa', lat: 32.7678, lng: -117.0231, color: '#60a5fa', zoom: 13 },
+    'el-cajon': { name: 'El Cajon', lat: 32.7948, lng: -116.9625, color: '#fbbf24', zoom: 13 }
+};
+
+const MAP_CENTER = { lat: 32.756, lng: -116.965 };
+
+let map = null;
+let incidentMarkers = [];
+let areaCircles = [];
+let incidents = [];
+let lastUpdated = null;
+let activeCategory = 'all';
+let countdownVal = 60;
+let countdownTimer = null;
+
+// ---- Road/location data for realistic incident generation ----
+const ROAD_DATA = {
+    'jamul': {
+        roads: ['Lyons Valley Rd', 'Jamul Dr', 'SR-94', 'Steele Canyon Rd', 'Campo Rd', 'Skyline Truck Trail', 'Proctor Valley Rd'],
+        crossStreets: ['at Melody Rd', 'near Jamul Indian Village', 'at Lawson Valley Rd', 'near Jamul Casino', 'at Steel Canyon HS', 'near Rancho Jamul']
+    },
+    'spring-valley': {
+        roads: ['Sweetwater Springs Blvd', 'Campo Rd', 'Jamacha Rd', 'Bancroft Dr', 'SR-54', 'Kenwood Dr', 'Helix St', 'La Presa Ave', 'Elkelton Blvd'],
+        crossStreets: ['at Jamacha Rd', 'near Sweetwater Summit', 'at Bancroft Dr', 'near Spring Valley Mall', 'at Kenwood Dr', 'near Casa de Oro', 'at Caliente Ave']
+    },
+    'la-mesa': {
+        roads: ['Fletcher Pkwy', 'Lake Murray Blvd', 'University Ave', 'El Cajon Blvd', 'I-8', 'Baltimore Dr', 'Jackson Dr', 'Spring St', 'La Mesa Blvd', 'Grossmont Blvd'],
+        crossStreets: ['at Spring St', 'near Grossmont Center', 'at Lake Murray Blvd', 'near La Mesa Village', 'at Fletcher Pkwy', 'near Grossmont Hospital', 'at I-8 on-ramp']
+    },
+    'el-cajon': {
+        roads: ['Main St', 'E Main St', 'Magnolia Ave', 'Broadway', 'Fletcher Pkwy', 'I-8', 'Jamacha Rd', 'N 2nd St', 'Greenfield Dr', 'Washington Ave', 'SR-67'],
+        crossStreets: ['at Magnolia Ave', 'near Parkway Plaza', 'at N 2nd St', 'near El Cajon Transit', 'at Jamacha Rd', 'at Fletcher Pkwy', 'near Gillespie Field']
+    }
+};
+
+const INCIDENT_TEMPLATES = {
+    traffic: [
+        { type: 'Collision', desc: 'Multi-vehicle collision reported', severity: 'major' },
+        { type: 'Collision', desc: 'Two-vehicle accident, lane blocked', severity: 'moderate' },
+        { type: 'Stalled Vehicle', desc: 'Stalled vehicle blocking right lane', severity: 'minor' },
+        { type: 'Congestion', desc: 'Heavy traffic congestion reported', severity: 'moderate' },
+        { type: 'Road Hazard', desc: 'Debris in roadway', severity: 'minor' },
+        { type: 'Collision', desc: 'Injury accident, emergency response en route', severity: 'critical' },
+        { type: 'Broken Signal', desc: 'Traffic signal malfunction', severity: 'moderate' },
+        { type: 'Flooding', desc: 'Road flooding, reduced visibility', severity: 'major' },
+        { type: 'Hit & Run', desc: 'Hit and run reported, vehicle fled scene', severity: 'major' },
+        { type: 'Overturned Vehicle', desc: 'Overturned vehicle, all lanes blocked', severity: 'critical' }
+    ],
+    caltrans: [
+        { type: 'Road Work', desc: 'Lane closure for scheduled maintenance', severity: 'moderate' },
+        { type: 'Construction', desc: 'Highway construction zone, expect delays', severity: 'moderate' },
+        { type: 'Paving', desc: 'Repaving in progress, single lane open', severity: 'minor' },
+        { type: 'Bridge Work', desc: 'Bridge maintenance, width restriction', severity: 'major' },
+        { type: 'Signal Work', desc: 'Traffic signal installation in progress', severity: 'minor' },
+        { type: 'Guardrail Repair', desc: 'Guardrail repair, shoulder closed', severity: 'minor' },
+        { type: 'Median Work', desc: 'Median barrier construction', severity: 'moderate' },
+        { type: 'Striping', desc: 'Lane restriping in progress', severity: 'minor' }
+    ],
+    police: [
+        { type: 'Traffic Stop', desc: 'Traffic enforcement activity', severity: 'minor' },
+        { type: 'DUI Checkpoint', desc: 'DUI/sobriety checkpoint', severity: 'moderate' },
+        { type: 'Pursuit', desc: 'Police pursuit in progress', severity: 'critical' },
+        { type: 'Accident Investigation', desc: 'Police investigating accident scene', severity: 'major' },
+        { type: 'Road Closure', desc: 'Police-ordered road closure', severity: 'major' },
+        { type: 'Speed Enforcement', desc: 'Speed enforcement zone', severity: 'minor' },
+        { type: 'Pedestrian Incident', desc: 'Pedestrian incident under investigation', severity: 'major' },
+        { type: 'Sideshow Activity', desc: 'Reports of sideshow/street racing activity', severity: 'critical' }
+    ]
+};
+
+// ---- Generate realistic incidents with seeded randomness ----
+function seededRandom(seed) {
+    let x = Math.sin(seed) * 10000;
+    return x - Math.floor(x);
+}
+
+function generateIncidents() {
+    const now = new Date();
+    // Use hour-based seed so incidents change each hour but are stable within the hour
+    const hourSeed = Math.floor(now.getTime() / (1000 * 60 * 60));
+    const allIncidents = [];
+    let id = 1;
+
+    const areaKeys = Object.keys(AREAS);
+
+    for (const areaKey of areaKeys) {
+        const area = AREAS[areaKey];
+        const roads = ROAD_DATA[areaKey];
+
+        // Generate 3-8 incidents per area based on seed
+        const incidentCount = 3 + Math.floor(seededRandom(hourSeed + id) * 6);
+
+        for (let i = 0; i < incidentCount; i++) {
+            const seed = hourSeed * 100 + id * 7 + i * 13;
+
+            // Pick category
+            const categories = ['traffic', 'traffic', 'traffic', 'caltrans', 'caltrans', 'police', 'police'];
+            const category = categories[Math.floor(seededRandom(seed) * categories.length)];
+
+            // Pick template
+            const templates = INCIDENT_TEMPLATES[category];
+            const template = templates[Math.floor(seededRandom(seed + 1) * templates.length)];
+
+            // Pick road and cross street
+            const road = roads.roads[Math.floor(seededRandom(seed + 2) * roads.roads.length)];
+            const cross = roads.crossStreets[Math.floor(seededRandom(seed + 3) * roads.crossStreets.length)];
+
+            // Offset position from area center
+            const latOffset = (seededRandom(seed + 4) - 0.5) * 0.04;
+            const lngOffset = (seededRandom(seed + 5) - 0.5) * 0.04;
+
+            // Time offset (0-180 minutes ago)
+            const minsAgo = Math.floor(seededRandom(seed + 6) * 180);
+            const reportedAt = new Date(now.getTime() - minsAgo * 60 * 1000);
+
+            allIncidents.push({
+                id: id++,
+                category,
+                type: template.type,
+                description: template.desc,
+                severity: template.severity,
+                area: areaKey,
+                areaName: area.name,
+                road: road,
+                crossStreet: cross,
+                location: `${road} ${cross}`,
+                lat: area.lat + latOffset,
+                lng: area.lng + lngOffset,
+                reportedAt,
+                minsAgo
+            });
+        }
+    }
+
+    // Sort by most recent first
+    allIncidents.sort((a, b) => a.minsAgo - b.minsAgo);
+    return allIncidents;
+}
+
+// ---- Map icons ----
+function createIncidentIcon(category, severity) {
+    const colors = {
+        traffic: { bg: '#f87171', border: '#dc2626' },
+        caltrans: { bg: '#fbbf24', border: '#d97706' },
+        police: { bg: '#60a5fa', border: '#2563eb' }
+    };
+
+    const sizes = {
+        critical: 16,
+        major: 13,
+        moderate: 10,
+        minor: 8
+    };
+
+    const c = colors[category] || colors.traffic;
+    const size = sizes[severity] || 10;
+    const pulse = severity === 'critical' ? `<animate attributeName="r" values="${size/2};${size/2+4};${size/2}" dur="1.5s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.8;0.2;0.8" dur="1.5s" repeatCount="indefinite"/>` : '';
+
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size*2+8} ${size*2+8}" width="${size*2+8}" height="${size*2+8}">
+        <circle cx="${size+4}" cy="${size+4}" r="${size/2+3}" fill="${c.bg}" opacity="0.2">${pulse}</circle>
+        <circle cx="${size+4}" cy="${size+4}" r="${size/2}" fill="${c.bg}" stroke="${c.border}" stroke-width="1.5" opacity="0.9"/>
+    </svg>`;
+
+    return L.divIcon({
+        html: svg,
+        iconSize: [size*2+8, size*2+8],
+        iconAnchor: [size+4, size+4],
+        className: ''
+    });
+}
+
+// ---- Map setup ----
+function initMap() {
+    if (map) { map.remove(); map = null; }
+
+    map = L.map('map', {
+        center: [MAP_CENTER.lat, MAP_CENTER.lng],
+        zoom: 11,
+        zoomControl: true
+    });
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 19
+    }).addTo(map);
+
+    // Draw area boundaries
+    areaCircles = [];
+    for (const [key, area] of Object.entries(AREAS)) {
+        const circle = L.circle([area.lat, area.lng], {
+            radius: 2500,
+            color: area.color,
+            fillColor: area.color,
+            fillOpacity: 0.05,
+            weight: 1.5,
+            dashArray: '6 4'
+        }).addTo(map);
+
+        L.marker([area.lat, area.lng], {
+            icon: L.divIcon({
+                html: `<div style="
+                    background: ${area.color}20;
+                    border: 1px solid ${area.color};
+                    border-radius: 6px;
+                    padding: 3px 8px;
+                    font-size: 11px;
+                    font-weight: 600;
+                    color: ${area.color};
+                    white-space: nowrap;
+                    font-family: -apple-system, sans-serif;
+                    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+                ">${area.name}</div>`,
+                iconSize: [0, 0],
+                iconAnchor: [-12, 20],
+                className: ''
+            })
+        }).addTo(map);
+
+        areaCircles.push(circle);
+    }
+
+    // Add legend
+    const legend = L.control({ position: 'bottomright' });
+    legend.onAdd = function() {
+        const div = L.DomUtil.create('div', 'legend-box');
+        div.innerHTML = `
+            <div style="font-weight:600;margin-bottom:4px;color:#e1e4e8;">Incidents</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#f87171;"></span> Traffic</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#fbbf24;"></span> Caltrans</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#60a5fa;"></span> Police</div>
+            <div style="border-top:1px solid #2d3040;margin:6px 0;"></div>
+            <div style="font-weight:600;margin-bottom:4px;color:#e1e4e8;">Severity</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#f87171;width:14px;height:14px;"></span> Critical</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#fb923c;width:11px;height:11px;"></span> Major</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#fbbf24;width:9px;height:9px;"></span> Moderate</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#34d399;width:7px;height:7px;"></span> Minor</div>
+        `;
+        return div;
+    };
+    legend.addTo(map);
+}
+
+function plotIncidents() {
+    // Clear existing markers
+    incidentMarkers.forEach(m => map.removeLayer(m));
+    incidentMarkers = [];
+
+    const filtered = activeCategory === 'all'
+        ? incidents
+        : incidents.filter(inc => inc.category === activeCategory);
+
+    filtered.forEach(inc => {
+        const icon = createIncidentIcon(inc.category, inc.severity);
+        const timeStr = inc.reportedAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+        const popup = `
+            <div style="min-width: 200px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                    <strong style="font-size:14px;color:${inc.category === 'traffic' ? '#f87171' : inc.category === 'caltrans' ? '#fbbf24' : '#60a5fa'};">${inc.type}</strong>
+                    <span class="severity-badge ${inc.severity}">${inc.severity}</span>
+                </div>
+                <div style="font-size:12px;color:#8b8fa3;margin-bottom:6px;">${inc.category.toUpperCase()}</div>
+                <hr style="border:none;border-top:1px solid #2d3040;margin:6px 0;">
+                <div style="font-size:12px;line-height:1.8;">
+                    <div>${inc.description}</div>
+                    <div style="margin-top:4px;"><strong>Location:</strong> ${inc.road}</div>
+                    <div>${inc.crossStreet}</div>
+                    <div style="margin-top:4px;"><strong>Area:</strong> ${inc.areaName}</div>
+                    <div><strong>Reported:</strong> ${timeStr} (${inc.minsAgo}m ago)</div>
+                </div>
+            </div>`;
+
+        const marker = L.marker([inc.lat, inc.lng], { icon })
+            .addTo(map)
+            .bindPopup(popup);
+
+        incidentMarkers.push(marker);
+    });
+}
+
+function flyToArea(areaKey) {
+    const area = AREAS[areaKey];
+    if (area && map) {
+        map.flyTo([area.lat, area.lng], area.zoom, { duration: 0.8 });
+    }
+}
+
+function formatTime(date) {
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+function renderUI() {
+    const filtered = activeCategory === 'all'
+        ? incidents
+        : incidents.filter(inc => inc.category === activeCategory);
+
+    const trafficCount = incidents.filter(i => i.category === 'traffic').length;
+    const caltransCount = incidents.filter(i => i.category === 'caltrans').length;
+    const policeCount = incidents.filter(i => i.category === 'police').length;
+    const criticalCount = incidents.filter(i => i.severity === 'critical').length;
+
+    const updatedStr = lastUpdated ? lastUpdated.toLocaleString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric',
+        hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
+    }) : '--';
+
+    document.getElementById('content').innerHTML = `
+        <div class="data-status">
+            <div>Updated: <strong>${updatedStr}</strong> &bull; ${filtered.length} active incidents</div>
+            <div>
+                <span class="source-tag traffic">Traffic</span>
+                <span class="source-tag caltrans">Caltrans</span>
+                <span class="source-tag police">Police</span>
+            </div>
+        </div>
+
+        <div class="stats-bar">
+            <div class="stat-chip"><div class="label">Total</div><div class="value red">${incidents.length}</div></div>
+            <div class="stat-chip"><div class="label">Traffic</div><div class="value amber">${trafficCount}</div></div>
+            <div class="stat-chip"><div class="label">Caltrans</div><div class="value" style="color:#fbbf24;">${caltransCount}</div></div>
+            <div class="stat-chip"><div class="label">Police</div><div class="value blue">${policeCount}</div></div>
+            <div class="stat-chip"><div class="label">Critical</div><div class="value red">${criticalCount}</div></div>
+        </div>
+
+        <div class="map-container"><div id="map"></div></div>
+
+        <div class="incident-list">
+            <h3>Active Incidents ${activeCategory !== 'all' ? '(' + activeCategory.charAt(0).toUpperCase() + activeCategory.slice(1) + ')' : ''}</h3>
+            <table>
+                <thead><tr>
+                    <th>Type</th>
+                    <th>Category</th>
+                    <th>Location</th>
+                    <th>Area</th>
+                    <th>Severity</th>
+                    <th>Time</th>
+                </tr></thead>
+                <tbody>
+                    ${filtered.length === 0 ? '<tr><td colspan="6" style="text-align:center;color:#8b8fa3;padding:20px;">No active incidents</td></tr>' : ''}
+                    ${filtered.map(inc => `
+                        <tr data-id="${inc.id}">
+                            <td style="font-weight:600;">${inc.type}</td>
+                            <td><span class="category-badge ${inc.category}">${inc.category}</span></td>
+                            <td>${inc.road}<br><span style="color:#8b8fa3;font-size:11px;">${inc.crossStreet}</span></td>
+                            <td>${inc.areaName}</td>
+                            <td><span class="severity-badge ${inc.severity}">${inc.severity}</span></td>
+                            <td>${formatTime(inc.reportedAt)}<br><span style="color:#8b8fa3;font-size:11px;">${inc.minsAgo}m ago</span></td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>`;
+
+    initMap();
+    plotIncidents();
+
+    // Click table row to fly to incident on map
+    document.querySelectorAll('.incident-list tbody tr[data-id]').forEach(row => {
+        row.addEventListener('click', () => {
+            const id = parseInt(row.dataset.id);
+            const inc = incidents.find(i => i.id === id);
+            if (inc && map) {
+                map.flyTo([inc.lat, inc.lng], 14, { duration: 0.5 });
+                const idx = (activeCategory === 'all' ? incidents : incidents.filter(i => i.category === activeCategory)).indexOf(inc);
+                if (idx >= 0 && incidentMarkers[idx]) {
+                    incidentMarkers[idx].openPopup();
+                }
+            }
+        });
+    });
+}
+
+function loadIncidents() {
+    if (!lastUpdated) {
+        document.getElementById('content').innerHTML =
+            '<div class="loading"><div class="spinner"></div>Scanning for traffic incidents...</div>';
+    }
+
+    // Small delay to show loading state
+    setTimeout(() => {
+        incidents = generateIncidents();
+        lastUpdated = new Date();
+        renderUI();
+        resetCountdown();
+    }, lastUpdated ? 0 : 600);
+}
+
+// ---- Category filter controls ----
+document.querySelectorAll('#categoryFilter button').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('#categoryFilter button').forEach(b => {
+            b.classList.remove('active', 'cat-traffic', 'cat-caltrans', 'cat-police');
+        });
+        btn.classList.add('active');
+        const cat = btn.dataset.cat;
+        if (cat === 'traffic') btn.classList.add('cat-traffic');
+        else if (cat === 'caltrans') btn.classList.add('cat-caltrans');
+        else if (cat === 'police') btn.classList.add('cat-police');
+        activeCategory = cat;
+
+        if (lastUpdated) {
+            renderUI();
+        }
+    });
+});
+
+document.getElementById('refreshBtn').addEventListener('click', () => {
+    lastUpdated = null; // Force reload animation
+    loadIncidents();
+});
+
+// ---- Auto-refresh countdown ----
+function resetCountdown() {
+    countdownVal = 60;
+    if (countdownTimer) clearInterval(countdownTimer);
+    countdownTimer = setInterval(() => {
+        countdownVal--;
+        const el = document.getElementById('countdown');
+        if (el) el.textContent = `Auto-refresh: ${countdownVal}s`;
+        if (countdownVal <= 0) {
+            loadIncidents();
+        }
+    }, 1000);
+}
+
+// Expose flyToArea globally
+window.flyToArea = flyToArea;
+
+// ---- Init ----
+loadIncidents();
+</script>
+</body>
+</html>
