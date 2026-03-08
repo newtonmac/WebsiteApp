@@ -539,7 +539,6 @@ async function fetchCHPData() {
                     minsAgo,
                     sourceUrl: 'https://cad.chp.ca.gov/Traffic.aspx',
                     sourceLabel: 'CHP Traffic Incidents',
-                    isLive: true
                 });
             });
 
@@ -640,7 +639,7 @@ async function fetch511Data() {
                     minsAgo,
                     sourceUrl: 'https://511.org/',
                     sourceLabel: '511.org Traffic Events',
-                    isLive: true
+
                 });
             });
 
@@ -681,7 +680,22 @@ async function fetchCaltransData() {
                     const endMs = parseInt(lcs.closure.closureTimestamp.closureEndEpoch) * 1000;
                     return startMs <= now && endMs >= now;
                 });
-            return entries.map((lcs, idx) => {
+            // Deduplicate entries with same route+direction+location+work type
+            // (multiple lane segments along same stretch look identical in the table)
+            const seen = new Set();
+            const dedupedEntries = entries.filter(lcs => {
+                const loc = lcs.location;
+                const route = loc.begin.beginRoute || '';
+                const dir = loc.travelFlowDirection || '';
+                const locName = loc.begin.beginLocationName || loc.begin.beginNearbyPlace || '';
+                const work = lcs.closure.typeOfWork || '';
+                const key = `${route}|${dir}|${locName}|${work}`;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+
+            return dedupedEntries.map((lcs, idx) => {
                 const loc = lcs.location;
                 const closure = lcs.closure;
                 const lat = parseFloat(loc.begin.beginLatitude);
@@ -697,7 +711,7 @@ async function fetchCaltransData() {
 
                 const startEpoch = parseInt(closure.closureTimestamp.closureStartEpoch) * 1000;
                 const endEpoch = parseInt(closure.closureTimestamp.closureEndEpoch) * 1000;
-                const minsAgo = Math.max(0, Math.floor((now - startEpoch) / 60000));
+                const minsAgo = Math.max(1, Math.floor((now - startEpoch) / 60000));
                 const reportedAt = new Date(startEpoch);
 
                 const routeName = loc.begin.beginRoute || 'Unknown Route';
@@ -729,7 +743,7 @@ async function fetchCaltransData() {
                     minsAgo,
                     sourceUrl: 'https://quickmap.dot.ca.gov/',
                     sourceLabel: 'Caltrans QuickMap',
-                    isLive: true
+
                 };
             });
         } catch (e) {
