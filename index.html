@@ -523,10 +523,11 @@
         function getFilteredPrices() {
             const typeMap = { wti: wtiPrices, brent: brentPrices, canadian: canadianPrices, maya: mayaPrices };
             const all = typeMap[selectedType] || wtiPrices;
-            // Monthly data (canadian/maya) - show available data points
+            // Monthly data (canadian/maya) - map time ranges to useful month counts
             if (selectedType === 'canadian' || selectedType === 'maya') {
-                const months = Math.ceil(selectedRange / 30);
-                return all.slice(-Math.max(months, 3));
+                const rangeToMonths = { 7: 6, 30: 12, 90: 18, 180: 24, 365: 36 };
+                const months = rangeToMonths[selectedRange] || 12;
+                return all.slice(-months);
             }
             const cutoff = new Date();
             cutoff.setDate(cutoff.getDate() - selectedRange);
