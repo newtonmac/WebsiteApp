@@ -350,7 +350,7 @@
 <body>
     <div class="header">
         <h1>Traffic Dashboard</h1>
-        <p>Live Incidents &bull; Jamul, Spring Valley, La Mesa, El Cajon, Tecate CA &bull; East County San Diego</p>
+        <p>Live Incidents &bull; Jamul, Spring Valley, La Mesa, El Cajon, Rancho SD, Tecate CA &bull; East County San Diego</p>
         <a href="index.html" class="nav-link">&larr; Oil Tracker</a>
         <a href="flight-tracker.html" class="nav-link">Flight Tracker</a>
         <a href="currency-tracker.html" class="nav-link">MXN/USD</a>
@@ -385,6 +385,9 @@
             <div class="area-tag" data-area="tecate" onclick="flyToArea('tecate')">
                 <span class="dot" style="background:#fb923c;"></span> Tecate, CA
             </div>
+            <div class="area-tag" data-area="rancho-san-diego" onclick="flyToArea('rancho-san-diego')">
+                <span class="dot" style="background:#f472b6;"></span> Rancho San Diego
+            </div>
         </div>
 
         <div id="content">
@@ -396,11 +399,12 @@
 <script>
 // ---- Area Definitions ----
 const AREAS = {
-    'jamul': { name: 'Jamul', lat: 32.7174, lng: -116.8768, color: '#a78bfa', zoom: 13 },
-    'spring-valley': { name: 'Spring Valley', lat: 32.7448, lng: -116.9989, color: '#34d399', zoom: 13 },
-    'la-mesa': { name: 'La Mesa', lat: 32.7678, lng: -117.0231, color: '#60a5fa', zoom: 13 },
-    'el-cajon': { name: 'El Cajon', lat: 32.7948, lng: -116.9625, color: '#fbbf24', zoom: 13 },
-    'tecate': { name: 'Tecate, CA', lat: 32.5920, lng: -116.6283, color: '#fb923c', zoom: 13 }
+    'jamul': { name: 'Jamul', lat: 32.7174, lng: -116.8768, color: '#a78bfa', zoom: 13, radius: 4690 },
+    'spring-valley': { name: 'Spring Valley', lat: 32.7448, lng: -116.9989, color: '#34d399', zoom: 13, radius: 3750 },
+    'la-mesa': { name: 'La Mesa', lat: 32.7678, lng: -117.0231, color: '#60a5fa', zoom: 13, radius: 3750 },
+    'el-cajon': { name: 'El Cajon', lat: 32.7948, lng: -116.9625, color: '#fbbf24', zoom: 13, radius: 3750 },
+    'tecate': { name: 'Tecate, CA', lat: 32.5920, lng: -116.6283, color: '#fb923c', zoom: 13, radius: 3750 },
+    'rancho-san-diego': { name: 'Rancho San Diego', lat: 32.7472, lng: -116.9311, color: '#f472b6', zoom: 13, radius: 3750 }
 };
 
 const MAP_CENTER = { lat: 32.70, lng: -116.90 };
@@ -435,6 +439,10 @@ const ROAD_DATA = {
     'tecate': {
         roads: ['Tecate Rd', 'SR-188', 'SR-94', 'Tecate Port of Entry Rd', 'Old Tecate Rd', 'Barrett Smith Rd', 'La Tecata Rd', 'Kuebler Ranch Rd', 'Boundary Peak Rd'],
         crossStreets: ['at Tecate Port of Entry', 'near US Border Crossing', 'at SR-94 junction', 'near Tecate Divide', 'at Barrett Smith Rd', 'near Potrero', 'at Old Tecate Rd']
+    },
+    'rancho-san-diego': {
+        roads: ['Jamacha Rd', 'Campo Rd', 'Fury Ln', 'Avocado Blvd', 'Cuyamaca St', 'SR-54', 'Washington Ave', 'Via Mercado', 'Hillsdale Rd', 'N Marshall Ave'],
+        crossStreets: ['at Avocado Blvd', 'near Valhalla HS', 'at Cuyamaca St', 'near Rancho San Diego Towne Center', 'at Campo Rd', 'near Cuyamaca College', 'at Fury Ln']
     }
 };
 
@@ -614,7 +622,7 @@ function initMap() {
     areaCircles = [];
     for (const [key, area] of Object.entries(AREAS)) {
         const circle = L.circle([area.lat, area.lng], {
-            radius: 3750,
+            radius: area.radius,
             color: area.color,
             fillColor: area.color,
             fillOpacity: 0.05,
