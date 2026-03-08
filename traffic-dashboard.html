@@ -350,7 +350,7 @@
 <body>
     <div class="header">
         <h1>Traffic Dashboard</h1>
-        <p>Live Incidents &bull; Jamul, Spring Valley, La Mesa, El Cajon, Tecate &bull; East County SD &amp; Border</p>
+        <p>Live Incidents &bull; Jamul, Spring Valley, La Mesa, El Cajon, Tecate CA &bull; East County San Diego</p>
         <a href="index.html" class="nav-link">&larr; Oil Tracker</a>
         <a href="flight-tracker.html" class="nav-link">Flight Tracker</a>
         <a href="currency-tracker.html" class="nav-link">MXN/USD</a>
@@ -383,7 +383,7 @@
                 <span class="dot" style="background:#fbbf24;"></span> El Cajon
             </div>
             <div class="area-tag" data-area="tecate" onclick="flyToArea('tecate')">
-                <span class="dot" style="background:#fb923c;"></span> Tecate
+                <span class="dot" style="background:#fb923c;"></span> Tecate, CA
             </div>
         </div>
 
@@ -400,7 +400,7 @@ const AREAS = {
     'spring-valley': { name: 'Spring Valley', lat: 32.7448, lng: -116.9989, color: '#34d399', zoom: 13 },
     'la-mesa': { name: 'La Mesa', lat: 32.7678, lng: -117.0231, color: '#60a5fa', zoom: 13 },
     'el-cajon': { name: 'El Cajon', lat: 32.7948, lng: -116.9625, color: '#fbbf24', zoom: 13 },
-    'tecate': { name: 'Tecate', lat: 32.5726, lng: -116.6264, color: '#fb923c', zoom: 13 }
+    'tecate': { name: 'Tecate, CA', lat: 32.5920, lng: -116.6283, color: '#fb923c', zoom: 13 }
 };
 
 const MAP_CENTER = { lat: 32.70, lng: -116.90 };
@@ -433,8 +433,8 @@ const ROAD_DATA = {
         crossStreets: ['at Magnolia Ave', 'near Parkway Plaza', 'at N 2nd St', 'near El Cajon Transit', 'at Jamacha Rd', 'at Fletcher Pkwy', 'near Gillespie Field']
     },
     'tecate': {
-        roads: ['Mexico 2', 'Mexico 2D', 'Tecate-Ensenada Hwy', 'Blvd Universidad', 'Av Juárez', 'Callejón Libertad', 'Av Hidalgo', 'Calle Lázaro Cárdenas', 'Tecate Port of Entry Rd', 'SR-188'],
-        crossStreets: ['at Port of Entry', 'near Tecate Border Crossing', 'at Blvd Universidad', 'near Parque Los Encinos', 'at Av Juárez', 'near Tecate Brewery', 'at Calle Ortiz Rubio']
+        roads: ['Tecate Rd', 'SR-188', 'SR-94', 'Tecate Port of Entry Rd', 'Old Tecate Rd', 'Barrett Smith Rd', 'La Tecata Rd', 'Kuebler Ranch Rd', 'Boundary Peak Rd'],
+        crossStreets: ['at Tecate Port of Entry', 'near US Border Crossing', 'at SR-94 junction', 'near Tecate Divide', 'at Barrett Smith Rd', 'near Potrero', 'at Old Tecate Rd']
     }
 };
 
