@@ -261,7 +261,6 @@
 
         .data-status .source-eia { background: #3b82f620; color: #60a5fa; }
         .data-status .source-fred { background: #f59e0b20; color: #fbbf24; }
-        .data-status .source-commodities { background: #10b98120; color: #34d399; }
         .data-status .source-alphavantage { background: #8b5cf620; color: #a78bfa; }
         .data-status .source-twelvedata { background: #ef444420; color: #f87171; }
     </style>
@@ -269,7 +268,7 @@
 <body>
     <div class="header">
         <h1>Crude Oil Price Tracker</h1>
-        <p>Live data &bull; EIA, FRED, Commodities API, Alpha Vantage &amp; Twelve Data</p>
+        <p>Live data &bull; EIA, FRED, Alpha Vantage &amp; Twelve Data</p>
     </div>
 
     <div class="container">
@@ -307,12 +306,10 @@
 
         // Additional API sources for more current data
         // Get free keys at:
-        //   Commodities API: https://commodities-api.com (100 req/mo free)
-        //   Alpha Vantage:   https://www.alphavantage.co/support/#api-key (25 req/day free)
-        //   Twelve Data:     https://twelvedata.com/account (800 req/day free)
-        const COMMODITIES_API_KEY = 'DEMO_KEY'; // Replace with your commodities-api.com key
-        const ALPHA_VANTAGE_KEY = 'demo';       // Replace with your alphavantage.co key
-        const TWELVE_DATA_KEY = 'demo';         // Replace with your twelvedata.com key
+        //   Alpha Vantage: https://www.alphavantage.co/support/#api-key (25 req/day free)
+        //   Twelve Data:   https://twelvedata.com/account (800 req/day free)
+        const ALPHA_VANTAGE_KEY = 'T01QSR206V2E0IR2';
+        const TWELVE_DATA_KEY = 'demo';    // Replace with your twelvedata.com key
 
         let wtiPrices = [];
         let brentPrices = [];
@@ -429,24 +426,6 @@
             return [];
         }
 
-        // Commodities API - near real-time commodity prices
-        async function fetchCommoditiesAPI(symbol) {
-            try {
-                const resp = await fetch(
-                    'https://commodities-api.com/api/latest?access_key=' + COMMODITIES_API_KEY +
-                    '&base=USD&symbols=' + symbol
-                );
-                const json = await resp.json();
-                if (json.data && json.data.rates && json.data.rates[symbol]) {
-                    const price = 1 / json.data.rates[symbol];
-                    return [{ date: json.data.date || new Date().toISOString().split('T')[0], price: parseFloat(price.toFixed(2)), source: 'Commodities' }];
-                }
-            } catch (e) {
-                console.warn('Commodities API fetch failed:', e.message);
-            }
-            return [];
-        }
-
         // Alpha Vantage - daily commodity prices with history
         async function fetchAlphaVantage(func) {
             try {
@@ -510,7 +489,7 @@
 
                 const [
                     eiaWti, eiaBrent, fredWti, fredBrent, eiaCanadian, eiaMaya,
-                    commWti, commBrent, avWti, avBrent, tdWti, tdBrent
+                    avWti, avBrent, tdWti, tdBrent
                 ] = await Promise.allSettled([
                     fetchEIASeries('RWTC'),
                     fetchEIASeries('RBRTE'),
@@ -518,9 +497,6 @@
                     fetchFREDSeries('DCOILBRENTEU'),
                     fetchEIAImportSeries('I19263000004'),
                     fetchEIAImportSeries('IMX2810004'),
-                    // Commodities API
-                    fetchCommoditiesAPI('WTIOIL'),
-                    fetchCommoditiesAPI('BRENTOIL'),
                     // Alpha Vantage
                     fetchAlphaVantage('WTI'),
                     fetchAlphaVantage('BRENT'),
@@ -535,8 +511,6 @@
                 const eiaBrentData = val(eiaBrent);
                 const fredWtiData = val(fredWti);
                 const fredBrentData = val(fredBrent);
-                const commWtiData = val(commWti);
-                const commBrentData = val(commBrent);
                 const avWtiData = val(avWti);
                 const avBrentData = val(avBrent);
                 const tdWtiData = val(tdWti);
@@ -544,13 +518,12 @@
 
                 if (eiaWtiData.length > 0 || eiaBrentData.length > 0) dataSources.push('EIA');
                 if (fredWtiData.length > 0 || fredBrentData.length > 0) dataSources.push('FRED');
-                if (commWtiData.length > 0 || commBrentData.length > 0) dataSources.push('Commodities');
                 if (avWtiData.length > 0 || avBrentData.length > 0) dataSources.push('AlphaVantage');
                 if (tdWtiData.length > 0 || tdBrentData.length > 0) dataSources.push('TwelveData');
 
-                // Merge all sources: EIA first (most authoritative), then FRED, Alpha Vantage, Twelve Data, Commodities
-                wtiPrices = mergePrices(eiaWtiData, fredWtiData, avWtiData, tdWtiData, commWtiData);
-                brentPrices = mergePrices(eiaBrentData, fredBrentData, avBrentData, tdBrentData, commBrentData);
+                // Merge all sources: EIA first (most authoritative), then FRED, Alpha Vantage, Twelve Data
+                wtiPrices = mergePrices(eiaWtiData, fredWtiData, avWtiData, tdWtiData);
+                brentPrices = mergePrices(eiaBrentData, fredBrentData, avBrentData, tdBrentData);
                 canadianPrices = val(eiaCanadian);
                 mayaPrices = val(eiaMaya);
 
