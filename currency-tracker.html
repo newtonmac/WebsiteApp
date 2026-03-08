@@ -274,8 +274,8 @@
             letter-spacing: 0.5px;
         }
 
+        .data-status .source-fred { background: #f59e0b20; color: #fbbf24; }
         .data-status .source-frankfurter { background: #10b98120; color: #34d399; }
-        .data-status .source-exchangerate { background: #f59e0b20; color: #fbbf24; }
 
         .nav-links {
             display: flex;
@@ -311,7 +311,7 @@
 <body>
     <div class="header">
         <h1>MXN / USD Exchange Rate Tracker</h1>
-        <p>Mexican Peso to US Dollar &bull; Frankfurter &amp; ExchangeRate API &bull; Updated daily</p>
+        <p>Mexican Peso to US Dollar &bull; FRED &amp; Frankfurter &bull; Updated daily</p>
         <div class="nav-links">
             <a href="index.html" class="nav-link">&larr; Oil Tracker</a>
             <a href="flight-tracker.html" class="nav-link">Flight Tracker &rarr;</a>
@@ -371,72 +371,64 @@
 
         document.getElementById('refreshBtn').addEventListener('click', fetchRates);
 
-        // Frankfurter API - free, no key required, ECB data
-        // Fetch in quarterly chunks to get daily granularity (long ranges return weekly)
-        async function fetchFrankfurter() {
+        const FRED_KEY = 'b157e132862f8b31185abd4da930b21a';
+        const FRED_BASE = 'https://api.stlouisfed.org/fred/series/observations';
+
+        // FRED API - DEXMXUS series (MXN per 1 USD, daily business days)
+        async function fetchFRED() {
             try {
-                const end = new Date();
-                const endDate = end.toISOString().split('T')[0];
-                const start = new Date();
-                start.setFullYear(start.getFullYear() - 1);
+                const oneYearAgo = new Date();
+                oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+                const startDate = oneYearAgo.toISOString().split('T')[0];
 
-                // Break into ~3 month chunks for daily data
-                const chunks = [];
-                const chunkStart = new Date(start);
-                while (chunkStart < end) {
-                    const chunkEnd = new Date(chunkStart);
-                    chunkEnd.setMonth(chunkEnd.getMonth() + 3);
-                    if (chunkEnd > end) chunkEnd.setTime(end.getTime());
-                    chunks.push({
-                        from: chunkStart.toISOString().split('T')[0],
-                        to: chunkEnd.toISOString().split('T')[0]
-                    });
-                    chunkStart.setTime(chunkEnd.getTime());
-                    chunkStart.setDate(chunkStart.getDate() + 1);
-                }
+                const params = new URLSearchParams({
+                    series_id: 'DEXMXUS',
+                    api_key: FRED_KEY,
+                    file_type: 'json',
+                    observation_start: startDate,
+                    sort_order: 'asc'
+                });
 
-                const results = await Promise.allSettled(
-                    chunks.map(c =>
-                        fetch(`https://api.frankfurter.app/${c.from}..${c.to}?from=MXN&to=USD`)
-                            .then(r => r.json())
-                    )
-                );
+                const resp = await fetch(FRED_BASE + '?' + params.toString());
+                const json = await resp.json();
 
-                let allRates = [];
-                for (const r of results) {
-                    if (r.status === 'fulfilled' && r.value.rates) {
-                        const entries = Object.entries(r.value.rates).map(([date, rates]) => ({
-                            date,
-                            rate: rates.USD,
-                            source: 'Frankfurter'
+                if (json.observations) {
+                    return json.observations
+                        .filter(d => d.value !== '.' && d.value != null)
+                        .map(d => ({
+                            date: d.date,
+                            rate: 1 / parseFloat(d.value), // FRED gives MXN per USD, we want USD per MXN
+                            source: 'FRED'
                         }));
-                        allRates = allRates.concat(entries);
-                    }
                 }
-
-                return allRates.sort((a, b) => a.date.localeCompare(b.date));
             } catch (e) {
-                console.warn('Frankfurter fetch failed:', e.message);
+                console.warn('FRED fetch failed:', e.message);
             }
             return [];
         }
 
-        // ExchangeRate API - free tier, no key needed for basic access
-        async function fetchExchangeRateAPI() {
+        // Frankfurter API - free, no key required, ECB data (backup)
+        async function fetchFrankfurter() {
             try {
-                const resp = await fetch('https://open.er-api.com/v6/latest/MXN');
+                const endDate = new Date().toISOString().split('T')[0];
+                const startDate = new Date();
+                startDate.setFullYear(startDate.getFullYear() - 1);
+                const startStr = startDate.toISOString().split('T')[0];
+
+                const resp = await fetch(
+                    `https://api.frankfurter.app/${startStr}..${endDate}?from=MXN&to=USD`
+                );
                 const json = await resp.json();
 
-                if (json.result === 'success' && json.rates && json.rates.USD) {
-                    const today = new Date().toISOString().split('T')[0];
-                    return [{
-                        date: today,
-                        rate: json.rates.USD,
-                        source: 'ExchangeRate'
-                    }];
+                if (json.rates) {
+                    return Object.entries(json.rates).map(([date, rates]) => ({
+                        date,
+                        rate: rates.USD,
+                        source: 'Frankfurter'
+                    })).sort((a, b) => a.date.localeCompare(b.date));
                 }
             } catch (e) {
-                console.warn('ExchangeRate API fetch failed:', e.message);
+                console.warn('Frankfurter fetch failed:', e.message);
             }
             return [];
         }
@@ -463,20 +455,21 @@
             try {
                 dataSources = [];
 
-                const [frankfurterResult, exchangeRateResult] = await Promise.allSettled([
-                    fetchFrankfurter(),
-                    fetchExchangeRateAPI()
+                const [fredResult, frankfurterResult] = await Promise.allSettled([
+                    fetchFRED(),
+                    fetchFrankfurter()
                 ]);
 
                 const val = r => r.status === 'fulfilled' ? r.value : [];
 
+                const fredData = val(fredResult);
                 const frankfurterData = val(frankfurterResult);
-                const exchangeRateData = val(exchangeRateResult);
 
+                if (fredData.length > 0) dataSources.push('FRED');
                 if (frankfurterData.length > 0) dataSources.push('Frankfurter');
-                if (exchangeRateData.length > 0) dataSources.push('ExchangeRate');
 
-                rateData = mergePrices(frankfurterData, exchangeRateData);
+                // FRED is primary (daily), Frankfurter fills gaps
+                rateData = mergePrices(fredData, frankfurterData);
 
                 lastUpdated = new Date();
 
