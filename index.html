@@ -406,7 +406,7 @@
                 return json.response.data
                     .filter(d => d.value != null && d.value !== '')
                     .map(d => ({
-                        date: d.period,
+                        date: d.period.length === 7 ? d.period + '-01' : d.period,
                         price: parseFloat(d.value),
                         source: 'EIA'
                     }))
