@@ -508,6 +508,24 @@ function generateIncidents() {
             const minsAgo = Math.floor(seededRandom(seed + 6) * 180);
             const reportedAt = new Date(now.getTime() - minsAgo * 60 * 1000);
 
+            // Source URLs by category
+            const sourceUrls = {
+                traffic: {
+                    url: 'https://cad.chp.ca.gov/Traffic.aspx',
+                    label: 'CHP Traffic Incidents'
+                },
+                caltrans: {
+                    url: 'https://quickmap.dot.ca.gov/',
+                    label: 'Caltrans QuickMap'
+                },
+                police: {
+                    url: 'https://www.crimemapping.com/map/ca/sandiego',
+                    label: 'CrimeMapping - San Diego'
+                }
+            };
+
+            const source = sourceUrls[category];
+
             allIncidents.push({
                 id: id++,
                 category,
@@ -522,7 +540,9 @@ function generateIncidents() {
                 lat: area.lat + latOffset,
                 lng: area.lng + lngOffset,
                 reportedAt,
-                minsAgo
+                minsAgo,
+                sourceUrl: source.url,
+                sourceLabel: source.label
             });
         }
     }
@@ -663,6 +683,7 @@ function plotIncidents() {
                     <div>${inc.crossStreet}</div>
                     <div style="margin-top:4px;"><strong>Area:</strong> ${inc.areaName}</div>
                     <div><strong>Reported:</strong> ${timeStr} (${inc.minsAgo}m ago)</div>
+                    <div style="margin-top:6px;"><a href="${inc.sourceUrl}" target="_blank" rel="noopener" style="color:#60a5fa;text-decoration:none;font-size:11px;border:1px solid #60a5fa40;padding:3px 8px;border-radius:6px;display:inline-block;">&#x1F517; ${inc.sourceLabel}</a></div>
                 </div>
             </div>`;
 
