@@ -305,9 +305,10 @@
             color: #e1e4e8 !important;
             border-radius: 12px !important;
             border: 1px solid #2d3040 !important;
+            overflow: visible !important;
         }
         .leaflet-popup-tip { background: #1a1d28 !important; }
-        .leaflet-popup-content { font-family: -apple-system, sans-serif; font-size: 13px; overflow: visible !important; max-height: none !important; }
+        .leaflet-popup-content { font-family: -apple-system, sans-serif; font-size: 13px; overflow: visible !important; max-height: none !important; margin: 13px 19px 13px 19px !important; }
         .leaflet-popup-content strong { color: #60a5fa; }
         .leaflet-popup-content a { color: #60a5fa !important; }
 
@@ -693,7 +694,7 @@ function plotIncidents() {
 
         const marker = L.marker([inc.lat, inc.lng], { icon })
             .addTo(map)
-            .bindPopup(popup, { maxWidth: 300, maxHeight: 350 });
+            .bindPopup(popup, { maxWidth: 300 });
 
         incidentMarkers.push(marker);
     });
