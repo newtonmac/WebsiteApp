@@ -317,6 +317,7 @@
                 <button class="active" data-range="30">1M</button>
                 <button data-range="90">3M</button>
                 <button data-range="180">6M</button>
+                <button data-range="ytd">YTD</button>
                 <button data-range="365">1Y</button>
             </div>
             <button class="refresh-btn" id="refreshBtn">&#x21bb; Refresh</button>
@@ -355,7 +356,7 @@
             btn.addEventListener('click', () => {
                 document.querySelectorAll('#timeRange button').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                selectedRange = parseInt(btn.dataset.range);
+                selectedRange = btn.dataset.range === 'ytd' ? 'ytd' : parseInt(btn.dataset.range);
                 render();
             });
         });
@@ -478,8 +479,9 @@
         }
 
         function getFilteredRates() {
-            const cutoff = new Date();
-            cutoff.setDate(cutoff.getDate() - selectedRange);
+            const cutoff = selectedRange === 'ytd'
+                ? new Date(new Date().getFullYear(), 0, 1)
+                : (() => { const d = new Date(); d.setDate(d.getDate() - selectedRange); return d; })();
             return rateData.filter(p => new Date(p.date) >= cutoff);
         }
 
@@ -498,7 +500,7 @@
             const pairLabel = isMxnToUsd ? '1 MXN in USD' : '1 USD in MXN';
             const decimals = isMxnToUsd ? 4 : 2;
 
-            const rangeLabels = { 7: '1W', 30: '1M', 90: '3M', 180: '6M', 365: '1Y' };
+            const rangeLabels = { 7: '1W', 30: '1M', 90: '3M', 180: '6M', ytd: 'YTD', 365: '1Y' };
             const rangeLabel = rangeLabels[selectedRange] || selectedRange + 'd';
 
             const latest = rates[rates.length - 1];
