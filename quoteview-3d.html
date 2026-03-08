@@ -622,8 +622,8 @@ textarea{resize:vertical;min-height:80px;line-height:1.5;}
     <div class="bin-prompt" id="bin-prompt">
       <div class="bin-prompt-title">⚠️ Companion <code id="bin-filename">.bin</code> required</div>
       <div class="bin-prompt-desc">Your file is a GLTF (JSON) referencing an external binary. Select the companion .bin file.</div>
-      <div class="btn-bin" id="bin-btn" style="position:relative;cursor:pointer;" onclick="document.getElementById('bin-input').click();">
-        <input type="file" id="bin-input" accept=".bin,.BIN" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;">
+      <div class="btn-bin" id="bin-btn" style="position:relative;cursor:pointer;overflow:hidden;">
+        <input type="file" id="bin-input" accept=".bin,.BIN">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
         Select .bin file
       </div>
