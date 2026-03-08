@@ -272,8 +272,8 @@
             letter-spacing: 0.5px;
         }
 
-        .data-status .source-fred { background: #f59e0b20; color: #fbbf24; }
         .data-status .source-freegoldapi { background: #fbbf2420; color: #fbbf24; }
+        .data-status .source-coingecko { background: #8dc63f20; color: #8dc63f; }
 
         .nav-link {
             display: inline-block;
@@ -294,7 +294,7 @@
 <body>
     <div class="header">
         <h1>Gold, Silver &amp; Bitcoin Tracker</h1>
-        <p>Live data &bull; FreeGoldAPI &amp; FRED &bull; Updated daily</p>
+        <p>Live data &bull; FreeGoldAPI &amp; CoinGecko &bull; Updated daily</p>
         <a href="index.html" class="nav-link">&larr; Oil Tracker</a>
         <a href="currency-tracker.html" class="nav-link">MXN/USD Tracker &rarr;</a>
         <a href="flight-tracker.html" class="nav-link">Flight Tracker &rarr;</a>
@@ -326,9 +326,6 @@
     </div>
 
     <script>
-        const FRED_KEY = 'b157e132862f8b31185abd4da930b21a';
-        const FRED_BASE = 'https://api.stlouisfed.org/fred/series/observations';
-
         let goldPrices = [];
         let silverPrices = [];
         let bitcoinPrices = [];
@@ -429,31 +426,27 @@
             return { gold: [], silver: [] };
         }
 
-        // FRED for Bitcoin (CBBTCUSD - confirmed working)
-        async function fetchFREDBitcoin() {
+        // CoinGecko for Bitcoin (free, CORS enabled, no API key)
+        async function fetchBitcoin() {
             try {
-                const oneYearAgo = new Date();
-                oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-                const startDate = oneYearAgo.toISOString().split('T')[0];
-
-                const params = new URLSearchParams({
-                    series_id: 'CBBTCUSD',
-                    api_key: FRED_KEY,
-                    file_type: 'json',
-                    observation_start: startDate,
-                    sort_order: 'asc'
-                });
-
-                const resp = await fetch(FRED_BASE + '?' + params.toString());
+                console.log('Fetching Bitcoin from CoinGecko...');
+                const resp = await fetch(
+                    'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=365&interval=daily'
+                );
+                if (!resp.ok) throw new Error('CoinGecko HTTP ' + resp.status);
                 const json = await resp.json();
 
-                if (json.observations) {
-                    return json.observations
-                        .filter(d => d.value !== '.' && d.value != null)
-                        .map(d => ({ date: d.date, price: parseFloat(d.value), source: 'FRED' }));
+                if (json.prices) {
+                    const results = json.prices.map(([timestamp, price]) => {
+                        const d = new Date(timestamp);
+                        const date = d.toISOString().split('T')[0];
+                        return { date, price, source: 'CoinGecko' };
+                    });
+                    console.log('Bitcoin entries:', results.length);
+                    return results;
                 }
             } catch (e) {
-                console.warn('FRED Bitcoin fetch failed:', e.message);
+                console.warn('CoinGecko fetch failed:', e.message);
             }
             return [];
         }
@@ -470,7 +463,7 @@
 
                 const [metalsResult, btcResult] = await Promise.allSettled([
                     fetchGoldSilverPrices(),
-                    fetchFREDBitcoin()
+                    fetchBitcoin()
                 ]);
 
                 const metals = metalsResult.status === 'fulfilled' ? metalsResult.value : { gold: [], silver: [] };
@@ -482,7 +475,7 @@
                 if (btcResult.status === 'rejected') console.error('BTC error:', btcResult.reason);
 
                 if (metals.gold.length > 0 || metals.silver.length > 0) dataSources.push('FreeGoldAPI');
-                if (btcData.length > 0) dataSources.push('FRED');
+                if (btcData.length > 0) dataSources.push('CoinGecko');
 
                 goldPrices = metals.gold;
                 silverPrices = metals.silver;
