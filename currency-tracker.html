@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MXN/USD Currency Exchange Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -635,6 +634,12 @@
             renderChart(rates, color, decimals, currencySymbol);
         }
 
+        function formatDateLabel(dateStr) {
+            const d = new Date(dateStr + 'T00:00:00');
+            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            return months[d.getMonth()] + ' ' + d.getDate();
+        }
+
         function renderChart(rates, color, decimals, symbol) {
             const ctx = document.getElementById('rateChart').getContext('2d');
 
@@ -644,10 +649,12 @@
             gradient.addColorStop(0, color + '40');
             gradient.addColorStop(1, color + '05');
 
+            const labels = rates.map(r => formatDateLabel(r.date));
+
             chart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: rates.map(r => r.date),
+                    labels: labels,
                     datasets: [{
                         label: 'Exchange Rate',
                         data: rates.map(r => getDisplayRate(r.rate)),
@@ -680,27 +687,22 @@
                             padding: 12,
                             displayColors: false,
                             callbacks: {
+                                title: ctx => rates[ctx[0].dataIndex].date,
                                 label: ctx => `${symbol}${ctx.parsed.y.toFixed(decimals)}`
                             }
                         }
                     },
                     scales: {
                         x: {
-                            type: 'time',
-                            time: {
-                                parser: 'yyyy-MM-dd',
-                                tooltipFormat: 'MMM d, yyyy',
-                                displayFormats: {
-                                    day: 'MMM d',
-                                    week: 'MMM d',
-                                    month: 'MMM yyyy'
-                                }
-                            },
                             grid: {
                                 color: '#2d304040',
                                 drawBorder: false
                             },
-                            ticks: { color: '#8b8fa3', maxTicksLimit: 8 }
+                            ticks: {
+                                color: '#8b8fa3',
+                                maxTicksLimit: 8,
+                                maxRotation: 0
+                            }
                         },
                         y: {
                             grid: {
