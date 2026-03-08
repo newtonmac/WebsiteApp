@@ -367,15 +367,20 @@
         }
 
         // Free Gold API - no key required, CORS enabled
+        // Try CSV first (has silver data), fall back to JSON (gold only)
         async function fetchGoldSilverPrices() {
-            try {
-                const resp = await fetch('https://freegoldapi.com/data/gold_silver_ratio_enriched.csv');
-                const text = await resp.text();
-                const lines = text.trim().split('\n').slice(1); // skip header
+            const oneYearAgo = new Date();
+            oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+            const startDate = oneYearAgo.toISOString().split('T')[0];
 
-                const oneYearAgo = new Date();
-                oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-                const startDate = oneYearAgo.toISOString().split('T')[0];
+            // Attempt 1: CSV with gold + silver ratio data
+            try {
+                console.log('Fetching gold/silver CSV from freegoldapi.com...');
+                const resp = await fetch('https://freegoldapi.com/data/gold_silver_ratio_enriched.csv');
+                if (!resp.ok) throw new Error('CSV HTTP ' + resp.status);
+                const text = await resp.text();
+                console.log('CSV fetched, length:', text.length);
+                const lines = text.trim().split('\n').slice(1);
 
                 const gold = [];
                 const silver = [];
@@ -397,11 +402,31 @@
                     }
                 }
 
-                return { gold, silver };
+                console.log('Parsed gold:', gold.length, 'silver:', silver.length);
+                if (gold.length > 0) return { gold, silver };
             } catch (e) {
-                console.warn('FreeGoldAPI fetch failed:', e.message);
-                return { gold: [], silver: [] };
+                console.warn('FreeGoldAPI CSV failed:', e.message);
             }
+
+            // Attempt 2: JSON endpoint (gold only, no silver ratios)
+            try {
+                console.log('Trying JSON fallback from freegoldapi.com...');
+                const resp = await fetch('https://freegoldapi.com/data/latest.json');
+                if (!resp.ok) throw new Error('JSON HTTP ' + resp.status);
+                const data = await resp.json();
+                console.log('JSON fetched, entries:', data.length);
+
+                const gold = data
+                    .filter(d => d.date >= startDate && d.price > 0 && d.source && d.source.includes('yahoo'))
+                    .map(d => ({ date: d.date, price: d.price, source: 'FreeGoldAPI' }));
+
+                console.log('JSON gold entries:', gold.length);
+                return { gold, silver: [] };
+            } catch (e) {
+                console.warn('FreeGoldAPI JSON also failed:', e.message);
+            }
+
+            return { gold: [], silver: [] };
         }
 
         // FRED for Bitcoin (CBBTCUSD - confirmed working)
@@ -451,6 +476,11 @@
                 const metals = metalsResult.status === 'fulfilled' ? metalsResult.value : { gold: [], silver: [] };
                 const btcData = btcResult.status === 'fulfilled' ? btcResult.value : [];
 
+                console.log('Metals result:', metalsResult.status, 'gold:', metals.gold.length, 'silver:', metals.silver.length);
+                console.log('BTC result:', btcResult.status, 'count:', btcData.length);
+                if (metalsResult.status === 'rejected') console.error('Metals error:', metalsResult.reason);
+                if (btcResult.status === 'rejected') console.error('BTC error:', btcResult.reason);
+
                 if (metals.gold.length > 0 || metals.silver.length > 0) dataSources.push('FreeGoldAPI');
                 if (btcData.length > 0) dataSources.push('FRED');
 
@@ -461,9 +491,13 @@
                 lastUpdated = new Date();
 
                 if (goldPrices.length === 0 && silverPrices.length === 0 && bitcoinPrices.length === 0) {
+                    const errors = [];
+                    if (metalsResult.status === 'rejected') errors.push('Gold/Silver: ' + metalsResult.reason);
+                    if (btcResult.status === 'rejected') errors.push('Bitcoin: ' + btcResult.reason);
                     document.getElementById('content').innerHTML = `
                         <div class="error-msg">
-                            Unable to fetch data from any source. Check your connection.
+                            Unable to fetch data from any source. Check your connection and browser console for details.
+                            ${errors.length ? '<br>' + errors.join('<br>') : ''}
                         </div>`;
                     return;
                 }
