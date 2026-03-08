@@ -393,6 +393,10 @@
         <div id="content">
             <div class="loading"><div class="spinner"></div>Loading traffic data...</div>
         </div>
+
+        <div class="map-container"><div id="map"></div></div>
+
+        <div id="incident-content"></div>
     </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -920,7 +924,7 @@ function getIncidentStyle(category, severity) {
 
 // ---- Map setup ----
 function initMap() {
-    if (map) { map.remove(); map = null; }
+    if (map) return; // Map already initialized
 
     map = L.map('map', {
         center: [MAP_CENTER.lat, MAP_CENTER.lng],
@@ -1108,6 +1112,7 @@ function renderUI() {
             : `<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#8b8fa320;color:#8b8fa3;font-weight:700;margin-left:3px;">SIM</span>`;
     };
 
+    // Update stats and status bar (above map)
     document.getElementById('content').innerHTML = `
         <div class="data-status">
             <div>Updated: <strong>${updatedStr}</strong> &bull; ${filtered.length} active incidents${liveCount > 0 ? ` &bull; <span style="color:#34d399;font-weight:600;">${liveCount} live</span>` : ''}</div>
@@ -1124,10 +1129,10 @@ function renderUI() {
             <div class="stat-chip"><div class="label">Caltrans</div><div class="value" style="color:#fbbf24;">${caltransCount}</div></div>
             <div class="stat-chip"><div class="label">Police</div><div class="value blue">${policeCount}</div></div>
             <div class="stat-chip"><div class="label">Critical</div><div class="value red">${criticalCount}</div></div>
-        </div>
+        </div>`;
 
-        <div class="map-container"><div id="map"></div></div>
-
+    // Update incident table (below map)
+    document.getElementById('incident-content').innerHTML = `
         <div class="incident-list">
             <h3>Active Incidents ${activeArea ? '- ' + AREAS[activeArea].name : ''} ${activeCategory !== 'all' ? '(' + activeCategory.charAt(0).toUpperCase() + activeCategory.slice(1) + ')' : ''}</h3>
             <table>
@@ -1155,8 +1160,11 @@ function renderUI() {
             </table>
         </div>`;
 
+    // Initialize map once, then just update markers
     try {
-        initMap();
+        if (!map) {
+            initMap();
+        }
         plotIncidents();
         console.log(`Plotted ${incidentMarkers.length} markers (${incidents.filter(i=>i.isLive).length} live, ${incidents.filter(i=>!i.isLive).length} sim)`);
     } catch (e) {
@@ -1170,7 +1178,8 @@ function renderUI() {
             const inc = incidents.find(i => i.id === id);
             if (inc && map) {
                 map.flyTo([inc.lat, inc.lng], 14, { duration: 0.5 });
-                const idx = (activeCategory === 'all' ? incidents : incidents.filter(i => i.category === activeCategory)).indexOf(inc);
+                const filtered2 = activeCategory === 'all' ? incidents : incidents.filter(i => i.category === activeCategory);
+                const idx = filtered2.indexOf(inc);
                 if (idx >= 0 && incidentMarkers[idx]) {
                     incidentMarkers[idx].openPopup();
                 }
