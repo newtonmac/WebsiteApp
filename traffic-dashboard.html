@@ -428,6 +428,8 @@ const CORS_PROXIES = [
 // Real data feed URLs
 const CALTRANS_D11_URL = 'https://cwwp2.dot.ca.gov/data/d11/lcs/lcsStatusD11.json';
 const CHP_INCIDENTS_URL = 'https://media.chp.ca.gov/sa_xml/sa.xml';
+const API_511_KEY = '236e940a-299c-4d14-b387-cc376ee8067b';
+const API_511_EVENTS_URL = `https://api.511.org/traffic/events?api_key=${API_511_KEY}&format=json`;
 
 // East County San Diego bounding box for filtering
 const EAST_COUNTY_BOUNDS = {
@@ -438,7 +440,7 @@ const EAST_COUNTY_BOUNDS = {
 // Track which data sources are live vs simulated
 let dataSourceStatus = {
     caltrans: 'loading',  // 'live', 'simulated', 'loading'
-    traffic: 'loading',   // CHP sa.xml feed
+    traffic: 'loading',   // CHP sa.xml feed + 511 events
     police: 'simulated'   // No free real-time crime API
 };
 
@@ -696,6 +698,107 @@ async function fetchCHPData() {
         }
     }
     console.error('All CORS proxies failed for CHP data');
+    return null;
+}
+
+// ---- Fetch 511.org traffic events ----
+async function fetch511Data() {
+    // Try direct, then via CORS proxies
+    const urlsToTry = [
+        API_511_EVENTS_URL,
+        ...CORS_PROXIES.map(fn => fn(API_511_EVENTS_URL))
+    ];
+    for (const url of urlsToTry) {
+        try {
+            const response = await fetch(url, { signal: AbortSignal.timeout(12000) });
+            if (!response.ok) continue;
+            let text = await response.text();
+            // 511 API sometimes returns BOM character
+            if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+            const json = JSON.parse(text);
+
+            const events = json.events || [];
+            const now = Date.now();
+            const results = [];
+
+            events.forEach((evt, idx) => {
+                if (evt.status !== 'ACTIVE') return;
+
+                // Get coordinates [lng, lat] (GeoJSON order)
+                const coords = evt.geography?.coordinates;
+                if (!coords || coords.length < 2) return;
+                const lng = coords[0];
+                const lat = coords[1];
+
+                // Filter for East County bounding box
+                if (lat < EAST_COUNTY_BOUNDS.minLat || lat > EAST_COUNTY_BOUNDS.maxLat ||
+                    lng < EAST_COUNTY_BOUNDS.minLng || lng > EAST_COUNTY_BOUNDS.maxLng) return;
+
+                // Map event type to category
+                const evtType = (evt.event_type || '').toUpperCase();
+                const subtypes = (evt.event_subtypes || []).join(', ');
+                let category = 'traffic';
+                if (evtType === 'CONSTRUCTION' || evtType === 'ROAD_WORK') category = 'caltrans';
+
+                // Map severity
+                let severity = 'minor';
+                const sev = (evt.severity || '').toLowerCase();
+                if (sev === 'major') severity = 'critical';
+                else if (sev === 'moderate') severity = 'major';
+                else if (sev === 'minor') severity = 'moderate';
+
+                // Road state severity boost
+                const roadState = evt.roads?.[0]?.state || '';
+                if (roadState === 'CLOSED' || roadState === 'ALL_LANES_CLOSED') severity = 'critical';
+                else if (roadState === 'SOME_LANES_CLOSED' && severity === 'minor') severity = 'moderate';
+
+                const roadName = evt.roads?.[0]?.name || 'Unknown Road';
+                const areaName511 = evt.areas?.[0]?.name || '';
+                const area = findNearestArea(lat, lng);
+
+                // Parse time
+                let reportedAt = new Date();
+                let minsAgo = 0;
+                if (evt.created) {
+                    const parsed = new Date(evt.created);
+                    if (!isNaN(parsed.getTime())) {
+                        reportedAt = parsed;
+                        minsAgo = Math.max(0, Math.floor((now - parsed.getTime()) / 60000));
+                    }
+                }
+
+                const headline = evt.headline || `${evtType} - ${roadName}`;
+                const description = evt.description || headline;
+                const displayType = subtypes || evtType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+                results.push({
+                    id: 4000 + idx,
+                    category,
+                    type: displayType,
+                    description: description.length > 200 ? description.slice(0, 200) + '...' : description,
+                    severity,
+                    area: area.key,
+                    areaName: area.name,
+                    road: roadName,
+                    crossStreet: areaName511 ? `${areaName511} area` : `near ${area.name}`,
+                    location: `${roadName} near ${areaName511 || area.name}`,
+                    lat,
+                    lng,
+                    reportedAt,
+                    minsAgo,
+                    sourceUrl: 'https://511.org/',
+                    sourceLabel: '511.org Traffic Events',
+                    isLive: true
+                });
+            });
+
+            return results;
+        } catch (e) {
+            console.warn('511 API failed, trying next:', e.message);
+            continue;
+        }
+    }
+    console.warn('All 511 endpoints failed');
     return null;
 }
 
@@ -1037,32 +1140,43 @@ function renderUI() {
 async function loadIncidents() {
     if (!lastUpdated) {
         document.getElementById('content').innerHTML =
-            '<div class="loading"><div class="spinner"></div>Fetching live data from CHP &amp; Caltrans...</div>';
+            '<div class="loading"><div class="spinner"></div>Fetching live data from CHP, Caltrans &amp; 511...</div>';
     }
 
-    // Fetch both real data sources in parallel
-    const [chpData, caltransData] = await Promise.all([
+    // Fetch all real data sources in parallel
+    const [chpData, caltransData, data511] = await Promise.all([
         fetchCHPData(),
-        fetchCaltransData()
+        fetchCaltransData(),
+        fetch511Data()
     ]);
 
     // Generate simulated fallback data
     const simulatedAll = generateIncidents();
     const combined = [];
 
-    // CHP traffic incidents (real or simulated fallback)
-    if (chpData && chpData.length > 0) {
+    // CHP traffic incidents + 511 traffic events
+    const realTraffic = [];
+    if (chpData && chpData.length > 0) realTraffic.push(...chpData);
+    if (data511) {
+        realTraffic.push(...data511.filter(e => e.category === 'traffic'));
+    }
+    if (realTraffic.length > 0) {
         dataSourceStatus.traffic = 'live';
-        combined.push(...chpData);
+        combined.push(...realTraffic);
     } else {
         dataSourceStatus.traffic = 'simulated';
         combined.push(...simulatedAll.filter(i => i.category === 'traffic'));
     }
 
-    // Caltrans lane closures (real or simulated fallback)
-    if (caltransData && caltransData.length > 0) {
+    // Caltrans lane closures + 511 construction events
+    const realCaltrans = [];
+    if (caltransData && caltransData.length > 0) realCaltrans.push(...caltransData);
+    if (data511) {
+        realCaltrans.push(...data511.filter(e => e.category === 'caltrans'));
+    }
+    if (realCaltrans.length > 0) {
         dataSourceStatus.caltrans = 'live';
-        combined.push(...caltransData);
+        combined.push(...realCaltrans);
     } else {
         dataSourceStatus.caltrans = 'simulated';
         combined.push(...simulatedAll.filter(i => i.category === 'caltrans'));
