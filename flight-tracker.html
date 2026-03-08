@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Flight Tracker - 91980</title>
+    <title>Flight Tracker - 91935</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -280,7 +280,7 @@
 <body>
     <div class="header">
         <h1>Flight Tracker</h1>
-        <p>Live flights near 91980 &bull; Tecate, CA &bull; OpenSky Network</p>
+        <p>Live flights near 91935 &bull; Jamul, CA &bull; OpenSky Network</p>
         <a href="index.html" class="nav-link">&larr; Oil Tracker</a>
     </div>
 
@@ -304,7 +304,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 // ---- Config ----
-const ZIP_CENTER = { lat: 32.5730, lng: -116.6267 }; // 91980 Tecate, CA
+const ZIP_CENTER = { lat: 32.7174, lng: -116.8768 }; // 91935 Jamul, CA
 const MI_TO_DEG = 1 / 69.0; // rough miles to degrees latitude
 
 let map = null;
@@ -346,14 +346,14 @@ function initMap() {
         maxZoom: 19
     }).addTo(map);
 
-    // Center marker for 91980
+    // Center marker for 91935
     L.circleMarker([ZIP_CENTER.lat, ZIP_CENTER.lng], {
         radius: 6,
         color: '#a78bfa',
         fillColor: '#a78bfa',
         fillOpacity: 0.9,
         weight: 2
-    }).addTo(map).bindPopup('<strong>91980</strong><br>Tecate, CA');
+    }).addTo(map).bindPopup('<strong>91935</strong><br>Jamul, CA');
 
     drawRadiusCircle();
 }
@@ -525,7 +525,7 @@ async function loadFlights() {
     try {
         if (!lastUpdated) {
             document.getElementById('content').innerHTML =
-                '<div class="loading"><div class="spinner"></div>Scanning airspace near 91980...</div>';
+                '<div class="loading"><div class="spinner"></div>Scanning airspace near 91935...</div>';
         }
         flights = await fetchFlights();
         lastUpdated = new Date();
