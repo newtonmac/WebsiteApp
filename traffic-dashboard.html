@@ -305,10 +305,12 @@
             color: #e1e4e8 !important;
             border-radius: 12px !important;
             border: 1px solid #2d3040 !important;
+            overflow: visible !important;
         }
         .leaflet-popup-tip { background: #1a1d28 !important; }
-        .leaflet-popup-content { font-family: -apple-system, sans-serif; font-size: 13px; }
+        .leaflet-popup-content { font-family: -apple-system, sans-serif; font-size: 13px; overflow: visible !important; max-height: none !important; margin: 13px 19px 13px 19px !important; }
         .leaflet-popup-content strong { color: #60a5fa; }
+        .leaflet-popup-content a { color: #60a5fa !important; }
 
         .legend-box {
             position: absolute;
@@ -508,6 +510,24 @@ function generateIncidents() {
             const minsAgo = Math.floor(seededRandom(seed + 6) * 180);
             const reportedAt = new Date(now.getTime() - minsAgo * 60 * 1000);
 
+            // Source URLs by category
+            const sourceUrls = {
+                traffic: {
+                    url: 'https://cad.chp.ca.gov/Traffic.aspx',
+                    label: 'CHP Traffic Incidents'
+                },
+                caltrans: {
+                    url: 'https://quickmap.dot.ca.gov/',
+                    label: 'Caltrans QuickMap'
+                },
+                police: {
+                    url: 'https://www.crimemapping.com/map/ca/sandiego',
+                    label: 'CrimeMapping - San Diego'
+                }
+            };
+
+            const source = sourceUrls[category];
+
             allIncidents.push({
                 id: id++,
                 category,
@@ -522,7 +542,9 @@ function generateIncidents() {
                 lat: area.lat + latOffset,
                 lng: area.lng + lngOffset,
                 reportedAt,
-                minsAgo
+                minsAgo,
+                sourceUrl: source.url,
+                sourceLabel: source.label
             });
         }
     }
@@ -663,12 +685,16 @@ function plotIncidents() {
                     <div>${inc.crossStreet}</div>
                     <div style="margin-top:4px;"><strong>Area:</strong> ${inc.areaName}</div>
                     <div><strong>Reported:</strong> ${timeStr} (${inc.minsAgo}m ago)</div>
+                    <div style="margin-top:8px;padding-top:6px;border-top:1px solid #2d3040;">
+                        <strong style="font-size:11px;color:#8b8fa3;">Source:</strong><br>
+                        <a href="${inc.sourceUrl}" target="_blank" rel="noopener" style="color:#60a5fa;text-decoration:none;font-size:12px;font-weight:600;">${inc.sourceLabel} &rarr;</a>
+                    </div>
                 </div>
             </div>`;
 
         const marker = L.marker([inc.lat, inc.lng], { icon })
             .addTo(map)
-            .bindPopup(popup);
+            .bindPopup(popup, { maxWidth: 300 });
 
         incidentMarkers.push(marker);
     });
