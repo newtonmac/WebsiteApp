@@ -686,6 +686,10 @@
             <h3>Connect to Your Powerwalls</h3>
             <p class="auth-subtitle">Sign in with your Tesla account or connect to your local Gateway</p>
 
+            <div id="proxyStatus" class="auth-error">
+                Local proxy not detected. Run <strong>python3 tesla_proxy.py</strong> to enable Tesla Account login.
+            </div>
+
             <div class="auth-tabs" id="authTabs">
                 <button class="active" data-tab="tesla">Tesla Account</button>
                 <button data-tab="token">Access Token</button>
@@ -709,8 +713,11 @@
                     Sign in with Tesla
                 </button>
                 <p class="auth-note">
-                    Uses Tesla's OAuth2 authentication. Your credentials are sent directly to Tesla's servers
-                    and are never stored. Only the access token is kept locally in your browser.
+                    Requires the local proxy: run <strong>python3 tesla_proxy.py</strong> first.
+                    Your credentials are sent to the proxy on localhost which authenticates
+                    directly with Tesla's servers using OAuth2 (like
+                    <a href="https://github.com/adriankumpf/tesla_auth" target="_blank">tesla_auth</a>).
+                    Nothing is sent to any third-party server.
                 </p>
             </div>
 
@@ -724,8 +731,9 @@
                     Connect with Token
                 </button>
                 <p class="auth-note">
-                    Paste a Tesla API refresh token. You can generate one using the
-                    <a href="https://github.com/adriankumpf/tesla_auth" target="_blank">Tesla Auth</a> CLI tool
+                    Paste a Tesla API refresh token. Requires the local proxy (<strong>python3 tesla_proxy.py</strong>).
+                    You can also generate a token using
+                    <a href="https://github.com/adriankumpf/tesla_auth" target="_blank">tesla_auth</a> CLI
                     or extract it from the Tesla app.
                 </p>
             </div>
@@ -785,20 +793,33 @@
         let refreshInterval = null;
 
         // Auth state
-        let authMode = null; // 'tesla', 'token', 'gateway', 'demo'
-        let accessToken = null;
-        let refreshTokenValue = null;
-        let tokenExpiresAt = null;
+        let authMode = null; // 'proxy', 'gateway', 'demo'
         let energySiteId = null;
         let gatewayConfig = { ip: '', password: '' };
+        let proxyAvailable = false;
 
-        // Tesla OAuth2 endpoints
-        const TESLA_AUTH_BASE = 'https://auth.tesla.com';
-        const TESLA_AUTH_URL = TESLA_AUTH_BASE + '/oauth2/v3/authorize';
-        const TESLA_TOKEN_URL = TESLA_AUTH_BASE + '/oauth2/v3/token';
-        const TESLA_API_BASE = 'https://fleet-api.prd.na.vn.cloud.tesla.com';
-        const TESLA_OWNER_API = 'https://owner-api.teslamotors.com';
-        const TESLA_CLIENT_ID = 'ownerapi';
+        // Local proxy (tesla_proxy.py)
+        const PROXY_URL = 'http://localhost:8099';
+
+        // ── Proxy Detection ──
+        async function checkProxy() {
+            try {
+                const resp = await fetch(PROXY_URL + '/status', { signal: AbortSignal.timeout(2000) });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    proxyAvailable = true;
+                    document.getElementById('proxyStatus').style.display = 'none';
+                    // If proxy is already authenticated, we can auto-start
+                    if (data.authenticated) {
+                        return true;
+                    }
+                }
+            } catch (e) {
+                proxyAvailable = false;
+                document.getElementById('proxyStatus').style.display = 'block';
+            }
+            return false;
+        }
 
         // ── Auth Tab Switching ──
         document.querySelectorAll('#authTabs button').forEach(btn => {
@@ -813,7 +834,7 @@
 
         function showAuthError(msg) {
             const el = document.getElementById('authError');
-            el.textContent = msg;
+            el.innerHTML = msg;
             el.classList.add('show');
             document.getElementById('authSuccess').classList.remove('show');
         }
@@ -830,26 +851,7 @@
             document.getElementById('authSuccess').classList.remove('show');
         }
 
-        // ── PKCE Helpers ──
-        function generateRandomString(length) {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
-            const array = new Uint8Array(length);
-            crypto.getRandomValues(array);
-            return Array.from(array, b => chars[b % chars.length]).join('');
-        }
-
-        async function sha256(plain) {
-            const encoder = new TextEncoder();
-            const data = encoder.encode(plain);
-            return await crypto.subtle.digest('SHA-256', data);
-        }
-
-        function base64urlencode(buf) {
-            return btoa(String.fromCharCode(...new Uint8Array(buf)))
-                .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-        }
-
-        // ── Tesla Account Login (OAuth2 PKCE) ──
+        // ── Tesla Account Login (via local proxy) ──
         document.getElementById('teslaLoginBtn').addEventListener('click', async () => {
             const email = document.getElementById('teslaEmail').value.trim();
             const password = document.getElementById('teslaPassword').value;
@@ -859,143 +861,60 @@
                 return;
             }
 
+            if (!proxyAvailable) {
+                showAuthError(
+                    'Local proxy not running. Start it with: <strong>python3 tesla_proxy.py</strong><br>' +
+                    'The proxy handles Tesla OAuth2 authentication (no CORS issues).'
+                );
+                return;
+            }
+
             const btn = document.getElementById('teslaLoginBtn');
             btn.textContent = 'Signing in...';
             btn.disabled = true;
             hideAuthMessages();
 
             try {
-                // Step 1: Generate PKCE code verifier and challenge
-                const codeVerifier = generateRandomString(86);
-                const codeChallenge = base64urlencode(await sha256(codeVerifier));
-                const state = generateRandomString(20);
-
-                // Step 2: Get the login page to obtain cookies/hidden fields
-                const authParams = new URLSearchParams({
-                    client_id: TESLA_CLIENT_ID,
-                    code_challenge: codeChallenge,
-                    code_challenge_method: 'S256',
-                    redirect_uri: 'https://auth.tesla.com/void/callback',
-                    response_type: 'code',
-                    scope: 'openid email offline_access',
-                    state: state,
-                    login_hint: email
-                });
-
-                // Step 3: Submit credentials to Tesla's auth endpoint
-                const authResp = await fetch(TESLA_AUTH_URL + '?' + authParams.toString(), {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: new URLSearchParams({
-                        identity: email,
-                        credential: password
-                    }),
-                    redirect: 'manual'
-                });
-
-                // Tesla returns a 302 redirect with the authorization code
-                let authCode = null;
-
-                if (authResp.status === 302 || authResp.status === 303) {
-                    const location = authResp.headers.get('Location');
-                    if (location) {
-                        const url = new URL(location, TESLA_AUTH_BASE);
-                        authCode = url.searchParams.get('code');
-                    }
-                } else if (authResp.type === 'opaqueredirect') {
-                    // Fetch API in redirect: manual mode may return opaqueredirect
-                    showAuthError(
-                        'Browser security prevents direct Tesla login. Please use the Access Token tab instead, ' +
-                        'or open this dashboard from a local web server (not file://).'
-                    );
-                    return;
-                } else if (authResp.status === 401) {
-                    showAuthError('Invalid email or password. Please check your Tesla credentials.');
-                    return;
-                } else if (authResp.status === 403) {
-                    showAuthError(
-                        'Tesla blocked the login request (CORS). Please use the Access Token method, ' +
-                        'or connect via your local Gateway.'
-                    );
-                    return;
-                } else {
-                    // Try to parse error from response
-                    let detail = '';
-                    try {
-                        const body = await authResp.text();
-                        if (body.includes('captcha') || body.includes('recaptcha')) {
-                            detail = ' Tesla is requiring a CAPTCHA. Use the Access Token tab instead.';
-                        } else if (body.includes('blocked') || body.includes('locked')) {
-                            detail = ' Your account may be temporarily locked. Try again later.';
-                        }
-                    } catch (e) {}
-
-                    showAuthError(
-                        `Tesla auth returned status ${authResp.status}.${detail} ` +
-                        'Try the Access Token or Local Gateway tab instead.'
-                    );
-                    return;
-                }
-
-                if (!authCode) {
-                    showAuthError('Could not extract authorization code. Try the Access Token tab.');
-                    return;
-                }
-
-                // Step 4: Exchange authorization code for tokens
-                const tokenResp = await fetch(TESLA_TOKEN_URL, {
+                const resp = await fetch(PROXY_URL + '/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        grant_type: 'authorization_code',
-                        client_id: TESLA_CLIENT_ID,
-                        code: authCode,
-                        code_verifier: codeVerifier,
-                        redirect_uri: 'https://auth.tesla.com/void/callback'
-                    })
+                    body: JSON.stringify({ email, password })
                 });
 
-                if (!tokenResp.ok) {
-                    showAuthError(`Token exchange failed (${tokenResp.status}). Try the Access Token tab.`);
+                const data = await resp.json();
+
+                if (!resp.ok) {
+                    showAuthError(data.error || 'Login failed. Check your credentials.');
                     return;
                 }
 
-                const tokenData = await tokenResp.json();
-                accessToken = tokenData.access_token;
-                refreshTokenValue = tokenData.refresh_token;
-                tokenExpiresAt = Date.now() + (tokenData.expires_in * 1000);
-
-                // Save refresh token for future sessions
-                localStorage.setItem('tesla_refresh_token', refreshTokenValue);
-                localStorage.setItem('tesla_auth_mode', 'tesla');
-
-                authMode = 'tesla';
+                authMode = 'proxy';
+                localStorage.setItem('tesla_auth_mode', 'proxy');
                 showAuthSuccess('Signed in successfully!');
-
                 setTimeout(() => startDashboard(), 500);
 
             } catch (err) {
-                if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
-                    showAuthError(
-                        'Cannot reach Tesla servers from browser (CORS restriction). ' +
-                        'Use the Access Token tab with a refresh token, or connect via Local Gateway.'
-                    );
-                } else {
-                    showAuthError('Login error: ' + err.message);
-                }
+                showAuthError(
+                    'Cannot reach local proxy. Make sure <strong>python3 tesla_proxy.py</strong> is running.'
+                );
             } finally {
                 btn.textContent = 'Sign in with Tesla';
                 btn.disabled = false;
             }
         });
 
-        // ── Token Login ──
+        // ── Token Login (via local proxy) ──
         document.getElementById('tokenLoginBtn').addEventListener('click', async () => {
             const token = document.getElementById('refreshToken').value.trim();
             if (!token) {
                 showAuthError('Please enter a refresh token.');
+                return;
+            }
+
+            if (!proxyAvailable) {
+                showAuthError(
+                    'Local proxy not running. Start it with: <strong>python3 tesla_proxy.py</strong>'
+                );
                 return;
             }
 
@@ -1005,19 +924,25 @@
             hideAuthMessages();
 
             try {
-                refreshTokenValue = token;
-                await refreshAccessToken();
+                const resp = await fetch(PROXY_URL + '/auth/token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refresh_token: token })
+                });
 
-                localStorage.setItem('tesla_refresh_token', refreshTokenValue);
-                localStorage.setItem('tesla_auth_mode', 'token');
+                const data = await resp.json();
 
-                authMode = 'token';
+                if (!resp.ok) {
+                    showAuthError(data.error || 'Token authentication failed.');
+                    return;
+                }
+
+                authMode = 'proxy';
+                localStorage.setItem('tesla_auth_mode', 'proxy');
                 showAuthSuccess('Connected successfully!');
                 setTimeout(() => startDashboard(), 500);
             } catch (err) {
-                showAuthError('Invalid or expired token: ' + err.message);
-                refreshTokenValue = null;
-                accessToken = null;
+                showAuthError('Cannot reach local proxy. Make sure it is running.');
             } finally {
                 btn.textContent = 'Connect with Token';
                 btn.disabled = false;
@@ -1105,15 +1030,14 @@
         });
 
         // ── Sign Out ──
-        document.getElementById('signoutBtn').addEventListener('click', () => {
-            accessToken = null;
-            refreshTokenValue = null;
-            tokenExpiresAt = null;
+        document.getElementById('signoutBtn').addEventListener('click', async () => {
+            if (authMode === 'proxy') {
+                try { await fetch(PROXY_URL + '/auth/logout', { method: 'POST' }); } catch (e) {}
+            }
             energySiteId = null;
             authMode = null;
             powerwalls = [];
             energyHistory = [];
-            localStorage.removeItem('tesla_refresh_token');
             localStorage.removeItem('tesla_auth_mode');
             localStorage.removeItem('tesla_gateway_config');
             if (refreshInterval) clearInterval(refreshInterval);
@@ -1122,81 +1046,17 @@
             document.getElementById('dashControls').classList.add('hidden');
             document.getElementById('content').innerHTML = '';
             hideAuthMessages();
+            checkProxy(); // Re-check proxy status
         });
 
-        // ── Token Refresh ──
-        async function refreshAccessToken() {
-            const resp = await fetch(TESLA_TOKEN_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    grant_type: 'refresh_token',
-                    client_id: TESLA_CLIENT_ID,
-                    refresh_token: refreshTokenValue,
-                    scope: 'openid email offline_access'
-                })
-            });
-
+        // ── Tesla API via Proxy ──
+        async function proxyApiGet(endpoint) {
+            const resp = await fetch(PROXY_URL + endpoint);
             if (!resp.ok) {
-                const errorText = await resp.text();
-                throw new Error(`Token refresh failed (${resp.status})`);
+                const data = await resp.json().catch(() => ({}));
+                throw new Error(data.error || `Proxy API error (HTTP ${resp.status})`);
             }
-
-            const data = await resp.json();
-            accessToken = data.access_token;
-            if (data.refresh_token) {
-                refreshTokenValue = data.refresh_token;
-                localStorage.setItem('tesla_refresh_token', refreshTokenValue);
-            }
-            tokenExpiresAt = Date.now() + (data.expires_in * 1000);
-        }
-
-        async function ensureValidToken() {
-            if (authMode !== 'tesla' && authMode !== 'token') return;
-            // Refresh if token expires within 5 minutes
-            if (!accessToken || (tokenExpiresAt && Date.now() > tokenExpiresAt - 300000)) {
-                await refreshAccessToken();
-            }
-        }
-
-        // ── Tesla API Calls ──
-        async function teslaApiGet(endpoint) {
-            await ensureValidToken();
-
-            // Try Fleet API first, fall back to Owner API
-            const bases = [TESLA_API_BASE, TESLA_OWNER_API];
-
-            for (const base of bases) {
-                try {
-                    const resp = await fetch(base + endpoint, {
-                        headers: {
-                            'Authorization': 'Bearer ' + accessToken,
-                            'Content-Type': 'application/json'
-                        }
-                    });
-
-                    if (resp.ok) {
-                        return await resp.json();
-                    }
-
-                    if (resp.status === 401) {
-                        // Token expired, try refreshing
-                        await refreshAccessToken();
-                        const retry = await fetch(base + endpoint, {
-                            headers: {
-                                'Authorization': 'Bearer ' + accessToken,
-                                'Content-Type': 'application/json'
-                            }
-                        });
-                        if (retry.ok) return await retry.json();
-                    }
-                } catch (e) {
-                    console.warn(`API call to ${base} failed:`, e.message);
-                    continue;
-                }
-            }
-
-            throw new Error('All Tesla API endpoints failed for ' + endpoint);
+            return resp.json();
         }
 
         // ── Gateway API Calls ──
@@ -1212,9 +1072,12 @@
 
         // ── Data Fetching ──
         async function fetchTeslaPowerwallData() {
+            // All API calls go through the local proxy (tesla_proxy.py)
+            // which handles auth and proxies to Tesla's Fleet/Owner API
+
             // Step 1: Find energy site(s)
             if (!energySiteId) {
-                const products = await teslaApiGet('/api/1/products');
+                const products = await proxyApiGet('/api/1/products');
                 const energySites = (products.response || []).filter(
                     p => p.resource_type === 'battery' || p.energy_site_id
                 );
@@ -1248,12 +1111,12 @@
             }
 
             // Step 2: Get live status
-            const liveStatus = await teslaApiGet(`/api/1/energy_sites/${energySiteId}/live_status`);
+            const liveStatus = await proxyApiGet(`/api/1/energy_sites/${energySiteId}/live_status`);
             const live = liveStatus.response || liveStatus;
 
-            const soc = live.percentage_charged || live.energy_left && live.total_pack_energy
+            const soc = live.percentage_charged || (live.energy_left && live.total_pack_energy
                 ? ((live.energy_left / live.total_pack_energy) * 100)
-                : 0;
+                : 0);
 
             // Update powerwall SOC
             powerwalls.forEach(pw => {
@@ -1280,7 +1143,7 @@
                 try {
                     const period = selectedRange === 'today' ? 'day' : selectedRange <= 7 ? 'week' : 'month';
                     const endDate = new Date().toISOString();
-                    const history = await teslaApiGet(
+                    const history = await proxyApiGet(
                         `/api/1/energy_sites/${energySiteId}/calendar_history?kind=power&period=${period}&end_date=${endDate}`
                     );
 
@@ -1291,7 +1154,7 @@
                         home_kw: (ts.consumer_power || ts.load_power || 0) / 1000,
                         battery_kw: (ts.battery_power || 0) / 1000,
                         grid_kw: (ts.grid_power || 0) / 1000,
-                        soc: soc // Historical SOC not available from this endpoint
+                        soc: soc
                     }));
 
                     if (histEntries.length > 0) {
@@ -1439,7 +1302,7 @@
                     <div class="spinner"></div>
                     ${authMode === 'demo' ? 'Generating demo data...' :
                       authMode === 'gateway' ? 'Connecting to Gateway...' :
-                      'Fetching from Tesla API...'}
+                      'Fetching from Tesla API via proxy...'}
                 </div>`;
 
             try {
@@ -1450,7 +1313,7 @@
                     lastUpdated = new Date();
                 } else if (authMode === 'gateway') {
                     await fetchGatewayPowerwallData();
-                } else {
+                } else if (authMode === 'proxy') {
                     await fetchTeslaPowerwallData();
                 }
                 render();
@@ -1460,7 +1323,7 @@
                     <div class="error-msg">
                         ${authMode === 'gateway'
                             ? 'Unable to connect to Tesla Gateway: ' + err.message + '<br>Check your Gateway IP and password.'
-                            : 'Tesla API error: ' + err.message + '<br>Your token may have expired. Try signing out and back in.'}
+                            : 'Tesla API error: ' + err.message + '<br>Make sure tesla_proxy.py is running. Try signing out and back in.'}
                     </div>`;
             }
         }
@@ -1507,7 +1370,7 @@
             const batteryCharging = batteryNow > 0;
             const gridExporting = gridNow < 0;
 
-            const sourceLabel = authMode === 'demo' ? 'Demo' : authMode === 'gateway' ? 'Gateway' : 'Tesla API';
+            const sourceLabel = authMode === 'demo' ? 'Demo' : authMode === 'gateway' ? 'Gateway' : 'Tesla API (proxy)';
             const sourceClass = authMode === 'demo' ? 'demo' : authMode === 'gateway' ? 'gateway' : 'tesla';
 
             document.getElementById('content').innerHTML = `
@@ -1752,23 +1615,16 @@
         }
 
         // ── Auto-login from saved session ──
-        (function autoLogin() {
+        (async function autoLogin() {
+            // Always check proxy availability first
+            const proxyAuth = await checkProxy();
+
             const savedMode = localStorage.getItem('tesla_auth_mode');
 
-            if (savedMode === 'tesla' || savedMode === 'token') {
-                const savedToken = localStorage.getItem('tesla_refresh_token');
-                if (savedToken) {
-                    refreshTokenValue = savedToken;
-                    authMode = savedMode;
-                    // Refresh access token and start
-                    refreshAccessToken()
-                        .then(() => startDashboard())
-                        .catch(() => {
-                            localStorage.removeItem('tesla_refresh_token');
-                            localStorage.removeItem('tesla_auth_mode');
-                        });
-                    return;
-                }
+            if (savedMode === 'proxy' && proxyAuth) {
+                authMode = 'proxy';
+                startDashboard();
+                return;
             }
 
             if (savedMode === 'gateway') {
