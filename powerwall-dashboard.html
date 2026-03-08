@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tesla Powerwall Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f1117;
+            color: #e1e4e8;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1d28, #252836);
+            padding: 24px 32px;
+            border-bottom: 1px solid #2d3040;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #34d399, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header p {
+            color: #8b8fa3;
+            margin-top: 4px;
+            font-size: 14px;
+        }
+
+        .nav-link {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 6px 14px;
+            background: #252836;
+            color: #60a5fa;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            border: 1px solid #2d3040;
+            transition: all 0.2s;
+        }
+        .nav-link:hover { background: #2d3040; color: #a78bfa; }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+        }
+
+        .btn-group {
+            display: flex;
+            background: #1a1d28;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #2d3040;
+        }
+
+        .btn-group button {
+            padding: 10px 20px;
+            background: transparent;
+            color: #8b8fa3;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-group button.active {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-group button:hover:not(.active) {
+            color: #e1e4e8;
+            background: #252836;
+        }
+
+        .refresh-btn {
+            padding: 10px 20px;
+            background: #1a1d28;
+            color: #8b8fa3;
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            margin-left: auto;
+        }
+
+        .refresh-btn:hover {
+            background: #252836;
+            color: #e1e4e8;
+        }
+
+        /* Powerwall selector */
+        .pw-selector {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+        }
+
+        .pw-card {
+            flex: 1;
+            min-width: 200px;
+            background: #1a1d28;
+            border-radius: 16px;
+            border: 2px solid #2d3040;
+            padding: 16px 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .pw-card:hover { border-color: #3b82f6; }
+        .pw-card.active { border-color: #3b82f6; background: #1e2438; }
+        .pw-card.all-selected { border-color: #34d399; background: #1a2e28; }
+
+        .pw-card .pw-name {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .pw-card .pw-status {
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .pw-card .pw-status .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .pw-card .pw-status .dot.online { background: #34d399; }
+        .pw-card .pw-status .dot.offline { background: #f87171; }
+        .pw-card .pw-status .dot.standby { background: #fbbf24; }
+
+        .pw-card .pw-soc {
+            font-size: 22px;
+            font-weight: 700;
+            color: #34d399;
+            margin-top: 6px;
+        }
+
+        /* Power flow visualization */
+        .power-flow {
+            background: #1a1d28;
+            border-radius: 16px;
+            border: 1px solid #2d3040;
+            padding: 32px;
+            margin-bottom: 24px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: auto auto auto;
+            gap: 16px;
+            align-items: center;
+            justify-items: center;
+        }
+
+        .flow-node {
+            text-align: center;
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid #2d3040;
+            background: #0f1117;
+            width: 100%;
+            max-width: 240px;
+        }
+
+        .flow-node .icon {
+            font-size: 36px;
+            margin-bottom: 8px;
+        }
+
+        .flow-node .node-label {
+            font-size: 13px;
+            color: #8b8fa3;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .flow-node .node-value {
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .flow-node .node-sub {
+            font-size: 12px;
+            color: #8b8fa3;
+            margin-top: 4px;
+        }
+
+        .flow-node.solar .node-value { color: #fbbf24; }
+        .flow-node.battery .node-value { color: #34d399; }
+        .flow-node.grid .node-value { color: #60a5fa; }
+        .flow-node.home .node-value { color: #a78bfa; }
+
+        .flow-arrow {
+            text-align: center;
+            font-size: 24px;
+            color: #3b82f680;
+        }
+
+        .flow-arrow.active { color: #3b82f6; }
+        .flow-arrow.export { color: #34d399; }
+        .flow-arrow.import { color: #f87171; }
+
+        /* Battery gauge */
+        .battery-gauge {
+            background: #1a1d28;
+            border-radius: 16px;
+            border: 1px solid #2d3040;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .battery-gauge h3 {
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+
+        .gauge-bar-container {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .gauge-item {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .gauge-item .gauge-label {
+            font-size: 13px;
+            color: #8b8fa3;
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .gauge-bar {
+            height: 24px;
+            background: #0f1117;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid #2d3040;
+        }
+
+        .gauge-fill {
+            height: 100%;
+            border-radius: 12px;
+            transition: width 0.8s ease;
+            position: relative;
+        }
+
+        .gauge-fill.high { background: linear-gradient(90deg, #34d399, #10b981); }
+        .gauge-fill.medium { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+        .gauge-fill.low { background: linear-gradient(90deg, #f87171, #ef4444); }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: #1a1d28;
+            border-radius: 16px;
+            border: 1px solid #2d3040;
+            padding: 20px;
+        }
+
+        .stat-card .label {
+            font-size: 13px;
+            color: #8b8fa3;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .stat-card .value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .stat-card .value.green { color: #34d399; }
+        .stat-card .value.red { color: #f87171; }
+        .stat-card .value.blue { color: #60a5fa; }
+        .stat-card .value.purple { color: #a78bfa; }
+        .stat-card .value.amber { color: #fbbf24; }
+
+        .stat-card .sub {
+            font-size: 12px;
+            color: #8b8fa3;
+            margin-top: 4px;
+        }
+
+        .chart-container {
+            background: #1a1d28;
+            border-radius: 16px;
+            border: 1px solid #2d3040;
+            padding: 24px;
+            position: relative;
+            height: 350px;
+            margin-bottom: 24px;
+        }
+
+        .chart-container canvas {
+            max-height: 400px;
+        }
+
+        .chart-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .chart-section {
+            margin-bottom: 24px;
+        }
+
+        .recent-table {
+            background: #1a1d28;
+            border-radius: 16px;
+            border: 1px solid #2d3040;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .recent-table h3 {
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+
+        .recent-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .recent-table th {
+            text-align: left;
+            padding: 10px 12px;
+            color: #8b8fa3;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #2d3040;
+        }
+
+        .recent-table td {
+            padding: 12px;
+            border-bottom: 1px solid #1e2130;
+            font-size: 14px;
+        }
+
+        .recent-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: #8b8fa3;
+            font-size: 16px;
+        }
+
+        .loading .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #2d3040;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .error-msg {
+            background: #1a1d28;
+            border: 1px solid #f8717133;
+            color: #f87171;
+            padding: 12px 20px;
+            border-radius: 10px;
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+
+        .data-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 12px 20px;
+            background: #1a1d28;
+            border-radius: 12px;
+            border: 1px solid #2d3040;
+            margin-bottom: 24px;
+            font-size: 13px;
+            color: #8b8fa3;
+        }
+
+        .data-status .source-tag {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .data-status .source-tesla { background: #e3193720; color: #f87171; }
+        .data-status .source-demo { background: #3b82f620; color: #60a5fa; }
+
+        .config-panel {
+            background: #1a1d28;
+            border-radius: 16px;
+            border: 1px solid #2d3040;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .config-panel h3 {
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+
+        .config-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .config-row label {
+            font-size: 14px;
+            color: #8b8fa3;
+            min-width: 120px;
+        }
+
+        .config-row input {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px 14px;
+            background: #0f1117;
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            color: #e1e4e8;
+            font-size: 14px;
+        }
+
+        .config-row input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .config-btn {
+            padding: 10px 24px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .config-btn:hover { background: #2563eb; }
+
+        .config-btn.secondary {
+            background: #252836;
+            color: #8b8fa3;
+            border: 1px solid #2d3040;
+        }
+
+        .config-btn.secondary:hover {
+            background: #2d3040;
+            color: #e1e4e8;
+        }
+
+        .config-note {
+            font-size: 12px;
+            color: #8b8fa3;
+            margin-top: 8px;
+        }
+
+        .hidden { display: none; }
+
+        @media (max-width: 768px) {
+            .power-flow {
+                grid-template-columns: 1fr;
+            }
+            .flow-arrow {
+                transform: rotate(90deg);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Tesla Powerwall Dashboard</h1>
+        <p>Monitor your Powerwalls &bull; Solar, Battery &amp; Grid &bull; Real-time status</p>
+        <a href="index.html" class="nav-link">&larr; Oil Tracker</a>
+        <a href="gold-tracker.html" class="nav-link">Gold Tracker</a>
+        <a href="currency-tracker.html" class="nav-link">Currency Tracker</a>
+        <a href="flight-tracker.html" class="nav-link">Flight Tracker</a>
+        <a href="traffic-dashboard.html" class="nav-link">Traffic Dashboard</a>
+    </div>
+
+    <div class="container">
+        <!-- Config panel for Tesla API connection -->
+        <div class="config-panel" id="configPanel">
+            <h3>Connect to Tesla Gateway</h3>
+            <div class="config-row">
+                <label>Gateway IP:</label>
+                <input type="text" id="gatewayIp" placeholder="e.g. 192.168.1.100 or https://powerwall" />
+            </div>
+            <div class="config-row">
+                <label>Auth Token:</label>
+                <input type="password" id="authToken" placeholder="Bearer token from Tesla Gateway" />
+            </div>
+            <div class="config-row">
+                <button class="config-btn" id="connectBtn">Connect</button>
+                <button class="config-btn secondary" id="demoBtn">Use Demo Data</button>
+            </div>
+            <p class="config-note">
+                Connect to your local Tesla Gateway for live data, or use demo mode to explore the dashboard.
+                Your credentials are stored locally in your browser and never sent to any external server.
+            </p>
+        </div>
+
+        <div class="controls hidden" id="dashControls">
+            <div class="btn-group" id="timeRange">
+                <button class="active" data-range="today">Today</button>
+                <button data-range="7">1W</button>
+                <button data-range="30">1M</button>
+                <button data-range="90">3M</button>
+                <button data-range="365">1Y</button>
+            </div>
+            <button class="refresh-btn" id="refreshBtn">&#x21bb; Refresh</button>
+        </div>
+
+        <div id="content"></div>
+    </div>
+
+    <script>
+        // State
+        let powerwalls = [];
+        let selectedPowerwall = 'all'; // 'all' or index
+        let selectedRange = 'today';
+        let energyHistory = [];
+        let powerChart = null;
+        let socChart = null;
+        let lastUpdated = null;
+        let isDemo = false;
+        let gatewayConfig = { ip: '', token: '' };
+        let refreshInterval = null;
+
+        // Load saved config
+        const savedConfig = localStorage.getItem('powerwall_config');
+        if (savedConfig) {
+            try {
+                const cfg = JSON.parse(savedConfig);
+                document.getElementById('gatewayIp').value = cfg.ip || '';
+                document.getElementById('authToken').value = cfg.token || '';
+            } catch (e) {}
+        }
+
+        // Controls
+        document.getElementById('connectBtn').addEventListener('click', () => {
+            gatewayConfig.ip = document.getElementById('gatewayIp').value.trim();
+            gatewayConfig.token = document.getElementById('authToken').value.trim();
+            if (!gatewayConfig.ip) {
+                alert('Please enter your Gateway IP address');
+                return;
+            }
+            localStorage.setItem('powerwall_config', JSON.stringify({ ip: gatewayConfig.ip, token: gatewayConfig.token }));
+            isDemo = false;
+            startDashboard();
+        });
+
+        document.getElementById('demoBtn').addEventListener('click', () => {
+            isDemo = true;
+            startDashboard();
+        });
+
+        document.querySelectorAll('#timeRange button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('#timeRange button').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                selectedRange = btn.dataset.range === 'today' ? 'today' : parseInt(btn.dataset.range);
+                fetchAndRender();
+            });
+        });
+
+        document.getElementById('refreshBtn').addEventListener('click', fetchAndRender);
+
+        function startDashboard() {
+            document.getElementById('configPanel').classList.add('hidden');
+            document.getElementById('dashControls').classList.remove('hidden');
+            fetchAndRender();
+            // Auto-refresh every 30 seconds
+            if (refreshInterval) clearInterval(refreshInterval);
+            refreshInterval = setInterval(fetchAndRender, 30000);
+        }
+
+        // ── Demo Data Generation ──
+
+        function generateDemoPowerwalls() {
+            return [
+                {
+                    name: 'Powerwall 1',
+                    serial: 'TG12345678901A',
+                    status: 'online',
+                    soc: 72 + Math.random() * 15,
+                    capacity_kwh: 13.5,
+                    firmware: '24.36.3',
+                    grid_status: 'connected'
+                },
+                {
+                    name: 'Powerwall 2',
+                    serial: 'TG12345678902B',
+                    status: 'online',
+                    soc: 68 + Math.random() * 18,
+                    capacity_kwh: 13.5,
+                    firmware: '24.36.3',
+                    grid_status: 'connected'
+                },
+                {
+                    name: 'Powerwall 3',
+                    serial: 'TG12345678903C',
+                    status: 'online',
+                    soc: 75 + Math.random() * 12,
+                    capacity_kwh: 13.5,
+                    firmware: '24.36.3',
+                    grid_status: 'connected'
+                }
+            ];
+        }
+
+        function generateDemoHistory(days) {
+            const data = [];
+            const now = new Date();
+            const intervalMin = days <= 1 ? 5 : days <= 7 ? 30 : 60;
+            const totalPoints = days <= 1 ? 288 : Math.min(days * (1440 / intervalMin), 2000);
+
+            for (let i = totalPoints; i >= 0; i--) {
+                const timestamp = new Date(now.getTime() - i * intervalMin * 60 * 1000);
+                const hour = timestamp.getHours() + timestamp.getMinutes() / 60;
+
+                // Solar: bell curve peaking at noon, 0 at night
+                let solar = 0;
+                if (hour >= 6 && hour <= 20) {
+                    const solarPeak = 7.5 + Math.random() * 2.5; // 7.5-10 kW peak
+                    solar = solarPeak * Math.exp(-0.5 * Math.pow((hour - 13) / 3, 2));
+                    solar *= (0.85 + Math.random() * 0.3); // cloud variance
+                    solar = Math.max(0, solar);
+                }
+
+                // Home consumption: base load + activity patterns
+                let home = 1.0 + Math.random() * 0.5; // base load 1-1.5 kW
+                if (hour >= 7 && hour <= 9) home += 1.5 + Math.random(); // morning
+                if (hour >= 11 && hour <= 13) home += 1.0 + Math.random() * 0.5; // lunch
+                if (hour >= 17 && hour <= 22) home += 2.0 + Math.random() * 1.5; // evening peak
+                if (hour >= 14 && hour <= 17) home += 1.5 + Math.random(); // AC afternoon
+                // Random spikes (EV charging, dryer, etc)
+                if (Math.random() < 0.03) home += 5 + Math.random() * 3;
+
+                // Battery: charges from solar excess, discharges when needed
+                const excess = solar - home;
+                let battery = 0;
+                let grid = 0;
+
+                if (excess > 0) {
+                    // Solar excess: charge battery, export remainder
+                    battery = Math.min(excess, 5); // max 5kW charge rate
+                    grid = -(excess - battery); // negative = export
+                } else {
+                    // Deficit: discharge battery first, then import
+                    battery = Math.max(excess, -5); // max 5kW discharge
+                    grid = Math.max(0, -excess - Math.abs(battery)); // positive = import
+                }
+
+                // SOC simulation
+                const baseSoc = 50;
+                const socSwing = 30 * Math.sin((hour - 6) * Math.PI / 14);
+                const soc = Math.max(10, Math.min(100, baseSoc + socSwing + Math.random() * 5));
+
+                data.push({
+                    timestamp: timestamp.toISOString(),
+                    solar_kw: Math.round(solar * 100) / 100,
+                    home_kw: Math.round(home * 100) / 100,
+                    battery_kw: Math.round(battery * 100) / 100, // positive=charging, negative=discharging
+                    grid_kw: Math.round(grid * 100) / 100, // positive=import, negative=export
+                    soc: Math.round(soc * 10) / 10
+                });
+            }
+            return data;
+        }
+
+        // ── Data Fetching ──
+
+        async function fetchFromGateway(endpoint) {
+            const base = gatewayConfig.ip.startsWith('http') ? gatewayConfig.ip : `https://${gatewayConfig.ip}`;
+            const headers = {};
+            if (gatewayConfig.token) {
+                headers['Authorization'] = `Bearer ${gatewayConfig.token}`;
+            }
+            const resp = await fetch(`${base}${endpoint}`, {
+                headers,
+                // Local gateway uses self-signed certs
+            });
+            if (!resp.ok) throw new Error(`Gateway HTTP ${resp.status}`);
+            return resp.json();
+        }
+
+        async function fetchPowerwallData() {
+            if (isDemo) {
+                powerwalls = generateDemoPowerwalls();
+                const days = selectedRange === 'today' ? 1 : selectedRange;
+                energyHistory = generateDemoHistory(days);
+                lastUpdated = new Date();
+                return;
+            }
+
+            try {
+                // Tesla Gateway local API endpoints
+                const [status, soe, meters, gridStatus] = await Promise.allSettled([
+                    fetchFromGateway('/api/powerwalls'),
+                    fetchFromGateway('/api/system_status/soe'),
+                    fetchFromGateway('/api/meters/aggregates'),
+                    fetchFromGateway('/api/system_status/grid_status')
+                ]);
+
+                const pwData = status.status === 'fulfilled' ? status.value : {};
+                const soeData = soe.status === 'fulfilled' ? soe.value : {};
+                const meterData = meters.status === 'fulfilled' ? meters.value : {};
+                const gridData = gridStatus.status === 'fulfilled' ? gridStatus.value : {};
+
+                // Map powerwalls
+                if (pwData.powerwalls) {
+                    powerwalls = pwData.powerwalls.map((pw, idx) => ({
+                        name: `Powerwall ${idx + 1}`,
+                        serial: pw.PackageSerialNumber || 'Unknown',
+                        status: pw.detecting_disabled ? 'standby' : 'online',
+                        soc: soeData.percentage || 0,
+                        capacity_kwh: 13.5,
+                        firmware: pw.version || 'Unknown',
+                        grid_status: gridData.grid_status || 'unknown'
+                    }));
+                }
+
+                // Build current snapshot for history
+                if (meterData) {
+                    const snapshot = {
+                        timestamp: new Date().toISOString(),
+                        solar_kw: (meterData.solar?.instant_power || 0) / 1000,
+                        home_kw: (meterData.load?.instant_power || 0) / 1000,
+                        battery_kw: (meterData.battery?.instant_power || 0) / 1000,
+                        grid_kw: (meterData.site?.instant_power || 0) / 1000,
+                        soc: soeData.percentage || 0
+                    };
+                    energyHistory.push(snapshot);
+                    // Keep last 2000 entries
+                    if (energyHistory.length > 2000) energyHistory = energyHistory.slice(-2000);
+                }
+
+                lastUpdated = new Date();
+            } catch (err) {
+                console.error('Gateway fetch error:', err);
+                throw err;
+            }
+        }
+
+        async function fetchAndRender() {
+            document.getElementById('content').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    ${isDemo ? 'Generating demo data...' : 'Connecting to Tesla Gateway...'}
+                </div>`;
+
+            try {
+                await fetchPowerwallData();
+                render();
+            } catch (err) {
+                document.getElementById('content').innerHTML = `
+                    <div class="error-msg">
+                        Unable to connect to Tesla Gateway: ${err.message}<br>
+                        Check your Gateway IP and authentication token.
+                    </div>`;
+            }
+        }
+
+        // ── Rendering ──
+
+        function formatKw(kw) {
+            if (Math.abs(kw) >= 1000) return (kw / 1000).toFixed(1) + ' MW';
+            return kw.toFixed(2) + ' kW';
+        }
+
+        function formatKwh(kwh) {
+            if (Math.abs(kwh) >= 1000) return (kwh / 1000).toFixed(1) + ' MWh';
+            return kwh.toFixed(1) + ' kWh';
+        }
+
+        function getSelectedPowerwalls() {
+            if (selectedPowerwall === 'all') return powerwalls;
+            return [powerwalls[selectedPowerwall]];
+        }
+
+        function render() {
+            if (powerwalls.length === 0) return;
+
+            const now = new Date();
+            const updatedStr = lastUpdated ? lastUpdated.toLocaleString('en-US', {
+                month: 'short', day: 'numeric', year: 'numeric',
+                hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
+            }) : '-';
+
+            // Current values (latest from history)
+            const latest = energyHistory.length > 0 ? energyHistory[energyHistory.length - 1] : null;
+            const solarNow = latest ? latest.solar_kw : 0;
+            const homeNow = latest ? latest.home_kw : 0;
+            const batteryNow = latest ? latest.battery_kw : 0;
+            const gridNow = latest ? latest.grid_kw : 0;
+            const socNow = latest ? latest.soc : 0;
+
+            // Aggregate stats from history
+            const totalSolar = energyHistory.reduce((s, h) => s + Math.max(0, h.solar_kw), 0) * (5 / 60); // kWh approx
+            const totalHome = energyHistory.reduce((s, h) => s + h.home_kw, 0) * (5 / 60);
+            const totalGridImport = energyHistory.reduce((s, h) => s + Math.max(0, h.grid_kw), 0) * (5 / 60);
+            const totalGridExport = energyHistory.reduce((s, h) => s + Math.abs(Math.min(0, h.grid_kw)), 0) * (5 / 60);
+            const selfPowered = totalHome > 0 ? Math.min(100, ((totalHome - totalGridImport) / totalHome) * 100) : 0;
+            const peakSolar = Math.max(...energyHistory.map(h => h.solar_kw));
+            const peakHome = Math.max(...energyHistory.map(h => h.home_kw));
+            const avgSoc = energyHistory.reduce((s, h) => s + h.soc, 0) / energyHistory.length;
+
+            // Total capacity
+            const totalCapacity = powerwalls.length * 13.5;
+            const totalStored = (socNow / 100) * totalCapacity;
+
+            // Power flow directions
+            const batteryCharging = batteryNow > 0;
+            const gridExporting = gridNow < 0;
+
+            document.getElementById('content').innerHTML = `
+                <div class="data-status">
+                    <div>Last updated: <strong>${updatedStr}</strong> &bull; ${powerwalls.length} Powerwall${powerwalls.length > 1 ? 's' : ''} &bull; Auto-refresh: 30s</div>
+                    <div>Source: <span class="source-tag source-${isDemo ? 'demo' : 'tesla'}">${isDemo ? 'Demo' : 'Tesla Gateway'}</span></div>
+                </div>
+
+                <!-- Powerwall selector -->
+                <div class="pw-selector" id="pwSelector">
+                    <div class="pw-card ${selectedPowerwall === 'all' ? 'all-selected' : ''}" data-pw="all">
+                        <div class="pw-name">All Powerwalls</div>
+                        <div class="pw-status">
+                            <span class="dot online"></span>
+                            <span style="color: #8b8fa3">${powerwalls.filter(p => p.status === 'online').length}/${powerwalls.length} online</span>
+                        </div>
+                        <div class="pw-soc">${socNow.toFixed(0)}%</div>
+                    </div>
+                    ${powerwalls.map((pw, i) => `
+                        <div class="pw-card ${selectedPowerwall === i ? 'active' : ''}" data-pw="${i}">
+                            <div class="pw-name">${pw.name}</div>
+                            <div class="pw-status">
+                                <span class="dot ${pw.status}"></span>
+                                <span style="color: #8b8fa3">${pw.status}</span>
+                            </div>
+                            <div class="pw-soc">${pw.soc.toFixed(0)}%</div>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <!-- Power Flow -->
+                <div class="power-flow">
+                    <div class="flow-node solar">
+                        <div class="icon">&#9728;</div>
+                        <div class="node-label">Solar</div>
+                        <div class="node-value">${formatKw(solarNow)}</div>
+                        <div class="node-sub">${solarNow > 0 ? 'Producing' : 'Inactive'}</div>
+                    </div>
+                    <div class="flow-arrow ${solarNow > 0 ? 'active' : ''}">&rarr;</div>
+                    <div class="flow-node home">
+                        <div class="icon">&#127968;</div>
+                        <div class="node-label">Home</div>
+                        <div class="node-value">${formatKw(homeNow)}</div>
+                        <div class="node-sub">Consuming</div>
+                    </div>
+
+                    <div class="flow-node battery">
+                        <div class="icon">&#128267;</div>
+                        <div class="node-label">Powerwall</div>
+                        <div class="node-value">${formatKw(Math.abs(batteryNow))}</div>
+                        <div class="node-sub">${batteryCharging ? 'Charging' : 'Discharging'} &bull; ${socNow.toFixed(0)}%</div>
+                    </div>
+                    <div class="flow-arrow ${gridExporting ? 'export' : (gridNow > 0.1 ? 'import' : '')}">${gridExporting ? '&rarr;' : '&larr;'}</div>
+                    <div class="flow-node grid">
+                        <div class="icon">&#9889;</div>
+                        <div class="node-label">Grid</div>
+                        <div class="node-value">${formatKw(Math.abs(gridNow))}</div>
+                        <div class="node-sub">${gridExporting ? 'Exporting' : (gridNow > 0.1 ? 'Importing' : 'Idle')}</div>
+                    </div>
+                </div>
+
+                <!-- Battery gauges -->
+                <div class="battery-gauge">
+                    <h3>Battery State of Charge</h3>
+                    <div class="gauge-bar-container">
+                        ${powerwalls.map((pw, i) => {
+                            const soc = pw.soc;
+                            const cls = soc > 50 ? 'high' : soc > 20 ? 'medium' : 'low';
+                            return `
+                                <div class="gauge-item">
+                                    <div class="gauge-label">
+                                        <span>${pw.name}</span>
+                                        <span>${soc.toFixed(0)}% &bull; ${(soc / 100 * pw.capacity_kwh).toFixed(1)} kWh</span>
+                                    </div>
+                                    <div class="gauge-bar">
+                                        <div class="gauge-fill ${cls}" style="width: ${soc}%"></div>
+                                    </div>
+                                </div>`;
+                        }).join('')}
+                        <div class="gauge-item">
+                            <div class="gauge-label">
+                                <span>Total System</span>
+                                <span>${socNow.toFixed(0)}% &bull; ${totalStored.toFixed(1)} / ${totalCapacity.toFixed(1)} kWh</span>
+                            </div>
+                            <div class="gauge-bar">
+                                <div class="gauge-fill ${socNow > 50 ? 'high' : socNow > 20 ? 'medium' : 'low'}" style="width: ${socNow}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="label">Solar Production</div>
+                        <div class="value amber">${formatKwh(totalSolar)}</div>
+                        <div class="sub">Peak: ${formatKw(peakSolar)}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Home Consumption</div>
+                        <div class="value purple">${formatKwh(totalHome)}</div>
+                        <div class="sub">Peak: ${formatKw(peakHome)}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Grid Import</div>
+                        <div class="value red">${formatKwh(totalGridImport)}</div>
+                        <div class="sub">From utility</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Grid Export</div>
+                        <div class="value green">${formatKwh(totalGridExport)}</div>
+                        <div class="sub">Sold back</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Self-Powered</div>
+                        <div class="value blue">${selfPowered.toFixed(1)}%</div>
+                        <div class="sub">Solar + Battery</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Avg State of Charge</div>
+                        <div class="value green">${avgSoc.toFixed(1)}%</div>
+                        <div class="sub">${powerwalls.length}x Powerwall (${totalCapacity} kWh)</div>
+                    </div>
+                </div>
+
+                <!-- Power chart -->
+                <div class="chart-section">
+                    <div class="chart-title">Power Flow Over Time</div>
+                    <div class="chart-container">
+                        <canvas id="powerChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- SOC chart -->
+                <div class="chart-section">
+                    <div class="chart-title">State of Charge</div>
+                    <div class="chart-container">
+                        <canvas id="socChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Event log -->
+                <div class="recent-table">
+                    <h3>System Details</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Powerwall</th>
+                                <th>Serial</th>
+                                <th>Status</th>
+                                <th>SOC</th>
+                                <th>Firmware</th>
+                                <th>Grid</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${powerwalls.map(pw => `
+                                <tr>
+                                    <td><strong>${pw.name}</strong></td>
+                                    <td style="color: #8b8fa3; font-family: monospace; font-size: 12px">${pw.serial}</td>
+                                    <td>
+                                        <span class="dot ${pw.status}" style="display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px"></span>
+                                        ${pw.status}
+                                    </td>
+                                    <td style="color: ${pw.soc > 50 ? '#34d399' : pw.soc > 20 ? '#fbbf24' : '#f87171'}; font-weight: 600">
+                                        ${pw.soc.toFixed(1)}%
+                                    </td>
+                                    <td style="color: #8b8fa3">${pw.firmware}</td>
+                                    <td style="color: ${pw.grid_status === 'connected' ? '#34d399' : '#f87171'}">${pw.grid_status}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            // Bind powerwall selector
+            document.querySelectorAll('.pw-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const pw = card.dataset.pw;
+                    selectedPowerwall = pw === 'all' ? 'all' : parseInt(pw);
+                    render();
+                });
+            });
+
+            renderCharts();
+        }
+
+        function renderCharts() {
+            if (energyHistory.length < 2) return;
+
+            const data = energyHistory;
+
+            // Power Flow Chart
+            const powerCtx = document.getElementById('powerChart').getContext('2d');
+            if (powerChart) powerChart.destroy();
+
+            const solarGrad = powerCtx.createLinearGradient(0, 0, 0, 300);
+            solarGrad.addColorStop(0, '#fbbf2430');
+            solarGrad.addColorStop(1, '#fbbf2405');
+
+            powerChart = new Chart(powerCtx, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => d.timestamp),
+                    datasets: [
+                        {
+                            label: 'Solar',
+                            data: data.map(d => d.solar_kw),
+                            borderColor: '#fbbf24',
+                            backgroundColor: solarGrad,
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 0,
+                            pointHitRadius: 10
+                        },
+                        {
+                            label: 'Home',
+                            data: data.map(d => d.home_kw),
+                            borderColor: '#a78bfa',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.3,
+                            pointRadius: 0,
+                            pointHitRadius: 10
+                        },
+                        {
+                            label: 'Battery',
+                            data: data.map(d => d.battery_kw),
+                            borderColor: '#34d399',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.3,
+                            pointRadius: 0,
+                            pointHitRadius: 10,
+                            borderDash: [5, 3]
+                        },
+                        {
+                            label: 'Grid',
+                            data: data.map(d => d.grid_kw),
+                            borderColor: '#60a5fa',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.3,
+                            pointRadius: 0,
+                            pointHitRadius: 10,
+                            borderDash: [2, 2]
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: '#8b8fa3',
+                                usePointStyle: true,
+                                pointStyle: 'line',
+                                padding: 20
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#252836',
+                            titleColor: '#e1e4e8',
+                            bodyColor: '#e1e4e8',
+                            borderColor: '#2d3040',
+                            borderWidth: 1,
+                            padding: 12,
+                            callbacks: {
+                                label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)} kW`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                tooltipFormat: 'MMM d, yyyy HH:mm',
+                                displayFormats: {
+                                    minute: 'HH:mm',
+                                    hour: 'HH:mm',
+                                    day: 'MMM d',
+                                    month: 'MMM yyyy'
+                                }
+                            },
+                            grid: { color: '#2d304040', drawBorder: false },
+                            ticks: { color: '#8b8fa3', maxTicksLimit: 10 }
+                        },
+                        y: {
+                            grid: { color: '#2d304040', drawBorder: false },
+                            ticks: {
+                                color: '#8b8fa3',
+                                callback: v => v.toFixed(1) + ' kW'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Power (kW)',
+                                color: '#8b8fa3'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // SOC Chart
+            const socCtx = document.getElementById('socChart').getContext('2d');
+            if (socChart) socChart.destroy();
+
+            const socGrad = socCtx.createLinearGradient(0, 0, 0, 300);
+            socGrad.addColorStop(0, '#34d39940');
+            socGrad.addColorStop(1, '#34d39905');
+
+            socChart = new Chart(socCtx, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => d.timestamp),
+                    datasets: [{
+                        label: 'State of Charge',
+                        data: data.map(d => d.soc),
+                        borderColor: '#34d399',
+                        backgroundColor: socGrad,
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 0,
+                        pointHitRadius: 10,
+                        pointHoverRadius: 5,
+                        pointHoverBackgroundColor: '#34d399'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#252836',
+                            titleColor: '#e1e4e8',
+                            bodyColor: '#e1e4e8',
+                            borderColor: '#2d3040',
+                            borderWidth: 1,
+                            padding: 12,
+                            displayColors: false,
+                            callbacks: {
+                                label: ctx => `SOC: ${ctx.parsed.y.toFixed(1)}%`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                tooltipFormat: 'MMM d, yyyy HH:mm',
+                                displayFormats: {
+                                    minute: 'HH:mm',
+                                    hour: 'HH:mm',
+                                    day: 'MMM d',
+                                    month: 'MMM yyyy'
+                                }
+                            },
+                            grid: { color: '#2d304040', drawBorder: false },
+                            ticks: { color: '#8b8fa3', maxTicksLimit: 10 }
+                        },
+                        y: {
+                            min: 0,
+                            max: 100,
+                            grid: { color: '#2d304040', drawBorder: false },
+                            ticks: {
+                                color: '#8b8fa3',
+                                callback: v => v + '%'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Charge (%)',
+                                color: '#8b8fa3'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
