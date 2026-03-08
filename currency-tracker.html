@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MXN/USD Currency Exchange Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -139,6 +141,10 @@
             border-radius: 16px;
             border: 1px solid #2d3040;
             padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .chart-container {
             position: relative;
             height: 350px;
             margin-bottom: 24px;
@@ -275,14 +281,9 @@
         .data-status .source-fred { background: #f59e0b20; color: #fbbf24; }
         .data-status .source-frankfurter { background: #10b98120; color: #34d399; }
 
-        .nav-links {
-            display: flex;
-            gap: 8px;
-            margin-top: 8px;
-        }
-
         .nav-link {
             display: inline-block;
+            margin-top: 8px;
             padding: 6px 14px;
             background: #252836;
             color: #60a5fa;
@@ -294,26 +295,14 @@
             transition: all 0.2s;
         }
         .nav-link:hover { background: #2d3040; color: #a78bfa; }
-
-        @media (max-width: 600px) {
-            .header { padding: 20px 16px; }
-            .header h1 { font-size: 22px; }
-            .container { padding: 16px; }
-            .price-hero .current-price { font-size: 36px; }
-            .chart-container { height: 280px; }
-            .stats-grid { grid-template-columns: repeat(2, 1fr); }
-            .stat-card .value { font-size: 20px; }
-        }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>MXN / USD Exchange Rate Tracker</h1>
         <p>Mexican Peso to US Dollar &bull; FRED &amp; Frankfurter &bull; Updated daily</p>
-        <div class="nav-links">
-            <a href="index.html" class="nav-link">&larr; Oil Tracker</a>
-            <a href="flight-tracker.html" class="nav-link">Flight Tracker &rarr;</a>
-        </div>
+        <a href="index.html" class="nav-link">&larr; Oil Tracker</a>
+        <a href="flight-tracker.html" class="nav-link">Flight Tracker &rarr;</a>
     </div>
 
     <div class="container">
@@ -341,9 +330,12 @@
     </div>
 
     <script>
-        let rateData = []; // { date, rate } where rate = 1 MXN in USD
+        const FRED_KEY = 'b157e132862f8b31185abd4da930b21a';
+        const FRED_BASE = 'https://api.stlouisfed.org/fred/series/observations';
+
+        let rateData = [];
         let selectedRange = 30;
-        let selectedMode = 'mxn-usd'; // 'mxn-usd' or 'usd-mxn'
+        let selectedMode = 'mxn-usd';
         let chart = null;
         let lastUpdated = null;
         let dataSources = [];
@@ -369,9 +361,6 @@
 
         document.getElementById('refreshBtn').addEventListener('click', fetchRates);
 
-        const FRED_KEY = 'b157e132862f8b31185abd4da930b21a';
-        const FRED_BASE = 'https://api.stlouisfed.org/fred/series/observations';
-
         // FRED API - DEXMXUS series (MXN per 1 USD, daily business days)
         async function fetchFRED() {
             try {
@@ -395,7 +384,7 @@
                         .filter(d => d.value !== '.' && d.value != null)
                         .map(d => ({
                             date: d.date,
-                            rate: 1 / parseFloat(d.value), // FRED gives MXN per USD, we want USD per MXN
+                            rate: 1 / parseFloat(d.value),
                             source: 'FRED'
                         }));
                 }
@@ -466,7 +455,6 @@
                 if (fredData.length > 0) dataSources.push('FRED');
                 if (frankfurterData.length > 0) dataSources.push('Frankfurter');
 
-                // FRED is primary (daily), Frankfurter fills gaps
                 rateData = mergePrices(fredData, frankfurterData);
 
                 lastUpdated = new Date();
@@ -507,7 +495,6 @@
 
             const isMxnToUsd = selectedMode === 'mxn-usd';
             const pairLabel = isMxnToUsd ? '1 MXN in USD' : '1 USD in MXN';
-            const currencySymbol = isMxnToUsd ? '$' : '$';
             const decimals = isMxnToUsd ? 4 : 2;
 
             const latest = rates[rates.length - 1];
@@ -527,7 +514,6 @@
             const variance = displayRates.reduce((s, r) => s + Math.pow(r - avg, 2), 0) / (displayRates.length - 1);
             const volatility = (Math.sqrt(variance) / avg) * 100;
 
-            // 30-day change
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
             const oldRate = rateData.find(r => new Date(r.date) >= thirtyDaysAgo);
@@ -557,7 +543,7 @@
                 <div class="price-hero">
                     <div>
                         <div class="pair-label"><span class="flag-pair">🇲🇽🇺🇸</span> ${pairLabel}</div>
-                        <span class="current-price">${currencySymbol}${latestRate.toFixed(decimals)}</span>
+                        <span class="current-price">$${latestRate.toFixed(decimals)}</span>
                         <div class="inverse-rate">${inverseLabel}</div>
                     </div>
                     <div class="price-change ${isUp ? 'up' : 'down'}">
@@ -569,21 +555,20 @@
 
                 <div class="chart-container">
                     <canvas id="rateChart"></canvas>
-                    <div id="chartError" style="color:#f87171;font-size:13px;text-align:center;margin-top:8px;"></div>
                 </div>
 
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="label">High</div>
-                        <div class="value green">${currencySymbol}${high.toFixed(decimals)}</div>
+                        <div class="value green">$${high.toFixed(decimals)}</div>
                     </div>
                     <div class="stat-card">
                         <div class="label">Low</div>
-                        <div class="value red">${currencySymbol}${low.toFixed(decimals)}</div>
+                        <div class="value red">$${low.toFixed(decimals)}</div>
                     </div>
                     <div class="stat-card">
                         <div class="label">Average</div>
-                        <div class="value blue">${currencySymbol}${avg.toFixed(decimals)}</div>
+                        <div class="value blue">$${avg.toFixed(decimals)}</div>
                     </div>
                     <div class="stat-card">
                         <div class="label">Volatility</div>
@@ -595,7 +580,7 @@
                     </div>
                     <div class="stat-card">
                         <div class="label">Spread (H-L)</div>
-                        <div class="value amber">${currencySymbol}${(high - low).toFixed(decimals)}</div>
+                        <div class="value amber">$${(high - low).toFixed(decimals)}</div>
                     </div>
                 </div>
 
@@ -611,15 +596,15 @@
                         </thead>
                         <tbody>
                             ${rates.slice(-15).reverse().map((r, i, arr) => {
-                                const displayRate = getDisplayRate(r.rate);
+                                const dr = getDisplayRate(r.rate);
                                 const next = i < arr.length - 1 ? arr[i + 1] : null;
-                                const nextRate = next ? getDisplayRate(next.rate) : null;
-                                const dayChange = nextRate ? displayRate - nextRate : 0;
-                                const dayPct = nextRate ? (dayChange / nextRate) * 100 : 0;
+                                const nr = next ? getDisplayRate(next.rate) : null;
+                                const dayChange = nr ? dr - nr : 0;
+                                const dayPct = nr ? (dayChange / nr) * 100 : 0;
                                 const cls = dayChange >= 0 ? 'up' : 'down';
                                 return `<tr>
                                     <td>${r.date}</td>
-                                    <td><strong>${currencySymbol}${displayRate.toFixed(decimals)}</strong></td>
+                                    <td><strong>$${dr.toFixed(decimals)}</strong></td>
                                     <td class="price-change ${cls}">
                                         ${dayChange >= 0 ? '+' : ''}${dayChange.toFixed(decimals)}
                                         (${dayPct >= 0 ? '+' : ''}${dayPct.toFixed(2)}%)
@@ -631,109 +616,89 @@
                 </div>
             `;
 
-            try {
-                renderChart(rates, color, decimals, currencySymbol);
-            } catch (e) {
-                document.getElementById('chartError').textContent = 'Chart error: ' + e.message;
-            }
+            renderChart(rates, color, decimals);
         }
 
-        function formatDateLabel(dateStr) {
-            const d = new Date(dateStr + 'T00:00:00');
-            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-            return months[d.getMonth()] + ' ' + d.getDate();
-        }
+        function renderChart(prices, color, decimals) {
+            const ctx = document.getElementById('rateChart').getContext('2d');
 
-        function renderChart(rates, color, decimals, symbol) {
-            const canvas = document.getElementById('rateChart');
-            if (!canvas) return;
+            if (chart) chart.destroy();
 
-            // Draw chart manually on canvas (no Chart.js dependency)
-            if (chart && chart.destroy) chart.destroy();
-
-            const parent = canvas.parentElement;
-            const w = parent.clientWidth - 48; // padding
-            const h = parent.clientHeight - 48;
-            const dpr = window.devicePixelRatio || 1;
-            canvas.width = w * dpr;
-            canvas.height = h * dpr;
-            canvas.style.width = w + 'px';
-            canvas.style.height = h + 'px';
-
-            const ctx = canvas.getContext('2d');
-            ctx.scale(dpr, dpr);
-
-            const data = rates.map(r => getDisplayRate(r.rate));
-            const labels = rates.map(r => r.date);
-            const minVal = Math.min(...data);
-            const maxVal = Math.max(...data);
-            const range = maxVal - minVal || 0.001;
-            const padTop = 30;
-            const padBottom = 40;
-            const padLeft = 70;
-            const padRight = 20;
-            const chartW = w - padLeft - padRight;
-            const chartH = h - padTop - padBottom;
-
-            // Grid lines and Y-axis labels
-            ctx.strokeStyle = '#2d304040';
-            ctx.fillStyle = '#8b8fa3';
-            ctx.font = '11px -apple-system, sans-serif';
-            ctx.textAlign = 'right';
-            const ySteps = 5;
-            for (let i = 0; i <= ySteps; i++) {
-                const y = padTop + (chartH / ySteps) * i;
-                const val = maxVal - (range / ySteps) * i;
-                ctx.beginPath();
-                ctx.setLineDash([4, 4]);
-                ctx.moveTo(padLeft, y);
-                ctx.lineTo(w - padRight, y);
-                ctx.stroke();
-                ctx.setLineDash([]);
-                ctx.fillText(symbol + val.toFixed(decimals), padLeft - 8, y + 4);
-            }
-
-            // X-axis labels
-            ctx.textAlign = 'center';
-            const xLabelCount = Math.min(8, data.length);
-            for (let i = 0; i < xLabelCount; i++) {
-                const idx = Math.round((data.length - 1) * i / (xLabelCount - 1));
-                const x = padLeft + (chartW * idx / (data.length - 1));
-                ctx.fillText(formatDateLabel(labels[idx]), x, h - 8);
-            }
-
-            // Area fill
-            const gradient = ctx.createLinearGradient(0, padTop, 0, padTop + chartH);
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
             gradient.addColorStop(0, color + '40');
             gradient.addColorStop(1, color + '05');
 
-            ctx.beginPath();
-            ctx.moveTo(padLeft, padTop + chartH);
-            for (let i = 0; i < data.length; i++) {
-                const x = padLeft + (chartW * i / (data.length - 1));
-                const y = padTop + chartH - ((data[i] - minVal) / range) * chartH;
-                ctx.lineTo(x, y);
-            }
-            ctx.lineTo(padLeft + chartW, padTop + chartH);
-            ctx.closePath();
-            ctx.fillStyle = gradient;
-            ctx.fill();
-
-            // Line
-            ctx.beginPath();
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 2;
-            ctx.lineJoin = 'round';
-            for (let i = 0; i < data.length; i++) {
-                const x = padLeft + (chartW * i / (data.length - 1));
-                const y = padTop + chartH - ((data[i] - minVal) / range) * chartH;
-                if (i === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
-            }
-            ctx.stroke();
-
-            // Store reference for cleanup
-            chart = { destroy: () => {} };
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: prices.map(p => p.date),
+                    datasets: [{
+                        label: 'Rate',
+                        data: prices.map(p => getDisplayRate(p.rate)),
+                        borderColor: color,
+                        backgroundColor: gradient,
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 0,
+                        pointHitRadius: 10,
+                        pointHoverRadius: 5,
+                        pointHoverBackgroundColor: color
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#252836',
+                            titleColor: '#e1e4e8',
+                            bodyColor: '#e1e4e8',
+                            borderColor: '#2d3040',
+                            borderWidth: 1,
+                            padding: 12,
+                            displayColors: false,
+                            callbacks: {
+                                label: ctx => `$${ctx.parsed.y.toFixed(decimals)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                parser: 'yyyy-MM-dd',
+                                tooltipFormat: 'MMM d, yyyy',
+                                displayFormats: {
+                                    day: 'MMM d',
+                                    week: 'MMM d',
+                                    month: 'MMM yyyy'
+                                }
+                            },
+                            grid: {
+                                color: '#2d304040',
+                                drawBorder: false
+                            },
+                            ticks: { color: '#8b8fa3', maxTicksLimit: 8 }
+                        },
+                        y: {
+                            grid: {
+                                color: '#2d304040',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#8b8fa3',
+                                callback: v => '$' + v.toFixed(decimals)
+                            }
+                        }
+                    }
+                }
+            });
         }
 
         // Initial load
