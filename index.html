@@ -132,6 +132,12 @@
             margin-bottom: 24px;
         }
 
+        .chart-container {
+            position: relative;
+            height: 350px;
+            margin-bottom: 24px;
+        }
+
         .chart-container canvas {
             max-height: 400px;
         }
@@ -261,6 +267,7 @@
 
         .data-status .source-eia { background: #3b82f620; color: #60a5fa; }
         .data-status .source-fred { background: #f59e0b20; color: #fbbf24; }
+        .data-status .source-alphavantage { background: #8b5cf620; color: #a78bfa; }
 
         .nav-link {
             display: inline-block;
@@ -281,7 +288,7 @@
 <body>
     <div class="header">
         <h1>Crude Oil Price Tracker</h1>
-        <p>Live data from EIA &amp; FRED &bull; Updated daily</p>
+        <p>Live data &bull; EIA, FRED &amp; Alpha Vantage &bull; Updated daily</p>
         <a href="flight-tracker.html" class="nav-link">Flight Tracker &rarr;</a>
     </div>
 
@@ -315,8 +322,11 @@
         const API_KEY = 'q9kHzRa6tXnuEZOOPw0bbsdgfu9Mq5J0FJmIOrj6';
         const EIA_SPOT = 'https://api.eia.gov/v2/petroleum/pri/spt/data/';
         const EIA_IMPORT = 'https://api.eia.gov/v2/petroleum/pri/imc2/data/';
-        const FRED_KEY = 'DEMO_KEY';
+        const FRED_KEY = 'b157e132862f8b31185abd4da930b21a';
         const FRED_BASE = 'https://api.stlouisfed.org/fred/series/observations';
+
+        // Alpha Vantage: https://www.alphavantage.co/support/#api-key (25 req/day free)
+        const ALPHA_VANTAGE_KEY = 'T01QSR206V2E0IR2';
 
         let wtiPrices = [];
         let brentPrices = [];
@@ -433,13 +443,34 @@
             return [];
         }
 
-        function mergePrices(eiaPrices, fredPrices) {
-            const dateMap = new Map();
-            eiaPrices.forEach(p => dateMap.set(p.date, p));
-            fredPrices.forEach(p => {
-                if (!dateMap.has(p.date)) {
-                    dateMap.set(p.date, p);
+        // Alpha Vantage - daily commodity prices with history
+        async function fetchAlphaVantage(func) {
+            try {
+                const resp = await fetch(
+                    'https://www.alphavantage.co/query?function=' + func +
+                    '&interval=daily&apikey=' + ALPHA_VANTAGE_KEY
+                );
+                const json = await resp.json();
+                if (json.data) {
+                    return json.data
+                        .filter(d => d.value && d.value !== '.')
+                        .map(d => ({ date: d.date, price: parseFloat(d.value), source: 'AlphaVantage' }))
+                        .sort((a, b) => a.date.localeCompare(b.date));
                 }
+            } catch (e) {
+                console.warn('Alpha Vantage fetch failed:', e.message);
+            }
+            return [];
+        }
+
+        function mergePrices(...priceSets) {
+            const dateMap = new Map();
+            priceSets.forEach(prices => {
+                prices.forEach(p => {
+                    if (!dateMap.has(p.date)) {
+                        dateMap.set(p.date, p);
+                    }
+                });
             });
             return Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date));
         }
@@ -454,27 +485,39 @@
             try {
                 dataSources = [];
 
-                const [eiaWti, eiaBrent, fredWti, fredBrent, eiaCanadian, eiaMaya] = await Promise.allSettled([
+                const [
+                    eiaWti, eiaBrent, fredWti, fredBrent, eiaCanadian, eiaMaya,
+                    avWti, avBrent
+                ] = await Promise.allSettled([
                     fetchEIASeries('RWTC'),
                     fetchEIASeries('RBRTE'),
                     fetchFREDSeries('DCOILWTICO'),
                     fetchFREDSeries('DCOILBRENTEU'),
                     fetchEIAImportSeries('I19263000004'),
-                    fetchEIAImportSeries('IMX2810004')
+                    fetchEIAImportSeries('IMX2810004'),
+                    // Alpha Vantage
+                    fetchAlphaVantage('WTI'),
+                    fetchAlphaVantage('BRENT')
                 ]);
 
-                const eiaWtiData = eiaWti.status === 'fulfilled' ? eiaWti.value : [];
-                const eiaBrentData = eiaBrent.status === 'fulfilled' ? eiaBrent.value : [];
-                const fredWtiData = fredWti.status === 'fulfilled' ? fredWti.value : [];
-                const fredBrentData = fredBrent.status === 'fulfilled' ? fredBrent.value : [];
+                const val = r => r.status === 'fulfilled' ? r.value : [];
+
+                const eiaWtiData = val(eiaWti);
+                const eiaBrentData = val(eiaBrent);
+                const fredWtiData = val(fredWti);
+                const fredBrentData = val(fredBrent);
+                const avWtiData = val(avWti);
+                const avBrentData = val(avBrent);
 
                 if (eiaWtiData.length > 0 || eiaBrentData.length > 0) dataSources.push('EIA');
                 if (fredWtiData.length > 0 || fredBrentData.length > 0) dataSources.push('FRED');
+                if (avWtiData.length > 0 || avBrentData.length > 0) dataSources.push('AlphaVantage');
 
-                wtiPrices = mergePrices(eiaWtiData, fredWtiData);
-                brentPrices = mergePrices(eiaBrentData, fredBrentData);
-                canadianPrices = eiaCanadian.status === 'fulfilled' ? eiaCanadian.value : [];
-                mayaPrices = eiaMaya.status === 'fulfilled' ? eiaMaya.value : [];
+                // Merge all sources: EIA first (most authoritative), then FRED, Alpha Vantage
+                wtiPrices = mergePrices(eiaWtiData, fredWtiData, avWtiData);
+                brentPrices = mergePrices(eiaBrentData, fredBrentData, avBrentData);
+                canadianPrices = val(eiaCanadian);
+                mayaPrices = val(eiaMaya);
 
                 if (canadianPrices.length > 0 || mayaPrices.length > 0) {
                     if (!dataSources.includes('EIA')) dataSources.push('EIA');
@@ -502,10 +545,11 @@
         function getFilteredPrices() {
             const typeMap = { wti: wtiPrices, brent: brentPrices, canadian: canadianPrices, maya: mayaPrices };
             const all = typeMap[selectedType] || wtiPrices;
-            // Monthly data (canadian/maya) - show available data points
+            // Monthly data (canadian/maya) - map time ranges to useful month counts
             if (selectedType === 'canadian' || selectedType === 'maya') {
-                const months = Math.ceil(selectedRange / 30);
-                return all.slice(-Math.max(months, 3));
+                const rangeToMonths = { 7: 6, 30: 12, 90: 18, 180: 24, 365: 36 };
+                const months = rangeToMonths[selectedRange] || 12;
+                return all.slice(-months);
             }
             const cutoff = new Date();
             cutoff.setDate(cutoff.getDate() - selectedRange);
