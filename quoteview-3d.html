@@ -591,8 +591,8 @@ textarea{resize:vertical;min-height:80px;line-height:1.5;}
       <div class="card-title">Upload 3D Model</div>
       <div class="card-badge">STEP 1</div>
     </div>
+    <input type="file" id="file-input" accept=".glb,.gltf,.stl,.obj,.step,.stp,.GLB,.GLTF,.STL,.OBJ,.STEP,.STP" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0,0,0,0);">
     <label class="upload-zone" id="upload-zone" for="file-input">
-      <input type="file" id="file-input" accept=".glb,.gltf,.stl,.obj,.step,.stp,.GLB,.GLTF,.STL,.OBJ,.STEP,.STP" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0,0,0,0);">
       <div class="upload-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="#737378" stroke-width="1.5" width="26" height="26">
           <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
@@ -622,10 +622,10 @@ textarea{resize:vertical;min-height:80px;line-height:1.5;}
     <div class="bin-prompt" id="bin-prompt">
       <div class="bin-prompt-title">⚠️ Companion <code id="bin-filename">.bin</code> required</div>
       <div class="bin-prompt-desc">Your file is a GLTF (JSON) referencing an external binary. Select the companion .bin file.</div>
+      <input type="file" id="bin-input" accept=".bin,.BIN" onchange="handleBinFile(this.files[0])" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0,0,0,0);">
       <label class="btn-bin" for="bin-input">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
         Select .bin file
-        <input type="file" id="bin-input" accept=".bin,.BIN" onchange="handleBinFile(this.files[0])" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0,0,0,0);">
       </label>
     </div>
   </div>
