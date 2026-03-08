@@ -93,7 +93,6 @@
 
         .btn-group button.active.cat-traffic { background: #f87171; }
         .btn-group button.active.cat-caltrans { background: #fbbf24; color: #1a1d28; }
-        .btn-group button.active.cat-police { background: #60a5fa; }
 
         .refresh-btn {
             padding: 10px 16px;
@@ -186,7 +185,6 @@
 
         .source-tag.traffic { background: #f8717120; color: #f87171; }
         .source-tag.caltrans { background: #fbbf2420; color: #fbbf24; }
-        .source-tag.police { background: #60a5fa20; color: #60a5fa; }
 
         .incident-list {
             background: #1a1d28;
@@ -243,7 +241,6 @@
 
         .category-badge.traffic { background: #f8717120; color: #f87171; }
         .category-badge.caltrans { background: #fbbf2420; color: #fbbf24; }
-        .category-badge.police { background: #60a5fa20; color: #60a5fa; }
 
         .loading {
             text-align: center;
@@ -350,7 +347,7 @@
 <body>
     <div class="header">
         <h1>Traffic Dashboard</h1>
-        <p>Real-Time Caltrans Data + CHP/Police Feeds &bull; East County San Diego</p>
+        <p>Real-Time CHP + Caltrans Feeds &bull; East County San Diego</p>
         <a href="index.html" class="nav-link">&larr; Oil Tracker</a>
         <a href="flight-tracker.html" class="nav-link">Flight Tracker</a>
         <a href="currency-tracker.html" class="nav-link">MXN/USD</a>
@@ -361,9 +358,8 @@
         <div class="controls">
             <div class="btn-group" id="categoryFilter">
                 <button class="active" data-cat="all">All</button>
-                <button data-cat="traffic">Traffic</button>
+                <button data-cat="traffic">CHP Traffic</button>
                 <button data-cat="caltrans">Caltrans</button>
-                <button data-cat="police">Police</button>
             </div>
             <span class="auto-refresh-label" id="countdown">Auto-refresh: 60s</span>
             <button class="refresh-btn" id="refreshBtn">&#8635;</button>
@@ -442,164 +438,11 @@ const EAST_COUNTY_BOUNDS = {
     minLng: -117.10, maxLng: -116.50
 };
 
-// Track which data sources are live vs simulated
+// Track which data sources returned data
 let dataSourceStatus = {
-    caltrans: 'loading',  // 'live', 'simulated', 'loading'
-    traffic: 'loading',   // CHP sa.xml feed + 511 events
-    police: 'simulated'   // No free real-time crime API
+    caltrans: 'loading',  // 'live', 'error', 'loading'
+    traffic: 'loading'    // CHP sa.xml feed + 511 events
 };
-
-// ---- Road/location data for realistic incident generation ----
-const ROAD_DATA = {
-    'jamul': {
-        roads: ['Lyons Valley Rd', 'Jamul Dr', 'SR-94', 'Steele Canyon Rd', 'Campo Rd', 'Skyline Truck Trail', 'Proctor Valley Rd'],
-        crossStreets: ['at Melody Rd', 'near Jamul Indian Village', 'at Lawson Valley Rd', 'near Jamul Casino', 'at Steel Canyon HS', 'near Rancho Jamul']
-    },
-    'spring-valley': {
-        roads: ['Sweetwater Springs Blvd', 'Campo Rd', 'Jamacha Rd', 'Bancroft Dr', 'SR-54', 'Kenwood Dr', 'Helix St', 'La Presa Ave', 'Elkelton Blvd'],
-        crossStreets: ['at Jamacha Rd', 'near Sweetwater Summit', 'at Bancroft Dr', 'near Spring Valley Mall', 'at Kenwood Dr', 'near Casa de Oro', 'at Caliente Ave']
-    },
-    'la-mesa': {
-        roads: ['Fletcher Pkwy', 'Lake Murray Blvd', 'University Ave', 'El Cajon Blvd', 'I-8', 'Baltimore Dr', 'Jackson Dr', 'Spring St', 'La Mesa Blvd', 'Grossmont Blvd'],
-        crossStreets: ['at Spring St', 'near Grossmont Center', 'at Lake Murray Blvd', 'near La Mesa Village', 'at Fletcher Pkwy', 'near Grossmont Hospital', 'at I-8 on-ramp']
-    },
-    'el-cajon': {
-        roads: ['Main St', 'E Main St', 'Magnolia Ave', 'Broadway', 'Fletcher Pkwy', 'I-8', 'Jamacha Rd', 'N 2nd St', 'Greenfield Dr', 'Washington Ave', 'SR-67'],
-        crossStreets: ['at Magnolia Ave', 'near Parkway Plaza', 'at N 2nd St', 'near El Cajon Transit', 'at Jamacha Rd', 'at Fletcher Pkwy', 'near Gillespie Field']
-    },
-    'tecate': {
-        roads: ['Tecate Rd', 'SR-188', 'SR-94', 'Tecate Port of Entry Rd', 'Old Tecate Rd', 'Barrett Smith Rd', 'La Tecata Rd', 'Kuebler Ranch Rd', 'Boundary Peak Rd'],
-        crossStreets: ['at Tecate Port of Entry', 'near US Border Crossing', 'at SR-94 junction', 'near Tecate Divide', 'at Barrett Smith Rd', 'near Potrero', 'at Old Tecate Rd']
-    },
-    'rancho-san-diego': {
-        roads: ['Jamacha Rd', 'Campo Rd', 'Fury Ln', 'Avocado Blvd', 'Cuyamaca St', 'SR-54', 'Washington Ave', 'Via Mercado', 'Hillsdale Rd', 'N Marshall Ave'],
-        crossStreets: ['at Avocado Blvd', 'near Valhalla HS', 'at Cuyamaca St', 'near Rancho San Diego Towne Center', 'at Campo Rd', 'near Cuyamaca College', 'at Fury Ln']
-    }
-};
-
-const INCIDENT_TEMPLATES = {
-    traffic: [
-        { type: 'Collision', desc: 'Multi-vehicle collision reported', severity: 'major' },
-        { type: 'Collision', desc: 'Two-vehicle accident, lane blocked', severity: 'moderate' },
-        { type: 'Stalled Vehicle', desc: 'Stalled vehicle blocking right lane', severity: 'minor' },
-        { type: 'Congestion', desc: 'Heavy traffic congestion reported', severity: 'moderate' },
-        { type: 'Road Hazard', desc: 'Debris in roadway', severity: 'minor' },
-        { type: 'Collision', desc: 'Injury accident, emergency response en route', severity: 'critical' },
-        { type: 'Broken Signal', desc: 'Traffic signal malfunction', severity: 'moderate' },
-        { type: 'Flooding', desc: 'Road flooding, reduced visibility', severity: 'major' },
-        { type: 'Hit & Run', desc: 'Hit and run reported, vehicle fled scene', severity: 'major' },
-        { type: 'Overturned Vehicle', desc: 'Overturned vehicle, all lanes blocked', severity: 'critical' }
-    ],
-    caltrans: [
-        { type: 'Road Work', desc: 'Lane closure for scheduled maintenance', severity: 'moderate' },
-        { type: 'Construction', desc: 'Highway construction zone, expect delays', severity: 'moderate' },
-        { type: 'Paving', desc: 'Repaving in progress, single lane open', severity: 'minor' },
-        { type: 'Bridge Work', desc: 'Bridge maintenance, width restriction', severity: 'major' },
-        { type: 'Signal Work', desc: 'Traffic signal installation in progress', severity: 'minor' },
-        { type: 'Guardrail Repair', desc: 'Guardrail repair, shoulder closed', severity: 'minor' },
-        { type: 'Median Work', desc: 'Median barrier construction', severity: 'moderate' },
-        { type: 'Striping', desc: 'Lane restriping in progress', severity: 'minor' }
-    ],
-    police: [
-        { type: 'Traffic Stop', desc: 'Traffic enforcement activity', severity: 'minor' },
-        { type: 'DUI Checkpoint', desc: 'DUI/sobriety checkpoint', severity: 'moderate' },
-        { type: 'Pursuit', desc: 'Police pursuit in progress', severity: 'critical' },
-        { type: 'Accident Investigation', desc: 'Police investigating accident scene', severity: 'major' },
-        { type: 'Road Closure', desc: 'Police-ordered road closure', severity: 'major' },
-        { type: 'Speed Enforcement', desc: 'Speed enforcement zone', severity: 'minor' },
-        { type: 'Pedestrian Incident', desc: 'Pedestrian incident under investigation', severity: 'major' },
-        { type: 'Sideshow Activity', desc: 'Reports of sideshow/street racing activity', severity: 'critical' }
-    ]
-};
-
-// ---- Generate realistic incidents with seeded randomness ----
-function seededRandom(seed) {
-    let x = Math.sin(seed) * 10000;
-    return x - Math.floor(x);
-}
-
-function generateIncidents() {
-    const now = new Date();
-    // Use hour-based seed so incidents change each hour but are stable within the hour
-    const hourSeed = Math.floor(now.getTime() / (1000 * 60 * 60));
-    const allIncidents = [];
-    let id = 1;
-
-    const areaKeys = Object.keys(AREAS);
-
-    for (const areaKey of areaKeys) {
-        const area = AREAS[areaKey];
-        const roads = ROAD_DATA[areaKey];
-
-        // Generate 3-8 incidents per area based on seed
-        const incidentCount = 3 + Math.floor(seededRandom(hourSeed + id) * 6);
-
-        for (let i = 0; i < incidentCount; i++) {
-            const seed = hourSeed * 100 + id * 7 + i * 13;
-
-            // Pick category
-            const categories = ['traffic', 'traffic', 'traffic', 'caltrans', 'caltrans', 'police', 'police'];
-            const category = categories[Math.floor(seededRandom(seed) * categories.length)];
-
-            // Pick template
-            const templates = INCIDENT_TEMPLATES[category];
-            const template = templates[Math.floor(seededRandom(seed + 1) * templates.length)];
-
-            // Pick road and cross street
-            const road = roads.roads[Math.floor(seededRandom(seed + 2) * roads.roads.length)];
-            const cross = roads.crossStreets[Math.floor(seededRandom(seed + 3) * roads.crossStreets.length)];
-
-            // Offset position from area center
-            const latOffset = (seededRandom(seed + 4) - 0.5) * 0.04;
-            const lngOffset = (seededRandom(seed + 5) - 0.5) * 0.04;
-
-            // Time offset (0-180 minutes ago)
-            const minsAgo = Math.floor(seededRandom(seed + 6) * 180);
-            const reportedAt = new Date(now.getTime() - minsAgo * 60 * 1000);
-
-            // Source URLs by category
-            const sourceUrls = {
-                traffic: {
-                    url: 'https://cad.chp.ca.gov/Traffic.aspx',
-                    label: 'CHP Traffic Incidents'
-                },
-                caltrans: {
-                    url: 'https://quickmap.dot.ca.gov/',
-                    label: 'Caltrans QuickMap'
-                },
-                police: {
-                    url: 'https://www.crimemapping.com/map/ca/sandiego',
-                    label: 'CrimeMapping - San Diego'
-                }
-            };
-
-            const source = sourceUrls[category];
-
-            allIncidents.push({
-                id: id++,
-                category,
-                type: template.type,
-                description: template.desc,
-                severity: template.severity,
-                area: areaKey,
-                areaName: area.name,
-                road: road,
-                crossStreet: cross,
-                location: `${road} ${cross}`,
-                lat: area.lat + latOffset,
-                lng: area.lng + lngOffset,
-                reportedAt,
-                minsAgo,
-                sourceUrl: source.url,
-                sourceLabel: source.label
-            });
-        }
-    }
-
-    // Sort by most recent first
-    allIncidents.sort((a, b) => a.minsAgo - b.minsAgo);
-    return allIncidents;
-}
 
 // ---- Find nearest defined area for a lat/lng ----
 function findNearestArea(lat, lng) {
@@ -898,8 +741,7 @@ async function fetchCaltransData() {
 function getIncidentStyle(category, severity) {
     const colors = {
         traffic: { fill: '#f87171', stroke: '#dc2626' },
-        caltrans: { fill: '#fbbf24', stroke: '#d97706' },
-        police: { fill: '#60a5fa', stroke: '#2563eb' }
+        caltrans: { fill: '#fbbf24', stroke: '#d97706' }
     };
 
     const radii = {
@@ -979,9 +821,8 @@ function initMap() {
         const div = L.DomUtil.create('div', 'legend-box');
         div.innerHTML = `
             <div style="font-weight:600;margin-bottom:4px;color:#e1e4e8;">Incidents</div>
-            <div class="legend-item"><span class="legend-dot" style="background:#f87171;"></span> Traffic</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#f87171;"></span> CHP Traffic</div>
             <div class="legend-item"><span class="legend-dot" style="background:#fbbf24;"></span> Caltrans</div>
-            <div class="legend-item"><span class="legend-dot" style="background:#60a5fa;"></span> Police</div>
             <div style="border-top:1px solid #2d3040;margin:6px 0;"></div>
             <div style="font-weight:600;margin-bottom:4px;color:#e1e4e8;">Severity</div>
             <div class="legend-item"><span class="legend-dot" style="background:#f87171;width:14px;height:14px;"></span> Critical</div>
@@ -1013,10 +854,6 @@ function plotIncidents() {
                 ? inc.reportedAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
                 : '--';
 
-            const liveBadge = inc.isLive
-                ? '<span style="font-size:9px;padding:1px 6px;border-radius:4px;background:#34d39930;color:#34d399;font-weight:700;margin-left:6px;">LIVE</span>'
-                : '<span style="font-size:9px;padding:1px 6px;border-radius:4px;background:#8b8fa320;color:#8b8fa3;font-weight:700;margin-left:6px;">SIM</span>';
-
             // Escape HTML in description to prevent broken popups
             const safeDesc = (inc.description || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             const safeRoad = (inc.road || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -1028,7 +865,7 @@ function plotIncidents() {
                         <strong style="font-size:14px;color:${inc.category === 'traffic' ? '#f87171' : inc.category === 'caltrans' ? '#fbbf24' : '#60a5fa'};">${(inc.type || 'Incident').replace(/</g, '&lt;')}</strong>
                         <span class="severity-badge ${inc.severity}">${inc.severity}</span>
                     </div>
-                    <div style="font-size:12px;color:#8b8fa3;margin-bottom:6px;">${inc.category.toUpperCase()} ${liveBadge}</div>
+                    <div style="font-size:12px;color:#8b8fa3;margin-bottom:6px;">${inc.category.toUpperCase()}</div>
                     <hr style="border:none;border-top:1px solid #2d3040;margin:6px 0;">
                     <div style="font-size:12px;line-height:1.8;">
                         <div>${safeDesc}</div>
@@ -1094,7 +931,6 @@ function renderUI() {
 
     const trafficCount = incidents.filter(i => i.category === 'traffic').length;
     const caltransCount = incidents.filter(i => i.category === 'caltrans').length;
-    const policeCount = incidents.filter(i => i.category === 'police').length;
     const criticalCount = incidents.filter(i => i.severity === 'critical').length;
 
     const updatedStr = lastUpdated ? lastUpdated.toLocaleString('en-US', {
@@ -1102,32 +938,27 @@ function renderUI() {
         hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
     }) : '--';
 
-    const liveCount = incidents.filter(i => i.isLive).length;
-    const simCount = incidents.filter(i => !i.isLive).length;
-
-    const statusBadge = (cat) => {
+    const statusDot = (cat) => {
         const isLive = dataSourceStatus[cat] === 'live';
         return isLive
-            ? `<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#34d39930;color:#34d399;font-weight:700;margin-left:3px;">LIVE</span>`
-            : `<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#8b8fa320;color:#8b8fa3;font-weight:700;margin-left:3px;">SIM</span>`;
+            ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#34d399;margin-left:4px;"></span>`
+            : `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#f87171;margin-left:4px;"></span>`;
     };
 
     // Update stats and status bar (above map)
     document.getElementById('content').innerHTML = `
         <div class="data-status">
-            <div>Updated: <strong>${updatedStr}</strong> &bull; ${filtered.length} active incidents${liveCount > 0 ? ` &bull; <span style="color:#34d399;font-weight:600;">${liveCount} live</span>` : ''}</div>
+            <div>Updated: <strong>${updatedStr}</strong> &bull; ${filtered.length} active incidents</div>
             <div>
-                <span class="source-tag traffic">Traffic ${statusBadge('traffic')}</span>
-                <span class="source-tag caltrans">Caltrans ${statusBadge('caltrans')}</span>
-                <span class="source-tag police">Police ${statusBadge('police')}</span>
+                <span class="source-tag traffic">CHP ${statusDot('traffic')}</span>
+                <span class="source-tag caltrans">Caltrans ${statusDot('caltrans')}</span>
             </div>
         </div>
 
         <div class="stats-bar">
             <div class="stat-chip"><div class="label">Total</div><div class="value red">${incidents.length}</div></div>
-            <div class="stat-chip"><div class="label">Traffic</div><div class="value amber">${trafficCount}</div></div>
+            <div class="stat-chip"><div class="label">CHP Traffic</div><div class="value amber">${trafficCount}</div></div>
             <div class="stat-chip"><div class="label">Caltrans</div><div class="value" style="color:#fbbf24;">${caltransCount}</div></div>
-            <div class="stat-chip"><div class="label">Police</div><div class="value blue">${policeCount}</div></div>
             <div class="stat-chip"><div class="label">Critical</div><div class="value red">${criticalCount}</div></div>
         </div>`;
 
@@ -1149,7 +980,7 @@ function renderUI() {
                     ${filtered.map(inc => `
                         <tr data-id="${inc.id}">
                             <td style="font-weight:600;">${esc(inc.type)}</td>
-                            <td><span class="category-badge ${inc.category}">${inc.category}</span> ${inc.isLive ? '<span style="font-size:8px;padding:1px 4px;border-radius:3px;background:#34d39930;color:#34d399;font-weight:700;">LIVE</span>' : ''}</td>
+                            <td><span class="category-badge ${inc.category}">${inc.category}</span></td>
                             <td>${esc(inc.road)}<br><span style="color:#8b8fa3;font-size:11px;">${esc(inc.crossStreet)}</span></td>
                             <td>${esc(inc.areaName)}</td>
                             <td><span class="severity-badge ${inc.severity}">${inc.severity}</span></td>
@@ -1166,7 +997,7 @@ function renderUI() {
             initMap();
         }
         plotIncidents();
-        console.log(`Plotted ${incidentMarkers.length} markers (${incidents.filter(i=>i.isLive).length} live, ${incidents.filter(i=>!i.isLive).length} sim)`);
+        console.log(`Plotted ${incidentMarkers.length} markers from ${incidents.length} total incidents`);
     } catch (e) {
         console.error('Map render error:', e);
     }
@@ -1202,41 +1033,21 @@ async function loadIncidents() {
             fetch511Data().catch(e => { console.warn('511 fetch error:', e); return null; })
         ]);
 
-        // Generate simulated fallback data
-        const simulatedAll = generateIncidents();
         const combined = [];
 
         // CHP traffic incidents + 511 traffic events
-        const realTraffic = [];
-        if (chpData && chpData.length > 0) realTraffic.push(...chpData);
+        if (chpData && chpData.length > 0) combined.push(...chpData);
         if (data511) {
-            realTraffic.push(...data511.filter(e => e.category === 'traffic'));
+            combined.push(...data511.filter(e => e.category === 'traffic'));
         }
-        if (realTraffic.length > 0) {
-            dataSourceStatus.traffic = 'live';
-            combined.push(...realTraffic);
-        } else {
-            dataSourceStatus.traffic = 'simulated';
-            combined.push(...simulatedAll.filter(i => i.category === 'traffic'));
-        }
+        dataSourceStatus.traffic = (chpData && chpData.length > 0) || (data511 && data511.some(e => e.category === 'traffic')) ? 'live' : 'error';
 
         // Caltrans lane closures + 511 construction events
-        const realCaltrans = [];
-        if (caltransData && caltransData.length > 0) realCaltrans.push(...caltransData);
+        if (caltransData && caltransData.length > 0) combined.push(...caltransData);
         if (data511) {
-            realCaltrans.push(...data511.filter(e => e.category === 'caltrans'));
+            combined.push(...data511.filter(e => e.category === 'caltrans'));
         }
-        if (realCaltrans.length > 0) {
-            dataSourceStatus.caltrans = 'live';
-            combined.push(...realCaltrans);
-        } else {
-            dataSourceStatus.caltrans = 'simulated';
-            combined.push(...simulatedAll.filter(i => i.category === 'caltrans'));
-        }
-
-        // Police (always simulated - no free API)
-        dataSourceStatus.police = 'simulated';
-        combined.push(...simulatedAll.filter(i => i.category === 'police'));
+        dataSourceStatus.caltrans = (caltransData && caltransData.length > 0) || (data511 && data511.some(e => e.category === 'caltrans')) ? 'live' : 'error';
 
         // Filter out any entries with invalid coordinates
         incidents = combined.filter(inc =>
@@ -1245,12 +1056,10 @@ async function loadIncidents() {
         );
 
     } catch (e) {
-        // Total fallback: if anything goes wrong, use simulated data
-        console.error('loadIncidents error, using simulated fallback:', e);
-        incidents = generateIncidents();
-        dataSourceStatus.traffic = 'simulated';
-        dataSourceStatus.caltrans = 'simulated';
-        dataSourceStatus.police = 'simulated';
+        console.error('loadIncidents error:', e);
+        incidents = [];
+        dataSourceStatus.traffic = 'error';
+        dataSourceStatus.caltrans = 'error';
     }
 
     // Re-sort by most recent
@@ -1268,13 +1077,12 @@ async function loadIncidents() {
 document.querySelectorAll('#categoryFilter button').forEach(btn => {
     btn.addEventListener('click', () => {
         document.querySelectorAll('#categoryFilter button').forEach(b => {
-            b.classList.remove('active', 'cat-traffic', 'cat-caltrans', 'cat-police');
+            b.classList.remove('active', 'cat-traffic', 'cat-caltrans');
         });
         btn.classList.add('active');
         const cat = btn.dataset.cat;
         if (cat === 'traffic') btn.classList.add('cat-traffic');
         else if (cat === 'caltrans') btn.classList.add('cat-caltrans');
-        else if (cat === 'police') btn.classList.add('cat-police');
         activeCategory = cat;
 
         if (lastUpdated) {
