@@ -255,7 +255,7 @@ header{
 }
 .upload-zone h3{font-size:0.95rem;font-weight:600;margin-bottom:0.3rem;letter-spacing:-0.01em;}
 .upload-zone p{font-size:0.78rem;color:var(--mid);}
-.upload-zone input{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0,0,0,0);}
+.upload-zone input{/* inline-styled for Safari compatibility */}
 .file-types{
   display:flex;gap:5px;justify-content:center;margin-top:0.8rem;flex-wrap:wrap;
 }
@@ -591,8 +591,8 @@ textarea{resize:vertical;min-height:80px;line-height:1.5;}
       <div class="card-title">Upload 3D Model</div>
       <div class="card-badge">STEP 1</div>
     </div>
-    <input type="file" id="file-input" accept=".glb,.gltf,.stl,.obj,.step,.stp,.GLB,.GLTF,.STL,.OBJ,.STEP,.STP" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0,0,0,0);">
-    <label class="upload-zone" id="upload-zone" for="file-input">
+    <label class="upload-zone" id="upload-zone">
+      <input type="file" id="file-input" accept=".glb,.gltf,.stl,.obj,.step,.stp,.GLB,.GLTF,.STL,.OBJ,.STEP,.STP" style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2;">
       <div class="upload-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="#737378" stroke-width="1.5" width="26" height="26">
           <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
