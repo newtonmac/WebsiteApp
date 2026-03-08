@@ -683,13 +683,16 @@ function plotIncidents() {
                     <div>${inc.crossStreet}</div>
                     <div style="margin-top:4px;"><strong>Area:</strong> ${inc.areaName}</div>
                     <div><strong>Reported:</strong> ${timeStr} (${inc.minsAgo}m ago)</div>
-                    <div style="margin-top:6px;"><a href="${inc.sourceUrl}" target="_blank" rel="noopener" style="color:#60a5fa;text-decoration:none;font-size:11px;border:1px solid #60a5fa40;padding:3px 8px;border-radius:6px;display:inline-block;">&#x1F517; ${inc.sourceLabel}</a></div>
+                    <div style="margin-top:8px;padding-top:6px;border-top:1px solid #2d3040;">
+                        <strong style="font-size:11px;color:#8b8fa3;">Source:</strong><br>
+                        <a href="${inc.sourceUrl}" target="_blank" rel="noopener" style="color:#60a5fa;text-decoration:none;font-size:12px;font-weight:600;">${inc.sourceLabel} &rarr;</a>
+                    </div>
                 </div>
             </div>`;
 
         const marker = L.marker([inc.lat, inc.lng], { icon })
             .addTo(map)
-            .bindPopup(popup);
+            .bindPopup(popup, { maxWidth: 300, maxHeight: 350 });
 
         incidentMarkers.push(marker);
     });
