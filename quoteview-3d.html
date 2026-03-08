@@ -528,7 +528,6 @@ textarea{resize:vertical;min-height:80px;line-height:1.5;}
   position:relative;
 }
 .btn-bin:hover{background:var(--accent-hover);}
-.btn-bin input{position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2;}
 .page-footer{
   text-align:center;
   padding:2rem 1rem;
@@ -622,11 +621,11 @@ textarea{resize:vertical;min-height:80px;line-height:1.5;}
     <div class="bin-prompt" id="bin-prompt">
       <div class="bin-prompt-title">⚠️ Companion <code id="bin-filename">.bin</code> required</div>
       <div class="bin-prompt-desc">Your file is a GLTF (JSON) referencing an external binary. Select the companion .bin file.</div>
-      <div class="btn-bin" id="bin-btn" style="position:relative;cursor:pointer;overflow:hidden;">
-        <input type="file" id="bin-input" accept=".bin,.BIN">
+      <input type="file" id="bin-input" accept=".bin,.BIN" style="display:none;">
+      <label for="bin-input" class="btn-bin" id="bin-btn">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
         Select .bin file
-      </div>
+      </label>
     </div>
   </div>
   <div class="card">
@@ -899,7 +898,7 @@ function handleBinFile(file) {
 function mergeGltfBin(gltfBuf, binBuf) {
   try {
     const json = JSON.parse(new TextDecoder().decode(gltfBuf));
-    if (json.buffers && json.buffers[0]) delete json.buffers[0].uri;
+    if (json.buffers && json.buffers[0]) { delete json.buffers[0].uri; json.buffers[0].byteLength = binBuf.byteLength; }
     const jsonStr = JSON.stringify(json);
     let jsonBytes = new TextEncoder().encode(jsonStr);
     while (jsonBytes.byteLength % 4 !== 0) jsonBytes = new Uint8Array([...jsonBytes, 0x20]);
