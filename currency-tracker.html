@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crude Oil Price Tracker</title>
+    <title>MXN/USD Currency Exchange Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
     <style>
@@ -104,6 +104,7 @@
             background: #1a1d28;
             border-radius: 16px;
             border: 1px solid #2d3040;
+            flex-wrap: wrap;
         }
 
         .price-hero .current-price {
@@ -119,9 +120,20 @@
         .price-hero .price-change.up { color: #34d399; }
         .price-hero .price-change.down { color: #f87171; }
 
-        .price-hero .oil-label {
+        .price-hero .pair-label {
             font-size: 16px;
             color: #8b8fa3;
+        }
+
+        .price-hero .inverse-rate {
+            font-size: 14px;
+            color: #8b8fa3;
+            margin-top: 4px;
+        }
+
+        .flag-pair {
+            font-size: 28px;
+            margin-right: 4px;
         }
 
         .chart-container {
@@ -129,10 +141,6 @@
             border-radius: 16px;
             border: 1px solid #2d3040;
             padding: 24px;
-            margin-bottom: 24px;
-        }
-
-        .chart-container {
             position: relative;
             height: 350px;
             margin-bottom: 24px;
@@ -173,6 +181,7 @@
         .stat-card .value.red { color: #f87171; }
         .stat-card .value.blue { color: #60a5fa; }
         .stat-card .value.purple { color: #a78bfa; }
+        .stat-card .value.amber { color: #fbbf24; }
 
         .recent-table {
             background: #1a1d28;
@@ -265,13 +274,17 @@
             letter-spacing: 0.5px;
         }
 
-        .data-status .source-eia { background: #3b82f620; color: #60a5fa; }
-        .data-status .source-fred { background: #f59e0b20; color: #fbbf24; }
-        .data-status .source-alphavantage { background: #8b5cf620; color: #a78bfa; }
+        .data-status .source-frankfurter { background: #10b98120; color: #34d399; }
+        .data-status .source-exchangerate { background: #f59e0b20; color: #fbbf24; }
+
+        .nav-links {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
 
         .nav-link {
             display: inline-block;
-            margin-top: 8px;
             padding: 6px 14px;
             background: #252836;
             color: #60a5fa;
@@ -283,23 +296,33 @@
             transition: all 0.2s;
         }
         .nav-link:hover { background: #2d3040; color: #a78bfa; }
+
+        @media (max-width: 600px) {
+            .header { padding: 20px 16px; }
+            .header h1 { font-size: 22px; }
+            .container { padding: 16px; }
+            .price-hero .current-price { font-size: 36px; }
+            .chart-container { height: 280px; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .stat-card .value { font-size: 20px; }
+        }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>Crude Oil Price Tracker</h1>
-        <p>Live data &bull; EIA, FRED &amp; Alpha Vantage &bull; Updated daily</p>
-        <a href="flight-tracker.html" class="nav-link">Flight Tracker &rarr;</a>
-        <a href="currency-tracker.html" class="nav-link">MXN/USD Tracker &rarr;</a>
+        <h1>MXN / USD Exchange Rate Tracker</h1>
+        <p>Mexican Peso to US Dollar &bull; Frankfurter &amp; ExchangeRate API &bull; Updated daily</p>
+        <div class="nav-links">
+            <a href="index.html" class="nav-link">&larr; Oil Tracker</a>
+            <a href="flight-tracker.html" class="nav-link">Flight Tracker &rarr;</a>
+        </div>
     </div>
 
     <div class="container">
         <div class="controls">
-            <div class="btn-group" id="oilType">
-                <button class="active" data-type="wti">WTI Crude</button>
-                <button data-type="brent">Brent Crude</button>
-                <button data-type="canadian">Canadian</button>
-                <button data-type="maya">Mexican Maya</button>
+            <div class="btn-group" id="viewMode">
+                <button class="active" data-mode="mxn-usd">MXN &rarr; USD</button>
+                <button data-mode="usd-mxn">USD &rarr; MXN</button>
             </div>
             <div class="btn-group" id="timeRange">
                 <button data-range="7">1W</button>
@@ -314,37 +337,25 @@
         <div id="content">
             <div class="loading">
                 <div class="spinner"></div>
-                Loading live crude oil prices...
+                Loading exchange rate data...
             </div>
         </div>
     </div>
 
     <script>
-        const API_KEY = 'q9kHzRa6tXnuEZOOPw0bbsdgfu9Mq5J0FJmIOrj6';
-        const EIA_SPOT = 'https://api.eia.gov/v2/petroleum/pri/spt/data/';
-        const EIA_IMPORT = 'https://api.eia.gov/v2/petroleum/pri/imc2/data/';
-        const FRED_KEY = 'b157e132862f8b31185abd4da930b21a';
-        const FRED_BASE = 'https://api.stlouisfed.org/fred/series/observations';
-
-        // Alpha Vantage: https://www.alphavantage.co/support/#api-key (25 req/day free)
-        const ALPHA_VANTAGE_KEY = 'T01QSR206V2E0IR2';
-
-        let wtiPrices = [];
-        let brentPrices = [];
-        let canadianPrices = [];
-        let mayaPrices = [];
-        let selectedType = 'wti';
+        let rateData = []; // { date, rate } where rate = 1 MXN in USD
         let selectedRange = 30;
+        let selectedMode = 'mxn-usd'; // 'mxn-usd' or 'usd-mxn'
         let chart = null;
         let lastUpdated = null;
         let dataSources = [];
 
         // Controls
-        document.querySelectorAll('#oilType button').forEach(btn => {
+        document.querySelectorAll('#viewMode button').forEach(btn => {
             btn.addEventListener('click', () => {
-                document.querySelectorAll('#oilType button').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('#viewMode button').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                selectedType = btn.dataset.type;
+                selectedMode = btn.dataset.mode;
                 render();
             });
         });
@@ -358,108 +369,50 @@
             });
         });
 
-        document.getElementById('refreshBtn').addEventListener('click', fetchAllPrices);
+        document.getElementById('refreshBtn').addEventListener('click', fetchRates);
 
-        async function fetchEIASeries(seriesId) {
-            const params = new URLSearchParams({
-                api_key: API_KEY,
-                frequency: 'daily',
-                'data[0]': 'value',
-                'sort[0][column]': 'period',
-                'sort[0][direction]': 'desc',
-                length: '365'
-            });
-            params.append(`facets[series][]`, seriesId);
-
-            const url = `${EIA_SPOT}?${params.toString()}`;
-            const response = await fetch(url);
-            const json = await response.json();
-
-            if (json.response && json.response.data) {
-                return json.response.data
-                    .filter(d => d.value != null && d.value !== '')
-                    .map(d => ({
-                        date: d.period,
-                        price: parseFloat(d.value),
-                        source: 'EIA'
-                    }))
-                    .reverse();
-            }
-            return [];
-        }
-
-        async function fetchEIAImportSeries(seriesId) {
-            const params = new URLSearchParams({
-                api_key: API_KEY,
-                frequency: 'monthly',
-                'data[0]': 'value',
-                'sort[0][column]': 'period',
-                'sort[0][direction]': 'desc',
-                length: '36'
-            });
-            params.append(`facets[series][]`, seriesId);
-
-            const url = `${EIA_IMPORT}?${params.toString()}`;
-            const response = await fetch(url);
-            const json = await response.json();
-
-            if (json.response && json.response.data) {
-                return json.response.data
-                    .filter(d => d.value != null && d.value !== '')
-                    .map(d => ({
-                        date: d.period.length === 7 ? d.period + '-01' : d.period,
-                        price: parseFloat(d.value),
-                        source: 'EIA'
-                    }))
-                    .reverse();
-            }
-            return [];
-        }
-
-        async function fetchFREDSeries(seriesId) {
+        // Frankfurter API - free, no key required, ECB data
+        async function fetchFrankfurter() {
             try {
-                const oneYearAgo = new Date();
-                oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-                const startDate = oneYearAgo.toISOString().split('T')[0];
+                const endDate = new Date().toISOString().split('T')[0];
+                const startDate = new Date();
+                startDate.setFullYear(startDate.getFullYear() - 1);
+                const startStr = startDate.toISOString().split('T')[0];
 
-                const params = new URLSearchParams({
-                    series_id: seriesId,
-                    api_key: FRED_KEY,
-                    file_type: 'json',
-                    observation_start: startDate,
-                    sort_order: 'asc'
-                });
-
-                const resp = await fetch(FRED_BASE + '?' + params.toString());
-                const json = await resp.json();
-
-                if (json.observations) {
-                    return json.observations
-                        .filter(d => d.value !== '.' && d.value != null)
-                        .map(d => ({ date: d.date, price: parseFloat(d.value), source: 'FRED' }));
-                }
-            } catch (e) {
-                console.warn('FRED fetch failed:', e.message);
-            }
-            return [];
-        }
-
-        // Alpha Vantage - daily commodity prices with history
-        async function fetchAlphaVantage(func) {
-            try {
                 const resp = await fetch(
-                    'https://www.alphavantage.co/query?function=' + func +
-                    '&interval=daily&apikey=' + ALPHA_VANTAGE_KEY
+                    `https://api.frankfurter.dev/${startStr}..${endDate}?from=MXN&to=USD`
                 );
                 const json = await resp.json();
-                if (json.data) {
-                    return json.data
-                        .filter(d => d.value && d.value !== '.')
-                        .map(d => ({ date: d.date, price: parseFloat(d.value), source: 'AlphaVantage' }))
-                        .sort((a, b) => a.date.localeCompare(b.date));
+
+                if (json.rates) {
+                    return Object.entries(json.rates).map(([date, rates]) => ({
+                        date,
+                        rate: rates.USD,
+                        source: 'Frankfurter'
+                    })).sort((a, b) => a.date.localeCompare(b.date));
                 }
             } catch (e) {
-                console.warn('Alpha Vantage fetch failed:', e.message);
+                console.warn('Frankfurter fetch failed:', e.message);
+            }
+            return [];
+        }
+
+        // ExchangeRate API - free tier, no key needed for basic access
+        async function fetchExchangeRateAPI() {
+            try {
+                const resp = await fetch('https://open.er-api.com/v6/latest/MXN');
+                const json = await resp.json();
+
+                if (json.result === 'success' && json.rates && json.rates.USD) {
+                    const today = new Date().toISOString().split('T')[0];
+                    return [{
+                        date: today,
+                        rate: json.rates.USD,
+                        source: 'ExchangeRate'
+                    }];
+                }
+            } catch (e) {
+                console.warn('ExchangeRate API fetch failed:', e.message);
             }
             return [];
         }
@@ -476,60 +429,37 @@
             return Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date));
         }
 
-        async function fetchAllPrices() {
+        async function fetchRates() {
             document.getElementById('content').innerHTML = `
                 <div class="loading">
                     <div class="spinner"></div>
-                    Loading from multiple sources...
+                    Loading exchange rate data...
                 </div>`;
 
             try {
                 dataSources = [];
 
-                const [
-                    eiaWti, eiaBrent, fredWti, fredBrent, eiaCanadian, eiaMaya,
-                    avWti, avBrent
-                ] = await Promise.allSettled([
-                    fetchEIASeries('RWTC'),
-                    fetchEIASeries('RBRTE'),
-                    fetchFREDSeries('DCOILWTICO'),
-                    fetchFREDSeries('DCOILBRENTEU'),
-                    fetchEIAImportSeries('I19263000004'),
-                    fetchEIAImportSeries('IMX2810004'),
-                    // Alpha Vantage
-                    fetchAlphaVantage('WTI'),
-                    fetchAlphaVantage('BRENT')
+                const [frankfurterResult, exchangeRateResult] = await Promise.allSettled([
+                    fetchFrankfurter(),
+                    fetchExchangeRateAPI()
                 ]);
 
                 const val = r => r.status === 'fulfilled' ? r.value : [];
 
-                const eiaWtiData = val(eiaWti);
-                const eiaBrentData = val(eiaBrent);
-                const fredWtiData = val(fredWti);
-                const fredBrentData = val(fredBrent);
-                const avWtiData = val(avWti);
-                const avBrentData = val(avBrent);
+                const frankfurterData = val(frankfurterResult);
+                const exchangeRateData = val(exchangeRateResult);
 
-                if (eiaWtiData.length > 0 || eiaBrentData.length > 0) dataSources.push('EIA');
-                if (fredWtiData.length > 0 || fredBrentData.length > 0) dataSources.push('FRED');
-                if (avWtiData.length > 0 || avBrentData.length > 0) dataSources.push('AlphaVantage');
+                if (frankfurterData.length > 0) dataSources.push('Frankfurter');
+                if (exchangeRateData.length > 0) dataSources.push('ExchangeRate');
 
-                // Merge all sources: EIA first (most authoritative), then FRED, Alpha Vantage
-                wtiPrices = mergePrices(eiaWtiData, fredWtiData, avWtiData);
-                brentPrices = mergePrices(eiaBrentData, fredBrentData, avBrentData);
-                canadianPrices = val(eiaCanadian);
-                mayaPrices = val(eiaMaya);
-
-                if (canadianPrices.length > 0 || mayaPrices.length > 0) {
-                    if (!dataSources.includes('EIA')) dataSources.push('EIA');
-                }
+                rateData = mergePrices(frankfurterData, exchangeRateData);
 
                 lastUpdated = new Date();
 
-                if (wtiPrices.length === 0 && brentPrices.length === 0 && canadianPrices.length === 0 && mayaPrices.length === 0) {
+                if (rateData.length === 0) {
                     document.getElementById('content').innerHTML = `
                         <div class="error-msg">
-                            Unable to fetch data from any source. Check your connection.
+                            Unable to fetch exchange rate data from any source. Check your connection.
                         </div>`;
                     return;
                 }
@@ -543,41 +473,55 @@
             }
         }
 
-        function getFilteredPrices() {
-            const typeMap = { wti: wtiPrices, brent: brentPrices, canadian: canadianPrices, maya: mayaPrices };
-            const all = typeMap[selectedType] || wtiPrices;
-            // Monthly data (canadian/maya) - map time ranges to useful month counts
-            if (selectedType === 'canadian' || selectedType === 'maya') {
-                const rangeToMonths = { 7: 6, 30: 12, 90: 18, 180: 24, 365: 36 };
-                const months = rangeToMonths[selectedRange] || 12;
-                return all.slice(-months);
-            }
+        function getFilteredRates() {
             const cutoff = new Date();
             cutoff.setDate(cutoff.getDate() - selectedRange);
-            return all.filter(p => new Date(p.date) >= cutoff);
+            return rateData.filter(p => new Date(p.date) >= cutoff);
+        }
+
+        function getDisplayRate(rate) {
+            if (selectedMode === 'usd-mxn') {
+                return 1 / rate;
+            }
+            return rate;
         }
 
         function render() {
-            const prices = getFilteredPrices();
-            if (prices.length === 0) return;
+            const rates = getFilteredRates();
+            if (rates.length === 0) return;
 
-            const latest = prices[prices.length - 1];
-            const prev = prices.length >= 2 ? prices[prices.length - 2] : null;
-            const change = prev ? latest.price - prev.price : 0;
-            const pctChange = prev ? (change / prev.price) * 100 : 0;
+            const isMxnToUsd = selectedMode === 'mxn-usd';
+            const pairLabel = isMxnToUsd ? '1 MXN in USD' : '1 USD in MXN';
+            const currencySymbol = isMxnToUsd ? '$' : '$';
+            const decimals = isMxnToUsd ? 4 : 2;
+
+            const latest = rates[rates.length - 1];
+            const prev = rates.length >= 2 ? rates[rates.length - 2] : null;
+
+            const latestRate = getDisplayRate(latest.rate);
+            const prevRate = prev ? getDisplayRate(prev.rate) : null;
+
+            const change = prevRate ? latestRate - prevRate : 0;
+            const pctChange = prevRate ? (change / prevRate) * 100 : 0;
             const isUp = change >= 0;
 
-            const high = Math.max(...prices.map(p => p.price));
-            const low = Math.min(...prices.map(p => p.price));
-            const avg = prices.reduce((s, p) => s + p.price, 0) / prices.length;
-            const variance = prices.reduce((s, p) => s + Math.pow(p.price - avg, 2), 0) / (prices.length - 1);
+            const displayRates = rates.map(r => getDisplayRate(r.rate));
+            const high = Math.max(...displayRates);
+            const low = Math.min(...displayRates);
+            const avg = displayRates.reduce((s, r) => s + r, 0) / displayRates.length;
+            const variance = displayRates.reduce((s, r) => s + Math.pow(r - avg, 2), 0) / (displayRates.length - 1);
             const volatility = (Math.sqrt(variance) / avg) * 100;
 
-            const typeLabels = { wti: 'WTI Crude Oil', brent: 'Brent Crude Oil', canadian: 'Canadian Light Sour Blend', maya: 'Mexican Maya Crude' };
-            const typeColors = { wti: '#3b82f6', brent: '#f59e0b', canadian: '#ef4444', maya: '#10b981' };
-            const typeLabel = typeLabels[selectedType];
-            const color = typeColors[selectedType];
-            const isMonthly = selectedType === 'canadian' || selectedType === 'maya';
+            // 30-day change
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            const oldRate = rateData.find(r => new Date(r.date) >= thirtyDaysAgo);
+            const monthChange = oldRate
+                ? ((latestRate - getDisplayRate(oldRate.rate)) / getDisplayRate(oldRate.rate)) * 100
+                : 0;
+
+            const inverseRate = isMxnToUsd ? (1 / latest.rate).toFixed(2) : (latest.rate).toFixed(4);
+            const inverseLabel = isMxnToUsd ? `1 USD = ${inverseRate} MXN` : `1 MXN = ${inverseRate} USD`;
 
             const latestDate = latest.date;
             const updatedStr = lastUpdated ? lastUpdated.toLocaleString('en-US', {
@@ -588,67 +532,80 @@
                 `<span class="source-tag source-${s.toLowerCase()}">${s}</span>`
             ).join(' ');
 
+            const color = '#10b981';
+
             document.getElementById('content').innerHTML = `
                 <div class="data-status">
-                    <div>Latest data: <strong>${latestDate}</strong>${isMonthly ? ' (monthly)' : ''} &bull; Updated: <strong>${updatedStr}</strong></div>
+                    <div>Latest data: <strong>${latestDate}</strong> &bull; Updated: <strong>${updatedStr}</strong></div>
                     <div>Sources: ${sourcesTags}</div>
                 </div>
                 <div class="price-hero">
                     <div>
-                        <div class="oil-label">${typeLabel}</div>
-                        <span class="current-price">$${latest.price.toFixed(2)}</span>
+                        <div class="pair-label"><span class="flag-pair">🇲🇽🇺🇸</span> ${pairLabel}</div>
+                        <span class="current-price">${currencySymbol}${latestRate.toFixed(decimals)}</span>
+                        <div class="inverse-rate">${inverseLabel}</div>
                     </div>
                     <div class="price-change ${isUp ? 'up' : 'down'}">
                         ${isUp ? '&#9650;' : '&#9660;'}
-                        ${change >= 0 ? '+' : ''}${change.toFixed(2)}
+                        ${change >= 0 ? '+' : ''}${change.toFixed(decimals)}
                         (${pctChange >= 0 ? '+' : ''}${pctChange.toFixed(2)}%)
                     </div>
                 </div>
 
                 <div class="chart-container">
-                    <canvas id="priceChart"></canvas>
+                    <canvas id="rateChart"></canvas>
                 </div>
 
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="label">High</div>
-                        <div class="value green">$${high.toFixed(2)}</div>
+                        <div class="value green">${currencySymbol}${high.toFixed(decimals)}</div>
                     </div>
                     <div class="stat-card">
                         <div class="label">Low</div>
-                        <div class="value red">$${low.toFixed(2)}</div>
+                        <div class="value red">${currencySymbol}${low.toFixed(decimals)}</div>
                     </div>
                     <div class="stat-card">
                         <div class="label">Average</div>
-                        <div class="value blue">$${avg.toFixed(2)}</div>
+                        <div class="value blue">${currencySymbol}${avg.toFixed(decimals)}</div>
                     </div>
                     <div class="stat-card">
                         <div class="label">Volatility</div>
                         <div class="value purple">${volatility.toFixed(2)}%</div>
                     </div>
+                    <div class="stat-card">
+                        <div class="label">30-Day Change</div>
+                        <div class="value ${monthChange >= 0 ? 'green' : 'red'}">${monthChange >= 0 ? '+' : ''}${monthChange.toFixed(2)}%</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Spread (H-L)</div>
+                        <div class="value amber">${currencySymbol}${(high - low).toFixed(decimals)}</div>
+                    </div>
                 </div>
 
                 <div class="recent-table">
-                    <h3>Recent Prices</h3>
+                    <h3>Recent Exchange Rates</h3>
                     <table>
                         <thead>
                             <tr>
                                 <th>Date</th>
-                                <th>Price</th>
+                                <th>Rate</th>
                                 <th>Change</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${prices.slice(-15).reverse().map((p, i, arr) => {
+                            ${rates.slice(-15).reverse().map((r, i, arr) => {
+                                const displayRate = getDisplayRate(r.rate);
                                 const next = i < arr.length - 1 ? arr[i + 1] : null;
-                                const dayChange = next ? p.price - next.price : 0;
-                                const dayPct = next ? (dayChange / next.price) * 100 : 0;
+                                const nextRate = next ? getDisplayRate(next.rate) : null;
+                                const dayChange = nextRate ? displayRate - nextRate : 0;
+                                const dayPct = nextRate ? (dayChange / nextRate) * 100 : 0;
                                 const cls = dayChange >= 0 ? 'up' : 'down';
                                 return `<tr>
-                                    <td>${p.date}</td>
-                                    <td><strong>$${p.price.toFixed(2)}</strong></td>
+                                    <td>${r.date}</td>
+                                    <td><strong>${currencySymbol}${displayRate.toFixed(decimals)}</strong></td>
                                     <td class="price-change ${cls}">
-                                        ${dayChange >= 0 ? '+' : ''}${dayChange.toFixed(2)}
+                                        ${dayChange >= 0 ? '+' : ''}${dayChange.toFixed(decimals)}
                                         (${dayPct >= 0 ? '+' : ''}${dayPct.toFixed(2)}%)
                                     </td>
                                 </tr>`;
@@ -658,11 +615,11 @@
                 </div>
             `;
 
-            renderChart(prices, color);
+            renderChart(rates, color, decimals, currencySymbol);
         }
 
-        function renderChart(prices, color) {
-            const ctx = document.getElementById('priceChart').getContext('2d');
+        function renderChart(rates, color, decimals, symbol) {
+            const ctx = document.getElementById('rateChart').getContext('2d');
 
             if (chart) chart.destroy();
 
@@ -673,10 +630,10 @@
             chart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: prices.map(p => p.date),
+                    labels: rates.map(r => r.date),
                     datasets: [{
-                        label: 'Price (USD)',
-                        data: prices.map(p => p.price),
+                        label: 'Exchange Rate',
+                        data: rates.map(r => getDisplayRate(r.rate)),
                         borderColor: color,
                         backgroundColor: gradient,
                         borderWidth: 2,
@@ -706,7 +663,7 @@
                             padding: 12,
                             displayColors: false,
                             callbacks: {
-                                label: ctx => `$${ctx.parsed.y.toFixed(2)}`
+                                label: ctx => `${symbol}${ctx.parsed.y.toFixed(decimals)}`
                             }
                         }
                     },
@@ -735,7 +692,7 @@
                             },
                             ticks: {
                                 color: '#8b8fa3',
-                                callback: v => '$' + v
+                                callback: v => symbol + v.toFixed(decimals)
                             }
                         }
                     }
@@ -744,7 +701,7 @@
         }
 
         // Initial load
-        fetchAllPrices();
+        fetchRates();
     </script>
 </body>
 </html>
