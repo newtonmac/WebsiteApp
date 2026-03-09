@@ -834,10 +834,15 @@
             }
         }
 
+        // Fires older than this are never considered active (handles stale IRWIN data)
+        const STALE_FIRE_DAYS = 30;
+
         function normalizePerimeterIncident(props, geometry) {
             const pct = props.attr_PercentContained != null ? parseInt(props.attr_PercentContained) : null;
             const isContained = props.attr_FireOutDateTime != null || props.attr_ContainmentDateTime != null;
-            const isActive = !isContained && (pct == null || pct < 100);
+            const startDate = props.attr_FireDiscoveryDateTime ? new Date(props.attr_FireDiscoveryDateTime) : null;
+            const isStale = startDate && (Date.now() - startDate.getTime()) > STALE_FIRE_DAYS * 86400000;
+            const isActive = !isStale && !isContained && (pct == null || pct < 100);
             const acres = props.poly_GISAcres || props.attr_IncidentSize || props.attr_CalculatedAcres || 0;
 
             // Calculate centroid from perimeter for marker placement
@@ -870,7 +875,9 @@
         function normalizePointIncident(props, coords) {
             const pct = props.PercentContained != null ? parseInt(props.PercentContained) : null;
             const isContained = props.FireOutDateTime != null || props.ContainmentDateTime != null;
-            const isActive = !isContained && (pct == null || pct < 100);
+            const startDate = props.FireDiscoveryDateTime ? new Date(props.FireDiscoveryDateTime) : null;
+            const isStale = startDate && (Date.now() - startDate.getTime()) > STALE_FIRE_DAYS * 86400000;
+            const isActive = !isStale && !isContained && (pct == null || pct < 100);
             const acres = props.DailyAcres || props.CalculatedAcres || 0;
 
             return {
