@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grafana Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0b0c0e;
+            color: #d8d9da;
+            min-height: 100vh;
+        }
+
+        /* Top navbar - Grafana style */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #181b1f;
+            border-bottom: 1px solid #2c3035;
+            padding: 0 16px;
+            height: 52px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .grafana-logo {
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(135deg, #f46800, #f4a800);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 16px;
+            color: #fff;
+        }
+
+        .topbar-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #e9e9e9;
+        }
+
+        .topbar-breadcrumb {
+            font-size: 13px;
+            color: #6e7680;
+        }
+
+        .topbar-breadcrumb a {
+            color: #6e9fff;
+            text-decoration: none;
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .time-picker {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #111217;
+            border: 1px solid #2c3035;
+            padding: 6px 12px;
+            border-radius: 4px;
+            color: #d8d9da;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .time-picker:hover { border-color: #3d71d9; }
+
+        .time-picker .clock-icon { color: #6e9fff; }
+
+        .refresh-interval {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .topbar-btn {
+            background: #111217;
+            border: 1px solid #2c3035;
+            color: #d8d9da;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .topbar-btn:hover { border-color: #3d71d9; background: #1a1d23; }
+
+        .topbar-btn.primary {
+            background: #3d71d9;
+            border-color: #3d71d9;
+            color: #fff;
+        }
+
+        .topbar-btn.primary:hover { background: #4a7fe6; }
+
+        /* Dashboard grid */
+        .dashboard {
+            padding: 8px;
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 8px;
+        }
+
+        /* Panels */
+        .panel {
+            background: #181b1f;
+            border: 1px solid #2c3035;
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 16px;
+            border-bottom: 1px solid #2c3035;
+            min-height: 38px;
+        }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #ccccdc;
+        }
+
+        .panel-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .panel-action-btn {
+            background: none;
+            border: none;
+            color: #6e7680;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 2px 4px;
+            border-radius: 2px;
+        }
+
+        .panel-action-btn:hover { color: #d8d9da; background: #2c3035; }
+
+        .panel-body {
+            flex: 1;
+            padding: 16px;
+            position: relative;
+            min-height: 0;
+        }
+
+        .panel-body canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        /* Stat panels */
+        .stat-value {
+            font-size: 42px;
+            font-weight: 500;
+            text-align: center;
+            margin-top: 12px;
+        }
+
+        .stat-label {
+            text-align: center;
+            font-size: 12px;
+            color: #6e7680;
+            margin-top: 4px;
+        }
+
+        .stat-sparkline {
+            height: 40px;
+            margin-top: auto;
+        }
+
+        .stat-green { color: #73bf69; }
+        .stat-red { color: #f2495c; }
+        .stat-blue { color: #5794f2; }
+        .stat-yellow { color: #ff9830; }
+        .stat-purple { color: #b877d9; }
+        .stat-cyan { color: #8ab8ff; }
+
+        /* Gauge panel */
+        .gauge-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+
+        .gauge-svg {
+            width: 180px;
+            height: 110px;
+        }
+
+        .gauge-value-text {
+            font-size: 36px;
+            font-weight: 500;
+            text-align: center;
+            margin-top: 4px;
+        }
+
+        .gauge-label-text {
+            font-size: 12px;
+            color: #6e7680;
+            text-align: center;
+        }
+
+        /* Table panel */
+        .grafana-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .grafana-table th {
+            text-align: left;
+            padding: 8px 12px;
+            color: #5794f2;
+            font-weight: 500;
+            font-size: 12px;
+            border-bottom: 1px solid #2c3035;
+            background: #111217;
+            position: sticky;
+            top: 0;
+        }
+
+        .grafana-table td {
+            padding: 7px 12px;
+            border-bottom: 1px solid #1e2126;
+        }
+
+        .grafana-table tr:hover td {
+            background: #1a1d23;
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+
+        .status-ok { background: #73bf69; }
+        .status-warn { background: #ff9830; }
+        .status-crit { background: #f2495c; }
+
+        /* Bar gauge */
+        .bar-gauge-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .bar-gauge-label {
+            width: 100px;
+            font-size: 13px;
+            text-align: right;
+            color: #6e7680;
+            flex-shrink: 0;
+        }
+
+        .bar-gauge-track {
+            flex: 1;
+            height: 24px;
+            background: #111217;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .bar-gauge-fill {
+            height: 100%;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            padding-left: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #fff;
+            transition: width 1s ease;
+        }
+
+        /* Logs panel */
+        .log-line {
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 12px;
+            padding: 3px 8px;
+            border-left: 3px solid transparent;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .log-line:hover { background: #1a1d23; }
+        .log-timestamp { color: #6e7680; margin-right: 8px; }
+        .log-info { border-left-color: #5794f2; }
+        .log-warn { border-left-color: #ff9830; }
+        .log-error { border-left-color: #f2495c; }
+        .log-debug { border-left-color: #6e7680; }
+
+        /* Responsive layout classes */
+        .span-12 { grid-column: span 12; }
+        .span-8 { grid-column: span 8; }
+        .span-6 { grid-column: span 6; }
+        .span-4 { grid-column: span 4; }
+        .span-3 { grid-column: span 3; }
+        .span-2 { grid-column: span 2; }
+        .h-200 { height: 200px; }
+        .h-250 { height: 250px; }
+        .h-300 { height: 300px; }
+        .h-350 { height: 350px; }
+
+        @media (max-width: 1200px) {
+            .span-3 { grid-column: span 6; }
+            .span-2 { grid-column: span 4; }
+        }
+
+        @media (max-width: 768px) {
+            .span-2, .span-3, .span-4, .span-6, .span-8 { grid-column: span 12; }
+            .topbar { flex-wrap: wrap; height: auto; padding: 8px 12px; gap: 8px; }
+        }
+
+        .nav-link {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #252836;
+            color: #6e9fff;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            border: 1px solid #2c3035;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover { background: #2c3035; color: #8ab8ff; }
+
+        .alert-banner {
+            background: #2a1f0f;
+            border: 1px solid #ff983060;
+            color: #ff9830;
+            padding: 8px 16px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .alert-banner .dismiss {
+            margin-left: auto;
+            background: none;
+            border: none;
+            color: #ff9830;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        /* Time range dropdown */
+        .time-dropdown {
+            display: none;
+            position: absolute;
+            top: 52px;
+            right: 16px;
+            background: #181b1f;
+            border: 1px solid #2c3035;
+            border-radius: 4px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            z-index: 200;
+            min-width: 200px;
+        }
+
+        .time-dropdown.open { display: block; }
+
+        .time-dropdown-item {
+            padding: 8px 16px;
+            font-size: 13px;
+            cursor: pointer;
+            color: #d8d9da;
+        }
+
+        .time-dropdown-item:hover { background: #2c3035; }
+        .time-dropdown-item.active { color: #5794f2; background: #111217; }
+
+        .time-dropdown-header {
+            padding: 8px 16px;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #6e7680;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #2c3035;
+        }
+    </style>
+</head>
+<body>
+    <!-- Alert banner -->
+    <div class="alert-banner" id="alertBanner">
+        <span>&#9888;</span>
+        <span><strong>Firing:</strong> High CPU usage detected on node-exporter-02 (92.4%)</span>
+        <button class="dismiss" onclick="document.getElementById('alertBanner').style.display='none'">&times;</button>
+    </div>
+
+    <!-- Top Navigation -->
+    <div class="topbar">
+        <div class="topbar-left">
+            <div class="grafana-logo">G</div>
+            <div>
+                <div class="topbar-title">System Monitoring Dashboard</div>
+                <div class="topbar-breadcrumb">
+                    <a href="index.html">Home</a> / Dashboards / System Monitoring
+                </div>
+            </div>
+        </div>
+        <div class="topbar-right">
+            <a href="index.html" class="nav-link">Oil Tracker</a>
+            <a href="live-tracker.html" class="nav-link">Live Tracker</a>
+            <div class="time-picker" id="timePicker" onclick="toggleTimeDropdown()">
+                <span class="clock-icon">&#128339;</span>
+                <span id="timeRangeLabel">Last 1 hour</span>
+                <span>&#9662;</span>
+            </div>
+            <div class="refresh-interval">
+                <button class="topbar-btn primary" id="refreshBtn" onclick="refreshAll()">&#x21bb; Refresh</button>
+                <select class="topbar-btn" id="autoRefresh" onchange="setAutoRefresh(this.value)">
+                    <option value="0">Off</option>
+                    <option value="5">5s</option>
+                    <option value="10" selected>10s</option>
+                    <option value="30">30s</option>
+                    <option value="60">1m</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Time range dropdown -->
+    <div class="time-dropdown" id="timeDropdown">
+        <div class="time-dropdown-header">Relative time ranges</div>
+        <div class="time-dropdown-item" onclick="setTimeRange('5m', 'Last 5 minutes')">Last 5 minutes</div>
+        <div class="time-dropdown-item" onclick="setTimeRange('15m', 'Last 15 minutes')">Last 15 minutes</div>
+        <div class="time-dropdown-item" onclick="setTimeRange('30m', 'Last 30 minutes')">Last 30 minutes</div>
+        <div class="time-dropdown-item active" onclick="setTimeRange('1h', 'Last 1 hour')">Last 1 hour</div>
+        <div class="time-dropdown-item" onclick="setTimeRange('3h', 'Last 3 hours')">Last 3 hours</div>
+        <div class="time-dropdown-item" onclick="setTimeRange('6h', 'Last 6 hours')">Last 6 hours</div>
+        <div class="time-dropdown-item" onclick="setTimeRange('12h', 'Last 12 hours')">Last 12 hours</div>
+        <div class="time-dropdown-item" onclick="setTimeRange('24h', 'Last 24 hours')">Last 24 hours</div>
+    </div>
+
+    <!-- Dashboard Grid -->
+    <div class="dashboard">
+
+        <!-- Row 1: Stat panels -->
+        <div class="panel span-2 h-200">
+            <div class="panel-header">
+                <span class="panel-title">CPU Usage</span>
+            </div>
+            <div class="panel-body">
+                <div class="stat-value stat-green" id="cpuValue">--</div>
+                <div class="stat-label">avg across all nodes</div>
+                <canvas id="cpuSparkline" class="stat-sparkline"></canvas>
+            </div>
+        </div>
+
+        <div class="panel span-2 h-200">
+            <div class="panel-header">
+                <span class="panel-title">Memory Usage</span>
+            </div>
+            <div class="panel-body">
+                <div class="stat-value stat-blue" id="memValue">--</div>
+                <div class="stat-label">total allocated</div>
+                <canvas id="memSparkline" class="stat-sparkline"></canvas>
+            </div>
+        </div>
+
+        <div class="panel span-2 h-200">
+            <div class="panel-header">
+                <span class="panel-title">Network In</span>
+            </div>
+            <div class="panel-body">
+                <div class="stat-value stat-cyan" id="netInValue">--</div>
+                <div class="stat-label">bytes/sec received</div>
+                <canvas id="netInSparkline" class="stat-sparkline"></canvas>
+            </div>
+        </div>
+
+        <div class="panel span-2 h-200">
+            <div class="panel-header">
+                <span class="panel-title">Network Out</span>
+            </div>
+            <div class="panel-body">
+                <div class="stat-value stat-purple" id="netOutValue">--</div>
+                <div class="stat-label">bytes/sec transmitted</div>
+                <canvas id="netOutSparkline" class="stat-sparkline"></canvas>
+            </div>
+        </div>
+
+        <div class="panel span-2 h-200">
+            <div class="panel-header">
+                <span class="panel-title">Disk I/O</span>
+            </div>
+            <div class="panel-body">
+                <div class="stat-value stat-yellow" id="diskValue">--</div>
+                <div class="stat-label">read + write ops/sec</div>
+                <canvas id="diskSparkline" class="stat-sparkline"></canvas>
+            </div>
+        </div>
+
+        <div class="panel span-2 h-200">
+            <div class="panel-header">
+                <span class="panel-title">Uptime</span>
+            </div>
+            <div class="panel-body">
+                <div class="stat-value stat-green" id="uptimeValue">--</div>
+                <div class="stat-label">system uptime</div>
+                <canvas id="uptimeSparkline" class="stat-sparkline"></canvas>
+            </div>
+        </div>
+
+        <!-- Row 2: CPU & Memory Time Series -->
+        <div class="panel span-6 h-300">
+            <div class="panel-header">
+                <span class="panel-title">CPU Usage Over Time</span>
+                <div class="panel-actions">
+                    <button class="panel-action-btn" title="View">&#128065;</button>
+                    <button class="panel-action-btn" title="Menu">&#8942;</button>
+                </div>
+            </div>
+            <div class="panel-body">
+                <canvas id="cpuChart"></canvas>
+            </div>
+        </div>
+
+        <div class="panel span-6 h-300">
+            <div class="panel-header">
+                <span class="panel-title">Memory Usage Over Time</span>
+                <div class="panel-actions">
+                    <button class="panel-action-btn" title="View">&#128065;</button>
+                    <button class="panel-action-btn" title="Menu">&#8942;</button>
+                </div>
+            </div>
+            <div class="panel-body">
+                <canvas id="memChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Row 3: Network traffic & Disk gauge -->
+        <div class="panel span-8 h-300">
+            <div class="panel-header">
+                <span class="panel-title">Network Traffic</span>
+                <div class="panel-actions">
+                    <button class="panel-action-btn" title="View">&#128065;</button>
+                    <button class="panel-action-btn" title="Menu">&#8942;</button>
+                </div>
+            </div>
+            <div class="panel-body">
+                <canvas id="networkChart"></canvas>
+            </div>
+        </div>
+
+        <div class="panel span-4 h-300">
+            <div class="panel-header">
+                <span class="panel-title">Disk Space</span>
+            </div>
+            <div class="panel-body">
+                <div class="gauge-container">
+                    <svg class="gauge-svg" viewBox="0 0 200 120" id="diskGauge"></svg>
+                    <div class="gauge-value-text stat-yellow" id="diskGaugeValue">--</div>
+                    <div class="gauge-label-text">/dev/sda1</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 4: Bar gauges & Services table -->
+        <div class="panel span-4 h-350">
+            <div class="panel-header">
+                <span class="panel-title">Resource Usage by Node</span>
+            </div>
+            <div class="panel-body" id="barGauges">
+            </div>
+        </div>
+
+        <div class="panel span-8 h-350">
+            <div class="panel-header">
+                <span class="panel-title">Services Status</span>
+                <div class="panel-actions">
+                    <button class="panel-action-btn" title="View">&#128065;</button>
+                    <button class="panel-action-btn" title="Menu">&#8942;</button>
+                </div>
+            </div>
+            <div class="panel-body" style="padding: 0; overflow-y: auto;">
+                <table class="grafana-table" id="servicesTable">
+                    <thead>
+                        <tr>
+                            <th>Service</th>
+                            <th>Status</th>
+                            <th>Uptime</th>
+                            <th>CPU</th>
+                            <th>Memory</th>
+                            <th>Requests/s</th>
+                            <th>Error Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody id="servicesBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Row 5: HTTP request rate & Logs -->
+        <div class="panel span-6 h-300">
+            <div class="panel-header">
+                <span class="panel-title">HTTP Request Rate</span>
+                <div class="panel-actions">
+                    <button class="panel-action-btn" title="View">&#128065;</button>
+                    <button class="panel-action-btn" title="Menu">&#8942;</button>
+                </div>
+            </div>
+            <div class="panel-body">
+                <canvas id="httpChart"></canvas>
+            </div>
+        </div>
+
+        <div class="panel span-6 h-300">
+            <div class="panel-header">
+                <span class="panel-title">Logs</span>
+                <div class="panel-actions">
+                    <button class="panel-action-btn" title="Wrap">&#x2194;</button>
+                    <button class="panel-action-btn" title="Menu">&#8942;</button>
+                </div>
+            </div>
+            <div class="panel-body" style="padding: 4px 0; overflow-y: auto; font-size: 12px;" id="logsPanel">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ---- Simulated Metrics Engine ----
+        // Generates realistic-looking monitoring data that updates in real time
+
+        let charts = {};
+        let refreshInterval = null;
+        let timeRange = '1h';
+        let dataPoints = 60;
+
+        // Metrics state
+        const state = {
+            cpu: { history: [], current: 0 },
+            mem: { history: [], current: 0 },
+            netIn: { history: [], current: 0 },
+            netOut: { history: [], current: 0 },
+            diskIO: { history: [], current: 0 },
+            diskSpace: 67.3,
+            uptime: 0,
+            startTime: Date.now(),
+            nodes: [
+                { name: 'node-01', cpu: 45 },
+                { name: 'node-02', cpu: 72 },
+                { name: 'node-03', cpu: 31 },
+                { name: 'node-04', cpu: 58 },
+                { name: 'node-05', cpu: 89 },
+            ],
+            services: [
+                { name: 'api-gateway', status: 'ok', uptime: '14d 6h', cpu: 12.3, mem: 256, rps: 1240, errorRate: 0.02 },
+                { name: 'auth-service', status: 'ok', uptime: '14d 6h', cpu: 8.1, mem: 128, rps: 340, errorRate: 0.01 },
+                { name: 'user-service', status: 'ok', uptime: '7d 2h', cpu: 15.7, mem: 384, rps: 890, errorRate: 0.05 },
+                { name: 'payment-service', status: 'warn', uptime: '3d 18h', cpu: 42.8, mem: 512, rps: 120, errorRate: 1.2 },
+                { name: 'notification-svc', status: 'ok', uptime: '14d 6h', cpu: 3.2, mem: 96, rps: 450, errorRate: 0.0 },
+                { name: 'search-engine', status: 'ok', uptime: '10d 14h', cpu: 28.9, mem: 1024, rps: 670, errorRate: 0.08 },
+                { name: 'cache-redis', status: 'ok', uptime: '14d 6h', cpu: 5.4, mem: 2048, rps: 8900, errorRate: 0.0 },
+                { name: 'db-postgres', status: 'crit', uptime: '0d 2h', cpu: 92.4, mem: 4096, rps: 2100, errorRate: 3.4 },
+                { name: 'message-queue', status: 'ok', uptime: '14d 6h', cpu: 11.0, mem: 256, rps: 3400, errorRate: 0.01 },
+                { name: 'cdn-proxy', status: 'ok', uptime: '14d 6h', cpu: 6.7, mem: 192, rps: 5600, errorRate: 0.0 },
+            ],
+            httpCodes: { '2xx': [], '3xx': [], '4xx': [], '5xx': [] },
+            cpuPerNode: { 'node-01': [], 'node-02': [], 'node-03': [] },
+            memPerNode: { 'used': [], 'cached': [], 'buffers': [] },
+        };
+
+        function randomWalk(current, min, max, volatility) {
+            const delta = (Math.random() - 0.5) * volatility;
+            return Math.min(max, Math.max(min, current + delta));
+        }
+
+        function generateTimestamps(count) {
+            const now = Date.now();
+            const rangeMs = {
+                '5m': 5 * 60000,
+                '15m': 15 * 60000,
+                '30m': 30 * 60000,
+                '1h': 60 * 60000,
+                '3h': 3 * 60 * 60000,
+                '6h': 6 * 60 * 60000,
+                '12h': 12 * 60 * 60000,
+                '24h': 24 * 60 * 60000,
+            }[timeRange] || 60 * 60000;
+            const step = rangeMs / count;
+            return Array.from({ length: count }, (_, i) => new Date(now - rangeMs + i * step));
+        }
+
+        function initData() {
+            // Initialize historical data
+            let cpu = 35, mem = 55, netIn = 120, netOut = 80, diskIO = 45;
+            let cpu1 = 30, cpu2 = 50, cpu3 = 25;
+            let memUsed = 60, memCached = 20, memBuf = 8;
+            let h2xx = 800, h3xx = 50, h4xx = 20, h5xx = 2;
+
+            for (let i = 0; i < dataPoints; i++) {
+                cpu = randomWalk(cpu, 10, 95, 8);
+                mem = randomWalk(mem, 30, 90, 4);
+                netIn = randomWalk(netIn, 20, 500, 40);
+                netOut = randomWalk(netOut, 10, 300, 30);
+                diskIO = randomWalk(diskIO, 5, 200, 20);
+                cpu1 = randomWalk(cpu1, 5, 95, 10);
+                cpu2 = randomWalk(cpu2, 10, 98, 12);
+                cpu3 = randomWalk(cpu3, 5, 80, 8);
+                memUsed = randomWalk(memUsed, 30, 85, 3);
+                memCached = randomWalk(memCached, 5, 30, 2);
+                memBuf = randomWalk(memBuf, 2, 15, 1);
+                h2xx = randomWalk(h2xx, 400, 1500, 100);
+                h3xx = randomWalk(h3xx, 10, 100, 15);
+                h4xx = randomWalk(h4xx, 0, 80, 10);
+                h5xx = randomWalk(h5xx, 0, 20, 3);
+
+                state.cpu.history.push(cpu);
+                state.mem.history.push(mem);
+                state.netIn.history.push(netIn);
+                state.netOut.history.push(netOut);
+                state.diskIO.history.push(diskIO);
+                state.cpuPerNode['node-01'].push(cpu1);
+                state.cpuPerNode['node-02'].push(cpu2);
+                state.cpuPerNode['node-03'].push(cpu3);
+                state.memPerNode['used'].push(memUsed);
+                state.memPerNode['cached'].push(memCached);
+                state.memPerNode['buffers'].push(memBuf);
+                state.httpCodes['2xx'].push(Math.round(h2xx));
+                state.httpCodes['3xx'].push(Math.round(h3xx));
+                state.httpCodes['4xx'].push(Math.round(h4xx));
+                state.httpCodes['5xx'].push(Math.round(h5xx));
+            }
+
+            state.cpu.current = cpu;
+            state.mem.current = mem;
+            state.netIn.current = netIn;
+            state.netOut.current = netOut;
+            state.diskIO.current = diskIO;
+        }
+
+        function updateData() {
+            // Push new data point, shift old one off
+            state.cpu.current = randomWalk(state.cpu.current, 10, 95, 6);
+            state.mem.current = randomWalk(state.mem.current, 30, 90, 3);
+            state.netIn.current = randomWalk(state.netIn.current, 20, 500, 30);
+            state.netOut.current = randomWalk(state.netOut.current, 10, 300, 25);
+            state.diskIO.current = randomWalk(state.diskIO.current, 5, 200, 15);
+
+            const metrics = ['cpu', 'mem', 'netIn', 'netOut', 'diskIO'];
+            metrics.forEach(m => {
+                state[m].history.push(state[m].current);
+                if (state[m].history.length > dataPoints) state[m].history.shift();
+            });
+
+            // CPU per node
+            Object.keys(state.cpuPerNode).forEach(node => {
+                const arr = state.cpuPerNode[node];
+                const last = arr[arr.length - 1];
+                arr.push(randomWalk(last, 5, 98, 10));
+                if (arr.length > dataPoints) arr.shift();
+            });
+
+            // Memory breakdown
+            Object.keys(state.memPerNode).forEach(key => {
+                const arr = state.memPerNode[key];
+                const last = arr[arr.length - 1];
+                const max = key === 'used' ? 85 : key === 'cached' ? 30 : 15;
+                arr.push(randomWalk(last, 2, max, 2));
+                if (arr.length > dataPoints) arr.shift();
+            });
+
+            // HTTP codes
+            Object.keys(state.httpCodes).forEach(code => {
+                const arr = state.httpCodes[code];
+                const last = arr[arr.length - 1];
+                const max = code === '2xx' ? 1500 : code === '3xx' ? 100 : code === '4xx' ? 80 : 20;
+                arr.push(Math.round(randomWalk(last, 0, max, code === '2xx' ? 80 : 10)));
+                if (arr.length > dataPoints) arr.shift();
+            });
+
+            // Nodes
+            state.nodes.forEach(n => {
+                n.cpu = randomWalk(n.cpu, 5, 95, 5);
+            });
+
+            // Services jitter
+            state.services.forEach(s => {
+                s.cpu = Math.max(0, randomWalk(s.cpu, 0, 100, 3));
+                s.rps = Math.max(0, Math.round(randomWalk(s.rps, 0, 10000, s.rps * 0.05)));
+                s.errorRate = Math.max(0, parseFloat(randomWalk(s.errorRate, 0, 5, 0.1).toFixed(2)));
+            });
+
+            state.diskSpace = randomWalk(state.diskSpace, 40, 95, 0.3);
+        }
+
+        // ---- Rendering ----
+
+        function formatBytes(val) {
+            if (val >= 1000) return (val / 1000).toFixed(1) + ' KB';
+            return val.toFixed(0) + ' B';
+        }
+
+        function formatUptime() {
+            const elapsed = Date.now() - state.startTime;
+            const secs = Math.floor(elapsed / 1000);
+            const mins = Math.floor(secs / 60);
+            const hrs = Math.floor(mins / 60);
+            const days = Math.floor(hrs / 24);
+            if (days > 0) return days + 'd ' + (hrs % 24) + 'h';
+            if (hrs > 0) return hrs + 'h ' + (mins % 60) + 'm';
+            return mins + 'm ' + (secs % 60) + 's';
+        }
+
+        function renderStats() {
+            document.getElementById('cpuValue').textContent = state.cpu.current.toFixed(1) + '%';
+            document.getElementById('memValue').textContent = state.mem.current.toFixed(1) + '%';
+            document.getElementById('netInValue').textContent = formatBytes(state.netIn.current) + '/s';
+            document.getElementById('netOutValue').textContent = formatBytes(state.netOut.current) + '/s';
+            document.getElementById('diskValue').textContent = state.diskIO.current.toFixed(0) + ' ops/s';
+            document.getElementById('uptimeValue').textContent = formatUptime();
+
+            // Color coding
+            const cpuEl = document.getElementById('cpuValue');
+            cpuEl.className = 'stat-value ' + (state.cpu.current > 80 ? 'stat-red' : state.cpu.current > 60 ? 'stat-yellow' : 'stat-green');
+
+            const memEl = document.getElementById('memValue');
+            memEl.className = 'stat-value ' + (state.mem.current > 80 ? 'stat-red' : state.mem.current > 60 ? 'stat-yellow' : 'stat-blue');
+        }
+
+        function createSparkline(canvasId, data, color) {
+            const ctx = document.getElementById(canvasId);
+            if (!ctx) return;
+
+            if (charts[canvasId]) charts[canvasId].destroy();
+
+            charts[canvasId] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map((_, i) => i),
+                    datasets: [{
+                        data: data.slice(-20),
+                        borderColor: color,
+                        borderWidth: 1.5,
+                        fill: true,
+                        backgroundColor: color + '20',
+                        tension: 0.4,
+                        pointRadius: 0,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                    scales: {
+                        x: { display: false },
+                        y: { display: false }
+                    },
+                    animation: { duration: 300 }
+                }
+            });
+        }
+
+        function renderSparklines() {
+            createSparkline('cpuSparkline', state.cpu.history, '#73bf69');
+            createSparkline('memSparkline', state.mem.history, '#5794f2');
+            createSparkline('netInSparkline', state.netIn.history, '#8ab8ff');
+            createSparkline('netOutSparkline', state.netOut.history, '#b877d9');
+            createSparkline('diskSparkline', state.diskIO.history, '#ff9830');
+            createSparkline('uptimeSparkline', state.cpu.history.map((_, i) => 100), '#73bf69');
+        }
+
+        const chartDefaults = {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 400 },
+            interaction: { intersect: false, mode: 'index' },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: '#6e7680', boxWidth: 12, padding: 16, font: { size: 11 } }
+                },
+                tooltip: {
+                    backgroundColor: '#1a1d23',
+                    titleColor: '#d8d9da',
+                    bodyColor: '#d8d9da',
+                    borderColor: '#2c3035',
+                    borderWidth: 1,
+                    padding: 10,
+                    displayColors: true,
+                }
+            },
+            scales: {
+                x: {
+                    type: 'time',
+                    time: { tooltipFormat: 'HH:mm:ss', displayFormats: { minute: 'HH:mm', hour: 'HH:mm' } },
+                    grid: { color: '#2c303520', drawBorder: false },
+                    ticks: { color: '#6e7680', maxTicksLimit: 8, font: { size: 11 } },
+                },
+                y: {
+                    grid: { color: '#2c303520', drawBorder: false },
+                    ticks: { color: '#6e7680', font: { size: 11 } },
+                }
+            }
+        };
+
+        function renderCPUChart() {
+            const timestamps = generateTimestamps(dataPoints);
+            const ctx = document.getElementById('cpuChart');
+            if (charts.cpuChart) charts.cpuChart.destroy();
+
+            charts.cpuChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: timestamps,
+                    datasets: [
+                        {
+                            label: 'node-01',
+                            data: state.cpuPerNode['node-01'],
+                            borderColor: '#73bf69',
+                            backgroundColor: '#73bf6910',
+                            borderWidth: 1.5, fill: false, tension: 0.3, pointRadius: 0,
+                        },
+                        {
+                            label: 'node-02',
+                            data: state.cpuPerNode['node-02'],
+                            borderColor: '#f2495c',
+                            backgroundColor: '#f2495c10',
+                            borderWidth: 1.5, fill: false, tension: 0.3, pointRadius: 0,
+                        },
+                        {
+                            label: 'node-03',
+                            data: state.cpuPerNode['node-03'],
+                            borderColor: '#5794f2',
+                            backgroundColor: '#5794f210',
+                            borderWidth: 1.5, fill: false, tension: 0.3, pointRadius: 0,
+                        }
+                    ]
+                },
+                options: {
+                    ...chartDefaults,
+                    scales: {
+                        ...chartDefaults.scales,
+                        y: { ...chartDefaults.scales.y, min: 0, max: 100, ticks: { ...chartDefaults.scales.y.ticks, callback: v => v + '%' } }
+                    }
+                }
+            });
+        }
+
+        function renderMemChart() {
+            const timestamps = generateTimestamps(dataPoints);
+            const ctx = document.getElementById('memChart');
+            if (charts.memChart) charts.memChart.destroy();
+
+            charts.memChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: timestamps,
+                    datasets: [
+                        {
+                            label: 'Used',
+                            data: state.memPerNode['used'],
+                            borderColor: '#5794f2',
+                            backgroundColor: '#5794f230',
+                            borderWidth: 1.5, fill: true, tension: 0.3, pointRadius: 0,
+                        },
+                        {
+                            label: 'Cached',
+                            data: state.memPerNode['cached'],
+                            borderColor: '#73bf69',
+                            backgroundColor: '#73bf6930',
+                            borderWidth: 1.5, fill: true, tension: 0.3, pointRadius: 0,
+                        },
+                        {
+                            label: 'Buffers',
+                            data: state.memPerNode['buffers'],
+                            borderColor: '#ff9830',
+                            backgroundColor: '#ff983030',
+                            borderWidth: 1.5, fill: true, tension: 0.3, pointRadius: 0,
+                        }
+                    ]
+                },
+                options: {
+                    ...chartDefaults,
+                    plugins: {
+                        ...chartDefaults.plugins,
+                        filler: { propagate: false }
+                    },
+                    scales: {
+                        ...chartDefaults.scales,
+                        y: { ...chartDefaults.scales.y, stacked: true, min: 0, max: 100, ticks: { ...chartDefaults.scales.y.ticks, callback: v => v + '%' } }
+                    }
+                }
+            });
+        }
+
+        function renderNetworkChart() {
+            const timestamps = generateTimestamps(dataPoints);
+            const ctx = document.getElementById('networkChart');
+            if (charts.networkChart) charts.networkChart.destroy();
+
+            charts.networkChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: timestamps,
+                    datasets: [
+                        {
+                            label: 'Inbound',
+                            data: state.netIn.history,
+                            borderColor: '#5794f2',
+                            backgroundColor: '#5794f220',
+                            borderWidth: 1.5, fill: true, tension: 0.3, pointRadius: 0,
+                        },
+                        {
+                            label: 'Outbound',
+                            data: state.netOut.history,
+                            borderColor: '#b877d9',
+                            backgroundColor: '#b877d920',
+                            borderWidth: 1.5, fill: true, tension: 0.3, pointRadius: 0,
+                        }
+                    ]
+                },
+                options: {
+                    ...chartDefaults,
+                    scales: {
+                        ...chartDefaults.scales,
+                        y: { ...chartDefaults.scales.y, ticks: { ...chartDefaults.scales.y.ticks, callback: v => formatBytes(v) + '/s' } }
+                    }
+                }
+            });
+        }
+
+        function renderHTTPChart() {
+            const timestamps = generateTimestamps(dataPoints);
+            const ctx = document.getElementById('httpChart');
+            if (charts.httpChart) charts.httpChart.destroy();
+
+            charts.httpChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: timestamps,
+                    datasets: [
+                        { label: '2xx', data: state.httpCodes['2xx'], backgroundColor: '#73bf69', borderWidth: 0, barPercentage: 1, categoryPercentage: 0.9 },
+                        { label: '3xx', data: state.httpCodes['3xx'], backgroundColor: '#5794f2', borderWidth: 0, barPercentage: 1, categoryPercentage: 0.9 },
+                        { label: '4xx', data: state.httpCodes['4xx'], backgroundColor: '#ff9830', borderWidth: 0, barPercentage: 1, categoryPercentage: 0.9 },
+                        { label: '5xx', data: state.httpCodes['5xx'], backgroundColor: '#f2495c', borderWidth: 0, barPercentage: 1, categoryPercentage: 0.9 },
+                    ]
+                },
+                options: {
+                    ...chartDefaults,
+                    scales: {
+                        ...chartDefaults.scales,
+                        x: { ...chartDefaults.scales.x, stacked: true },
+                        y: { ...chartDefaults.scales.y, stacked: true, ticks: { ...chartDefaults.scales.y.ticks, callback: v => v + ' req/s' } }
+                    }
+                }
+            });
+        }
+
+        function renderDiskGauge() {
+            const pct = state.diskSpace;
+            const color = pct > 85 ? '#f2495c' : pct > 70 ? '#ff9830' : '#73bf69';
+            const angle = (pct / 100) * Math.PI;
+            const startAngle = Math.PI;
+            const endAngle = startAngle + angle;
+
+            const cx = 100, cy = 100, r = 80, w = 16;
+            const svg = document.getElementById('diskGauge');
+
+            function polarToCart(cx, cy, r, angle) {
+                return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) };
+            }
+
+            const bgStart = polarToCart(cx, cy, r, startAngle);
+            const bgEnd = polarToCart(cx, cy, r, 2 * Math.PI);
+            const valStart = polarToCart(cx, cy, r, startAngle);
+            const valEnd = polarToCart(cx, cy, r, endAngle);
+            const largeArc = angle > Math.PI ? 1 : 0;
+
+            svg.innerHTML = `
+                <path d="M ${bgStart.x} ${bgStart.y} A ${r} ${r} 0 1 1 ${bgEnd.x} ${bgEnd.y}"
+                      fill="none" stroke="#2c3035" stroke-width="${w}" stroke-linecap="round" />
+                <path d="M ${valStart.x} ${valStart.y} A ${r} ${r} 0 ${largeArc} 1 ${valEnd.x} ${valEnd.y}"
+                      fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round" />
+            `;
+
+            const gaugeVal = document.getElementById('diskGaugeValue');
+            gaugeVal.textContent = pct.toFixed(1) + '%';
+            gaugeVal.className = 'gauge-value-text ' + (pct > 85 ? 'stat-red' : pct > 70 ? 'stat-yellow' : 'stat-green');
+        }
+
+        function renderBarGauges() {
+            const container = document.getElementById('barGauges');
+            container.innerHTML = state.nodes.map(n => {
+                const color = n.cpu > 80 ? '#f2495c' : n.cpu > 60 ? '#ff9830' : '#73bf69';
+                return `
+                    <div class="bar-gauge-row">
+                        <div class="bar-gauge-label">${n.name}</div>
+                        <div class="bar-gauge-track">
+                            <div class="bar-gauge-fill" style="width: ${n.cpu}%; background: ${color};">
+                                ${n.cpu.toFixed(1)}%
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderServicesTable() {
+            const tbody = document.getElementById('servicesBody');
+            tbody.innerHTML = state.services.map(s => {
+                const statusClass = s.status === 'ok' ? 'status-ok' : s.status === 'warn' ? 'status-warn' : 'status-crit';
+                const statusLabel = s.status === 'ok' ? 'Healthy' : s.status === 'warn' ? 'Warning' : 'Critical';
+                const errColor = s.errorRate > 1 ? 'stat-red' : s.errorRate > 0.1 ? 'stat-yellow' : '';
+                return `<tr>
+                    <td><strong>${s.name}</strong></td>
+                    <td><span class="status-dot ${statusClass}"></span>${statusLabel}</td>
+                    <td>${s.uptime}</td>
+                    <td>${s.cpu.toFixed(1)}%</td>
+                    <td>${s.mem >= 1024 ? (s.mem / 1024).toFixed(1) + ' GB' : s.mem + ' MB'}</td>
+                    <td>${s.rps.toLocaleString()}</td>
+                    <td class="${errColor}">${s.errorRate.toFixed(2)}%</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function renderLogs() {
+            const panel = document.getElementById('logsPanel');
+            const levels = ['info', 'info', 'info', 'info', 'debug', 'warn', 'error'];
+            const messages = [
+                'GET /api/v1/users 200 OK (12ms)',
+                'POST /api/v1/auth/login 200 OK (45ms)',
+                'GET /api/v1/products?page=3 200 OK (8ms)',
+                'Connection pool: 42/50 active connections',
+                'Cache hit ratio: 94.2%',
+                'Slow query detected: SELECT * FROM orders WHERE... (2340ms)',
+                'Failed to connect to replica db-slave-03: connection refused',
+                'Rate limit exceeded for IP 203.0.113.42',
+                'Health check passed for payment-service',
+                'Garbage collection pause: 24ms',
+                'TLS certificate renewal scheduled in 14 days',
+                'Deployment v2.4.1 rollout: 3/5 pods ready',
+                'Ingress controller reloaded configuration',
+                'DNS resolution latency spike: 890ms for api.external.com',
+                'Worker thread pool utilization: 78%',
+            ];
+
+            const now = new Date();
+            const lines = [];
+            for (let i = 0; i < 30; i++) {
+                const t = new Date(now.getTime() - i * (2000 + Math.random() * 5000));
+                const ts = t.toTimeString().slice(0, 8) + '.' + String(t.getMilliseconds()).padStart(3, '0');
+                const level = levels[Math.floor(Math.random() * levels.length)];
+                const msg = messages[Math.floor(Math.random() * messages.length)];
+                lines.push(`<div class="log-line log-${level}"><span class="log-timestamp">${ts}</span>[${level.toUpperCase()}] ${msg}</div>`);
+            }
+            panel.innerHTML = lines.join('');
+        }
+
+        // ---- Controls ----
+
+        function toggleTimeDropdown() {
+            document.getElementById('timeDropdown').classList.toggle('open');
+        }
+
+        function setTimeRange(range, label) {
+            timeRange = range;
+            document.getElementById('timeRangeLabel').textContent = label;
+            document.getElementById('timeDropdown').classList.remove('open');
+
+            // Update active item
+            document.querySelectorAll('.time-dropdown-item').forEach(el => {
+                el.classList.toggle('active', el.textContent === label);
+            });
+
+            // Adjust data points based on range
+            const dpMap = { '5m': 30, '15m': 45, '30m': 60, '1h': 60, '3h': 90, '6h': 120, '12h': 120, '24h': 144 };
+            dataPoints = dpMap[range] || 60;
+
+            // Regenerate data
+            resetData();
+            renderAll();
+        }
+
+        function resetData() {
+            state.cpu.history = [];
+            state.mem.history = [];
+            state.netIn.history = [];
+            state.netOut.history = [];
+            state.diskIO.history = [];
+            Object.keys(state.cpuPerNode).forEach(k => state.cpuPerNode[k] = []);
+            Object.keys(state.memPerNode).forEach(k => state.memPerNode[k] = []);
+            Object.keys(state.httpCodes).forEach(k => state.httpCodes[k] = []);
+            initData();
+        }
+
+        function setAutoRefresh(seconds) {
+            if (refreshInterval) clearInterval(refreshInterval);
+            if (seconds > 0) {
+                refreshInterval = setInterval(() => {
+                    updateData();
+                    renderAll();
+                }, seconds * 1000);
+            }
+        }
+
+        function refreshAll() {
+            updateData();
+            renderAll();
+        }
+
+        function renderAll() {
+            renderStats();
+            renderSparklines();
+            renderCPUChart();
+            renderMemChart();
+            renderNetworkChart();
+            renderHTTPChart();
+            renderDiskGauge();
+            renderBarGauges();
+            renderServicesTable();
+            renderLogs();
+        }
+
+        // Close dropdown on outside click
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#timePicker') && !e.target.closest('#timeDropdown')) {
+                document.getElementById('timeDropdown').classList.remove('open');
+            }
+        });
+
+        // ---- Init ----
+        initData();
+        renderAll();
+        setAutoRefresh(10);
+    </script>
+</body>
+</html>
