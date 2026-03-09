@@ -746,7 +746,7 @@
         const SD_DISPATCH_API = 'https://sd-fire-proxy.YOUR_SUBDOMAIN.workers.dev'; // UPDATE after deploying worker
         // NASA FIRMS VIIRS satellite hotspots
         const FIRMS_API = 'https://firms.modaps.eosdis.nasa.gov/api/area/csv';
-        const FIRMS_MAP_KEY = ''; // Get free key at https://firms.modaps.eosdis.nasa.gov/api/map_key/
+        const FIRMS_MAP_KEY = 'da31ea356ef43651e01dc79ff76b1553';
         const SD_BBOX = '-117.6,32.4,-116.0,33.5'; // San Diego County bounding box
         const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
@@ -926,37 +926,57 @@
             });
         }
 
-        // ── Fetch NASA FIRMS satellite hotspots (VIIRS) ──
+        // ── Fetch NASA FIRMS satellite hotspots (all 3 VIIRS sensors) ──
+        const VIIRS_SENSORS = ['VIIRS_SNPP_NRT', 'VIIRS_NOAA20_NRT', 'VIIRS_NOAA21_NRT'];
+
         async function fetchHotspots() {
-            if (!FIRMS_MAP_KEY) return; // Skip if no API key configured
+            if (!FIRMS_MAP_KEY) return;
             try {
-                const resp = await fetch(`${FIRMS_API}/${FIRMS_MAP_KEY}/VIIRS_SNPP_NRT/${SD_BBOX}/2`);
-                const csv = await resp.text();
-                if (csv.startsWith('Invalid')) return;
-
-                const lines = csv.trim().split('\n');
-                if (lines.length < 2) return;
-
-                const headers = lines[0].split(',');
-                const latIdx = headers.indexOf('latitude');
-                const lngIdx = headers.indexOf('longitude');
-                const briIdx = headers.indexOf('bright_ti4');
-                const confIdx = headers.indexOf('confidence');
-                const dateIdx = headers.indexOf('acq_date');
-                const timeIdx = headers.indexOf('acq_time');
+                // Fetch from all 3 VIIRS satellites for maximum coverage
+                const responses = await Promise.all(
+                    VIIRS_SENSORS.map(sensor =>
+                        fetch(`${FIRMS_API}/${FIRMS_MAP_KEY}/${sensor}/${SD_BBOX}/2`)
+                            .then(r => r.text())
+                            .catch(() => '')
+                    )
+                );
 
                 satelliteHotspots = [];
-                for (let i = 1; i < lines.length; i++) {
-                    const cols = lines[i].split(',');
-                    satelliteHotspots.push({
-                        lat: parseFloat(cols[latIdx]),
-                        lng: parseFloat(cols[lngIdx]),
-                        brightness: parseFloat(cols[briIdx]),
-                        confidence: cols[confIdx],
-                        date: cols[dateIdx],
-                        time: cols[timeIdx],
-                    });
-                }
+                const seen = new Set();
+
+                responses.forEach(csv => {
+                    if (!csv || csv.startsWith('Invalid')) return;
+                    const lines = csv.trim().split('\n');
+                    if (lines.length < 2) return;
+
+                    const headers = lines[0].split(',');
+                    const latIdx = headers.indexOf('latitude');
+                    const lngIdx = headers.indexOf('longitude');
+                    const briIdx = headers.indexOf('bright_ti4');
+                    const confIdx = headers.indexOf('confidence');
+                    const dateIdx = headers.indexOf('acq_date');
+                    const timeIdx = headers.indexOf('acq_time');
+                    const satIdx = headers.indexOf('satellite');
+
+                    for (let i = 1; i < lines.length; i++) {
+                        const cols = lines[i].split(',');
+                        const lat = parseFloat(cols[latIdx]);
+                        const lng = parseFloat(cols[lngIdx]);
+                        // Deduplicate nearby hotspots (within ~375m)
+                        const key = `${lat.toFixed(3)},${lng.toFixed(3)}`;
+                        if (seen.has(key)) continue;
+                        seen.add(key);
+
+                        satelliteHotspots.push({
+                            lat, lng,
+                            brightness: parseFloat(cols[briIdx]),
+                            confidence: cols[confIdx],
+                            date: cols[dateIdx],
+                            time: cols[timeIdx],
+                            satellite: cols[satIdx] || '',
+                        });
+                    }
+                });
 
                 renderHotspots();
             } catch (err) {
