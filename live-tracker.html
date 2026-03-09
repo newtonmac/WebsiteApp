@@ -1419,7 +1419,7 @@
             Object.values(fireMarkers).forEach(m => m.setMap(null));
             fireMarkers = {};
 
-            incidents.forEach(f => {
+            getFiltered().forEach(f => {
                 const color = getMarkerColor(f);
                 const scale = getMarkerScale(f);
 
@@ -1709,6 +1709,7 @@
                 btn.classList.add('active');
                 activeFilter = btn.dataset.filter;
                 renderSidebar();
+                renderMarkers();
             });
         });
 
