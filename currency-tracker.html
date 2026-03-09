@@ -280,6 +280,9 @@
 
         .data-status .source-fred { background: #f59e0b20; color: #fbbf24; }
         .data-status .source-frankfurter { background: #10b98120; color: #34d399; }
+        .data-status .source-yahoo { background: #6d28d920; color: #c084fc; }
+        .data-status .source-twelvedata { background: #3b82f620; color: #60a5fa; }
+        .data-status .source-banxico { background: #dc262620; color: #ef4444; }
 
         .nav-link {
             display: inline-block;
@@ -300,7 +303,7 @@
 <body>
     <div class="header">
         <h1>MXN / USD Exchange Rate Tracker</h1>
-        <p>Mexican Peso to US Dollar &bull; FRED &amp; Frankfurter &bull; Updated daily</p>
+        <p>Mexican Peso to US Dollar &bull; FRED, Frankfurter, Yahoo, Twelve Data &amp; Banxico &bull; Updated daily</p>
         <a href="index.html" class="nav-link">&larr; Oil Tracker</a>
         <a href="flight-tracker.html" class="nav-link">Flight Tracker &rarr;</a>
         <a href="traffic-dashboard.html" class="nav-link">Traffic Dashboard</a>
@@ -425,6 +428,87 @@
             return [];
         }
 
+        // Yahoo Finance (MXNUSD=X returns MXN per 1 USD, we want USD per 1 MXN)
+        async function fetchYahoo() {
+            try {
+                const targetUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/MXNUSD%3DX?range=1y&interval=1d';
+                const resp = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl));
+                const json = await resp.json();
+                if (json.chart && json.chart.result && json.chart.result[0]) {
+                    const result = json.chart.result[0];
+                    const timestamps = result.timestamp || [];
+                    const closes = result.indicators.quote[0].close || [];
+                    return timestamps.map((ts, i) => {
+                        const d = new Date(ts * 1000);
+                        const dateStr = d.toISOString().split('T')[0];
+                        return { date: dateStr, rate: closes[i], source: 'Yahoo' };
+                    }).filter(p => p.rate != null && !isNaN(p.rate) && p.rate > 0);
+                }
+            } catch (e) {
+                console.warn('Yahoo Finance fetch failed:', e.message);
+            }
+            return [];
+        }
+
+        // Banxico SIE API - SF43718 is the official Peso/Dollar FIX rate
+        // To enable: get a free 64-char token at https://www.banxico.org.mx/SieAPIRest/service/v1/
+        // Then replace the empty string below with your token
+        const BANXICO_TOKEN = '889a6a2e5d57fa9635e403a9aef392c2ba6c12e771bb6c9ecc63bcbf893bd840';
+        const BANXICO_BASE = 'https://www.banxico.org.mx/SieAPIRest/service/v1';
+
+        async function fetchBanxico() {
+            if (!BANXICO_TOKEN) { console.info('Banxico: No token configured. Get one at https://www.banxico.org.mx/SieAPIRest/service/v1/'); return []; }
+            try {
+                const oneYearAgo = new Date();
+                oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+                const startDate = oneYearAgo.toISOString().split('T')[0];
+                const endDate = new Date().toISOString().split('T')[0];
+
+                const apiUrl = `${BANXICO_BASE}/series/SF43718/datos/${startDate}/${endDate}`;
+                const resp = await fetch(apiUrl, { headers: { 'Bmx-Token': BANXICO_TOKEN } });
+                const json = await resp.json();
+
+                if (json.bmx && json.bmx.series && json.bmx.series[0] && json.bmx.series[0].datos) {
+                    return json.bmx.series[0].datos
+                        .filter(d => d.dato && d.dato !== 'N/E')
+                        .map(d => {
+                            // Banxico dates are DD/MM/YYYY format
+                            const parts = d.fecha.split('/');
+                            const dateStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                            const mxnPerUsd = parseFloat(d.dato.replace(',', ''));
+                            return { date: dateStr, rate: 1 / mxnPerUsd, source: 'Banxico' };
+                        })
+                        .filter(d => !isNaN(d.rate) && d.rate > 0)
+                        .sort((a, b) => a.date.localeCompare(b.date));
+                }
+            } catch (e) {
+                console.warn('Banxico fetch failed:', e.message);
+            }
+            return [];
+        }
+
+        // Twelve Data
+        const TWELVE_DATA_KEY = '52f351e2d67042889eb1c6d16cd9769f';
+
+        async function fetchTwelveData() {
+            try {
+                const resp = await fetch(
+                    'https://api.twelvedata.com/time_series?symbol=USD/MXN&interval=1day&outputsize=365&apikey=' + TWELVE_DATA_KEY
+                );
+                const json = await resp.json();
+                if (json.values) {
+                    return json.values
+                        .filter(d => d.close && d.close !== 'null')
+                        .map(d => ({ date: d.datetime, rate: 1 / parseFloat(d.close), source: 'TwelveData' }))
+                        .filter(d => !isNaN(d.rate) && d.rate > 0)
+                        .sort((a, b) => a.date.localeCompare(b.date));
+                }
+            } catch (e) {
+                console.warn('Twelve Data fetch failed:', e.message);
+            }
+            return [];
+        }
+
         function mergePrices(...priceSets) {
             const dateMap = new Map();
             priceSets.forEach(prices => {
@@ -447,20 +531,30 @@
             try {
                 dataSources = [];
 
-                const [fredResult, frankfurterResult] = await Promise.allSettled([
+                const [fredResult, frankfurterResult, yahooResult, tdResult, banxicoResult] = await Promise.allSettled([
                     fetchFRED(),
-                    fetchFrankfurter()
+                    fetchFrankfurter(),
+                    fetchYahoo(),
+                    fetchTwelveData(),
+                    fetchBanxico()
                 ]);
 
                 const val = r => r.status === 'fulfilled' ? r.value : [];
 
                 const fredData = val(fredResult);
                 const frankfurterData = val(frankfurterResult);
+                const yahooData = val(yahooResult);
+                const tdData = val(tdResult);
+                const banxicoData = val(banxicoResult);
 
                 if (fredData.length > 0) dataSources.push('FRED');
+                if (banxicoData.length > 0) dataSources.push('Banxico');
                 if (frankfurterData.length > 0) dataSources.push('Frankfurter');
+                if (yahooData.length > 0) dataSources.push('Yahoo');
+                if (tdData.length > 0) dataSources.push('TwelveData');
 
-                rateData = mergePrices(fredData, frankfurterData);
+                // Priority: FRED > Banxico > Frankfurter > Yahoo > Twelve Data
+                rateData = mergePrices(fredData, banxicoData, frankfurterData, yahooData, tdData);
 
                 lastUpdated = new Date();
 

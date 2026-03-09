@@ -367,7 +367,7 @@
             try {
                 const targetUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(symbol) +
                     '?range=1y&interval=1d';
-                const resp = await fetch('https://corsproxy.io/?' + encodeURIComponent(targetUrl));
+                const resp = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl));
                 const json = await resp.json();
                 if (json.chart && json.chart.result && json.chart.result[0]) {
                     const result = json.chart.result[0];
