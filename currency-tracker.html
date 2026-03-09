@@ -457,9 +457,9 @@
             return [];
         }
 
-        // Yahoo Finance intraday data for 1D and 1W views
-        let intradayData1D = [];
-        let intradayData1W = [];
+        // Yahoo Finance intraday/hourly data for all time ranges
+        // Keyed by range: { 1: [...], 7: [...], 30: [...], 90: [...], 180: [...], 365: [...] }
+        let yahooGranularData = {};
 
         function parseYahooIntraday(json) {
             if (json.chart && json.chart.result && json.chart.result[0]) {
@@ -475,26 +475,15 @@
             return [];
         }
 
-        async function fetchYahooIntraday1D() {
+        async function fetchYahooGranular(yahooRange, interval, rangeKey) {
             try {
-                const targetUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/MXNUSD%3DX?range=1d&interval=5m';
+                const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/MXNUSD%3DX?range=${yahooRange}&interval=${interval}`;
                 const resp = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl));
-                return parseYahooIntraday(await resp.json());
+                return { key: rangeKey, data: parseYahooIntraday(await resp.json()) };
             } catch (e) {
-                console.warn('Yahoo 1D intraday fetch failed:', e.message);
+                console.warn(`Yahoo ${yahooRange}/${interval} fetch failed:`, e.message);
             }
-            return [];
-        }
-
-        async function fetchYahooIntraday1W() {
-            try {
-                const targetUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/MXNUSD%3DX?range=5d&interval=15m';
-                const resp = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl));
-                return parseYahooIntraday(await resp.json());
-            } catch (e) {
-                console.warn('Yahoo 1W intraday fetch failed:', e.message);
-            }
-            return [];
+            return { key: rangeKey, data: [] };
         }
 
         // Banxico SIE API - SF43718 is the official Peso/Dollar FIX rate
@@ -578,14 +567,21 @@
             try {
                 dataSources = [];
 
-                const [fredResult, frankfurterResult, yahooResult, tdResult, banxicoResult, intraday1DResult, intraday1WResult] = await Promise.allSettled([
+                // Fetch daily sources + granular Yahoo data for each time range
+                const [fredResult, frankfurterResult, yahooResult, tdResult, banxicoResult,
+                       g1D, g1W, g1M, g3M, g6M, g1Y] = await Promise.allSettled([
                     fetchFRED(),
                     fetchFrankfurter(),
                     fetchYahoo(),
                     fetchTwelveData(),
                     fetchBanxico(),
-                    fetchYahooIntraday1D(),
-                    fetchYahooIntraday1W()
+                    // Granular Yahoo: range / interval / key
+                    fetchYahooGranular('1d',  '5m',  1),
+                    fetchYahooGranular('5d',  '15m', 7),
+                    fetchYahooGranular('1mo', '1h',  30),
+                    fetchYahooGranular('3mo', '1h',  90),
+                    fetchYahooGranular('6mo', '1h',  180),
+                    fetchYahooGranular('1y',  '1h',  365)
                 ]);
 
                 const val = r => r.status === 'fulfilled' ? r.value : [];
@@ -596,8 +592,13 @@
                 const tdData = val(tdResult);
                 const banxicoData = val(banxicoResult);
 
-                intradayData1D = intraday1DResult.status === 'fulfilled' ? intraday1DResult.value : [];
-                intradayData1W = intraday1WResult.status === 'fulfilled' ? intraday1WResult.value : [];
+                // Store granular data keyed by range
+                yahooGranularData = {};
+                [g1D, g1W, g1M, g3M, g6M, g1Y].forEach(r => {
+                    if (r.status === 'fulfilled' && r.value.data.length > 0) {
+                        yahooGranularData[r.value.key] = r.value.data;
+                    }
+                });
 
                 if (fredData.length > 0) dataSources.push('FRED');
                 if (banxicoData.length > 0) dataSources.push('Banxico');
@@ -628,14 +629,16 @@
         }
 
         function getFilteredRates() {
-            // For 1D, use 5-min intraday data
-            if (selectedRange === 1 && intradayData1D.length > 0) {
-                return intradayData1D;
+            // Use granular Yahoo data when available (captures intraday highs/lows)
+            if (selectedRange !== 'ytd' && yahooGranularData[selectedRange]) {
+                return yahooGranularData[selectedRange];
             }
-            // For 1W, use 15-min intraday data for consistency with 1D highs/lows
-            if (selectedRange === 7 && intradayData1W.length > 0) {
-                return intradayData1W;
+            // YTD: use the 1Y hourly data filtered from Jan 1
+            if (selectedRange === 'ytd' && yahooGranularData[365]) {
+                const ytdCutoff = new Date(new Date().getFullYear(), 0, 1);
+                return yahooGranularData[365].filter(p => new Date(p.date) >= ytdCutoff);
             }
+            // Fallback to daily data
             const cutoff = selectedRange === 'ytd'
                 ? new Date(new Date().getFullYear(), 0, 1)
                 : (() => { const d = new Date(); d.setDate(d.getDate() - selectedRange); return d; })();
@@ -865,31 +868,40 @@
                     scales: {
                         x: {
                             type: 'time',
-                            time: (selectedRange === 1) ? {
-                                parser: "yyyy-MM-dd'T'HH:mm:ss",
-                                tooltipFormat: 'MMM d, yyyy h:mm a',
-                                unit: 'hour',
-                                displayFormats: {
-                                    hour: 'h:mm a',
-                                    minute: 'h:mm a'
+                            time: (() => {
+                                const useGranular = selectedRange !== 'ytd'
+                                    ? !!yahooGranularData[selectedRange]
+                                    : !!yahooGranularData[365];
+                                if (!useGranular) {
+                                    return {
+                                        parser: 'yyyy-MM-dd',
+                                        tooltipFormat: 'MMM d, yyyy',
+                                        displayFormats: { day: 'MMM d', week: 'MMM d', month: 'MMM yyyy' }
+                                    };
                                 }
-                            } : (selectedRange === 7 && intradayData1W.length > 0) ? {
-                                parser: "yyyy-MM-dd'T'HH:mm:ss",
-                                tooltipFormat: 'MMM d, yyyy h:mm a',
-                                unit: 'day',
-                                displayFormats: {
-                                    day: 'MMM d',
-                                    hour: 'MMM d h a'
+                                if (selectedRange === 1) {
+                                    return {
+                                        parser: "yyyy-MM-dd'T'HH:mm:ss",
+                                        tooltipFormat: 'MMM d, yyyy h:mm a',
+                                        unit: 'hour',
+                                        displayFormats: { hour: 'h:mm a', minute: 'h:mm a' }
+                                    };
                                 }
-                            } : {
-                                parser: 'yyyy-MM-dd',
-                                tooltipFormat: 'MMM d, yyyy',
-                                displayFormats: {
-                                    day: 'MMM d',
-                                    week: 'MMM d',
-                                    month: 'MMM yyyy'
+                                if (selectedRange === 7) {
+                                    return {
+                                        parser: "yyyy-MM-dd'T'HH:mm:ss",
+                                        tooltipFormat: 'MMM d, yyyy h:mm a',
+                                        unit: 'day',
+                                        displayFormats: { day: 'MMM d', hour: 'MMM d ha' }
+                                    };
                                 }
-                            },
+                                // 1M, 3M, 6M, 1Y, YTD — hourly data, show days/weeks/months
+                                return {
+                                    parser: "yyyy-MM-dd'T'HH:mm:ss",
+                                    tooltipFormat: 'MMM d, yyyy h:mm a',
+                                    displayFormats: { day: 'MMM d', week: 'MMM d', month: 'MMM yyyy' }
+                                };
+                            })(),
                             grid: {
                                 color: '#2d304040',
                                 drawBorder: false
