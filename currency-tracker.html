@@ -461,7 +461,7 @@
         // Keyed by range: { 1: [...], 7: [...], 30: [...], 90: [...], 180: [...], 365: [...] }
         let yahooGranularData = {};
 
-        function parseYahooIntraday(json) {
+        function parseYahooIntraday(json, invert = false) {
             if (json.chart && json.chart.result && json.chart.result[0]) {
                 const result = json.chart.result[0];
                 const timestamps = result.timestamp || [];
@@ -469,19 +469,29 @@
                 return timestamps.map((ts, i) => {
                     const d = new Date(ts * 1000);
                     const dateStr = d.toISOString().replace('Z', '').slice(0, 19);
-                    return { date: dateStr, rate: closes[i], source: 'Yahoo' };
-                }).filter(p => p.rate != null && !isNaN(p.rate) && p.rate > 0);
+                    const rate = invert ? 1 / closes[i] : closes[i];
+                    return { date: dateStr, rate, source: 'Yahoo' };
+                }).filter(p => p.rate != null && !isNaN(p.rate) && p.rate > 0 && isFinite(p.rate));
             }
             return [];
         }
 
         async function fetchYahooGranular(yahooRange, interval, rangeKey) {
-            try {
-                const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/MXNUSD%3DX?range=${yahooRange}&interval=${interval}`;
-                const resp = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl));
-                return { key: rangeKey, data: parseYahooIntraday(await resp.json()) };
-            } catch (e) {
-                console.warn(`Yahoo ${yahooRange}/${interval} fetch failed:`, e.message);
+            // Try MXN=X (USD/MXN, inverted) first — better intraday coverage
+            // Then fall back to MXNUSD=X (direct rate)
+            const symbols = [
+                { sym: 'MXN%3DX', invert: true },
+                { sym: 'MXNUSD%3DX', invert: false }
+            ];
+            for (const { sym, invert } of symbols) {
+                try {
+                    const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=${yahooRange}&interval=${interval}`;
+                    const resp = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl));
+                    const data = parseYahooIntraday(await resp.json(), invert);
+                    if (data.length > 0) return { key: rangeKey, data };
+                } catch (e) {
+                    console.warn(`Yahoo ${sym} ${yahooRange}/${interval} fetch failed:`, e.message);
+                }
             }
             return { key: rangeKey, data: [] };
         }
@@ -545,6 +555,33 @@
             return [];
         }
 
+        // Twelve Data intraday for forex (USD/MXN inverted to MXN/USD)
+        let twelveDataGranular = {};
+
+        async function fetchTwelveDataGranular(interval, outputsize, rangeKey) {
+            try {
+                const resp = await fetch(
+                    `https://api.twelvedata.com/time_series?symbol=USD/MXN&interval=${interval}&outputsize=${outputsize}&apikey=${TWELVE_DATA_KEY}`
+                );
+                const json = await resp.json();
+                if (json.values) {
+                    const data = json.values
+                        .filter(d => d.close && d.close !== 'null')
+                        .map(d => ({
+                            date: d.datetime.replace(' ', 'T'),
+                            rate: 1 / parseFloat(d.close),
+                            source: 'TwelveData'
+                        }))
+                        .filter(d => !isNaN(d.rate) && d.rate > 0)
+                        .sort((a, b) => a.date.localeCompare(b.date));
+                    return { key: rangeKey, data };
+                }
+            } catch (e) {
+                console.warn(`TwelveData ${interval} fetch failed:`, e.message);
+            }
+            return { key: rangeKey, data: [] };
+        }
+
         function mergePrices(...priceSets) {
             const dateMap = new Map();
             priceSets.forEach(prices => {
@@ -567,9 +604,10 @@
             try {
                 dataSources = [];
 
-                // Fetch daily sources + granular Yahoo data for each time range
+                // Fetch daily sources + granular Yahoo/TwelveData for each time range
                 const [fredResult, frankfurterResult, yahooResult, tdResult, banxicoResult,
-                       g1D, g1W, g1M, g3M, g6M, g1Y] = await Promise.allSettled([
+                       g1D, g1W, g1M, g3M, g6M, g1Y,
+                       td1D, td1W, td1M] = await Promise.allSettled([
                     fetchFRED(),
                     fetchFrankfurter(),
                     fetchYahoo(),
@@ -581,7 +619,11 @@
                     fetchYahooGranular('1mo', '1h',  30),
                     fetchYahooGranular('3mo', '1h',  90),
                     fetchYahooGranular('6mo', '1h',  180),
-                    fetchYahooGranular('1y',  '1h',  365)
+                    fetchYahooGranular('1y',  '1h',  365),
+                    // Twelve Data intraday (forex has good coverage)
+                    fetchTwelveDataGranular('5min', 78, 1),
+                    fetchTwelveDataGranular('15min', 200, 7),
+                    fetchTwelveDataGranular('1h', 500, 30)
                 ]);
 
                 const val = r => r.status === 'fulfilled' ? r.value : [];
@@ -592,11 +634,22 @@
                 const tdData = val(tdResult);
                 const banxicoData = val(banxicoResult);
 
-                // Store granular data keyed by range
+                // Store granular data keyed by range (Yahoo first, Twelve Data as fallback)
                 yahooGranularData = {};
                 [g1D, g1W, g1M, g3M, g6M, g1Y].forEach(r => {
                     if (r.status === 'fulfilled' && r.value.data.length > 0) {
                         yahooGranularData[r.value.key] = r.value.data;
+                    }
+                });
+                // Fill gaps with Twelve Data intraday
+                twelveDataGranular = {};
+                [td1D, td1W, td1M].forEach(r => {
+                    if (r.status === 'fulfilled' && r.value.data.length > 0) {
+                        twelveDataGranular[r.value.key] = r.value.data;
+                        // Use Twelve Data if Yahoo didn't return data for this range
+                        if (!yahooGranularData[r.value.key]) {
+                            yahooGranularData[r.value.key] = r.value.data;
+                        }
                     }
                 });
 
