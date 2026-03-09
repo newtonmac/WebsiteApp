@@ -451,6 +451,29 @@
             return [];
         }
 
+        // Yahoo Finance intraday (5-min intervals for 1D view)
+        let intradayData = [];
+        async function fetchYahooIntraday() {
+            try {
+                const targetUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/MXNUSD%3DX?range=1d&interval=5m';
+                const resp = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl));
+                const json = await resp.json();
+                if (json.chart && json.chart.result && json.chart.result[0]) {
+                    const result = json.chart.result[0];
+                    const timestamps = result.timestamp || [];
+                    const closes = result.indicators.quote[0].close || [];
+                    return timestamps.map((ts, i) => {
+                        const d = new Date(ts * 1000);
+                        const dateStr = d.toISOString().replace('Z', '').slice(0, 19);
+                        return { date: dateStr, rate: closes[i], source: 'Yahoo' };
+                    }).filter(p => p.rate != null && !isNaN(p.rate) && p.rate > 0);
+                }
+            } catch (e) {
+                console.warn('Yahoo intraday fetch failed:', e.message);
+            }
+            return [];
+        }
+
         // Banxico SIE API - SF43718 is the official Peso/Dollar FIX rate
         // To enable: get a free 64-char token at https://www.banxico.org.mx/SieAPIRest/service/v1/
         // Then replace the empty string below with your token
@@ -532,12 +555,13 @@
             try {
                 dataSources = [];
 
-                const [fredResult, frankfurterResult, yahooResult, tdResult, banxicoResult] = await Promise.allSettled([
+                const [fredResult, frankfurterResult, yahooResult, tdResult, banxicoResult, intradayResult] = await Promise.allSettled([
                     fetchFRED(),
                     fetchFrankfurter(),
                     fetchYahoo(),
                     fetchTwelveData(),
-                    fetchBanxico()
+                    fetchBanxico(),
+                    fetchYahooIntraday()
                 ]);
 
                 const val = r => r.status === 'fulfilled' ? r.value : [];
@@ -547,6 +571,8 @@
                 const yahooData = val(yahooResult);
                 const tdData = val(tdResult);
                 const banxicoData = val(banxicoResult);
+
+                intradayData = intradayResult.status === 'fulfilled' ? intradayResult.value : [];
 
                 if (fredData.length > 0) dataSources.push('FRED');
                 if (banxicoData.length > 0) dataSources.push('Banxico');
@@ -577,6 +603,10 @@
         }
 
         function getFilteredRates() {
+            // For 1D, use intraday 5-min data from Yahoo
+            if (selectedRange === 1 && intradayData.length > 0) {
+                return intradayData;
+            }
             const cutoff = selectedRange === 'ytd'
                 ? new Date(new Date().getFullYear(), 0, 1)
                 : (() => { const d = new Date(); d.setDate(d.getDate() - selectedRange); return d; })();
@@ -701,8 +731,11 @@
                                 const dayChange = nr ? dr - nr : 0;
                                 const dayPct = nr ? (dayChange / nr) * 100 : 0;
                                 const cls = dayChange >= 0 ? 'up' : 'down';
+                                const dateLabel = selectedRange === 1 && r.date.includes('T')
+                                    ? new Date(r.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+                                    : r.date;
                                 return `<tr>
-                                    <td>${r.date}</td>
+                                    <td>${dateLabel}</td>
                                     <td><strong>$${dr.toFixed(decimals)}</strong></td>
                                     <td class="price-change ${cls}">
                                         ${dayChange >= 0 ? '+' : ''}${dayChange.toFixed(decimals)}
@@ -770,7 +803,15 @@
                     scales: {
                         x: {
                             type: 'time',
-                            time: {
+                            time: selectedRange === 1 ? {
+                                parser: "yyyy-MM-dd'T'HH:mm:ss",
+                                tooltipFormat: 'MMM d, yyyy h:mm a',
+                                unit: 'hour',
+                                displayFormats: {
+                                    hour: 'h:mm a',
+                                    minute: 'h:mm a'
+                                }
+                            } : {
                                 parser: 'yyyy-MM-dd',
                                 tooltipFormat: 'MMM d, yyyy',
                                 displayFormats: {
