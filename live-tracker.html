@@ -682,6 +682,7 @@
                 <div class="legend-item"><div class="legend-swatch" style="background:#ef444440;border:1px solid #ef4444"></div> Active perimeter</div>
                 <div class="legend-item"><div class="legend-swatch" style="background:#f59e0b40;border:1px solid #f59e0b"></div> Past perimeter</div>
                 <div class="legend-item"><div class="legend-swatch" style="background:#ff6b00;border-radius:50%"></div> VIIRS satellite hotspot</div>
+                <div class="legend-item"><div class="legend-swatch" style="background:#ff0000;clip-path:polygon(50% 0%,0% 100%,100% 100%)"></div> SD Fire Dispatch (live)</div>
             </div>
 
             <div class="info-panel" id="infoPanel">
@@ -736,10 +737,13 @@
         let refreshTimer;
 
 
+        // ── Data Sources ──
         // WFIGS Interagency Perimeters — same IRWIN/NIFC source Watch Duty uses
         const WFIGS_PERIMETERS_API = 'https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/WFIGS_Interagency_Perimeters/FeatureServer/0/query';
         // NIFC IRWIN active fire points (for fires without perimeters yet)
         const NIFC_POINTS_API = 'https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/USA_Wildfires_v1/FeatureServer/0/query';
+        // SD Fire Dispatch (via Cloudflare Worker proxy)
+        const SD_DISPATCH_API = 'https://sd-fire-proxy.YOUR_SUBDOMAIN.workers.dev'; // UPDATE after deploying worker
         // NASA FIRMS VIIRS satellite hotspots
         const FIRMS_API = 'https://firms.modaps.eosdis.nasa.gov/api/area/csv';
         const FIRMS_MAP_KEY = ''; // Get free key at https://firms.modaps.eosdis.nasa.gov/api/map_key/
@@ -748,6 +752,8 @@
 
         let satelliteHotspots = [];
         let hotspotMarkers = [];
+        let dispatchIncidents = [];
+        let dispatchMarkers = [];
 
         // ── Fetch fire incidents + perimeters from WFIGS (same source as Watch Duty) ──
         async function fetchIncidents() {
@@ -982,6 +988,80 @@
             });
         }
 
+        // ── Fetch SD Fire Dispatch (local active calls via Cloudflare Worker proxy) ──
+        async function fetchDispatch() {
+            if (!SD_DISPATCH_API || SD_DISPATCH_API.includes('YOUR_SUBDOMAIN')) return;
+            try {
+                const resp = await fetch(SD_DISPATCH_API);
+                const data = await resp.json();
+                if (data.error) return;
+
+                dispatchIncidents = data.map(d => ({
+                    id: 'dispatch-' + d.MasterIncidentNumber,
+                    name: d.IncidentTypeName || d.CallType || 'Fire Call',
+                    address: d.Address || '',
+                    crossStreet: d.CrossStreet || '',
+                    city: d.City || 'San Diego',
+                    date: d.ResponseDate,
+                    callType: d.CallType,
+                    units: (d.Units || []).map(u => u.Code).join(', '),
+                    isDispatch: true,
+                }));
+
+                renderDispatchMarkers();
+                renderFireTable();
+            } catch (err) {
+                console.warn('SD Dispatch fetch failed:', err);
+            }
+        }
+
+        function renderDispatchMarkers() {
+            if (!map) return;
+            // Dispatch calls don't have lat/lng from the API, only addresses
+            // We use Google Maps Geocoder to place them on the map
+            dispatchMarkers.forEach(m => m.setMap(null));
+            dispatchMarkers = [];
+
+            if (!window.geocoder) {
+                window.geocoder = new google.maps.Geocoder();
+            }
+
+            dispatchIncidents.forEach(d => {
+                const addr = `${d.address}, ${d.city}, CA`;
+                window.geocoder.geocode({ address: addr }, (results, status) => {
+                    if (status === 'OK' && results[0]) {
+                        const pos = results[0].geometry.location;
+                        const marker = new google.maps.Marker({
+                            position: pos,
+                            map: map,
+                            icon: {
+                                path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
+                                fillColor: '#ff0000',
+                                fillOpacity: 0.9,
+                                strokeColor: '#fff',
+                                strokeWeight: 2,
+                                scale: 7,
+                            },
+                            title: `${d.name}\n${d.address}\nUnits: ${d.units}`,
+                            zIndex: 20,
+                        });
+
+                        const info = new google.maps.InfoWindow({
+                            content: `<div style="color:#000;font-size:13px;max-width:250px">
+                                <strong>${d.name}</strong><br>
+                                ${d.address}${d.crossStreet ? ' @ ' + d.crossStreet : ''}<br>
+                                <span style="color:#666">${d.city} &bull; ${new Date(d.date).toLocaleTimeString()}</span><br>
+                                ${d.units ? '<strong>Units:</strong> ' + d.units : ''}
+                            </div>`,
+                        });
+                        marker.addListener('click', () => info.open(map, marker));
+
+                        dispatchMarkers.push(marker);
+                    }
+                });
+            });
+        }
+
         // Legacy alias
         function fetchPerimeters() {
             // Perimeters now fetched as part of fetchIncidents
@@ -1018,13 +1098,25 @@
         function renderFireTable() {
             const tbody = document.getElementById('fireTableBody');
             const filtered = getTableIncidents();
+            let html = '';
 
-            if (filtered.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="fire-table-empty">No fire incidents match this filter.</td></tr>';
-                return;
+            // Show active dispatch calls at the top
+            if (dispatchIncidents.length > 0 && tableFilter !== 'contained') {
+                html += dispatchIncidents.map(d => `
+                    <tr style="background:#ef444410">
+                        <td><span class="status-dot active"></span>Dispatch</td>
+                        <td><strong>${d.name}</strong><br><span style="color:#8b8fa3;font-size:11px">${d.address}${d.crossStreet ? ' @ ' + d.crossStreet : ''}</span></td>
+                        <td>${d.city}</td>
+                        <td>—</td>
+                        <td>—</td>
+                        <td class="hide-mobile">${d.date ? formatDate(d.date) : '—'}</td>
+                        <td class="hide-mobile">${d.units || '—'}</td>
+                        <td><span style="color:#f87171;font-size:11px">LIVE</span></td>
+                    </tr>
+                `).join('');
             }
 
-            tbody.innerHTML = filtered.map(f => `
+            html += filtered.map(f => `
                 <tr onclick="selectFire('${f.id}')">
                     <td>${getStatusDot(f)}</td>
                     <td><strong>${f.name}</strong></td>
@@ -1036,6 +1128,13 @@
                     <td>${f.url ? `<a href="${f.url}" target="_blank" class="fire-link" onclick="event.stopPropagation()">Details</a>` : '—'}</td>
                 </tr>
             `).join('');
+
+            if (!html) {
+                tbody.innerHTML = '<tr><td colspan="8" class="fire-table-empty">No fire incidents match this filter.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = html;
         }
 
         function getFilteredIncidents() {
@@ -1049,9 +1148,27 @@
         function renderSidebar() {
             const list = document.getElementById('fireList');
             const filtered = getFilteredIncidents();
-            document.getElementById('fireCount').textContent = filtered.length;
+            const totalCount = filtered.length + dispatchIncidents.length;
+            document.getElementById('fireCount').textContent = totalCount;
 
-            if (filtered.length === 0 && incidents.length === 0) {
+            let dispatchHtml = '';
+            if (dispatchIncidents.length > 0) {
+                dispatchHtml = dispatchIncidents.map(d => `
+                    <div class="fire-item" style="border-left:3px solid #ef4444">
+                        <div class="fire-icon">&#128680;</div>
+                        <div class="fire-info">
+                            <div class="fire-name">${d.name}</div>
+                            <div class="fire-location">${d.address}${d.crossStreet ? ' @ ' + d.crossStreet : ''}, ${d.city}</div>
+                            <div class="fire-meta">
+                                <span class="fire-badge contained low">LIVE DISPATCH</span>
+                                ${d.units ? `<span class="fire-badge county">${d.units}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            if (filtered.length === 0 && incidents.length === 0 && dispatchIncidents.length === 0) {
                 list.innerHTML = `
                     <div class="no-fires">
                         <div class="icon">&#9996;</div>
@@ -1069,7 +1186,7 @@
                 return;
             }
 
-            list.innerHTML = filtered.map(f => {
+            list.innerHTML = dispatchHtml + filtered.map(f => {
                 const containedClass = f.contained == null ? '' :
                     f.contained >= 100 ? 'contained' :
                     f.contained >= 50 ? 'contained mid' : 'contained low';
@@ -1249,14 +1366,16 @@
 
             document.getElementById('legend').style.display = 'block';
 
-            // Load fire data
+            // Load fire data from all sources
             fetchIncidents();
             fetchHotspots();
+            fetchDispatch();
 
             // Auto-refresh
             refreshTimer = setInterval(() => {
                 fetchIncidents();
                 fetchHotspots();
+                fetchDispatch();
             }, REFRESH_INTERVAL);
         }
 
@@ -1300,6 +1419,7 @@
         document.getElementById('refreshBtn').addEventListener('click', () => {
             fetchIncidents();
             fetchHotspots();
+            fetchDispatch();
         });
 
         // Filter buttons
