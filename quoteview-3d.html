@@ -345,33 +345,6 @@ input[type=text]:focus,input[type=email]:focus,textarea:focus{
   box-shadow:0 0 0 3px var(--accent-glow);
 }
 textarea{resize:vertical;min-height:80px;line-height:1.5;}
-.color-row{display:flex;gap:7px;flex-wrap:wrap;margin-top:4px;align-items:center;}
-.color-swatch{
-  width:30px;height:30px;
-  border-radius:50%;
-  cursor:pointer;
-  border:2.5px solid transparent;
-  transition:all 0.15s ease;
-  flex-shrink:0;
-  position:relative;
-}
-.color-swatch:hover{transform:scale(1.12);}
-.color-swatch.selected{border-color:var(--dark);box-shadow:0 0 0 2px white,0 0 0 4px var(--dark);}
-.color-custom{
-  width:30px;height:30px;
-  border-radius:50%;
-  overflow:hidden;
-  cursor:pointer;
-  border:1.5px dashed var(--border);
-  flex-shrink:0;
-  position:relative;
-}
-.color-custom::after{
-  content:'+';position:absolute;inset:0;
-  display:flex;align-items:center;justify-content:center;
-  font-size:14px;color:var(--mid);pointer-events:none;
-}
-.color-custom input{width:200%;height:200%;margin:-50%;cursor:pointer;border:none;padding:0;opacity:0;}
 .btn-generate{
   width:100%;
   padding:15px;
@@ -662,21 +635,6 @@ textarea{resize:vertical;min-height:80px;line-height:1.5;}
         <label>Notes for Customer <span class="optional">(optional)</span></label>
         <textarea id="notes" placeholder="e.g. Manufactured in 6061 Aluminum, anodized finish. Lead time 2-3 weeks."></textarea>
       </div>
-      <div class="form-group full">
-        <label>Brand Color</label>
-        <div class="color-row" id="color-row">
-          <div class="color-swatch selected" style="background:#d4522a" data-color="#d4522a"></div>
-          <div class="color-swatch" style="background:#1d4ed8" data-color="#1d4ed8"></div>
-          <div class="color-swatch" style="background:#0f766e" data-color="#0f766e"></div>
-          <div class="color-swatch" style="background:#7c3aed" data-color="#7c3aed"></div>
-          <div class="color-swatch" style="background:#0f172a" data-color="#0f172a"></div>
-          <div class="color-swatch" style="background:#b45309" data-color="#b45309"></div>
-          <div class="color-swatch" style="background:#be185d" data-color="#be185d"></div>
-          <div class="color-custom" title="Custom color">
-            <input type="color" id="custom-color" value="#d4522a">
-          </div>
-        </div>
-      </div>
     </div>
   </div>
   <div class="card">
@@ -748,7 +706,7 @@ textarea{resize:vertical;min-height:80px;line-height:1.5;}
 // ── File upload (no Three.js dependency) ──────────────────────────────────
 let uploadedFile = null;
 let uploadedBinFile = null;
-let selectedColor = '#d4522a';
+const selectedColor = '#d4522a';
 (function initUpload() {
   const fileInput = document.getElementById('file-input');
   const uploadZone = document.getElementById('upload-zone');
@@ -921,18 +879,6 @@ function mergeGltfBin(gltfBuf, binBuf) {
     return out;
   } catch(e) { console.error('merge error:', e); return null; }
 }
-// ── Color picker ───────────────────────────────────────────────────────────
-document.getElementById('color-row').addEventListener('click', e => {
-  const sw = e.target.closest('.color-swatch');
-  if (!sw) return;
-  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
-  sw.classList.add('selected');
-  selectedColor = sw.dataset.color;
-});
-document.getElementById('custom-color').addEventListener('input', e => {
-  selectedColor = e.target.value;
-  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
-});
 // ── Preview ────────────────────────────────────────────────────────────────
 function loadPreview(file) {
   const ext = file.name.split('.').pop().toLowerCase();
