@@ -453,7 +453,7 @@
         // Banxico SIE API - SF43718 is the official Peso/Dollar FIX rate
         // To enable: get a free 64-char token at https://www.banxico.org.mx/SieAPIRest/service/v1/
         // Then replace the empty string below with your token
-        const BANXICO_TOKEN = '';
+        const BANXICO_TOKEN = '889a6a2e5d57fa9635e403a9aef392c2ba6c12e771bb6c9ecc63bcbf893bd840';
         const BANXICO_BASE = 'https://www.banxico.org.mx/SieAPIRest/service/v1';
 
         async function fetchBanxico() {
@@ -464,8 +464,8 @@
                 const startDate = oneYearAgo.toISOString().split('T')[0];
                 const endDate = new Date().toISOString().split('T')[0];
 
-                const apiUrl = `${BANXICO_BASE}/series/SF43718/datos/${startDate}/${endDate}?token=${BANXICO_TOKEN}`;
-                const resp = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(apiUrl));
+                const apiUrl = `${BANXICO_BASE}/series/SF43718/datos/${startDate}/${endDate}`;
+                const resp = await fetch(apiUrl, { headers: { 'Bmx-Token': BANXICO_TOKEN } });
                 const json = await resp.json();
 
                 if (json.bmx && json.bmx.series && json.bmx.series[0] && json.bmx.series[0].datos) {
