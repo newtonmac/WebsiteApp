@@ -313,6 +313,7 @@
                 <button data-type="bitcoin">Bitcoin</button>
             </div>
             <div class="btn-group" id="timeRange">
+                <button data-range="1">1D</button>
                 <button data-range="7">1W</button>
                 <button class="active" data-range="30">1M</button>
                 <button data-range="90">3M</button>
@@ -383,6 +384,35 @@
                 console.warn('Yahoo Finance fetch failed:', e.message);
             }
             return [];
+        }
+
+        // Yahoo Finance intraday/hourly data for all time ranges
+        // Keyed by range: { 1: [...], 7: [...], 30: [...], 90: [...], 180: [...], 365: [...] }
+        let yahooGranularData = {};
+
+        function parseYahooIntraday(json) {
+            if (json.chart && json.chart.result && json.chart.result[0]) {
+                const result = json.chart.result[0];
+                const timestamps = result.timestamp || [];
+                const closes = result.indicators.quote[0].close || [];
+                return timestamps.map((ts, i) => {
+                    const d = new Date(ts * 1000);
+                    const dateStr = d.toISOString().replace('Z', '').slice(0, 19);
+                    return { date: dateStr, price: closes[i], source: 'Yahoo' };
+                }).filter(p => p.price != null && !isNaN(p.price) && p.price > 0);
+            }
+            return [];
+        }
+
+        async function fetchYahooGranular(yahooRange, interval, rangeKey) {
+            try {
+                const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/GC%3DF?range=${yahooRange}&interval=${interval}`;
+                const resp = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl));
+                return { key: rangeKey, data: parseYahooIntraday(await resp.json()) };
+            } catch (e) {
+                console.warn(`Yahoo ${yahooRange}/${interval} fetch failed:`, e.message);
+            }
+            return { key: rangeKey, data: [] };
         }
 
         // Twelve Data API
@@ -461,13 +491,21 @@
             try {
                 dataSources = [];
 
-                const [btcResult, yahooGold, yahooSilver, yahooBtc, tdGold, tdBtc] = await Promise.allSettled([
+                const [btcResult, yahooGold, yahooSilver, yahooBtc, tdGold, tdBtc,
+                       g1D, g1W, g1M, g3M, g6M, g1Y] = await Promise.allSettled([
                     fetchBitcoin(),
                     fetchYahooFinance('GC=F'),
                     fetchYahooFinance('SI=F'),
                     fetchYahooFinance('BTC-USD'),
                     fetchTwelveData('XAU/USD'),
-                    fetchTwelveData('BTC/USD')
+                    fetchTwelveData('BTC/USD'),
+                    // Granular Yahoo for gold: range / interval / key
+                    fetchYahooGranular('1d',  '5m',  1),
+                    fetchYahooGranular('5d',  '15m', 7),
+                    fetchYahooGranular('1mo', '1h',  30),
+                    fetchYahooGranular('3mo', '1h',  90),
+                    fetchYahooGranular('6mo', '1h',  180),
+                    fetchYahooGranular('1y',  '1h',  365)
                 ]);
 
                 const val = r => r.status === 'fulfilled' ? r.value : [];
@@ -478,6 +516,14 @@
                 const yahooBtcData = val(yahooBtc);
                 const tdGoldData = val(tdGold);
                 const tdBtcData = val(tdBtc);
+
+                // Store granular data keyed by range
+                yahooGranularData = {};
+                [g1D, g1W, g1M, g3M, g6M, g1Y].forEach(r => {
+                    if (r.status === 'fulfilled' && r.value.data.length > 0) {
+                        yahooGranularData[r.value.key] = r.value.data;
+                    }
+                });
 
                 if (btcData.length > 0) dataSources.push('CoinGecko');
                 if (yahooGoldData.length > 0 || yahooSilverData.length > 0 || yahooBtcData.length > 0) dataSources.push('Yahoo');
@@ -511,6 +557,17 @@
         }
 
         function getFilteredPrices() {
+            // Use granular Yahoo data for gold when available
+            if (selectedType === 'gold') {
+                if (selectedRange !== 'ytd' && yahooGranularData[selectedRange]) {
+                    return yahooGranularData[selectedRange];
+                }
+                if (selectedRange === 'ytd' && yahooGranularData[365]) {
+                    const ytdCutoff = new Date(new Date().getFullYear(), 0, 1);
+                    return yahooGranularData[365].filter(p => new Date(p.date) >= ytdCutoff);
+                }
+            }
+            // Fallback to daily data
             const typeMap = { gold: goldPrices, silver: silverPrices, bitcoin: bitcoinPrices };
             const all = typeMap[selectedType] || goldPrices;
             const cutoff = selectedRange === 'ytd'
@@ -621,8 +678,19 @@
                                 const dayChange = next ? p.price - next.price : 0;
                                 const dayPct = next ? (dayChange / next.price) * 100 : 0;
                                 const cls = dayChange >= 0 ? 'up' : 'down';
+                                const isIntraday = p.date.includes('T');
+                                let dateLabel;
+                                if (isIntraday && selectedRange === 1) {
+                                    dateLabel = new Date(p.date + 'Z').toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                                } else if (isIntraday) {
+                                    const dt = new Date(p.date + 'Z');
+                                    dateLabel = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
+                                        dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                                } else {
+                                    dateLabel = p.date;
+                                }
                                 return `<tr>
-                                    <td>${p.date}</td>
+                                    <td>${dateLabel}</td>
                                     <td><strong>${formatPrice(p.price)}</strong></td>
                                     <td class="price-change ${cls}">
                                         ${dayChange >= 0 ? '+' : '-'}${formatPrice(Math.abs(dayChange)).replace('$','')}
@@ -690,15 +758,42 @@
                     scales: {
                         x: {
                             type: 'time',
-                            time: {
-                                parser: 'yyyy-MM-dd',
-                                tooltipFormat: 'MMM d, yyyy',
-                                displayFormats: {
-                                    day: 'MMM d',
-                                    week: 'MMM d',
-                                    month: 'MMM yyyy'
+                            time: (() => {
+                                const useGranular = selectedType === 'gold' && (
+                                    selectedRange !== 'ytd'
+                                        ? !!yahooGranularData[selectedRange]
+                                        : !!yahooGranularData[365]
+                                );
+                                if (!useGranular) {
+                                    return {
+                                        parser: 'yyyy-MM-dd',
+                                        tooltipFormat: 'MMM d, yyyy',
+                                        displayFormats: { day: 'MMM d', week: 'MMM d', month: 'MMM yyyy' }
+                                    };
                                 }
-                            },
+                                if (selectedRange === 1) {
+                                    return {
+                                        parser: "yyyy-MM-dd'T'HH:mm:ss",
+                                        tooltipFormat: 'MMM d, yyyy h:mm a',
+                                        unit: 'hour',
+                                        displayFormats: { hour: 'h:mm a', minute: 'h:mm a' }
+                                    };
+                                }
+                                if (selectedRange === 7) {
+                                    return {
+                                        parser: "yyyy-MM-dd'T'HH:mm:ss",
+                                        tooltipFormat: 'MMM d, yyyy h:mm a',
+                                        unit: 'day',
+                                        displayFormats: { day: 'MMM d', hour: 'MMM d ha' }
+                                    };
+                                }
+                                // 1M, 3M, 6M, 1Y, YTD — hourly data, show days/weeks/months
+                                return {
+                                    parser: "yyyy-MM-dd'T'HH:mm:ss",
+                                    tooltipFormat: 'MMM d, yyyy h:mm a',
+                                    displayFormats: { day: 'MMM d', week: 'MMM d', month: 'MMM yyyy' }
+                                };
+                            })(),
                             grid: {
                                 color: '#2d304040',
                                 drawBorder: false

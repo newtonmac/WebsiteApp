@@ -284,10 +284,12 @@
     <div class="container">
         <div class="controls">
             <div class="btn-group" id="timeRange">
+                <button data-range="1">1D</button>
                 <button data-range="7">1W</button>
                 <button class="active" data-range="30">1M</button>
                 <button data-range="90">3M</button>
                 <button data-range="180">6M</button>
+                <button data-range="ytd">YTD</button>
                 <button data-range="365">1Y</button>
             </div>
             <button class="refresh-btn" id="refreshBtn">&#x21bb; Refresh</button>
@@ -311,7 +313,7 @@
             btn.addEventListener('click', () => {
                 document.querySelectorAll('#timeRange button').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                selectedRange = parseInt(btn.dataset.range);
+                selectedRange = btn.dataset.range === 'ytd' ? 'ytd' : parseInt(btn.dataset.range);
                 render();
             });
         });
@@ -367,6 +369,35 @@
             return [];
         }
 
+        // Yahoo Finance intraday/hourly data for all time ranges
+        // Keyed by range: { 1: [...], 7: [...], 30: [...], 90: [...], 180: [...], 365: [...] }
+        let yahooGranularData = {};
+
+        function parseYahooIntraday(json) {
+            if (json.chart && json.chart.result && json.chart.result[0]) {
+                const result = json.chart.result[0];
+                const timestamps = result.timestamp || [];
+                const closes = result.indicators.quote[0].close || [];
+                return timestamps.map((ts, i) => {
+                    const d = new Date(ts * 1000);
+                    const dateStr = d.toISOString().replace('Z', '').slice(0, 19);
+                    return { date: dateStr, price: closes[i], source: 'Yahoo' };
+                }).filter(p => p.price != null && !isNaN(p.price) && p.price > 0);
+            }
+            return [];
+        }
+
+        async function fetchYahooGranular(yahooRange, interval, rangeKey) {
+            try {
+                const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/SI%3DF?range=${yahooRange}&interval=${interval}`;
+                const resp = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl));
+                return { key: rangeKey, data: parseYahooIntraday(await resp.json()) };
+            } catch (e) {
+                console.warn(`Yahoo ${yahooRange}/${interval} fetch failed:`, e.message);
+            }
+            return { key: rangeKey, data: [] };
+        }
+
         async function fetchPrices() {
             document.getElementById('content').innerHTML = `
                 <div class="loading">
@@ -376,11 +407,27 @@
 
             try {
                 // XAG/USD paywalled on Twelve Data free tier, Yahoo SI=F is primary source
-                const [yahooResult] = await Promise.allSettled([
-                    fetchYahooFinance('SI=F', '1y')
+                const [yahooResult,
+                       g1D, g1W, g1M, g3M, g6M, g1Y] = await Promise.allSettled([
+                    fetchYahooFinance('SI=F', '1y'),
+                    // Granular Yahoo: range / interval / key
+                    fetchYahooGranular('1d',  '5m',  1),
+                    fetchYahooGranular('5d',  '15m', 7),
+                    fetchYahooGranular('1mo', '1h',  30),
+                    fetchYahooGranular('3mo', '1h',  90),
+                    fetchYahooGranular('6mo', '1h',  180),
+                    fetchYahooGranular('1y',  '1h',  365)
                 ]);
                 const val = r => r.status === 'fulfilled' ? r.value : [];
                 const yahooData = val(yahooResult);
+
+                // Store granular data keyed by range
+                yahooGranularData = {};
+                [g1D, g1W, g1M, g3M, g6M, g1Y].forEach(r => {
+                    if (r.status === 'fulfilled' && r.value.data.length > 0) {
+                        yahooGranularData[r.value.key] = r.value.data;
+                    }
+                });
 
                 const sources = [];
                 if (yahooData.length > 0) sources.push('Yahoo');
@@ -406,8 +453,19 @@
         }
 
         function getFilteredPrices() {
-            const cutoff = new Date();
-            cutoff.setDate(cutoff.getDate() - selectedRange);
+            // Use granular Yahoo data when available (captures intraday highs/lows)
+            if (selectedRange !== 'ytd' && yahooGranularData[selectedRange]) {
+                return yahooGranularData[selectedRange];
+            }
+            // YTD: use the 1Y hourly data filtered from Jan 1
+            if (selectedRange === 'ytd' && yahooGranularData[365]) {
+                const ytdCutoff = new Date(new Date().getFullYear(), 0, 1);
+                return yahooGranularData[365].filter(p => new Date(p.date) >= ytdCutoff);
+            }
+            // Fallback to daily data
+            const cutoff = selectedRange === 'ytd'
+                ? new Date(new Date().getFullYear(), 0, 1)
+                : (() => { const d = new Date(); d.setDate(d.getDate() - selectedRange); return d; })();
             return silverPrices.filter(p => new Date(p.date) >= cutoff);
         }
 
@@ -490,8 +548,19 @@
                                 const dayChange = next ? p.price - next.price : 0;
                                 const dayPct = next ? (dayChange / next.price) * 100 : 0;
                                 const cls = dayChange >= 0 ? 'up' : 'down';
+                                const isIntraday = p.date.includes('T');
+                                let dateLabel;
+                                if (isIntraday && selectedRange === 1) {
+                                    dateLabel = new Date(p.date + 'Z').toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                                } else if (isIntraday) {
+                                    const dt = new Date(p.date + 'Z');
+                                    dateLabel = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
+                                        dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                                } else {
+                                    dateLabel = p.date;
+                                }
                                 return `<tr>
-                                    <td>${p.date}</td>
+                                    <td>${dateLabel}</td>
                                     <td><strong>$${p.price.toFixed(2)}</strong></td>
                                     <td class="price-change ${cls}">
                                         ${dayChange >= 0 ? '+' : ''}${dayChange.toFixed(2)}
@@ -557,11 +626,40 @@
                     scales: {
                         x: {
                             type: 'time',
-                            time: {
-                                parser: 'yyyy-MM-dd',
-                                tooltipFormat: 'MMM d, yyyy',
-                                displayFormats: { day: 'MMM d', week: 'MMM d', month: 'MMM yyyy' }
-                            },
+                            time: (() => {
+                                const useGranular = selectedRange !== 'ytd'
+                                    ? !!yahooGranularData[selectedRange]
+                                    : !!yahooGranularData[365];
+                                if (!useGranular) {
+                                    return {
+                                        parser: 'yyyy-MM-dd',
+                                        tooltipFormat: 'MMM d, yyyy',
+                                        displayFormats: { day: 'MMM d', week: 'MMM d', month: 'MMM yyyy' }
+                                    };
+                                }
+                                if (selectedRange === 1) {
+                                    return {
+                                        parser: "yyyy-MM-dd'T'HH:mm:ss",
+                                        tooltipFormat: 'MMM d, yyyy h:mm a',
+                                        unit: 'hour',
+                                        displayFormats: { hour: 'h:mm a', minute: 'h:mm a' }
+                                    };
+                                }
+                                if (selectedRange === 7) {
+                                    return {
+                                        parser: "yyyy-MM-dd'T'HH:mm:ss",
+                                        tooltipFormat: 'MMM d, yyyy h:mm a',
+                                        unit: 'day',
+                                        displayFormats: { day: 'MMM d', hour: 'MMM d ha' }
+                                    };
+                                }
+                                // 1M, 3M, 6M, 1Y, YTD — hourly data, show days/weeks/months
+                                return {
+                                    parser: "yyyy-MM-dd'T'HH:mm:ss",
+                                    tooltipFormat: 'MMM d, yyyy h:mm a',
+                                    displayFormats: { day: 'MMM d', week: 'MMM d', month: 'MMM yyyy' }
+                                };
+                            })(),
                             grid: { color: '#2d304040', drawBorder: false },
                             ticks: { color: '#8b8fa3', maxTicksLimit: 8 }
                         },
