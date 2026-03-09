@@ -274,6 +274,8 @@
 
         .data-status .source-freegoldapi { background: #fbbf2420; color: #fbbf24; }
         .data-status .source-coingecko { background: #8dc63f20; color: #8dc63f; }
+        .data-status .source-yahoo { background: #6d28d920; color: #c084fc; }
+        .data-status .source-twelvedata { background: #10b98120; color: #34d399; }
 
         .nav-link {
             display: inline-block;
@@ -294,7 +296,7 @@
 <body>
     <div class="header">
         <h1>Gold, Silver &amp; Bitcoin Tracker</h1>
-        <p>Live data &bull; FreeGoldAPI &amp; CoinGecko &bull; Updated daily</p>
+        <p>Live data &bull; FreeGoldAPI, CoinGecko, Yahoo &amp; Twelve Data &bull; Updated daily</p>
         <a href="index.html" class="nav-link">&larr; Oil Tracker</a>
         <a href="currency-tracker.html" class="nav-link">MXN/USD Tracker &rarr;</a>
         <a href="flight-tracker.html" class="nav-link">Flight Tracker &rarr;</a>
@@ -359,6 +361,62 @@
         });
 
         document.getElementById('refreshBtn').addEventListener('click', fetchAllPrices);
+
+        // Yahoo Finance
+        async function fetchYahooFinance(symbol) {
+            try {
+                const resp = await fetch(
+                    'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(symbol) +
+                    '?range=1y&interval=1d'
+                );
+                const json = await resp.json();
+                if (json.chart && json.chart.result && json.chart.result[0]) {
+                    const result = json.chart.result[0];
+                    const timestamps = result.timestamp || [];
+                    const closes = result.indicators.quote[0].close || [];
+                    return timestamps.map((ts, i) => {
+                        const d = new Date(ts * 1000);
+                        const dateStr = d.toISOString().split('T')[0];
+                        return { date: dateStr, price: closes[i], source: 'Yahoo' };
+                    }).filter(p => p.price != null && !isNaN(p.price));
+                }
+            } catch (e) {
+                console.warn('Yahoo Finance fetch failed:', e.message);
+            }
+            return [];
+        }
+
+        // Twelve Data API
+        const TWELVE_DATA_KEY = '52f351e2d67042889eb1c6d16cd9769f';
+
+        async function fetchTwelveData(symbol) {
+            try {
+                const resp = await fetch(
+                    'https://api.twelvedata.com/time_series?symbol=' + encodeURIComponent(symbol) +
+                    '&interval=1day&outputsize=365&apikey=' + TWELVE_DATA_KEY
+                );
+                const json = await resp.json();
+                if (json.values) {
+                    return json.values
+                        .filter(d => d.close && d.close !== 'null')
+                        .map(d => ({ date: d.datetime, price: parseFloat(d.close), source: 'TwelveData' }))
+                        .sort((a, b) => a.date.localeCompare(b.date));
+                }
+            } catch (e) {
+                console.warn('Twelve Data fetch failed:', e.message);
+            }
+            return [];
+        }
+
+        function mergePrices(...priceSets) {
+            const dateMap = new Map();
+            priceSets.forEach(prices => {
+                prices.forEach(p => {
+                    if (!dateMap.has(p.date)) dateMap.set(p.date, p);
+                });
+            });
+            return Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+        }
 
         function formatPrice(value) {
             if (selectedType === 'bitcoin') {
@@ -465,25 +523,37 @@
             try {
                 dataSources = [];
 
-                const [metalsResult, btcResult] = await Promise.allSettled([
+                const [metalsResult, btcResult, yahooGold, yahooSilver, yahooBtc, tdGold, tdSilver, tdBtc] = await Promise.allSettled([
                     fetchGoldSilverPrices(),
-                    fetchBitcoin()
+                    fetchBitcoin(),
+                    fetchYahooFinance('GC=F'),
+                    fetchYahooFinance('SI=F'),
+                    fetchYahooFinance('BTC-USD'),
+                    fetchTwelveData('XAU/USD'),
+                    fetchTwelveData('XAG/USD'),
+                    fetchTwelveData('BTC/USD')
                 ]);
 
+                const val = r => r.status === 'fulfilled' ? r.value : [];
                 const metals = metalsResult.status === 'fulfilled' ? metalsResult.value : { gold: [], silver: [] };
-                const btcData = btcResult.status === 'fulfilled' ? btcResult.value : [];
+                const btcData = val(btcResult);
 
-                console.log('Metals result:', metalsResult.status, 'gold:', metals.gold.length, 'silver:', metals.silver.length);
-                console.log('BTC result:', btcResult.status, 'count:', btcData.length);
-                if (metalsResult.status === 'rejected') console.error('Metals error:', metalsResult.reason);
-                if (btcResult.status === 'rejected') console.error('BTC error:', btcResult.reason);
+                const yahooGoldData = val(yahooGold);
+                const yahooSilverData = val(yahooSilver);
+                const yahooBtcData = val(yahooBtc);
+                const tdGoldData = val(tdGold);
+                const tdSilverData = val(tdSilver);
+                const tdBtcData = val(tdBtc);
 
                 if (metals.gold.length > 0 || metals.silver.length > 0) dataSources.push('FreeGoldAPI');
                 if (btcData.length > 0) dataSources.push('CoinGecko');
+                if (yahooGoldData.length > 0 || yahooSilverData.length > 0 || yahooBtcData.length > 0) dataSources.push('Yahoo');
+                if (tdGoldData.length > 0 || tdSilverData.length > 0 || tdBtcData.length > 0) dataSources.push('TwelveData');
 
-                goldPrices = metals.gold;
-                silverPrices = metals.silver;
-                bitcoinPrices = btcData;
+                // Merge: FreeGoldAPI/CoinGecko first, then Yahoo, then Twelve Data
+                goldPrices = mergePrices(metals.gold, yahooGoldData, tdGoldData);
+                silverPrices = mergePrices(metals.silver, yahooSilverData, tdSilverData);
+                bitcoinPrices = mergePrices(btcData, yahooBtcData, tdBtcData);
 
                 lastUpdated = new Date();
 
