@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Live Tracker</title>
+    <title>California Fire Tracker</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -33,7 +33,7 @@
         .header h1 {
             font-size: 20px;
             font-weight: 700;
-            background: linear-gradient(90deg, #60a5fa, #a78bfa);
+            background: linear-gradient(90deg, #f97316, #ef4444);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -47,18 +47,18 @@
             align-items: center;
             gap: 6px;
             padding: 5px 12px;
-            background: #10b98120;
-            border: 1px solid #10b98140;
+            background: #ef444420;
+            border: 1px solid #ef444440;
             border-radius: 20px;
             font-size: 12px;
             font-weight: 600;
-            color: #34d399;
+            color: #f87171;
         }
 
         .live-dot {
             width: 8px;
             height: 8px;
-            background: #34d399;
+            background: #f87171;
             border-radius: 50%;
             animation: pulse 1.5s ease-in-out infinite;
         }
@@ -89,7 +89,7 @@
 
         /* Sidebar */
         .sidebar {
-            width: 320px;
+            width: 340px;
             background: #1a1d28;
             border-right: 1px solid #2d3040;
             display: flex;
@@ -112,12 +112,13 @@
             color: #e1e4e8;
         }
 
-        .tracker-count {
+        .fire-count {
             font-size: 12px;
-            color: #8b8fa3;
-            background: #252836;
-            padding: 2px 8px;
+            color: #f87171;
+            background: #ef444420;
+            padding: 2px 10px;
             border-radius: 10px;
+            font-weight: 600;
         }
 
         .filter-bar {
@@ -125,6 +126,7 @@
             border-bottom: 1px solid #2d3040;
             display: flex;
             gap: 6px;
+            flex-wrap: wrap;
         }
 
         .filter-btn {
@@ -140,9 +142,9 @@
         }
 
         .filter-btn.active {
-            background: #3b82f620;
-            color: #60a5fa;
-            border-color: #3b82f640;
+            background: #f9731620;
+            color: #f97316;
+            border-color: #f9731640;
         }
 
         .filter-btn:hover:not(.active) {
@@ -150,14 +152,34 @@
             color: #e1e4e8;
         }
 
-        .tracker-list {
+        .sidebar-status {
+            padding: 10px 16px;
+            border-bottom: 1px solid #2d3040;
+            font-size: 11px;
+            color: #8b8fa3;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .refresh-link {
+            color: #60a5fa;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .refresh-link:hover { color: #a78bfa; }
+
+        .fire-list {
             flex: 1;
             overflow-y: auto;
             scrollbar-width: thin;
             scrollbar-color: #2d3040 transparent;
         }
 
-        .tracker-item {
+        .fire-item {
             padding: 12px 16px;
             border-bottom: 1px solid #1e2130;
             cursor: pointer;
@@ -167,10 +189,10 @@
             align-items: flex-start;
         }
 
-        .tracker-item:hover { background: #252836; }
-        .tracker-item.selected { background: #252836; border-left: 3px solid #3b82f6; }
+        .fire-item:hover { background: #252836; }
+        .fire-item.selected { background: #252836; border-left: 3px solid #f97316; }
 
-        .tracker-icon {
+        .fire-icon {
             width: 36px;
             height: 36px;
             border-radius: 10px;
@@ -179,18 +201,19 @@
             justify-content: center;
             font-size: 18px;
             flex-shrink: 0;
+            background: #ef444420;
         }
 
-        .tracker-info { flex: 1; min-width: 0; }
+        .fire-info { flex: 1; min-width: 0; }
 
-        .tracker-name {
+        .fire-name {
             font-size: 13px;
             font-weight: 600;
             color: #e1e4e8;
             margin-bottom: 2px;
         }
 
-        .tracker-detail {
+        .fire-location {
             font-size: 11px;
             color: #8b8fa3;
             white-space: nowrap;
@@ -198,40 +221,44 @@
             text-overflow: ellipsis;
         }
 
-        .tracker-meta {
+        .fire-meta {
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-top: 4px;
+            margin-top: 5px;
+            flex-wrap: wrap;
         }
 
-        .status-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-        }
-
-        .status-dot.active { background: #34d399; }
-        .status-dot.idle { background: #fbbf24; }
-        .status-dot.offline { background: #6b7280; }
-
-        .status-label {
+        .fire-badge {
             font-size: 10px;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .status-label.active { color: #34d399; }
-        .status-label.idle { color: #fbbf24; }
-        .status-label.offline { color: #6b7280; }
-
-        .speed-badge {
-            font-size: 10px;
-            color: #8b8fa3;
-            background: #0f1117;
-            padding: 1px 6px;
+            font-weight: 600;
+            padding: 2px 8px;
             border-radius: 6px;
+        }
+
+        .fire-badge.acres {
+            background: #f9731620;
+            color: #f97316;
+        }
+
+        .fire-badge.contained {
+            background: #10b98120;
+            color: #34d399;
+        }
+
+        .fire-badge.contained.low {
+            background: #ef444420;
+            color: #f87171;
+        }
+
+        .fire-badge.contained.mid {
+            background: #f59e0b20;
+            color: #fbbf24;
+        }
+
+        .fire-badge.county {
+            background: #3b82f620;
+            color: #60a5fa;
         }
 
         /* Map area */
@@ -251,7 +278,7 @@
             bottom: 20px;
             left: 20px;
             right: 20px;
-            max-width: 400px;
+            max-width: 420px;
             background: #1a1d28ee;
             backdrop-filter: blur(12px);
             border-radius: 16px;
@@ -273,6 +300,7 @@
         .info-panel-title {
             font-size: 16px;
             font-weight: 700;
+            color: #f97316;
         }
 
         .info-panel-close {
@@ -318,8 +346,25 @@
 
         .info-value.green { color: #34d399; }
         .info-value.blue { color: #60a5fa; }
+        .info-value.orange { color: #f97316; }
+        .info-value.red { color: #f87171; }
         .info-value.yellow { color: #fbbf24; }
         .info-value.purple { color: #a78bfa; }
+
+        .info-link {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 6px 14px;
+            background: #f9731620;
+            color: #f97316;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid #f9731640;
+            transition: all 0.2s;
+        }
+        .info-link:hover { background: #f9731640; }
 
         /* Map controls overlay */
         .map-controls {
@@ -349,7 +394,7 @@
         }
 
         .map-ctrl-btn:hover { background: #252836; color: #e1e4e8; }
-        .map-ctrl-btn.active { background: #3b82f6; color: white; border-color: #3b82f6; }
+        .map-ctrl-btn.active { background: #f97316; color: white; border-color: #f97316; }
 
         /* Stats bar */
         .stats-bar {
@@ -359,6 +404,7 @@
             display: flex;
             gap: 8px;
             z-index: 5;
+            flex-wrap: wrap;
         }
 
         .stat-chip {
@@ -379,6 +425,71 @@
         }
 
         .stat-chip .label { color: #8b8fa3; }
+
+        /* No fires message */
+        .no-fires {
+            padding: 40px 20px;
+            text-align: center;
+            color: #8b8fa3;
+        }
+
+        .no-fires .icon { font-size: 40px; margin-bottom: 12px; }
+        .no-fires h4 { color: #34d399; font-size: 16px; margin-bottom: 6px; }
+        .no-fires p { font-size: 12px; line-height: 1.5; }
+
+        /* Loading state */
+        .loading-msg {
+            padding: 40px 20px;
+            text-align: center;
+            color: #8b8fa3;
+            font-size: 13px;
+        }
+
+        .spinner {
+            width: 28px;
+            height: 28px;
+            border: 3px solid #2d3040;
+            border-top-color: #f97316;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 12px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Perimeter legend */
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: #1a1d28ee;
+            backdrop-filter: blur(12px);
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 11px;
+            z-index: 5;
+        }
+
+        .legend-title {
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #e1e4e8;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 3px;
+            color: #8b8fa3;
+        }
+
+        .legend-swatch {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+        }
 
         /* API key modal */
         .modal-overlay {
@@ -405,7 +516,7 @@
         .modal h2 {
             font-size: 20px;
             margin-bottom: 8px;
-            background: linear-gradient(90deg, #60a5fa, #a78bfa);
+            background: linear-gradient(90deg, #f97316, #ef4444);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -429,7 +540,7 @@
             outline: none;
         }
 
-        .modal input:focus { border-color: #3b82f6; }
+        .modal input:focus { border-color: #f97316; }
 
         .modal-actions {
             display: flex;
@@ -448,19 +559,11 @@
         }
 
         .modal-btn.primary {
-            background: #3b82f6;
+            background: #f97316;
             color: white;
         }
 
-        .modal-btn.primary:hover { background: #2563eb; }
-
-        .modal-btn.secondary {
-            background: #252836;
-            color: #8b8fa3;
-            border: 1px solid #2d3040;
-        }
-
-        .modal-btn.secondary:hover { background: #2d3040; color: #e1e4e8; }
+        .modal-btn.primary:hover { background: #ea580c; }
 
         /* Responsive */
         @media (max-width: 768px) {
@@ -469,6 +572,7 @@
             .header h1 { font-size: 16px; }
             .stat-chip { padding: 6px 10px; font-size: 11px; }
             .info-panel { left: 10px; right: 10px; }
+            .legend { bottom: 10px; right: 10px; }
         }
     </style>
 </head>
@@ -476,8 +580,8 @@
     <div class="header">
         <div class="header-left">
             <div>
-                <h1>Live Tracker</h1>
-                <div class="subtitle">Real-time GPS tracking dashboard</div>
+                <h1>California Fire Tracker</h1>
+                <div class="subtitle">CAL FIRE real-time incidents &bull; Auto-refreshes every 5 min</div>
             </div>
         </div>
         <div class="header-right">
@@ -492,16 +596,25 @@
     <div class="main-content">
         <div class="sidebar">
             <div class="sidebar-header">
-                <h3>Tracked Units</h3>
-                <span class="tracker-count" id="trackerCount">0</span>
+                <h3>Fire Incidents</h3>
+                <span class="fire-count" id="fireCount">0</span>
             </div>
             <div class="filter-bar">
                 <button class="filter-btn active" data-filter="all">All</button>
                 <button class="filter-btn" data-filter="active">Active</button>
-                <button class="filter-btn" data-filter="idle">Idle</button>
-                <button class="filter-btn" data-filter="offline">Offline</button>
+                <button class="filter-btn" data-filter="contained">Contained</button>
+                <button class="filter-btn" data-filter="large">100+ Acres</button>
             </div>
-            <div class="tracker-list" id="trackerList"></div>
+            <div class="sidebar-status" id="sidebarStatus">
+                <span>Loading...</span>
+                <button class="refresh-link" id="refreshBtn">Refresh</button>
+            </div>
+            <div class="fire-list" id="fireList">
+                <div class="loading-msg">
+                    <div class="spinner"></div>
+                    Fetching fire data...
+                </div>
+            </div>
         </div>
 
         <div class="map-area">
@@ -509,28 +622,36 @@
 
             <div class="stats-bar" id="statsBar">
                 <div class="stat-chip">
-                    <span class="count" id="activeCount" style="color:#34d399">0</span>
+                    <span class="count" id="totalFires" style="color:#f97316">0</span>
+                    <span class="label">Fires</span>
+                </div>
+                <div class="stat-chip">
+                    <span class="count" id="totalAcres" style="color:#f87171">0</span>
+                    <span class="label">Total Acres</span>
+                </div>
+                <div class="stat-chip">
+                    <span class="count" id="activeFires" style="color:#fbbf24">0</span>
                     <span class="label">Active</span>
-                </div>
-                <div class="stat-chip">
-                    <span class="count" id="idleCount" style="color:#fbbf24">0</span>
-                    <span class="label">Idle</span>
-                </div>
-                <div class="stat-chip">
-                    <span class="count" id="offlineCount" style="color:#6b7280">0</span>
-                    <span class="label">Offline</span>
                 </div>
             </div>
 
             <div class="map-controls">
-                <button class="map-ctrl-btn" id="centerBtn" title="Center all">&#8982;</button>
-                <button class="map-ctrl-btn" id="trailBtn" title="Toggle trails">&#9681;</button>
-                <button class="map-ctrl-btn" id="trafficBtn" title="Toggle traffic">&#9632;</button>
+                <button class="map-ctrl-btn" id="centerBtn" title="Fit all fires">&#8982;</button>
+                <button class="map-ctrl-btn" id="perimeterBtn" title="Toggle perimeters">&#9634;</button>
+                <button class="map-ctrl-btn" id="terrainBtn" title="Toggle terrain">&#9650;</button>
+            </div>
+
+            <div class="legend" id="legend" style="display:none">
+                <div class="legend-title">Fire Status</div>
+                <div class="legend-item"><div class="legend-swatch" style="background:#ef4444"></div> Active (&lt;50% contained)</div>
+                <div class="legend-item"><div class="legend-swatch" style="background:#f59e0b"></div> Partially (50-99%)</div>
+                <div class="legend-item"><div class="legend-swatch" style="background:#22c55e"></div> Fully contained</div>
+                <div class="legend-item"><div class="legend-swatch" style="background:#ef444440;border:1px solid #ef4444"></div> Fire perimeter</div>
             </div>
 
             <div class="info-panel" id="infoPanel">
                 <div class="info-panel-header">
-                    <span class="info-panel-title" id="infoPanelTitle">—</span>
+                    <span class="info-panel-title" id="infoPanelTitle"></span>
                     <button class="info-panel-close" id="infoPanelClose">&times;</button>
                 </div>
                 <div class="info-grid" id="infoPanelGrid"></div>
@@ -543,10 +664,10 @@
         <div class="modal">
             <h2>Google Maps API Key</h2>
             <p>
-                Enter your Google Maps JavaScript API key to load the map.
-                You can get one from the
-                <a href="https://console.cloud.google.com/google/maps-apis" target="_blank" style="color:#60a5fa">Google Cloud Console</a>.
-                Make sure the <strong>Maps JavaScript API</strong> is enabled.
+                Enter your Google Maps JavaScript API key to load the fire tracker map.
+                Get one from the
+                <a href="https://console.cloud.google.com/google/maps-apis" target="_blank" style="color:#f97316">Google Cloud Console</a>.
+                Enable the <strong>Maps JavaScript API</strong>.
             </p>
             <input type="text" id="apiKeyInput" placeholder="AIza..." spellcheck="false" autocomplete="off">
             <p style="font-size:11px; margin-bottom:0;">
@@ -560,79 +681,358 @@
 
     <script>
         // ── State ──
-        let map, trafficLayer;
-        let showTrails = true;
-        let showTraffic = false;
+        let map;
         let selectedId = null;
         let activeFilter = 'all';
-        let markers = {};
-        let trails = {};
-        let updateInterval;
+        let fireMarkers = {};
+        let perimeterPolygons = [];
+        let showPerimeters = true;
+        let incidents = [];
+        let refreshTimer;
 
         const STORAGE_KEY = 'live_tracker_gmaps_key';
+        const CALFIRE_API = 'https://incidents.fire.ca.gov/umbraco/api/IncidentApi/GeoJsonList';
+        const PERIMETER_API = 'https://services2.arcgis.com/cFEFS0EWrhfDeVw9/arcgis/rest/services/California_Fire_Perimeters/FeatureServer/0/query';
+        const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
-        // ── Simulated fleet data (San Diego area) ──
-        const fleet = [
-            { id: 'V001', name: 'Unit Alpha',   icon: '🚐', type: 'Van',       color: '#3b82f6', lat: 32.7157, lng: -117.1611, bearing: 45,  speed: 35, status: 'active',  route: 'Downtown → La Jolla',       driver: 'Carlos M.' },
-            { id: 'V002', name: 'Unit Bravo',   icon: '🚛', type: 'Truck',     color: '#10b981', lat: 32.7500, lng: -117.1900, bearing: 120, speed: 55, status: 'active',  route: 'I-5 North → Del Mar',       driver: 'Sarah K.' },
-            { id: 'V003', name: 'Unit Charlie', icon: '🚗', type: 'Sedan',     color: '#f59e0b', lat: 32.7350, lng: -117.1500, bearing: 200, speed: 0,  status: 'idle',    route: 'Balboa Park (parked)',       driver: 'Mike T.' },
-            { id: 'V004', name: 'Unit Delta',   icon: '🏍️', type: 'Motorcycle', color: '#ef4444', lat: 32.7600, lng: -117.2100, bearing: 330, speed: 42, status: 'active',  route: 'Pacific Beach → Ocean Beach', driver: 'Lisa R.' },
-            { id: 'V005', name: 'Unit Echo',    icon: '🚐', type: 'Van',       color: '#8b5cf6', lat: 32.6900, lng: -117.1300, bearing: 90,  speed: 28, status: 'active',  route: 'National City → Chula Vista', driver: 'James W.' },
-            { id: 'V006', name: 'Unit Foxtrot', icon: '🚗', type: 'Sedan',     color: '#ec4899', lat: 32.7800, lng: -117.1700, bearing: 180, speed: 0,  status: 'idle',    route: 'Clairemont (stopped)',       driver: 'Anna P.' },
-            { id: 'V007', name: 'Unit Golf',    icon: '🚛', type: 'Truck',     color: '#14b8a6', lat: 32.7100, lng: -117.1600, bearing: 270, speed: 0,  status: 'offline', route: 'Last seen: Barrio Logan',    driver: 'Tom B.' },
-            { id: 'V008', name: 'Unit Hotel',   icon: '🚐', type: 'Van',       color: '#f97316', lat: 32.7450, lng: -117.2300, bearing: 60,  speed: 38, status: 'active',  route: 'La Jolla → UTC',             driver: 'Diana G.' },
-        ];
+        // ── Fetch active fire incidents from CAL FIRE ──
+        async function fetchIncidents() {
+            document.getElementById('sidebarStatus').querySelector('span').textContent = 'Updating...';
 
-        // ── Simulated movement ──
-        function updatePositions() {
-            fleet.forEach(v => {
-                if (v.status !== 'active') return;
+            try {
+                // Fetch active fires
+                const activeResp = await fetch(CALFIRE_API + '?inactive=false');
+                const activeData = await activeResp.json();
 
-                // Random drift to simulate road movement
-                const rad = (v.bearing + (Math.random() - 0.5) * 40) * Math.PI / 180;
-                const dist = (v.speed * 0.3) / 111000; // rough m->deg
-                v.lat += Math.cos(rad) * dist + (Math.random() - 0.5) * 0.0003;
-                v.lng += Math.sin(rad) * dist + (Math.random() - 0.5) * 0.0003;
-                v.bearing = (v.bearing + (Math.random() - 0.5) * 20 + 360) % 360;
-                v.speed = Math.max(5, Math.min(70, v.speed + (Math.random() - 0.5) * 10));
+                // Also fetch recent inactive to show recently contained fires
+                const allResp = await fetch(CALFIRE_API + '?inactive=true');
+                const allData = await allResp.json();
 
-                // Occasionally change status
-                if (Math.random() < 0.01) {
-                    v.status = 'idle';
-                    v.speed = 0;
-                } else if (Math.random() < 0.003) {
-                    v.status = 'offline';
-                    v.speed = 0;
+                // Combine: active fires + recent inactive (last 30 days)
+                const thirtyDaysAgo = new Date();
+                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+                const activeIds = new Set();
+                const combined = [];
+
+                // Add active fires
+                if (activeData.features) {
+                    activeData.features.forEach(f => {
+                        const props = f.properties || {};
+                        if (props.Latitude && props.Longitude) {
+                            activeIds.add(props.UniqueId);
+                            combined.push(normalizeIncident(props, true));
+                        }
+                    });
                 }
-            });
 
-            // Occasionally bring idle units back
-            fleet.forEach(v => {
-                if (v.status === 'idle' && Math.random() < 0.05) {
-                    v.status = 'active';
-                    v.speed = 15 + Math.random() * 30;
-                    v.bearing = Math.random() * 360;
+                // Add recent inactive fires
+                if (allData.features) {
+                    allData.features.forEach(f => {
+                        const props = f.properties || {};
+                        if (props.Latitude && props.Longitude && !activeIds.has(props.UniqueId)) {
+                            const started = props.Started ? new Date(props.Started) : null;
+                            if (started && started >= thirtyDaysAgo) {
+                                combined.push(normalizeIncident(props, false));
+                            }
+                        }
+                    });
                 }
-            });
 
-            renderMarkers();
+                // Sort: active first, then by acres descending
+                combined.sort((a, b) => {
+                    if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
+                    return b.acres - a.acres;
+                });
+
+                incidents = combined;
+                updateUI();
+
+                const now = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                document.getElementById('sidebarStatus').querySelector('span').textContent =
+                    `Updated ${now} \u2022 Source: CAL FIRE`;
+
+            } catch (err) {
+                console.error('Failed to fetch incidents:', err);
+                document.getElementById('sidebarStatus').querySelector('span').textContent =
+                    'Error loading data. Retrying...';
+                // Retry in 30 seconds
+                setTimeout(fetchIncidents, 30000);
+            }
+        }
+
+        function normalizeIncident(props, isActive) {
+            const pct = props.PercentContained != null ? parseInt(props.PercentContained) : null;
+            return {
+                id: props.UniqueId || props.Name,
+                name: props.Name || 'Unknown Fire',
+                lat: parseFloat(props.Latitude),
+                lng: parseFloat(props.Longitude),
+                acres: props.AcresBurned ? parseFloat(props.AcresBurned) : 0,
+                contained: pct,
+                county: props.County || 'Unknown',
+                location: props.Location || '',
+                started: props.Started || null,
+                updated: props.Updated || null,
+                agency: props.AgencyNames || props.AdminUnit || '',
+                isActive: isActive,
+                url: props.Url || null,
+                controlStatement: props.ControlStatement || '',
+            };
+        }
+
+        // ── Fetch fire perimeters from ArcGIS ──
+        async function fetchPerimeters() {
+            try {
+                const currentYear = new Date().getFullYear();
+                const params = new URLSearchParams({
+                    where: `YEAR_>=${currentYear - 1}`,
+                    outFields: 'FIRE_NAME,YEAR_,GIS_ACRES,ALARM_DATE,CONT_DATE,AGENCY',
+                    f: 'geojson',
+                    outSR: '4326',
+                    resultRecordCount: '100',
+                });
+
+                const resp = await fetch(PERIMETER_API + '?' + params.toString());
+                const data = await resp.json();
+
+                if (data.features && map) {
+                    // Clear old perimeters
+                    perimeterPolygons.forEach(p => p.setMap(null));
+                    perimeterPolygons = [];
+
+                    data.features.forEach(f => {
+                        if (!f.geometry || !f.geometry.coordinates) return;
+
+                        const coords = f.geometry.type === 'MultiPolygon'
+                            ? f.geometry.coordinates.flat()
+                            : f.geometry.coordinates;
+
+                        coords.forEach(ring => {
+                            const path = ring.map(c => ({ lat: c[1], lng: c[0] }));
+                            const polygon = new google.maps.Polygon({
+                                paths: path,
+                                strokeColor: '#ef4444',
+                                strokeOpacity: 0.7,
+                                strokeWeight: 1.5,
+                                fillColor: '#ef4444',
+                                fillOpacity: 0.15,
+                                map: showPerimeters ? map : null,
+                                zIndex: 1,
+                            });
+                            perimeterPolygons.push(polygon);
+                        });
+                    });
+                }
+            } catch (err) {
+                console.warn('Failed to load perimeters:', err);
+            }
+        }
+
+        // ── UI Updates ──
+        function updateUI() {
             renderSidebar();
             updateStats();
-            updateInfoPanel();
+            renderMarkers();
+        }
+
+        function getFilteredIncidents() {
+            if (activeFilter === 'all') return incidents;
+            if (activeFilter === 'active') return incidents.filter(f => f.isActive);
+            if (activeFilter === 'contained') return incidents.filter(f => f.contained === 100);
+            if (activeFilter === 'large') return incidents.filter(f => f.acres >= 100);
+            return incidents;
+        }
+
+        function renderSidebar() {
+            const list = document.getElementById('fireList');
+            const filtered = getFilteredIncidents();
+            document.getElementById('fireCount').textContent = filtered.length;
+
+            if (filtered.length === 0 && incidents.length === 0) {
+                list.innerHTML = `
+                    <div class="no-fires">
+                        <div class="icon">&#9996;</div>
+                        <h4>No Active Fires</h4>
+                        <p>There are currently no reported fire incidents in California. Data refreshes automatically every 5 minutes.</p>
+                    </div>`;
+                return;
+            }
+
+            if (filtered.length === 0) {
+                list.innerHTML = `
+                    <div class="no-fires">
+                        <p>No fires match the current filter.</p>
+                    </div>`;
+                return;
+            }
+
+            list.innerHTML = filtered.map(f => {
+                const containedClass = f.contained == null ? '' :
+                    f.contained >= 100 ? 'contained' :
+                    f.contained >= 50 ? 'contained mid' : 'contained low';
+
+                return `
+                <div class="fire-item ${f.id === selectedId ? 'selected' : ''}" onclick="selectFire('${f.id}')">
+                    <div class="fire-icon">${f.isActive ? '&#128293;' : '&#9989;'}</div>
+                    <div class="fire-info">
+                        <div class="fire-name">${f.name}</div>
+                        <div class="fire-location">${f.county} County &bull; ${f.location || 'Location unavailable'}</div>
+                        <div class="fire-meta">
+                            ${f.acres > 0 ? `<span class="fire-badge acres">${formatAcres(f.acres)} acres</span>` : ''}
+                            ${f.contained != null ? `<span class="fire-badge ${containedClass}">${f.contained}% contained</span>` : ''}
+                            <span class="fire-badge county">${f.county}</span>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function formatAcres(n) {
+            if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+            return n.toLocaleString();
+        }
+
+        function updateStats() {
+            const active = incidents.filter(f => f.isActive);
+            const totalAcres = incidents.reduce((s, f) => s + f.acres, 0);
+            document.getElementById('totalFires').textContent = incidents.length;
+            document.getElementById('totalAcres').textContent = formatAcres(totalAcres);
+            document.getElementById('activeFires').textContent = active.length;
+        }
+
+        // ── Map markers ──
+        function getMarkerColor(f) {
+            if (!f.isActive || f.contained === 100) return '#22c55e';
+            if (f.contained != null && f.contained >= 50) return '#f59e0b';
+            return '#ef4444';
+        }
+
+        function getMarkerScale(f) {
+            if (f.id === selectedId) return 14;
+            if (f.acres >= 10000) return 14;
+            if (f.acres >= 1000) return 12;
+            if (f.acres >= 100) return 10;
+            return 8;
+        }
+
+        function renderMarkers() {
+            if (!map) return;
+
+            // Remove old markers
+            Object.values(fireMarkers).forEach(m => m.setMap(null));
+            fireMarkers = {};
+
+            incidents.forEach(f => {
+                const color = getMarkerColor(f);
+                const scale = getMarkerScale(f);
+
+                const marker = new google.maps.Marker({
+                    position: { lat: f.lat, lng: f.lng },
+                    map: map,
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        fillColor: color,
+                        fillOpacity: f.isActive ? 0.9 : 0.5,
+                        strokeColor: '#fff',
+                        strokeWeight: f.id === selectedId ? 3 : 1.5,
+                        scale: scale,
+                    },
+                    title: f.name,
+                    zIndex: f.isActive ? 10 : 5,
+                });
+
+                marker.addListener('click', () => selectFire(f.id));
+                fireMarkers[f.id] = marker;
+            });
+        }
+
+        // ── Selection ──
+        function selectFire(id) {
+            selectedId = id;
+            const f = incidents.find(i => i.id === id);
+            if (!f || !map) return;
+
+            map.panTo({ lat: f.lat, lng: f.lng });
+            map.setZoom(10);
+
+            showInfoPanel(f);
+            renderSidebar();
+            renderMarkers();
+        }
+
+        function showInfoPanel(f) {
+            const panel = document.getElementById('infoPanel');
+            document.getElementById('infoPanelTitle').textContent = f.name;
+
+            const startDate = f.started ? new Date(f.started).toLocaleDateString('en-US', {
+                month: 'short', day: 'numeric', year: 'numeric'
+            }) : 'Unknown';
+
+            const updatedStr = f.updated ? new Date(f.updated).toLocaleString('en-US', {
+                month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+            }) : 'Unknown';
+
+            const containedColor = f.contained == null ? '' :
+                f.contained >= 100 ? 'green' :
+                f.contained >= 50 ? 'yellow' : 'red';
+
+            document.getElementById('infoPanelGrid').innerHTML = `
+                <div class="info-item">
+                    <div class="info-label">Status</div>
+                    <div class="info-value ${f.isActive ? 'orange' : 'green'}">${f.isActive ? 'Active' : 'Contained'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Acres Burned</div>
+                    <div class="info-value red">${f.acres > 0 ? f.acres.toLocaleString() : 'Unknown'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Containment</div>
+                    <div class="info-value ${containedColor}">${f.contained != null ? f.contained + '%' : 'Unknown'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">County</div>
+                    <div class="info-value blue">${f.county}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Started</div>
+                    <div class="info-value">${startDate}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Last Update</div>
+                    <div class="info-value">${updatedStr}</div>
+                </div>
+                <div class="info-item" style="grid-column: span 2">
+                    <div class="info-label">Agency</div>
+                    <div class="info-value" style="font-size:12px">${f.agency || 'Unknown'}</div>
+                </div>
+                ${f.location ? `
+                <div class="info-item" style="grid-column: span 2">
+                    <div class="info-label">Location</div>
+                    <div class="info-value" style="font-size:12px;color:#8b8fa3">${f.location}</div>
+                </div>` : ''}
+                ${f.url ? `
+                <div class="info-item" style="grid-column: span 2; padding-bottom: 2px;">
+                    <a href="${f.url}" target="_blank" class="info-link">View on CAL FIRE &rarr;</a>
+                </div>` : ''}
+            `;
+            panel.classList.add('visible');
         }
 
         // ── Google Maps init ──
         function initMap() {
             map = new google.maps.Map(document.getElementById('map'), {
-                center: { lat: 32.735, lng: -117.185 },
-                zoom: 12,
+                center: { lat: 37.5, lng: -119.5 },
+                zoom: 6,
                 mapTypeId: 'roadmap',
                 styles: [
                     { elementType: 'geometry', stylers: [{ color: '#1a1d28' }] },
                     { elementType: 'labels.text.stroke', stylers: [{ color: '#1a1d28' }] },
                     { elementType: 'labels.text.fill', stylers: [{ color: '#8b8fa3' }] },
                     { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#2d3040' }] },
+                    { featureType: 'administrative.province', elementType: 'geometry.stroke', stylers: [{ color: '#4a5568' }] },
                     { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+                    { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#1e2a1e' }] },
                     { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#2d3040' }] },
                     { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#1e2130' }] },
                     { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#3b3f54' }] },
@@ -645,160 +1045,17 @@
                 zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_BOTTOM },
             });
 
-            trafficLayer = new google.maps.TrafficLayer();
+            document.getElementById('legend').style.display = 'block';
 
-            // Initialize markers and trails
-            fleet.forEach(v => {
-                // Custom marker
-                markers[v.id] = new google.maps.Marker({
-                    position: { lat: v.lat, lng: v.lng },
-                    map: map,
-                    icon: {
-                        path: google.maps.SymbolPath.CIRCLE,
-                        fillColor: v.color,
-                        fillOpacity: 1,
-                        strokeColor: '#fff',
-                        strokeWeight: 2,
-                        scale: 10,
-                    },
-                    title: v.name,
-                    zIndex: 10,
-                });
+            // Load fire data
+            fetchIncidents();
+            fetchPerimeters();
 
-                markers[v.id].addListener('click', () => selectUnit(v.id));
-
-                // Trail polyline
-                trails[v.id] = new google.maps.Polyline({
-                    path: [{ lat: v.lat, lng: v.lng }],
-                    geodesic: true,
-                    strokeColor: v.color,
-                    strokeOpacity: 0.5,
-                    strokeWeight: 3,
-                    map: showTrails ? map : null,
-                });
-            });
-
-            renderSidebar();
-            updateStats();
-
-            // Start simulation
-            updateInterval = setInterval(updatePositions, 2000);
-        }
-
-        function renderMarkers() {
-            fleet.forEach(v => {
-                const m = markers[v.id];
-                if (!m) return;
-
-                const pos = { lat: v.lat, lng: v.lng };
-                m.setPosition(pos);
-
-                // Update icon color/opacity based on status
-                const opacity = v.status === 'offline' ? 0.3 : v.status === 'idle' ? 0.7 : 1;
-                m.setIcon({
-                    path: google.maps.SymbolPath.CIRCLE,
-                    fillColor: v.status === 'offline' ? '#6b7280' : v.color,
-                    fillOpacity: opacity,
-                    strokeColor: v.status === 'active' ? '#fff' : '#8b8fa380',
-                    strokeWeight: v.status === 'active' ? 2 : 1,
-                    scale: v.id === selectedId ? 14 : 10,
-                });
-
-                // Update trail
-                if (v.status === 'active' && trails[v.id]) {
-                    const path = trails[v.id].getPath();
-                    path.push(new google.maps.LatLng(pos.lat, pos.lng));
-                    // Keep trail length reasonable
-                    if (path.getLength() > 200) path.removeAt(0);
-                }
-            });
-        }
-
-        // ── Sidebar ──
-        function renderSidebar() {
-            const list = document.getElementById('trackerList');
-            const filtered = fleet.filter(v => activeFilter === 'all' || v.status === activeFilter);
-
-            document.getElementById('trackerCount').textContent = filtered.length;
-
-            list.innerHTML = filtered.map(v => `
-                <div class="tracker-item ${v.id === selectedId ? 'selected' : ''}" onclick="selectUnit('${v.id}')">
-                    <div class="tracker-icon" style="background:${v.color}20; color:${v.color}">${v.icon}</div>
-                    <div class="tracker-info">
-                        <div class="tracker-name">${v.name} <span style="color:#8b8fa3;font-weight:400;font-size:11px">${v.id}</span></div>
-                        <div class="tracker-detail">${v.route}</div>
-                        <div class="tracker-meta">
-                            <span class="status-dot ${v.status}"></span>
-                            <span class="status-label ${v.status}">${v.status}</span>
-                            ${v.speed > 0 ? `<span class="speed-badge">${Math.round(v.speed)} mph</span>` : ''}
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function updateStats() {
-            const counts = { active: 0, idle: 0, offline: 0 };
-            fleet.forEach(v => counts[v.status]++);
-            document.getElementById('activeCount').textContent = counts.active;
-            document.getElementById('idleCount').textContent = counts.idle;
-            document.getElementById('offlineCount').textContent = counts.offline;
-        }
-
-        // ── Selection ──
-        function selectUnit(id) {
-            selectedId = id;
-            const v = fleet.find(u => u.id === id);
-            if (!v || !map) return;
-
-            map.panTo({ lat: v.lat, lng: v.lng });
-            map.setZoom(15);
-
-            showInfoPanel(v);
-            renderSidebar();
-            renderMarkers();
-        }
-
-        function showInfoPanel(v) {
-            const panel = document.getElementById('infoPanel');
-            document.getElementById('infoPanelTitle').textContent = `${v.icon} ${v.name}`;
-            document.getElementById('infoPanelGrid').innerHTML = `
-                <div class="info-item">
-                    <div class="info-label">Status</div>
-                    <div class="info-value ${v.status === 'active' ? 'green' : v.status === 'idle' ? 'yellow' : ''}">${v.status.charAt(0).toUpperCase() + v.status.slice(1)}</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">Speed</div>
-                    <div class="info-value blue">${Math.round(v.speed)} mph</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">Driver</div>
-                    <div class="info-value">${v.driver}</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">Vehicle</div>
-                    <div class="info-value purple">${v.type}</div>
-                </div>
-                <div class="info-item" style="grid-column: span 2">
-                    <div class="info-label">Route</div>
-                    <div class="info-value" style="font-size:12px">${v.route}</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">Latitude</div>
-                    <div class="info-value" style="font-size:12px;color:#8b8fa3">${v.lat.toFixed(5)}</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">Longitude</div>
-                    <div class="info-value" style="font-size:12px;color:#8b8fa3">${v.lng.toFixed(5)}</div>
-                </div>
-            `;
-            panel.classList.add('visible');
-        }
-
-        function updateInfoPanel() {
-            if (!selectedId) return;
-            const v = fleet.find(u => u.id === selectedId);
-            if (v) showInfoPanel(v);
+            // Auto-refresh
+            refreshTimer = setInterval(() => {
+                fetchIncidents();
+                fetchPerimeters();
+            }, REFRESH_INTERVAL);
         }
 
         // ── Controls ──
@@ -811,8 +1068,13 @@
 
         document.getElementById('centerBtn').addEventListener('click', () => {
             if (!map) return;
+            if (incidents.length === 0) {
+                map.setCenter({ lat: 37.5, lng: -119.5 });
+                map.setZoom(6);
+                return;
+            }
             const bounds = new google.maps.LatLngBounds();
-            fleet.forEach(v => bounds.extend({ lat: v.lat, lng: v.lng }));
+            incidents.forEach(f => bounds.extend({ lat: f.lat, lng: f.lng }));
             map.fitBounds(bounds, 60);
             selectedId = null;
             document.getElementById('infoPanel').classList.remove('visible');
@@ -820,18 +1082,22 @@
             renderMarkers();
         });
 
-        document.getElementById('trailBtn').addEventListener('click', function() {
-            showTrails = !showTrails;
-            this.classList.toggle('active', showTrails);
-            fleet.forEach(v => {
-                if (trails[v.id]) trails[v.id].setMap(showTrails ? map : null);
-            });
+        document.getElementById('perimeterBtn').addEventListener('click', function() {
+            showPerimeters = !showPerimeters;
+            this.classList.toggle('active', showPerimeters);
+            perimeterPolygons.forEach(p => p.setMap(showPerimeters ? map : null));
         });
 
-        document.getElementById('trafficBtn').addEventListener('click', function() {
-            showTraffic = !showTraffic;
-            this.classList.toggle('active', showTraffic);
-            trafficLayer.setMap(showTraffic ? map : null);
+        document.getElementById('terrainBtn').addEventListener('click', function() {
+            const current = map.getMapTypeId();
+            const next = current === 'terrain' ? 'roadmap' : 'terrain';
+            map.setMapTypeId(next);
+            this.classList.toggle('active', next === 'terrain');
+        });
+
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            fetchIncidents();
+            fetchPerimeters();
         });
 
         // Filter buttons
