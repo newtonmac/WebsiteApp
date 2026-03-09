@@ -1025,6 +1025,7 @@
                     date: d.ResponseDate,
                     callType: d.CallType,
                     units: (d.Units || []).map(u => u.Code).join(', '),
+                    status: d.status || 'inactive',
                     isDispatch: true,
                 }));
 
@@ -1046,8 +1047,14 @@
                 window.geocoder = new google.maps.Geocoder();
             }
 
+            const markerColors = {
+                active_not_contained: '#ff0000',
+                active_contained: '#f59e0b',
+                inactive: '#22c55e',
+            };
             dispatchIncidents.forEach(d => {
                 const addr = `${d.address}, ${d.city}, CA`;
+                const markerColor = markerColors[d.status] || '#ff0000';
                 window.geocoder.geocode({ address: addr }, (results, status) => {
                     if (status === 'OK' && results[0]) {
                         const pos = results[0].geometry.location;
@@ -1056,14 +1063,14 @@
                             map: map,
                             icon: {
                                 path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
-                                fillColor: '#ff0000',
+                                fillColor: markerColor,
                                 fillOpacity: 0.9,
                                 strokeColor: '#fff',
                                 strokeWeight: 2,
                                 scale: 7,
                             },
                             title: `${d.name}\n${d.address}\nUnits: ${d.units}`,
-                            zIndex: 20,
+                            zIndex: d.status === 'active_not_contained' ? 20 : 15,
                         });
 
                         const info = new google.maps.InfoWindow({
@@ -1120,20 +1127,36 @@
             const filtered = getTableIncidents();
             let html = '';
 
-            // Show active dispatch calls at the top
-            if (dispatchIncidents.length > 0 && tableFilter !== 'contained') {
-                html += dispatchIncidents.map(d => `
-                    <tr style="background:#ef444410">
-                        <td><span class="status-dot active"></span>Dispatch</td>
-                        <td><strong>${d.name}</strong><br><span style="color:#8b8fa3;font-size:11px">${d.address}${d.crossStreet ? ' @ ' + d.crossStreet : ''}</span></td>
-                        <td>${d.city}</td>
-                        <td>—</td>
-                        <td>—</td>
-                        <td class="hide-mobile">${d.date ? formatDate(d.date) : '—'}</td>
-                        <td class="hide-mobile">${d.units || '—'}</td>
-                        <td><span style="color:#f87171;font-size:11px">LIVE</span></td>
-                    </tr>
-                `).join('');
+            // Show dispatch calls grouped by status category
+            if (dispatchIncidents.length > 0) {
+                const statusConfig = {
+                    active_not_contained: { label: 'Active - Not Contained', dot: 'active', bg: '#ef444418', color: '#f87171' },
+                    active_contained: { label: 'Active - Contained', dot: 'partial', bg: '#f59e0b18', color: '#fbbf24' },
+                    inactive: { label: 'Inactive', dot: 'contained', bg: '#22c55e10', color: '#4ade80' },
+                };
+                const groups = ['active_not_contained', 'active_contained', 'inactive'];
+                const filteredGroups = tableFilter === 'contained'
+                    ? ['active_contained', 'inactive']
+                    : tableFilter === 'active' ? ['active_not_contained'] : groups;
+
+                filteredGroups.forEach(statusKey => {
+                    const items = dispatchIncidents.filter(d => d.status === statusKey);
+                    if (items.length === 0) return;
+                    const cfg = statusConfig[statusKey];
+                    html += `<tr><td colspan="8" style="background:#1a1d28;padding:8px 12px;font-weight:600;font-size:12px;color:${cfg.color};text-transform:uppercase;letter-spacing:0.5px">${cfg.label} (${items.length})</td></tr>`;
+                    html += items.map(d => `
+                        <tr style="background:${cfg.bg}">
+                            <td><span class="status-dot ${cfg.dot}"></span>Dispatch</td>
+                            <td><strong>${d.name}</strong><br><span style="color:#8b8fa3;font-size:11px">${d.address}${d.crossStreet ? ' @ ' + d.crossStreet : ''}</span></td>
+                            <td>${d.city}</td>
+                            <td>—</td>
+                            <td>—</td>
+                            <td class="hide-mobile">${d.date ? formatDate(d.date) : '—'}</td>
+                            <td class="hide-mobile">${d.units || '—'}</td>
+                            <td><span style="color:${cfg.color};font-size:11px">${statusKey === 'active_not_contained' ? 'LIVE' : statusKey === 'active_contained' ? 'CONTAINED' : 'CLOSED'}</span></td>
+                        </tr>
+                    `).join('');
+                });
             }
 
             html += filtered.map(f => `
@@ -1173,19 +1196,29 @@
 
             let dispatchHtml = '';
             if (dispatchIncidents.length > 0) {
-                dispatchHtml = dispatchIncidents.map(d => `
-                    <div class="fire-item" style="border-left:3px solid #ef4444">
-                        <div class="fire-icon">&#128680;</div>
-                        <div class="fire-info">
-                            <div class="fire-name">${d.name}</div>
-                            <div class="fire-location">${d.address}${d.crossStreet ? ' @ ' + d.crossStreet : ''}, ${d.city}</div>
-                            <div class="fire-meta">
-                                <span class="fire-badge contained low">LIVE DISPATCH</span>
-                                ${d.units ? `<span class="fire-badge county">${d.units}</span>` : ''}
+                const sidebarStatusConfig = {
+                    active_not_contained: { label: 'ACTIVE', badgeClass: 'contained low', borderColor: '#ef4444', icon: '&#128680;' },
+                    active_contained: { label: 'CONTAINED', badgeClass: 'contained mid', borderColor: '#f59e0b', icon: '&#9989;' },
+                    inactive: { label: 'INACTIVE', badgeClass: 'contained', borderColor: '#22c55e', icon: '&#9898;' },
+                };
+                ['active_not_contained', 'active_contained', 'inactive'].forEach(statusKey => {
+                    const items = dispatchIncidents.filter(d => d.status === statusKey);
+                    if (items.length === 0) return;
+                    const cfg = sidebarStatusConfig[statusKey];
+                    dispatchHtml += items.map(d => `
+                        <div class="fire-item" style="border-left:3px solid ${cfg.borderColor}">
+                            <div class="fire-icon">${cfg.icon}</div>
+                            <div class="fire-info">
+                                <div class="fire-name">${d.name}</div>
+                                <div class="fire-location">${d.address}${d.crossStreet ? ' @ ' + d.crossStreet : ''}, ${d.city}</div>
+                                <div class="fire-meta">
+                                    <span class="fire-badge ${cfg.badgeClass}">${cfg.label}</span>
+                                    ${d.units ? `<span class="fire-badge county">${d.units}</span>` : ''}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `).join('');
+                    `).join('');
+                });
             }
 
             if (filtered.length === 0 && incidents.length === 0 && dispatchIncidents.length === 0) {
