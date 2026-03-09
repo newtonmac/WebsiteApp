@@ -1078,6 +1078,8 @@
                     const dateIdx = headers.indexOf('acq_date');
                     const timeIdx = headers.indexOf('acq_time');
                     const satIdx = headers.indexOf('satellite');
+                    const frpIdx = headers.indexOf('frp');
+                    const dnIdx = headers.indexOf('daynight');
 
                     for (let i = 1; i < lines.length; i++) {
                         const cols = lines[i].split(',');
@@ -1095,6 +1097,8 @@
                             date: cols[dateIdx],
                             time: cols[timeIdx],
                             satellite: cols[satIdx] || '',
+                            frp: parseFloat(cols[frpIdx]) || 0,
+                            daynight: cols[dnIdx] === 'D' ? 'Day' : 'Night',
                         });
                     }
                 });
@@ -1127,13 +1131,18 @@
                     cursor: 'pointer',
                 });
 
+                const confLabel = h.confidence === 'h' ? 'High' : h.confidence === 'n' ? 'Nominal' : h.confidence === 'l' ? 'Low' : h.confidence;
+                const firmsUrl = `https://firms.modaps.eosdis.nasa.gov/map/#d:today;l:fires_viirs_snpp;@${h.lng},${h.lat},14z`;
                 const info = new google.maps.InfoWindow({
-                    content: `<div style="color:#000;font-size:13px;max-width:220px">
+                    content: `<div style="color:#000;font-size:13px;max-width:250px">
                         <strong>VIIRS Satellite Hotspot</strong><br>
-                        <span style="color:#666">${h.date} ${h.time} UTC</span><br>
+                        <span style="color:#666">${h.date} ${h.time} UTC &bull; ${h.daynight} pass</span><br>
                         <strong>Brightness:</strong> ${h.brightness}K<br>
-                        <strong>Confidence:</strong> ${h.confidence}<br>
-                        <span style="color:#888;font-size:11px">Lat: ${h.lat.toFixed(4)}, Lng: ${h.lng.toFixed(4)}</span>
+                        <strong>FRP:</strong> ${h.frp} MW<br>
+                        <strong>Confidence:</strong> ${confLabel}<br>
+                        <strong>Satellite:</strong> ${h.satellite === 'N' ? 'Suomi NPP' : h.satellite === '1' ? 'NOAA-20' : h.satellite === '2' ? 'NOAA-21' : h.satellite}<br>
+                        <span style="color:#888;font-size:11px">Lat: ${h.lat.toFixed(4)}, Lng: ${h.lng.toFixed(4)}</span><br>
+                        <a href="${firmsUrl}" target="_blank" style="color:#1a73e8;font-size:12px">View on NASA FIRMS &rarr;</a>
                     </div>`,
                 });
                 marker.addListener('click', () => info.open(map, marker));
