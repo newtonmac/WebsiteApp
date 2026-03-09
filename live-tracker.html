@@ -695,7 +695,7 @@
     </div>
 
     <div class="fire-table-section">
-        <h2>Fire Incidents — Last 30 Days</h2>
+        <h2>Fire Incidents — San Diego County</h2>
         <div class="fire-table-tabs">
             <button class="fire-table-tab active" data-tab="all">All</button>
             <button class="fire-table-tab" data-tab="active">Active</button>
@@ -754,22 +754,18 @@
             document.getElementById('sidebarStatus').querySelector('span').textContent = 'Updating...';
 
             try {
-                const thirtyDaysAgo = new Date();
-                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-                const dateStr = thirtyDaysAgo.toISOString().split('T')[0];
-
-                // Fetch perimeters with full incident data for San Diego County
+                // Fetch ALL perimeters for San Diego County (includes full history with polygons)
                 const perimParams = new URLSearchParams({
-                    where: `attr_POOCounty='San Diego' AND attr_FireDiscoveryDateTime >= TIMESTAMP '${dateStr}'`,
+                    where: `attr_POOCounty='San Diego'`,
                     outFields: 'attr_IncidentName,attr_POOCounty,poly_GISAcres,attr_PercentContained,attr_FireDiscoveryDateTime,attr_ContainmentDateTime,attr_FireOutDateTime,attr_IncidentManagementOrg,attr_UniqueFireIdentifier,attr_IncidentSize,attr_CalculatedAcres',
                     f: 'geojson',
-                    resultRecordCount: '200',
+                    resultRecordCount: '500',
                     orderByFields: 'attr_FireDiscoveryDateTime DESC',
                 });
 
-                // Also fetch IRWIN point data for fires that may not have perimeters yet
+                // Also fetch IRWIN point data for any current fires that may not have perimeters yet
                 const pointParams = new URLSearchParams({
-                    where: `POOState='US-CA' AND POOCounty='San Diego' AND FireDiscoveryDateTime >= TIMESTAMP '${dateStr}'`,
+                    where: `POOState='US-CA' AND POOCounty='San Diego'`,
                     outFields: 'IncidentName,POOCounty,DailyAcres,CalculatedAcres,PercentContained,FireDiscoveryDateTime,ContainmentDateTime,FireOutDateTime,IncidentManagementOrganization,UniqueFireIdentifier',
                     f: 'geojson',
                     resultRecordCount: '500',
