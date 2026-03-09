@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>California Fire Tracker</title>
+    <title>San Diego County Fire Tracker</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -613,8 +613,8 @@
     <div class="header">
         <div class="header-left">
             <div>
-                <h1>California Fire Tracker</h1>
-                <div class="subtitle">NIFC real-time incidents &bull; Auto-refreshes every 5 min</div>
+                <h1>San Diego County Fire Tracker</h1>
+                <div class="subtitle">San Diego &amp; unincorporated areas &bull; Auto-refreshes every 5 min</div>
             </div>
         </div>
         <div class="header-right">
@@ -748,7 +748,7 @@
                 const dateStr = thirtyDaysAgo.toISOString().split('T')[0];
 
                 const params = new URLSearchParams({
-                    where: `POOState='US-CA' AND FireDiscoveryDateTime >= TIMESTAMP '${dateStr}'`,
+                    where: `POOState='US-CA' AND POOCounty='San Diego' AND FireDiscoveryDateTime >= TIMESTAMP '${dateStr}'`,
                     outFields: 'IncidentName,POOCounty,DailyAcres,CalculatedAcres,PercentContained,FireDiscoveryDateTime,ContainmentDateTime,FireOutDateTime,IncidentManagementOrganization,IncidentTypeCategory,UniqueFireIdentifier',
                     f: 'geojson',
                     resultRecordCount: '500',
@@ -931,7 +931,7 @@
                     <div class="no-fires">
                         <div class="icon">&#9996;</div>
                         <h4>No Active Fires</h4>
-                        <p>There are currently no reported fire incidents in California. Data refreshes automatically every 5 minutes.</p>
+                        <p>There are currently no reported fire incidents in San Diego County. Data refreshes automatically every 5 minutes.</p>
                     </div>`;
                 return;
             }
