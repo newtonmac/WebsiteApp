@@ -187,6 +187,12 @@
         .stat-card .value.purple { color: #a78bfa; }
         .stat-card .value.amber { color: #fbbf24; }
 
+        .stat-date {
+            font-size: 11px;
+            color: #8b8fa3;
+            margin-top: 4px;
+        }
+
         .recent-table {
             background: #1a1d28;
             border-radius: 16px;
@@ -451,25 +457,42 @@
             return [];
         }
 
-        // Yahoo Finance intraday (5-min intervals for 1D view)
-        let intradayData = [];
-        async function fetchYahooIntraday() {
+        // Yahoo Finance intraday data for 1D and 1W views
+        let intradayData1D = [];
+        let intradayData1W = [];
+
+        function parseYahooIntraday(json) {
+            if (json.chart && json.chart.result && json.chart.result[0]) {
+                const result = json.chart.result[0];
+                const timestamps = result.timestamp || [];
+                const closes = result.indicators.quote[0].close || [];
+                return timestamps.map((ts, i) => {
+                    const d = new Date(ts * 1000);
+                    const dateStr = d.toISOString().replace('Z', '').slice(0, 19);
+                    return { date: dateStr, rate: closes[i], source: 'Yahoo' };
+                }).filter(p => p.rate != null && !isNaN(p.rate) && p.rate > 0);
+            }
+            return [];
+        }
+
+        async function fetchYahooIntraday1D() {
             try {
                 const targetUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/MXNUSD%3DX?range=1d&interval=5m';
                 const resp = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl));
-                const json = await resp.json();
-                if (json.chart && json.chart.result && json.chart.result[0]) {
-                    const result = json.chart.result[0];
-                    const timestamps = result.timestamp || [];
-                    const closes = result.indicators.quote[0].close || [];
-                    return timestamps.map((ts, i) => {
-                        const d = new Date(ts * 1000);
-                        const dateStr = d.toISOString().replace('Z', '').slice(0, 19);
-                        return { date: dateStr, rate: closes[i], source: 'Yahoo' };
-                    }).filter(p => p.rate != null && !isNaN(p.rate) && p.rate > 0);
-                }
+                return parseYahooIntraday(await resp.json());
             } catch (e) {
-                console.warn('Yahoo intraday fetch failed:', e.message);
+                console.warn('Yahoo 1D intraday fetch failed:', e.message);
+            }
+            return [];
+        }
+
+        async function fetchYahooIntraday1W() {
+            try {
+                const targetUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/MXNUSD%3DX?range=5d&interval=15m';
+                const resp = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl));
+                return parseYahooIntraday(await resp.json());
+            } catch (e) {
+                console.warn('Yahoo 1W intraday fetch failed:', e.message);
             }
             return [];
         }
@@ -555,13 +578,14 @@
             try {
                 dataSources = [];
 
-                const [fredResult, frankfurterResult, yahooResult, tdResult, banxicoResult, intradayResult] = await Promise.allSettled([
+                const [fredResult, frankfurterResult, yahooResult, tdResult, banxicoResult, intraday1DResult, intraday1WResult] = await Promise.allSettled([
                     fetchFRED(),
                     fetchFrankfurter(),
                     fetchYahoo(),
                     fetchTwelveData(),
                     fetchBanxico(),
-                    fetchYahooIntraday()
+                    fetchYahooIntraday1D(),
+                    fetchYahooIntraday1W()
                 ]);
 
                 const val = r => r.status === 'fulfilled' ? r.value : [];
@@ -572,7 +596,8 @@
                 const tdData = val(tdResult);
                 const banxicoData = val(banxicoResult);
 
-                intradayData = intradayResult.status === 'fulfilled' ? intradayResult.value : [];
+                intradayData1D = intraday1DResult.status === 'fulfilled' ? intraday1DResult.value : [];
+                intradayData1W = intraday1WResult.status === 'fulfilled' ? intraday1WResult.value : [];
 
                 if (fredData.length > 0) dataSources.push('FRED');
                 if (banxicoData.length > 0) dataSources.push('Banxico');
@@ -603,9 +628,13 @@
         }
 
         function getFilteredRates() {
-            // For 1D, use intraday 5-min data from Yahoo
-            if (selectedRange === 1 && intradayData.length > 0) {
-                return intradayData;
+            // For 1D, use 5-min intraday data
+            if (selectedRange === 1 && intradayData1D.length > 0) {
+                return intradayData1D;
+            }
+            // For 1W, use 15-min intraday data for consistency with 1D highs/lows
+            if (selectedRange === 7 && intradayData1W.length > 0) {
+                return intradayData1W;
             }
             const cutoff = selectedRange === 'ytd'
                 ? new Date(new Date().getFullYear(), 0, 1)
@@ -644,9 +673,31 @@
             const displayRates = rates.map(r => getDisplayRate(r.rate));
             const high = Math.max(...displayRates);
             const low = Math.min(...displayRates);
+            const highIdx = displayRates.indexOf(high);
+            const lowIdx = displayRates.indexOf(low);
             const avg = displayRates.reduce((s, r) => s + r, 0) / displayRates.length;
             const variance = displayRates.reduce((s, r) => s + Math.pow(r - avg, 2), 0) / (displayRates.length - 1);
             const volatility = (Math.sqrt(variance) / avg) * 100;
+
+            // Format date/time stamps for stats
+            function formatStatDate(dateStr) {
+                const isIntraday = dateStr.includes('T');
+                const d = new Date(isIntraday ? dateStr + 'Z' : dateStr);
+                if (isIntraday) {
+                    return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+                }
+                return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            }
+            const highDate = formatStatDate(rates[highIdx].date);
+            const lowDate = formatStatDate(rates[lowIdx].date);
+
+            // Find closest point to average and use its date
+            let avgIdx = 0, minDiff = Infinity;
+            displayRates.forEach((r, i) => {
+                const diff = Math.abs(r - avg);
+                if (diff < minDiff) { minDiff = diff; avgIdx = i; }
+            });
+            const avgDate = formatStatDate(rates[avgIdx].date);
 
             const periodChange = pctChange;
 
@@ -690,14 +741,17 @@
                     <div class="stat-card">
                         <div class="label">High</div>
                         <div class="value green">$${high.toFixed(decimals)}</div>
+                        <div class="stat-date">${highDate}</div>
                     </div>
                     <div class="stat-card">
                         <div class="label">Low</div>
                         <div class="value red">$${low.toFixed(decimals)}</div>
+                        <div class="stat-date">${lowDate}</div>
                     </div>
                     <div class="stat-card">
                         <div class="label">Average</div>
                         <div class="value blue">$${avg.toFixed(decimals)}</div>
+                        <div class="stat-date">~${avgDate}</div>
                     </div>
                     <div class="stat-card">
                         <div class="label">Volatility</div>
@@ -731,9 +785,17 @@
                                 const dayChange = nr ? dr - nr : 0;
                                 const dayPct = nr ? (dayChange / nr) * 100 : 0;
                                 const cls = dayChange >= 0 ? 'up' : 'down';
-                                const dateLabel = selectedRange === 1 && r.date.includes('T')
-                                    ? new Date(r.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
-                                    : r.date;
+                                const isIntraday = r.date.includes('T');
+                                let dateLabel;
+                                if (isIntraday && selectedRange === 1) {
+                                    dateLabel = new Date(r.date + 'Z').toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                                } else if (isIntraday) {
+                                    const dt = new Date(r.date + 'Z');
+                                    dateLabel = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
+                                        dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                                } else {
+                                    dateLabel = r.date;
+                                }
                                 return `<tr>
                                     <td>${dateLabel}</td>
                                     <td><strong>$${dr.toFixed(decimals)}</strong></td>
@@ -803,13 +865,21 @@
                     scales: {
                         x: {
                             type: 'time',
-                            time: selectedRange === 1 ? {
+                            time: (selectedRange === 1) ? {
                                 parser: "yyyy-MM-dd'T'HH:mm:ss",
                                 tooltipFormat: 'MMM d, yyyy h:mm a',
                                 unit: 'hour',
                                 displayFormats: {
                                     hour: 'h:mm a',
                                     minute: 'h:mm a'
+                                }
+                            } : (selectedRange === 7 && intradayData1W.length > 0) ? {
+                                parser: "yyyy-MM-dd'T'HH:mm:ss",
+                                tooltipFormat: 'MMM d, yyyy h:mm a',
+                                unit: 'day',
+                                displayFormats: {
+                                    day: 'MMM d',
+                                    hour: 'MMM d h a'
                                 }
                             } : {
                                 parser: 'yyyy-MM-dd',
