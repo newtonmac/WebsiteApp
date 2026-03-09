@@ -1018,6 +1018,7 @@
 
                 dispatchIncidents = data.map(d => ({
                     id: 'dispatch-' + d.MasterIncidentNumber,
+                    masterIncidentNumber: d.MasterIncidentNumber,
                     name: d.IncidentTypeName || d.CallType || 'Fire Call',
                     address: d.Address || '',
                     crossStreet: d.CrossStreet || '',
@@ -1078,7 +1079,9 @@
                                 <strong>${d.name}</strong><br>
                                 ${d.address}${d.crossStreet ? ' @ ' + d.crossStreet : ''}<br>
                                 <span style="color:#666">${d.city} &bull; ${new Date(d.date).toLocaleTimeString()}</span><br>
-                                ${d.units ? '<strong>Units:</strong> ' + d.units : ''}
+                                ${d.units ? '<strong>Units:</strong> ' + d.units : ''}<br>
+                                <span style="color:#888;font-size:11px">Incident #${d.masterIncidentNumber}</span><br>
+                                <a href="https://webapps.sandiego.gov/SDFireDispatch/" target="_blank" style="color:#1a73e8;font-size:12px">View on SD Fire Dispatch &rarr;</a>
                             </div>`,
                         });
                         marker.addListener('click', () => info.open(map, marker));
@@ -1153,7 +1156,7 @@
                             <td>—</td>
                             <td class="hide-mobile">${d.date ? formatDate(d.date) : '—'}</td>
                             <td class="hide-mobile">${d.units || '—'}</td>
-                            <td><span style="color:${cfg.color};font-size:11px">${statusKey === 'active_not_contained' ? 'LIVE' : statusKey === 'active_contained' ? 'CONTAINED' : 'CLOSED'}</span></td>
+                            <td><span style="color:${cfg.color};font-size:11px">${statusKey === 'active_not_contained' ? 'LIVE' : statusKey === 'active_contained' ? 'CONTAINED' : 'CLOSED'}</span><br><a href="https://webapps.sandiego.gov/SDFireDispatch/" target="_blank" class="fire-link" style="font-size:10px" onclick="event.stopPropagation()">Source</a></td>
                         </tr>
                     `).join('');
                 });

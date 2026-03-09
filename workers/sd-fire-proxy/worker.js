@@ -29,12 +29,21 @@ export default {
       });
 
       // Categorize each incident by status
+      // Incidents older than 12 hours are always marked inactive
+      const now = Date.now();
+      const STALE_MS = 12 * 60 * 60 * 1000; // 12 hours
+
       const categorized = fireIncidents.map(d => {
         const units = d.Units || [];
         const hasUnits = units.length > 0;
         const hasActiveUnits = units.some(u => u.Active === true);
+        const responseTime = d.ResponseDate ? new Date(d.ResponseDate).getTime() : 0;
+        const isStale = responseTime > 0 && (now - responseTime) > STALE_MS;
+
         let status;
-        if (hasActiveUnits) {
+        if (isStale) {
+          status = 'inactive';
+        } else if (hasActiveUnits) {
           status = 'active_not_contained';
         } else if (hasUnits) {
           status = 'active_contained';
