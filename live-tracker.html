@@ -510,16 +510,6 @@
             margin-top: 6px;
         }
         .weather-toggle.hidden { display: none; }
-        .weather-link {
-            display: block;
-            text-align: center;
-            font-size: 10px;
-            color: #6b6f80;
-            text-decoration: none;
-            margin-top: 4px;
-        }
-        .weather-link:hover { color: #8b8fa3; }
-        .weather-link.hidden { display: none; }
 
         /* No fires message */
         .no-fires {
@@ -789,7 +779,6 @@
                 </div>
                 <div class="weather-fire-risk hidden" id="wxFireRisk"></div>
                 <div class="weather-toggle hidden" id="wxToggle">tap to expand</div>
-                <a href="https://tempestwx.com/station/180751" target="_blank" class="weather-link hidden" id="wxLink" onclick="event.stopPropagation()">View full station &rarr;</a>
             </div>
 
             <div class="map-controls">
@@ -1533,7 +1522,6 @@
             weatherExpanded = !weatherExpanded;
             document.getElementById('wxGrid').classList.toggle('hidden', !weatherExpanded);
             document.getElementById('wxFireRisk').classList.toggle('hidden', !weatherExpanded);
-            document.getElementById('wxLink').classList.toggle('hidden', !weatherExpanded);
             document.getElementById('wxToggle').textContent = weatherExpanded ? 'tap to collapse' : 'tap to expand';
         }
 
