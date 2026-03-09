@@ -1205,6 +1205,7 @@
                                 <a href="https://webapps.sandiego.gov/SDFireDispatch/" target="_blank" style="color:#1a73e8;font-size:12px">View on SD Fire Dispatch &rarr;</a>
                             </div>`,
                         });
+                        marker._dispatchId = d.id;
                         marker.addListener('click', () => info.open(map, marker));
 
                         dispatchMarkers.push(marker);
@@ -1330,7 +1331,7 @@
                     if (items.length === 0) return;
                     const cfg = sidebarStatusConfig[statusKey];
                     dispatchHtml += items.map(d => `
-                        <div class="fire-item" style="border-left:3px solid ${cfg.borderColor}">
+                        <div class="fire-item" style="border-left:3px solid ${cfg.borderColor};cursor:pointer" onclick="panToDispatch('${d.id}')">
                             <div class="fire-icon">${cfg.icon}</div>
                             <div class="fire-info">
                                 <div class="fire-name">${d.name}</div>
@@ -1419,7 +1420,7 @@
             Object.values(fireMarkers).forEach(m => m.setMap(null));
             fireMarkers = {};
 
-            getFiltered().forEach(f => {
+            getFilteredIncidents().forEach(f => {
                 const color = getMarkerColor(f);
                 const scale = getMarkerScale(f);
 
@@ -1441,6 +1442,16 @@
                 marker.addListener('click', () => selectFire(f.id));
                 fireMarkers[f.id] = marker;
             });
+        }
+
+        // ── Pan to dispatch marker and open its InfoWindow ──
+        function panToDispatch(id) {
+            const marker = dispatchMarkers.find(m => m._dispatchId === id);
+            if (marker && map) {
+                map.panTo(marker.getPosition());
+                map.setZoom(14);
+                google.maps.event.trigger(marker, 'click');
+            }
         }
 
         // ── Selection ──
