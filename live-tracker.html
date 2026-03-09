@@ -1056,7 +1056,7 @@
                 // Fetch from all 3 VIIRS satellites for maximum coverage
                 const responses = await Promise.all(
                     VIIRS_SENSORS.map(sensor =>
-                        fetch(`${FIRMS_API}/${FIRMS_MAP_KEY}/${sensor}/${SD_BBOX}/2`)
+                        fetch(`${FIRMS_API}/${FIRMS_MAP_KEY}/${sensor}/${SD_BBOX}/10`)
                             .then(r => r.text())
                             .catch(() => '')
                     )
@@ -1114,17 +1114,25 @@
             hotspotMarkers.forEach(m => m.setMap(null));
             hotspotMarkers = [];
 
+            const now = new Date();
             satelliteHotspots.forEach(h => {
+                // Age-based fade: full opacity for today, dimmer for older detections
+                const detDate = new Date(h.date + 'T' + String(h.time).padStart(4,'0').replace(/(\d{2})(\d{2})/, '$1:$2') + 'Z');
+                const ageDays = Math.max(0, (now - detDate) / 86400000);
+                const opacity = Math.max(0.15, 1 - (ageDays / 10) * 0.85);
+                const scale = ageDays < 1 ? 6 : ageDays < 3 ? 5 : 4;
+
                 const marker = new google.maps.Marker({
                     position: { lat: h.lat, lng: h.lng },
                     map: map,
                     icon: {
                         path: google.maps.SymbolPath.CIRCLE,
                         fillColor: '#ff6b00',
-                        fillOpacity: 0.7,
+                        fillOpacity: opacity,
                         strokeColor: '#ff0000',
+                        strokeOpacity: opacity,
                         strokeWeight: 1,
-                        scale: 5,
+                        scale: scale,
                     },
                     title: `VIIRS Hotspot\n${h.date} ${h.time}\nBrightness: ${h.brightness}K\nConfidence: ${h.confidence}`,
                     zIndex: 3,
@@ -1132,10 +1140,11 @@
                 });
 
                 const confLabel = h.confidence === 'h' ? 'High' : h.confidence === 'n' ? 'Nominal' : h.confidence === 'l' ? 'Low' : h.confidence;
+                const ageLabel = ageDays < 1 ? 'Today' : ageDays < 2 ? '1 day ago' : `${Math.floor(ageDays)} days ago`;
                 const firmsUrl = `https://firms.modaps.eosdis.nasa.gov/map/#d:today;l:fires_viirs_snpp;@${h.lng},${h.lat},14z`;
                 const info = new google.maps.InfoWindow({
                     content: `<div style="color:#000;font-size:13px;max-width:250px">
-                        <strong>VIIRS Satellite Hotspot</strong><br>
+                        <strong>VIIRS Satellite Hotspot</strong> <span style="color:#888;font-size:11px">(${ageLabel})</span><br>
                         <span style="color:#666">${h.date} ${h.time} UTC &bull; ${h.daynight} pass</span><br>
                         <strong>Brightness:</strong> ${h.brightness}K<br>
                         <strong>FRP:</strong> ${h.frp} MW<br>
