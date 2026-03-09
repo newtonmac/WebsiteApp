@@ -819,14 +819,16 @@
         function createPlaneIcon(heading, onGround, isSelected, isHighSpeed) {
             const rotation = heading != null ? heading : 0;
             const color = onGround ? '#fbbf24' : (isHighSpeed ? '#ef4444' : '#a78bfa');
-            const size = isSelected ? 28 : 22;
+            const size = isSelected ? 32 : 24;
+            const stroke = isSelected ? '#fff' : '#ffffff60';
+            const sw = isSelected ? 1.5 : 0.8;
 
             return L.divIcon({
                 className: '',
                 iconSize: [size, size],
                 iconAnchor: [size / 2, size / 2],
-                html: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" style="transform: rotate(${rotation}deg); filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5));">
-                    <path d="M12 2 L14 9 L21 11 L14 13 L12 22 L10 13 L3 11 L10 9 Z" fill="${color}" stroke="${isSelected ? '#fff' : '#ffffff60'}" stroke-width="${isSelected ? 2 : 1}"/>
+                html: `<svg width="${size}" height="${size}" viewBox="0 0 36 36" style="transform: rotate(${rotation}deg); filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));">
+                    <path d="M18 3 L20 14 L32 18 L20 20 L20 29 L24 32 L24 33 L18 31 L12 33 L12 32 L16 29 L16 20 L4 18 L16 14 Z" fill="${color}" stroke="${stroke}" stroke-width="${sw}" stroke-linejoin="round"/>
                 </svg>`
             });
         }
