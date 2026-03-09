@@ -491,79 +491,6 @@
             border-radius: 3px;
         }
 
-        /* API key modal */
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: #0f1117ee;
-            z-index: 100;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-overlay.hidden { display: none; }
-
-        .modal {
-            background: #1a1d28;
-            border: 1px solid #2d3040;
-            border-radius: 20px;
-            padding: 32px;
-            max-width: 480px;
-            width: 90%;
-        }
-
-        .modal h2 {
-            font-size: 20px;
-            margin-bottom: 8px;
-            background: linear-gradient(90deg, #f97316, #ef4444);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .modal p {
-            color: #8b8fa3;
-            font-size: 13px;
-            line-height: 1.5;
-            margin-bottom: 20px;
-        }
-
-        .modal input {
-            width: 100%;
-            padding: 12px 16px;
-            background: #0f1117;
-            border: 1px solid #2d3040;
-            border-radius: 10px;
-            color: #e1e4e8;
-            font-size: 14px;
-            margin-bottom: 12px;
-            outline: none;
-        }
-
-        .modal input:focus { border-color: #f97316; }
-
-        .modal-actions {
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-        }
-
-        .modal-btn {
-            padding: 10px 24px;
-            border-radius: 10px;
-            border: none;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: all 0.15s;
-        }
-
-        .modal-btn.primary {
-            background: #f97316;
-            color: white;
-        }
-
-        .modal-btn.primary:hover { background: #ea580c; }
 
         /* Responsive */
         @media (max-width: 768px) {
@@ -659,25 +586,7 @@
         </div>
     </div>
 
-    <!-- API Key Modal -->
-    <div class="modal-overlay" id="apiKeyModal">
-        <div class="modal">
-            <h2>Google Maps API Key</h2>
-            <p>
-                Enter your Google Maps JavaScript API key to load the fire tracker map.
-                Get one from the
-                <a href="https://console.cloud.google.com/google/maps-apis" target="_blank" style="color:#f97316">Google Cloud Console</a>.
-                Enable the <strong>Maps JavaScript API</strong>.
-            </p>
-            <input type="text" id="apiKeyInput" placeholder="AIza..." spellcheck="false" autocomplete="off">
-            <p style="font-size:11px; margin-bottom:0;">
-                Your key is stored locally in your browser and never sent anywhere except to Google.
-            </p>
-            <div class="modal-actions">
-                <button class="modal-btn primary" id="apiKeySave">Load Map</button>
-            </div>
-        </div>
-    </div>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCvbijNp_WBn0pgnoVtXyAl1AMcZb7zrZ8&callback=initMap" async defer></script>
 
     <script>
         // ── State ──
@@ -690,7 +599,7 @@
         let incidents = [];
         let refreshTimer;
 
-        const STORAGE_KEY = 'live_tracker_gmaps_key';
+
         const CALFIRE_API = 'https://incidents.fire.ca.gov/umbraco/api/IncidentApi/GeoJsonList';
         const PERIMETER_API = 'https://services2.arcgis.com/cFEFS0EWrhfDeVw9/arcgis/rest/services/California_Fire_Perimeters/FeatureServer/0/query';
         const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
@@ -1022,8 +931,8 @@
         // ── Google Maps init ──
         function initMap() {
             map = new google.maps.Map(document.getElementById('map'), {
-                center: { lat: 37.5, lng: -119.5 },
-                zoom: 6,
+                center: { lat: 32.79, lng: -116.87 },
+                zoom: 11,
                 mapTypeId: 'roadmap',
                 styles: [
                     { elementType: 'geometry', stylers: [{ color: '#1a1d28' }] },
@@ -1110,42 +1019,7 @@
             });
         });
 
-        // ── API Key management ──
-        function loadApiKey() {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) {
-                document.getElementById('apiKeyModal').classList.add('hidden');
-                loadGoogleMaps(saved);
-            }
-        }
-
-        document.getElementById('apiKeySave').addEventListener('click', () => {
-            const key = document.getElementById('apiKeyInput').value.trim();
-            if (!key) return;
-            localStorage.setItem(STORAGE_KEY, key);
-            document.getElementById('apiKeyModal').classList.add('hidden');
-            loadGoogleMaps(key);
-        });
-
-        document.getElementById('apiKeyInput').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') document.getElementById('apiKeySave').click();
-        });
-
-        function loadGoogleMaps(apiKey) {
-            const script = document.createElement('script');
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&callback=initMap`;
-            script.async = true;
-            script.defer = true;
-            script.onerror = () => {
-                localStorage.removeItem(STORAGE_KEY);
-                document.getElementById('apiKeyModal').classList.remove('hidden');
-                alert('Failed to load Google Maps. Please check your API key.');
-            };
-            document.head.appendChild(script);
-        }
-
-        // Start
-        loadApiKey();
+        // Google Maps loaded via script tag with embedded API key
     </script>
 </body>
 </html>
