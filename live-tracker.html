@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Live Tracker</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f1117;
+            color: #e1e4e8;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1d28, #252836);
+            padding: 14px 20px;
+            border-bottom: 1px solid #2d3040;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        .header-left { display: flex; align-items: center; gap: 16px; }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header .subtitle { color: #8b8fa3; font-size: 12px; margin-top: 2px; }
+
+        .header-right { display: flex; align-items: center; gap: 10px; }
+
+        .live-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            background: #10b98120;
+            border: 1px solid #10b98140;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #34d399;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: #34d399;
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        .nav-link {
+            padding: 6px 12px;
+            background: #252836;
+            color: #60a5fa;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            border: 1px solid #2d3040;
+            transition: all 0.2s;
+        }
+        .nav-link:hover { background: #2d3040; color: #a78bfa; }
+
+        .main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 320px;
+            background: #1a1d28;
+            border-right: 1px solid #2d3040;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            z-index: 5;
+        }
+
+        .sidebar-header {
+            padding: 14px 16px;
+            border-bottom: 1px solid #2d3040;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar-header h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #e1e4e8;
+        }
+
+        .tracker-count {
+            font-size: 12px;
+            color: #8b8fa3;
+            background: #252836;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .filter-bar {
+            padding: 10px 16px;
+            border-bottom: 1px solid #2d3040;
+            display: flex;
+            gap: 6px;
+        }
+
+        .filter-btn {
+            padding: 5px 12px;
+            background: transparent;
+            color: #8b8fa3;
+            border: 1px solid #2d3040;
+            border-radius: 14px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .filter-btn.active {
+            background: #3b82f620;
+            color: #60a5fa;
+            border-color: #3b82f640;
+        }
+
+        .filter-btn:hover:not(.active) {
+            border-color: #8b8fa3;
+            color: #e1e4e8;
+        }
+
+        .tracker-list {
+            flex: 1;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #2d3040 transparent;
+        }
+
+        .tracker-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #1e2130;
+            cursor: pointer;
+            transition: background 0.15s;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .tracker-item:hover { background: #252836; }
+        .tracker-item.selected { background: #252836; border-left: 3px solid #3b82f6; }
+
+        .tracker-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .tracker-info { flex: 1; min-width: 0; }
+
+        .tracker-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #e1e4e8;
+            margin-bottom: 2px;
+        }
+
+        .tracker-detail {
+            font-size: 11px;
+            color: #8b8fa3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .tracker-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .status-dot.active { background: #34d399; }
+        .status-dot.idle { background: #fbbf24; }
+        .status-dot.offline { background: #6b7280; }
+
+        .status-label {
+            font-size: 10px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-label.active { color: #34d399; }
+        .status-label.idle { color: #fbbf24; }
+        .status-label.offline { color: #6b7280; }
+
+        .speed-badge {
+            font-size: 10px;
+            color: #8b8fa3;
+            background: #0f1117;
+            padding: 1px 6px;
+            border-radius: 6px;
+        }
+
+        /* Map area */
+        .map-area {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Info panel overlay */
+        .info-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            max-width: 400px;
+            background: #1a1d28ee;
+            backdrop-filter: blur(12px);
+            border-radius: 16px;
+            border: 1px solid #2d3040;
+            padding: 16px;
+            display: none;
+            z-index: 5;
+        }
+
+        .info-panel.visible { display: block; }
+
+        .info-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .info-panel-title {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .info-panel-close {
+            width: 28px;
+            height: 28px;
+            background: #252836;
+            border: 1px solid #2d3040;
+            border-radius: 8px;
+            color: #8b8fa3;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .info-panel-close:hover { background: #2d3040; color: #e1e4e8; }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .info-item {
+            background: #0f111780;
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        .info-label {
+            font-size: 10px;
+            color: #8b8fa3;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .info-value.green { color: #34d399; }
+        .info-value.blue { color: #60a5fa; }
+        .info-value.yellow { color: #fbbf24; }
+        .info-value.purple { color: #a78bfa; }
+
+        /* Map controls overlay */
+        .map-controls {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 5;
+        }
+
+        .map-ctrl-btn {
+            width: 40px;
+            height: 40px;
+            background: #1a1d28ee;
+            backdrop-filter: blur(12px);
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            color: #8b8fa3;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.15s;
+        }
+
+        .map-ctrl-btn:hover { background: #252836; color: #e1e4e8; }
+        .map-ctrl-btn.active { background: #3b82f6; color: white; border-color: #3b82f6; }
+
+        /* Stats bar */
+        .stats-bar {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            display: flex;
+            gap: 8px;
+            z-index: 5;
+        }
+
+        .stat-chip {
+            background: #1a1d28ee;
+            backdrop-filter: blur(12px);
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            padding: 8px 14px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .stat-chip .count {
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .stat-chip .label { color: #8b8fa3; }
+
+        /* API key modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: #0f1117ee;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.hidden { display: none; }
+
+        .modal {
+            background: #1a1d28;
+            border: 1px solid #2d3040;
+            border-radius: 20px;
+            padding: 32px;
+            max-width: 480px;
+            width: 90%;
+        }
+
+        .modal h2 {
+            font-size: 20px;
+            margin-bottom: 8px;
+            background: linear-gradient(90deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .modal p {
+            color: #8b8fa3;
+            font-size: 13px;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .modal input {
+            width: 100%;
+            padding: 12px 16px;
+            background: #0f1117;
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            color: #e1e4e8;
+            font-size: 14px;
+            margin-bottom: 12px;
+            outline: none;
+        }
+
+        .modal input:focus { border-color: #3b82f6; }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 10px 24px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.15s;
+        }
+
+        .modal-btn.primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .modal-btn.primary:hover { background: #2563eb; }
+
+        .modal-btn.secondary {
+            background: #252836;
+            color: #8b8fa3;
+            border: 1px solid #2d3040;
+        }
+
+        .modal-btn.secondary:hover { background: #2d3040; color: #e1e4e8; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .header { padding: 10px 14px; }
+            .header h1 { font-size: 16px; }
+            .stat-chip { padding: 6px 10px; font-size: 11px; }
+            .info-panel { left: 10px; right: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <div>
+                <h1>Live Tracker</h1>
+                <div class="subtitle">Real-time GPS tracking dashboard</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="live-badge">
+                <span class="live-dot"></span>
+                LIVE
+            </div>
+            <a href="index.html" class="nav-link">&larr; Home</a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h3>Tracked Units</h3>
+                <span class="tracker-count" id="trackerCount">0</span>
+            </div>
+            <div class="filter-bar">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="active">Active</button>
+                <button class="filter-btn" data-filter="idle">Idle</button>
+                <button class="filter-btn" data-filter="offline">Offline</button>
+            </div>
+            <div class="tracker-list" id="trackerList"></div>
+        </div>
+
+        <div class="map-area">
+            <div id="map"></div>
+
+            <div class="stats-bar" id="statsBar">
+                <div class="stat-chip">
+                    <span class="count" id="activeCount" style="color:#34d399">0</span>
+                    <span class="label">Active</span>
+                </div>
+                <div class="stat-chip">
+                    <span class="count" id="idleCount" style="color:#fbbf24">0</span>
+                    <span class="label">Idle</span>
+                </div>
+                <div class="stat-chip">
+                    <span class="count" id="offlineCount" style="color:#6b7280">0</span>
+                    <span class="label">Offline</span>
+                </div>
+            </div>
+
+            <div class="map-controls">
+                <button class="map-ctrl-btn" id="centerBtn" title="Center all">&#8982;</button>
+                <button class="map-ctrl-btn" id="trailBtn" title="Toggle trails">&#9681;</button>
+                <button class="map-ctrl-btn" id="trafficBtn" title="Toggle traffic">&#9632;</button>
+            </div>
+
+            <div class="info-panel" id="infoPanel">
+                <div class="info-panel-header">
+                    <span class="info-panel-title" id="infoPanelTitle">—</span>
+                    <button class="info-panel-close" id="infoPanelClose">&times;</button>
+                </div>
+                <div class="info-grid" id="infoPanelGrid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Key Modal -->
+    <div class="modal-overlay" id="apiKeyModal">
+        <div class="modal">
+            <h2>Google Maps API Key</h2>
+            <p>
+                Enter your Google Maps JavaScript API key to load the map.
+                You can get one from the
+                <a href="https://console.cloud.google.com/google/maps-apis" target="_blank" style="color:#60a5fa">Google Cloud Console</a>.
+                Make sure the <strong>Maps JavaScript API</strong> is enabled.
+            </p>
+            <input type="text" id="apiKeyInput" placeholder="AIza..." spellcheck="false" autocomplete="off">
+            <p style="font-size:11px; margin-bottom:0;">
+                Your key is stored locally in your browser and never sent anywhere except to Google.
+            </p>
+            <div class="modal-actions">
+                <button class="modal-btn primary" id="apiKeySave">Load Map</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ── State ──
+        let map, trafficLayer;
+        let showTrails = true;
+        let showTraffic = false;
+        let selectedId = null;
+        let activeFilter = 'all';
+        let markers = {};
+        let trails = {};
+        let updateInterval;
+
+        const STORAGE_KEY = 'live_tracker_gmaps_key';
+
+        // ── Simulated fleet data (San Diego area) ──
+        const fleet = [
+            { id: 'V001', name: 'Unit Alpha',   icon: '🚐', type: 'Van',       color: '#3b82f6', lat: 32.7157, lng: -117.1611, bearing: 45,  speed: 35, status: 'active',  route: 'Downtown → La Jolla',       driver: 'Carlos M.' },
+            { id: 'V002', name: 'Unit Bravo',   icon: '🚛', type: 'Truck',     color: '#10b981', lat: 32.7500, lng: -117.1900, bearing: 120, speed: 55, status: 'active',  route: 'I-5 North → Del Mar',       driver: 'Sarah K.' },
+            { id: 'V003', name: 'Unit Charlie', icon: '🚗', type: 'Sedan',     color: '#f59e0b', lat: 32.7350, lng: -117.1500, bearing: 200, speed: 0,  status: 'idle',    route: 'Balboa Park (parked)',       driver: 'Mike T.' },
+            { id: 'V004', name: 'Unit Delta',   icon: '🏍️', type: 'Motorcycle', color: '#ef4444', lat: 32.7600, lng: -117.2100, bearing: 330, speed: 42, status: 'active',  route: 'Pacific Beach → Ocean Beach', driver: 'Lisa R.' },
+            { id: 'V005', name: 'Unit Echo',    icon: '🚐', type: 'Van',       color: '#8b5cf6', lat: 32.6900, lng: -117.1300, bearing: 90,  speed: 28, status: 'active',  route: 'National City → Chula Vista', driver: 'James W.' },
+            { id: 'V006', name: 'Unit Foxtrot', icon: '🚗', type: 'Sedan',     color: '#ec4899', lat: 32.7800, lng: -117.1700, bearing: 180, speed: 0,  status: 'idle',    route: 'Clairemont (stopped)',       driver: 'Anna P.' },
+            { id: 'V007', name: 'Unit Golf',    icon: '🚛', type: 'Truck',     color: '#14b8a6', lat: 32.7100, lng: -117.1600, bearing: 270, speed: 0,  status: 'offline', route: 'Last seen: Barrio Logan',    driver: 'Tom B.' },
+            { id: 'V008', name: 'Unit Hotel',   icon: '🚐', type: 'Van',       color: '#f97316', lat: 32.7450, lng: -117.2300, bearing: 60,  speed: 38, status: 'active',  route: 'La Jolla → UTC',             driver: 'Diana G.' },
+        ];
+
+        // ── Simulated movement ──
+        function updatePositions() {
+            fleet.forEach(v => {
+                if (v.status !== 'active') return;
+
+                // Random drift to simulate road movement
+                const rad = (v.bearing + (Math.random() - 0.5) * 40) * Math.PI / 180;
+                const dist = (v.speed * 0.3) / 111000; // rough m->deg
+                v.lat += Math.cos(rad) * dist + (Math.random() - 0.5) * 0.0003;
+                v.lng += Math.sin(rad) * dist + (Math.random() - 0.5) * 0.0003;
+                v.bearing = (v.bearing + (Math.random() - 0.5) * 20 + 360) % 360;
+                v.speed = Math.max(5, Math.min(70, v.speed + (Math.random() - 0.5) * 10));
+
+                // Occasionally change status
+                if (Math.random() < 0.01) {
+                    v.status = 'idle';
+                    v.speed = 0;
+                } else if (Math.random() < 0.003) {
+                    v.status = 'offline';
+                    v.speed = 0;
+                }
+            });
+
+            // Occasionally bring idle units back
+            fleet.forEach(v => {
+                if (v.status === 'idle' && Math.random() < 0.05) {
+                    v.status = 'active';
+                    v.speed = 15 + Math.random() * 30;
+                    v.bearing = Math.random() * 360;
+                }
+            });
+
+            renderMarkers();
+            renderSidebar();
+            updateStats();
+            updateInfoPanel();
+        }
+
+        // ── Google Maps init ──
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: { lat: 32.735, lng: -117.185 },
+                zoom: 12,
+                mapTypeId: 'roadmap',
+                styles: [
+                    { elementType: 'geometry', stylers: [{ color: '#1a1d28' }] },
+                    { elementType: 'labels.text.stroke', stylers: [{ color: '#1a1d28' }] },
+                    { elementType: 'labels.text.fill', stylers: [{ color: '#8b8fa3' }] },
+                    { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#2d3040' }] },
+                    { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+                    { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#2d3040' }] },
+                    { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#1e2130' }] },
+                    { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#3b3f54' }] },
+                    { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#2d3040' }] },
+                    { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0e1525' }] },
+                    { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#4a5568' }] },
+                ],
+                disableDefaultUI: true,
+                zoomControl: true,
+                zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_BOTTOM },
+            });
+
+            trafficLayer = new google.maps.TrafficLayer();
+
+            // Initialize markers and trails
+            fleet.forEach(v => {
+                // Custom marker
+                markers[v.id] = new google.maps.Marker({
+                    position: { lat: v.lat, lng: v.lng },
+                    map: map,
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        fillColor: v.color,
+                        fillOpacity: 1,
+                        strokeColor: '#fff',
+                        strokeWeight: 2,
+                        scale: 10,
+                    },
+                    title: v.name,
+                    zIndex: 10,
+                });
+
+                markers[v.id].addListener('click', () => selectUnit(v.id));
+
+                // Trail polyline
+                trails[v.id] = new google.maps.Polyline({
+                    path: [{ lat: v.lat, lng: v.lng }],
+                    geodesic: true,
+                    strokeColor: v.color,
+                    strokeOpacity: 0.5,
+                    strokeWeight: 3,
+                    map: showTrails ? map : null,
+                });
+            });
+
+            renderSidebar();
+            updateStats();
+
+            // Start simulation
+            updateInterval = setInterval(updatePositions, 2000);
+        }
+
+        function renderMarkers() {
+            fleet.forEach(v => {
+                const m = markers[v.id];
+                if (!m) return;
+
+                const pos = { lat: v.lat, lng: v.lng };
+                m.setPosition(pos);
+
+                // Update icon color/opacity based on status
+                const opacity = v.status === 'offline' ? 0.3 : v.status === 'idle' ? 0.7 : 1;
+                m.setIcon({
+                    path: google.maps.SymbolPath.CIRCLE,
+                    fillColor: v.status === 'offline' ? '#6b7280' : v.color,
+                    fillOpacity: opacity,
+                    strokeColor: v.status === 'active' ? '#fff' : '#8b8fa380',
+                    strokeWeight: v.status === 'active' ? 2 : 1,
+                    scale: v.id === selectedId ? 14 : 10,
+                });
+
+                // Update trail
+                if (v.status === 'active' && trails[v.id]) {
+                    const path = trails[v.id].getPath();
+                    path.push(new google.maps.LatLng(pos.lat, pos.lng));
+                    // Keep trail length reasonable
+                    if (path.getLength() > 200) path.removeAt(0);
+                }
+            });
+        }
+
+        // ── Sidebar ──
+        function renderSidebar() {
+            const list = document.getElementById('trackerList');
+            const filtered = fleet.filter(v => activeFilter === 'all' || v.status === activeFilter);
+
+            document.getElementById('trackerCount').textContent = filtered.length;
+
+            list.innerHTML = filtered.map(v => `
+                <div class="tracker-item ${v.id === selectedId ? 'selected' : ''}" onclick="selectUnit('${v.id}')">
+                    <div class="tracker-icon" style="background:${v.color}20; color:${v.color}">${v.icon}</div>
+                    <div class="tracker-info">
+                        <div class="tracker-name">${v.name} <span style="color:#8b8fa3;font-weight:400;font-size:11px">${v.id}</span></div>
+                        <div class="tracker-detail">${v.route}</div>
+                        <div class="tracker-meta">
+                            <span class="status-dot ${v.status}"></span>
+                            <span class="status-label ${v.status}">${v.status}</span>
+                            ${v.speed > 0 ? `<span class="speed-badge">${Math.round(v.speed)} mph</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateStats() {
+            const counts = { active: 0, idle: 0, offline: 0 };
+            fleet.forEach(v => counts[v.status]++);
+            document.getElementById('activeCount').textContent = counts.active;
+            document.getElementById('idleCount').textContent = counts.idle;
+            document.getElementById('offlineCount').textContent = counts.offline;
+        }
+
+        // ── Selection ──
+        function selectUnit(id) {
+            selectedId = id;
+            const v = fleet.find(u => u.id === id);
+            if (!v || !map) return;
+
+            map.panTo({ lat: v.lat, lng: v.lng });
+            map.setZoom(15);
+
+            showInfoPanel(v);
+            renderSidebar();
+            renderMarkers();
+        }
+
+        function showInfoPanel(v) {
+            const panel = document.getElementById('infoPanel');
+            document.getElementById('infoPanelTitle').textContent = `${v.icon} ${v.name}`;
+            document.getElementById('infoPanelGrid').innerHTML = `
+                <div class="info-item">
+                    <div class="info-label">Status</div>
+                    <div class="info-value ${v.status === 'active' ? 'green' : v.status === 'idle' ? 'yellow' : ''}">${v.status.charAt(0).toUpperCase() + v.status.slice(1)}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Speed</div>
+                    <div class="info-value blue">${Math.round(v.speed)} mph</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Driver</div>
+                    <div class="info-value">${v.driver}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Vehicle</div>
+                    <div class="info-value purple">${v.type}</div>
+                </div>
+                <div class="info-item" style="grid-column: span 2">
+                    <div class="info-label">Route</div>
+                    <div class="info-value" style="font-size:12px">${v.route}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Latitude</div>
+                    <div class="info-value" style="font-size:12px;color:#8b8fa3">${v.lat.toFixed(5)}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Longitude</div>
+                    <div class="info-value" style="font-size:12px;color:#8b8fa3">${v.lng.toFixed(5)}</div>
+                </div>
+            `;
+            panel.classList.add('visible');
+        }
+
+        function updateInfoPanel() {
+            if (!selectedId) return;
+            const v = fleet.find(u => u.id === selectedId);
+            if (v) showInfoPanel(v);
+        }
+
+        // ── Controls ──
+        document.getElementById('infoPanelClose').addEventListener('click', () => {
+            document.getElementById('infoPanel').classList.remove('visible');
+            selectedId = null;
+            renderSidebar();
+            renderMarkers();
+        });
+
+        document.getElementById('centerBtn').addEventListener('click', () => {
+            if (!map) return;
+            const bounds = new google.maps.LatLngBounds();
+            fleet.forEach(v => bounds.extend({ lat: v.lat, lng: v.lng }));
+            map.fitBounds(bounds, 60);
+            selectedId = null;
+            document.getElementById('infoPanel').classList.remove('visible');
+            renderSidebar();
+            renderMarkers();
+        });
+
+        document.getElementById('trailBtn').addEventListener('click', function() {
+            showTrails = !showTrails;
+            this.classList.toggle('active', showTrails);
+            fleet.forEach(v => {
+                if (trails[v.id]) trails[v.id].setMap(showTrails ? map : null);
+            });
+        });
+
+        document.getElementById('trafficBtn').addEventListener('click', function() {
+            showTraffic = !showTraffic;
+            this.classList.toggle('active', showTraffic);
+            trafficLayer.setMap(showTraffic ? map : null);
+        });
+
+        // Filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                activeFilter = btn.dataset.filter;
+                renderSidebar();
+            });
+        });
+
+        // ── API Key management ──
+        function loadApiKey() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                document.getElementById('apiKeyModal').classList.add('hidden');
+                loadGoogleMaps(saved);
+            }
+        }
+
+        document.getElementById('apiKeySave').addEventListener('click', () => {
+            const key = document.getElementById('apiKeyInput').value.trim();
+            if (!key) return;
+            localStorage.setItem(STORAGE_KEY, key);
+            document.getElementById('apiKeyModal').classList.add('hidden');
+            loadGoogleMaps(key);
+        });
+
+        document.getElementById('apiKeyInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') document.getElementById('apiKeySave').click();
+        });
+
+        function loadGoogleMaps(apiKey) {
+            const script = document.createElement('script');
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&callback=initMap`;
+            script.async = true;
+            script.defer = true;
+            script.onerror = () => {
+                localStorage.removeItem(STORAGE_KEY);
+                document.getElementById('apiKeyModal').classList.remove('hidden');
+                alert('Failed to load Google Maps. Please check your API key.');
+            };
+            document.head.appendChild(script);
+        }
+
+        // Start
+        loadApiKey();
+    </script>
+</body>
+</html>
