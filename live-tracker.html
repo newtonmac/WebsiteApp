@@ -11,10 +11,7 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: #0f1117;
             color: #e1e4e8;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
+            min-height: 100vh;
         }
 
         .header {
@@ -83,7 +80,7 @@
 
         .main-content {
             display: flex;
-            flex: 1;
+            height: 70vh;
             overflow: hidden;
         }
 
@@ -492,6 +489,111 @@
         }
 
 
+        /* Fire list below map */
+        .fire-table-section {
+            padding: 24px 20px 40px;
+            background: #0f1117;
+        }
+
+        .fire-table-section h2 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            background: linear-gradient(90deg, #f97316, #ef4444);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: inline-block;
+        }
+
+        .fire-table-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .fire-table-tab {
+            padding: 6px 16px;
+            background: transparent;
+            color: #8b8fa3;
+            border: 1px solid #2d3040;
+            border-radius: 14px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .fire-table-tab.active {
+            background: #f9731620;
+            color: #f97316;
+            border-color: #f9731640;
+        }
+
+        .fire-table-tab:hover:not(.active) {
+            border-color: #8b8fa3;
+            color: #e1e4e8;
+        }
+
+        .fire-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .fire-table thead th {
+            text-align: left;
+            padding: 10px 12px;
+            color: #8b8fa3;
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #2d3040;
+            white-space: nowrap;
+        }
+
+        .fire-table tbody tr {
+            border-bottom: 1px solid #1a1d28;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .fire-table tbody tr:hover {
+            background: #1a1d28;
+        }
+
+        .fire-table td {
+            padding: 12px;
+            vertical-align: middle;
+        }
+
+        .fire-table .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .fire-table .status-dot.active { background: #ef4444; }
+        .fire-table .status-dot.partial { background: #f59e0b; }
+        .fire-table .status-dot.contained { background: #22c55e; }
+
+        .fire-table .fire-link {
+            color: #60a5fa;
+            text-decoration: none;
+            font-size: 11px;
+        }
+
+        .fire-table .fire-link:hover { text-decoration: underline; }
+
+        .fire-table-empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: #8b8fa3;
+            font-size: 14px;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .sidebar { display: none; }
@@ -500,6 +602,10 @@
             .stat-chip { padding: 6px 10px; font-size: 11px; }
             .info-panel { left: 10px; right: 10px; }
             .legend { bottom: 10px; right: 10px; }
+            .fire-table-section { padding: 16px 12px 32px; }
+            .fire-table { font-size: 12px; }
+            .fire-table thead th, .fire-table td { padding: 8px 6px; }
+            .fire-table .hide-mobile { display: none; }
         }
     </style>
 </head>
@@ -583,6 +689,34 @@
                 </div>
                 <div class="info-grid" id="infoPanelGrid"></div>
             </div>
+        </div>
+    </div>
+
+    <div class="fire-table-section">
+        <h2>Fire Incidents — Last 30 Days</h2>
+        <div class="fire-table-tabs">
+            <button class="fire-table-tab active" data-tab="all">All</button>
+            <button class="fire-table-tab" data-tab="active">Active</button>
+            <button class="fire-table-tab" data-tab="contained">Contained</button>
+        </div>
+        <div style="overflow-x:auto">
+            <table class="fire-table">
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Name</th>
+                        <th>County</th>
+                        <th>Acres</th>
+                        <th>Contained</th>
+                        <th class="hide-mobile">Started</th>
+                        <th class="hide-mobile">Agency</th>
+                        <th>Link</th>
+                    </tr>
+                </thead>
+                <tbody id="fireTableBody">
+                    <tr><td colspan="8" class="fire-table-empty">Loading fire data...</td></tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
@@ -739,10 +873,54 @@
         }
 
         // ── UI Updates ──
+        let tableFilter = 'all';
+
         function updateUI() {
             renderSidebar();
             updateStats();
             renderMarkers();
+            renderFireTable();
+        }
+
+        function getTableIncidents() {
+            if (tableFilter === 'active') return incidents.filter(f => f.isActive);
+            if (tableFilter === 'contained') return incidents.filter(f => !f.isActive || f.contained === 100);
+            return incidents;
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '—';
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        function getStatusDot(f) {
+            if (!f.isActive || f.contained === 100) return '<span class="status-dot contained"></span>Contained';
+            if (f.contained != null && f.contained >= 50) return '<span class="status-dot partial"></span>Partial';
+            return '<span class="status-dot active"></span>Active';
+        }
+
+        function renderFireTable() {
+            const tbody = document.getElementById('fireTableBody');
+            const filtered = getTableIncidents();
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="fire-table-empty">No fire incidents match this filter.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(f => `
+                <tr onclick="selectFire('${f.id}')">
+                    <td>${getStatusDot(f)}</td>
+                    <td><strong>${f.name}</strong></td>
+                    <td>${f.county}</td>
+                    <td>${f.acres > 0 ? formatAcres(f.acres) : '—'}</td>
+                    <td>${f.contained != null ? f.contained + '%' : '—'}</td>
+                    <td class="hide-mobile">${formatDate(f.started)}</td>
+                    <td class="hide-mobile">${f.agency || '—'}</td>
+                    <td>${f.url ? `<a href="${f.url}" target="_blank" class="fire-link" onclick="event.stopPropagation()">Details</a>` : '—'}</td>
+                </tr>
+            `).join('');
         }
 
         function getFilteredIncidents() {
@@ -1016,6 +1194,16 @@
                 btn.classList.add('active');
                 activeFilter = btn.dataset.filter;
                 renderSidebar();
+            });
+        });
+
+        // Fire table tabs
+        document.querySelectorAll('.fire-table-tab').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.fire-table-tab').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                tableFilter = btn.dataset.tab;
+                renderFireTable();
             });
         });
 
