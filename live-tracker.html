@@ -682,6 +682,7 @@
                 <div class="legend-item"><div class="legend-swatch" style="background:#ef444440;border:1px solid #ef4444"></div> Active perimeter</div>
                 <div class="legend-item"><div class="legend-swatch" style="background:#f59e0b40;border:1px solid #f59e0b"></div> Past perimeter</div>
                 <div class="legend-item"><div class="legend-swatch" style="background:#ff6b00;border-radius:50%"></div> VIIRS satellite hotspot</div>
+                <div class="legend-item"><div class="legend-swatch" style="background:#ff0000;clip-path:polygon(50% 0%,0% 100%,100% 100%)"></div> SD Fire Dispatch (live)</div>
             </div>
 
             <div class="info-panel" id="infoPanel">
@@ -695,7 +696,7 @@
     </div>
 
     <div class="fire-table-section">
-        <h2>Fire Incidents — Last 30 Days</h2>
+        <h2>Fire Incidents — San Diego County</h2>
         <div class="fire-table-tabs">
             <button class="fire-table-tab active" data-tab="all">All</button>
             <button class="fire-table-tab" data-tab="active">Active</button>
@@ -736,40 +737,41 @@
         let refreshTimer;
 
 
+        // ── Data Sources ──
         // WFIGS Interagency Perimeters — same IRWIN/NIFC source Watch Duty uses
         const WFIGS_PERIMETERS_API = 'https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/WFIGS_Interagency_Perimeters/FeatureServer/0/query';
         // NIFC IRWIN active fire points (for fires without perimeters yet)
         const NIFC_POINTS_API = 'https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/USA_Wildfires_v1/FeatureServer/0/query';
+        // SD Fire Dispatch (via Cloudflare Worker proxy)
+        const SD_DISPATCH_API = 'https://sd-fire-proxy.newtonmac.workers.dev';
         // NASA FIRMS VIIRS satellite hotspots
         const FIRMS_API = 'https://firms.modaps.eosdis.nasa.gov/api/area/csv';
-        const FIRMS_MAP_KEY = ''; // Get free key at https://firms.modaps.eosdis.nasa.gov/api/map_key/
+        const FIRMS_MAP_KEY = 'da31ea356ef43651e01dc79ff76b1553';
         const SD_BBOX = '-117.6,32.4,-116.0,33.5'; // San Diego County bounding box
         const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
         let satelliteHotspots = [];
         let hotspotMarkers = [];
+        let dispatchIncidents = [];
+        let dispatchMarkers = [];
 
         // ── Fetch fire incidents + perimeters from WFIGS (same source as Watch Duty) ──
         async function fetchIncidents() {
             document.getElementById('sidebarStatus').querySelector('span').textContent = 'Updating...';
 
             try {
-                const thirtyDaysAgo = new Date();
-                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-                const dateStr = thirtyDaysAgo.toISOString().split('T')[0];
-
-                // Fetch perimeters with full incident data for San Diego County
+                // Fetch ALL perimeters for San Diego County (includes full history with polygons)
                 const perimParams = new URLSearchParams({
-                    where: `attr_POOCounty='San Diego' AND attr_FireDiscoveryDateTime >= TIMESTAMP '${dateStr}'`,
+                    where: `attr_POOCounty='San Diego'`,
                     outFields: 'attr_IncidentName,attr_POOCounty,poly_GISAcres,attr_PercentContained,attr_FireDiscoveryDateTime,attr_ContainmentDateTime,attr_FireOutDateTime,attr_IncidentManagementOrg,attr_UniqueFireIdentifier,attr_IncidentSize,attr_CalculatedAcres',
                     f: 'geojson',
-                    resultRecordCount: '200',
+                    resultRecordCount: '500',
                     orderByFields: 'attr_FireDiscoveryDateTime DESC',
                 });
 
-                // Also fetch IRWIN point data for fires that may not have perimeters yet
+                // Also fetch IRWIN point data for any current fires that may not have perimeters yet
                 const pointParams = new URLSearchParams({
-                    where: `POOState='US-CA' AND POOCounty='San Diego' AND FireDiscoveryDateTime >= TIMESTAMP '${dateStr}'`,
+                    where: `POOState='US-CA' AND POOCounty='San Diego'`,
                     outFields: 'IncidentName,POOCounty,DailyAcres,CalculatedAcres,PercentContained,FireDiscoveryDateTime,ContainmentDateTime,FireOutDateTime,IncidentManagementOrganization,UniqueFireIdentifier',
                     f: 'geojson',
                     resultRecordCount: '500',
@@ -924,37 +926,57 @@
             });
         }
 
-        // ── Fetch NASA FIRMS satellite hotspots (VIIRS) ──
+        // ── Fetch NASA FIRMS satellite hotspots (all 3 VIIRS sensors) ──
+        const VIIRS_SENSORS = ['VIIRS_SNPP_NRT', 'VIIRS_NOAA20_NRT', 'VIIRS_NOAA21_NRT'];
+
         async function fetchHotspots() {
-            if (!FIRMS_MAP_KEY) return; // Skip if no API key configured
+            if (!FIRMS_MAP_KEY) return;
             try {
-                const resp = await fetch(`${FIRMS_API}/${FIRMS_MAP_KEY}/VIIRS_SNPP_NRT/${SD_BBOX}/2`);
-                const csv = await resp.text();
-                if (csv.startsWith('Invalid')) return;
-
-                const lines = csv.trim().split('\n');
-                if (lines.length < 2) return;
-
-                const headers = lines[0].split(',');
-                const latIdx = headers.indexOf('latitude');
-                const lngIdx = headers.indexOf('longitude');
-                const briIdx = headers.indexOf('bright_ti4');
-                const confIdx = headers.indexOf('confidence');
-                const dateIdx = headers.indexOf('acq_date');
-                const timeIdx = headers.indexOf('acq_time');
+                // Fetch from all 3 VIIRS satellites for maximum coverage
+                const responses = await Promise.all(
+                    VIIRS_SENSORS.map(sensor =>
+                        fetch(`${FIRMS_API}/${FIRMS_MAP_KEY}/${sensor}/${SD_BBOX}/2`)
+                            .then(r => r.text())
+                            .catch(() => '')
+                    )
+                );
 
                 satelliteHotspots = [];
-                for (let i = 1; i < lines.length; i++) {
-                    const cols = lines[i].split(',');
-                    satelliteHotspots.push({
-                        lat: parseFloat(cols[latIdx]),
-                        lng: parseFloat(cols[lngIdx]),
-                        brightness: parseFloat(cols[briIdx]),
-                        confidence: cols[confIdx],
-                        date: cols[dateIdx],
-                        time: cols[timeIdx],
-                    });
-                }
+                const seen = new Set();
+
+                responses.forEach(csv => {
+                    if (!csv || csv.startsWith('Invalid')) return;
+                    const lines = csv.trim().split('\n');
+                    if (lines.length < 2) return;
+
+                    const headers = lines[0].split(',');
+                    const latIdx = headers.indexOf('latitude');
+                    const lngIdx = headers.indexOf('longitude');
+                    const briIdx = headers.indexOf('bright_ti4');
+                    const confIdx = headers.indexOf('confidence');
+                    const dateIdx = headers.indexOf('acq_date');
+                    const timeIdx = headers.indexOf('acq_time');
+                    const satIdx = headers.indexOf('satellite');
+
+                    for (let i = 1; i < lines.length; i++) {
+                        const cols = lines[i].split(',');
+                        const lat = parseFloat(cols[latIdx]);
+                        const lng = parseFloat(cols[lngIdx]);
+                        // Deduplicate nearby hotspots (within ~375m)
+                        const key = `${lat.toFixed(3)},${lng.toFixed(3)}`;
+                        if (seen.has(key)) continue;
+                        seen.add(key);
+
+                        satelliteHotspots.push({
+                            lat, lng,
+                            brightness: parseFloat(cols[briIdx]),
+                            confidence: cols[confIdx],
+                            date: cols[dateIdx],
+                            time: cols[timeIdx],
+                            satellite: cols[satIdx] || '',
+                        });
+                    }
+                });
 
                 renderHotspots();
             } catch (err) {
@@ -983,6 +1005,80 @@
                     zIndex: 3,
                 });
                 hotspotMarkers.push(marker);
+            });
+        }
+
+        // ── Fetch SD Fire Dispatch (local active calls via Cloudflare Worker proxy) ──
+        async function fetchDispatch() {
+            if (!SD_DISPATCH_API || SD_DISPATCH_API.includes('YOUR_SUBDOMAIN')) return;
+            try {
+                const resp = await fetch(SD_DISPATCH_API);
+                const data = await resp.json();
+                if (data.error) return;
+
+                dispatchIncidents = data.map(d => ({
+                    id: 'dispatch-' + d.MasterIncidentNumber,
+                    name: d.IncidentTypeName || d.CallType || 'Fire Call',
+                    address: d.Address || '',
+                    crossStreet: d.CrossStreet || '',
+                    city: d.City || 'San Diego',
+                    date: d.ResponseDate,
+                    callType: d.CallType,
+                    units: (d.Units || []).map(u => u.Code).join(', '),
+                    isDispatch: true,
+                }));
+
+                renderDispatchMarkers();
+                renderFireTable();
+            } catch (err) {
+                console.warn('SD Dispatch fetch failed:', err);
+            }
+        }
+
+        function renderDispatchMarkers() {
+            if (!map) return;
+            // Dispatch calls don't have lat/lng from the API, only addresses
+            // We use Google Maps Geocoder to place them on the map
+            dispatchMarkers.forEach(m => m.setMap(null));
+            dispatchMarkers = [];
+
+            if (!window.geocoder) {
+                window.geocoder = new google.maps.Geocoder();
+            }
+
+            dispatchIncidents.forEach(d => {
+                const addr = `${d.address}, ${d.city}, CA`;
+                window.geocoder.geocode({ address: addr }, (results, status) => {
+                    if (status === 'OK' && results[0]) {
+                        const pos = results[0].geometry.location;
+                        const marker = new google.maps.Marker({
+                            position: pos,
+                            map: map,
+                            icon: {
+                                path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
+                                fillColor: '#ff0000',
+                                fillOpacity: 0.9,
+                                strokeColor: '#fff',
+                                strokeWeight: 2,
+                                scale: 7,
+                            },
+                            title: `${d.name}\n${d.address}\nUnits: ${d.units}`,
+                            zIndex: 20,
+                        });
+
+                        const info = new google.maps.InfoWindow({
+                            content: `<div style="color:#000;font-size:13px;max-width:250px">
+                                <strong>${d.name}</strong><br>
+                                ${d.address}${d.crossStreet ? ' @ ' + d.crossStreet : ''}<br>
+                                <span style="color:#666">${d.city} &bull; ${new Date(d.date).toLocaleTimeString()}</span><br>
+                                ${d.units ? '<strong>Units:</strong> ' + d.units : ''}
+                            </div>`,
+                        });
+                        marker.addListener('click', () => info.open(map, marker));
+
+                        dispatchMarkers.push(marker);
+                    }
+                });
             });
         }
 
@@ -1022,13 +1118,25 @@
         function renderFireTable() {
             const tbody = document.getElementById('fireTableBody');
             const filtered = getTableIncidents();
+            let html = '';
 
-            if (filtered.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="fire-table-empty">No fire incidents match this filter.</td></tr>';
-                return;
+            // Show active dispatch calls at the top
+            if (dispatchIncidents.length > 0 && tableFilter !== 'contained') {
+                html += dispatchIncidents.map(d => `
+                    <tr style="background:#ef444410">
+                        <td><span class="status-dot active"></span>Dispatch</td>
+                        <td><strong>${d.name}</strong><br><span style="color:#8b8fa3;font-size:11px">${d.address}${d.crossStreet ? ' @ ' + d.crossStreet : ''}</span></td>
+                        <td>${d.city}</td>
+                        <td>—</td>
+                        <td>—</td>
+                        <td class="hide-mobile">${d.date ? formatDate(d.date) : '—'}</td>
+                        <td class="hide-mobile">${d.units || '—'}</td>
+                        <td><span style="color:#f87171;font-size:11px">LIVE</span></td>
+                    </tr>
+                `).join('');
             }
 
-            tbody.innerHTML = filtered.map(f => `
+            html += filtered.map(f => `
                 <tr onclick="selectFire('${f.id}')">
                     <td>${getStatusDot(f)}</td>
                     <td><strong>${f.name}</strong></td>
@@ -1040,6 +1148,13 @@
                     <td>${f.url ? `<a href="${f.url}" target="_blank" class="fire-link" onclick="event.stopPropagation()">Details</a>` : '—'}</td>
                 </tr>
             `).join('');
+
+            if (!html) {
+                tbody.innerHTML = '<tr><td colspan="8" class="fire-table-empty">No fire incidents match this filter.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = html;
         }
 
         function getFilteredIncidents() {
@@ -1053,9 +1168,27 @@
         function renderSidebar() {
             const list = document.getElementById('fireList');
             const filtered = getFilteredIncidents();
-            document.getElementById('fireCount').textContent = filtered.length;
+            const totalCount = filtered.length + dispatchIncidents.length;
+            document.getElementById('fireCount').textContent = totalCount;
 
-            if (filtered.length === 0 && incidents.length === 0) {
+            let dispatchHtml = '';
+            if (dispatchIncidents.length > 0) {
+                dispatchHtml = dispatchIncidents.map(d => `
+                    <div class="fire-item" style="border-left:3px solid #ef4444">
+                        <div class="fire-icon">&#128680;</div>
+                        <div class="fire-info">
+                            <div class="fire-name">${d.name}</div>
+                            <div class="fire-location">${d.address}${d.crossStreet ? ' @ ' + d.crossStreet : ''}, ${d.city}</div>
+                            <div class="fire-meta">
+                                <span class="fire-badge contained low">LIVE DISPATCH</span>
+                                ${d.units ? `<span class="fire-badge county">${d.units}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            if (filtered.length === 0 && incidents.length === 0 && dispatchIncidents.length === 0) {
                 list.innerHTML = `
                     <div class="no-fires">
                         <div class="icon">&#9996;</div>
@@ -1073,7 +1206,7 @@
                 return;
             }
 
-            list.innerHTML = filtered.map(f => {
+            list.innerHTML = dispatchHtml + filtered.map(f => {
                 const containedClass = f.contained == null ? '' :
                     f.contained >= 100 ? 'contained' :
                     f.contained >= 50 ? 'contained mid' : 'contained low';
@@ -1253,14 +1386,16 @@
 
             document.getElementById('legend').style.display = 'block';
 
-            // Load fire data
+            // Load fire data from all sources
             fetchIncidents();
             fetchHotspots();
+            fetchDispatch();
 
             // Auto-refresh
             refreshTimer = setInterval(() => {
                 fetchIncidents();
                 fetchHotspots();
+                fetchDispatch();
             }, REFRESH_INTERVAL);
         }
 
@@ -1304,6 +1439,7 @@
         document.getElementById('refreshBtn').addEventListener('click', () => {
             fetchIncidents();
             fetchHotspots();
+            fetchDispatch();
         });
 
         // Filter buttons
