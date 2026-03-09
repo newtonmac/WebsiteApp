@@ -796,6 +796,7 @@
                 <div class="legend-item"><div class="legend-swatch" style="background:#f59e0b40;border:1px solid #f59e0b"></div> Past perimeter</div>
                 <div class="legend-item"><div class="legend-swatch" style="background:#ff6b00;border-radius:50%"></div> VIIRS satellite hotspot</div>
                 <div class="legend-item"><div class="legend-swatch" style="background:#ff0000;clip-path:polygon(50% 0%,0% 100%,100% 100%)"></div> SD Fire Dispatch (live)</div>
+                <div class="legend-item"><div class="legend-swatch" style="background:#1e90ff;font-size:14px;display:flex;align-items:center;justify-content:center">&#9992;</div> Cal Fire aircraft</div>
             </div>
 
             <div class="info-panel" id="infoPanel">
@@ -868,6 +869,56 @@
         let hotspotMarkers = [];
         let dispatchIncidents = [];
         let dispatchMarkers = [];
+        let aircraftMarkers = [];
+        let aircraftRefreshTimer = null;
+
+        // Cal Fire fleet ICAO hex codes (verified against FAA registry)
+        const CALFIRE_AIRCRAFT = {
+            'a57624': { type: 'helicopter', label: 'Firehawk C613' },
+            'a5ff34': { type: 'helicopter', label: 'Firehawk C607' },
+            'a5d7b5': { type: 'helicopter', label: 'Firehawk C608' },
+            'a5db6c': { type: 'helicopter', label: 'Firehawk C604' },
+            'a5df23': { type: 'helicopter', label: 'Firehawk C605' },
+            'a5e2da': { type: 'helicopter', label: 'Firehawk C602' },
+            'a5f058': { type: 'helicopter', label: 'Firehawk C601' },
+            'a5f7c6': { type: 'helicopter', label: 'Firehawk C609' },
+            'a5fb7d': { type: 'helicopter', label: 'Firehawk C606' },
+            'a602eb': { type: 'helicopter', label: 'Firehawk C603' },
+            'a631d8': { type: 'helicopter', label: 'Super Huey C910' },
+            'a61b8e': { type: 'helicopter', label: 'Super Huey C102' },
+            'a5eca1': { type: 'helicopter', label: 'Super Huey C909' },
+            'a622fc': { type: 'helicopter', label: 'Super Huey C624' },
+            'a62a6a': { type: 'helicopter', label: 'Super Huey C914' },
+            'a61069': { type: 'helicopter', label: 'Super Huey C906' },
+            'a61420': { type: 'helicopter', label: 'Super Huey C620' },
+            'a606a2': { type: 'helicopter', label: 'Super Huey C623' },
+            'a61f45': { type: 'helicopter', label: 'Super Huey C907' },
+            'a62e21': { type: 'helicopter', label: 'Super Huey C622' },
+            'a60a59': { type: 'helicopter', label: 'Super Huey C901' },
+            'a515f1': { type: 'tanker', label: 'S-2T Tanker 70' },
+            'a52add': { type: 'tanker', label: 'S-2T Tanker 71' },
+            'a53602': { type: 'tanker', label: 'S-2T Tanker 72' },
+            'a53d70': { type: 'tanker', label: 'S-2T Tanker 73' },
+            'a544de': { type: 'tanker', label: 'S-2T Tanker 74' },
+            'a559ca': { type: 'tanker', label: 'S-2T Tanker 75' },
+            'a539b9': { type: 'tanker', label: 'S-2T Tanker 76' },
+            'a52726': { type: 'tanker', label: 'S-2T Tanker 78' },
+            'a59025': { type: 'tanker', label: 'S-2T Tanker 79' },
+            'a55d81': { type: 'tanker', label: 'S-2T Tanker 80' },
+            'a5035e': { type: 'tanker', label: 'S-2T Tanker 82' },
+            'a50acc': { type: 'tanker', label: 'S-2T Tanker 83' },
+            'a54ea5': { type: 'tanker', label: 'S-2T Tanker 100' },
+            'a5726d': { type: 'tanker', label: 'S-2T Tanker 93' },
+            'a5a15a': { type: 'tanker', label: 'C-130 Tanker 122' },
+            'a4acf2': { type: 'air_attack', label: 'OV-10A Air Attack 410' },
+            'a4b460': { type: 'air_attack', label: 'OV-10A Air Attack 210' },
+            'a4b0a9': { type: 'air_attack', label: 'OV-10A Air Attack 440' },
+            'a5236f': { type: 'air_attack', label: 'OV-10A Air Attack 430' },
+            'a4ce61': { type: 'air_attack', label: 'OV-10A Air Attack 330' },
+            'a4ffa7': { type: 'air_attack', label: 'OV-10A Air Attack 240' },
+            'a4caaa': { type: 'air_attack', label: 'OV-10A Air Attack 230' },
+            'a59da3': { type: 'transport', label: 'King Air A200CT' },
+        };
 
         // ── Fetch fire incidents + perimeters from WFIGS (same source as Watch Duty) ──
         async function fetchIncidents() {
@@ -1344,6 +1395,98 @@
             return incidents;
         }
 
+        // ── Cal Fire Aircraft Tracking (OpenSky Network) ──
+        const OPENSKY_API = 'https://opensky-network.org/api/states/all';
+        const AIRCRAFT_REFRESH = 30 * 1000; // 30 seconds
+
+        async function fetchAircraft() {
+            if (!map) return;
+            try {
+                // Query OpenSky for aircraft in the SD bounding box
+                const resp = await fetch(
+                    `${OPENSKY_API}?lamin=32.4&lomin=-117.6&lamax=33.5&lomax=-116.0`
+                );
+                if (!resp.ok) return;
+                const data = await resp.json();
+                if (!data.states) { renderAircraft([]); return; }
+
+                const calFireAircraft = [];
+                data.states.forEach(s => {
+                    const icao = s[0]; // ICAO24 hex
+                    const info = CALFIRE_AIRCRAFT[icao];
+                    if (!info) return;
+                    const lat = s[6];
+                    const lng = s[5];
+                    if (lat == null || lng == null) return;
+                    calFireAircraft.push({
+                        icao,
+                        lat, lng,
+                        altitude: s[7] != null ? Math.round(s[7] * 3.281) : null, // meters to feet
+                        velocity: s[9] != null ? Math.round(s[9] * 2.237) : null, // m/s to mph
+                        heading: s[10] || 0,
+                        onGround: s[8],
+                        callsign: (s[1] || '').trim(),
+                        ...info,
+                    });
+                });
+
+                renderAircraft(calFireAircraft);
+            } catch (err) {
+                console.warn('Aircraft fetch failed:', err);
+            }
+        }
+
+        function renderAircraft(aircraft) {
+            if (!map) return;
+            aircraftMarkers.forEach(m => m.setMap(null));
+            aircraftMarkers = [];
+
+            aircraft.forEach(a => {
+                const isHeli = a.type === 'helicopter';
+                const color = isHeli ? '#1e90ff' : a.type === 'tanker' ? '#ff4500' : '#ffa500';
+                const icon = {
+                    path: isHeli
+                        ? 'M-8,0 L0,-12 L8,0 L0,4 Z M-12,0 L12,0 M0,-12 L0,6' // diamond for heli
+                        : google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                    fillColor: color,
+                    fillOpacity: 0.9,
+                    strokeColor: '#fff',
+                    strokeWeight: 1.5,
+                    scale: isHeli ? 1.2 : 5,
+                    rotation: a.heading || 0,
+                    anchor: isHeli ? new google.maps.Point(0, 0) : undefined,
+                };
+
+                const marker = new google.maps.Marker({
+                    position: { lat: a.lat, lng: a.lng },
+                    map: map,
+                    icon: icon,
+                    title: a.label,
+                    zIndex: 10,
+                    cursor: 'pointer',
+                });
+
+                const statusLine = a.onGround ? 'On ground' :
+                    `${a.altitude != null ? a.altitude.toLocaleString() + ' ft' : '?'} · ${a.velocity != null ? a.velocity + ' mph' : '?'}`;
+                const typeLabel = { helicopter: 'Helicopter', tanker: 'Air Tanker', air_attack: 'Air Attack', transport: 'Transport' }[a.type] || a.type;
+
+                const info = new google.maps.InfoWindow({
+                    content: `<div style="color:#000;font-size:13px;max-width:250px">
+                        <strong style="color:${color}">${a.label}</strong><br>
+                        <span style="color:#666">${typeLabel} · Cal Fire</span><br>
+                        <strong>Status:</strong> ${statusLine}<br>
+                        <strong>Heading:</strong> ${Math.round(a.heading)}°<br>
+                        ${a.callsign ? `<strong>Callsign:</strong> ${a.callsign}<br>` : ''}
+                        <span style="color:#888;font-size:11px">ICAO: ${a.icao.toUpperCase()}</span><br>
+                        <a href="https://globe.adsbexchange.com/?icao=${a.icao}" target="_blank" style="color:#1a73e8;font-size:12px">Track on ADS-B Exchange &rarr;</a>
+                    </div>`,
+                });
+                marker.addListener('click', () => info.open(map, marker));
+
+                aircraftMarkers.push(marker);
+            });
+        }
+
         function renderSidebar() {
             const list = document.getElementById('fireList');
             const filtered = getFilteredIncidents();
@@ -1690,6 +1833,7 @@
             fetchHotspots();
             fetchDispatch();
             fetchWeather();
+            fetchAircraft();
 
             // Auto-refresh
             refreshTimer = setInterval(() => {
@@ -1698,6 +1842,9 @@
                 fetchDispatch();
                 fetchWeather();
             }, REFRESH_INTERVAL);
+
+            // Aircraft refresh more frequently (every 30s)
+            aircraftRefreshTimer = setInterval(fetchAircraft, AIRCRAFT_REFRESH);
         }
 
         // ── Controls ──
@@ -1742,6 +1889,7 @@
             fetchHotspots();
             fetchDispatch();
             fetchWeather();
+            fetchAircraft();
         });
 
         // Filter buttons
