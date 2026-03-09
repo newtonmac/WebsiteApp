@@ -319,6 +319,7 @@
                 <button data-mode="usd-mxn">USD &rarr; MXN</button>
             </div>
             <div class="btn-group" id="timeRange">
+                <button data-range="1">1D</button>
                 <button data-range="7">1W</button>
                 <button class="active" data-range="30">1M</button>
                 <button data-range="90">3M</button>
@@ -597,7 +598,7 @@
             const pairLabel = isMxnToUsd ? '1 MXN in USD' : '1 USD in MXN';
             const decimals = isMxnToUsd ? 4 : 2;
 
-            const rangeLabels = { 7: '1W', 30: '1M', 90: '3M', 180: '6M', ytd: 'YTD', 365: '1Y' };
+            const rangeLabels = { 1: '1D', 7: '1W', 30: '1M', 90: '3M', 180: '6M', ytd: 'YTD', 365: '1Y' };
             const rangeLabel = rangeLabels[selectedRange] || selectedRange + 'd';
 
             const latest = rates[rates.length - 1];
