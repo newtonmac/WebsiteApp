@@ -362,13 +362,12 @@
 
         document.getElementById('refreshBtn').addEventListener('click', fetchAllPrices);
 
-        // Yahoo Finance
+        // Yahoo Finance (via CORS proxy)
         async function fetchYahooFinance(symbol) {
             try {
-                const resp = await fetch(
-                    'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(symbol) +
-                    '?range=1y&interval=1d'
-                );
+                const targetUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(symbol) +
+                    '?range=1y&interval=1d';
+                const resp = await fetch('https://corsproxy.io/?' + encodeURIComponent(targetUrl));
                 const json = await resp.json();
                 if (json.chart && json.chart.result && json.chart.result[0]) {
                     const result = json.chart.result[0];
