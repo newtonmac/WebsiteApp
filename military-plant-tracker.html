@@ -599,11 +599,13 @@
         };
 
         // ── Known US military ICAO hex prefix ranges ──
-        // US military aircraft use ICAO addresses in the AE0000-AFF999 range
-        // Additional known military prefixes
+        // ICAO allocates specific address blocks for military aircraft
         const MIL_ICAO_RANGES = [
-            { start: 0xAE0000, end: 0xAFFFFF }, // US Military block
-            { start: 0xA00000, end: 0xA00FFF }, // Some USAF
+            { start: 0xAE0000, end: 0xAFFFFF }, // US DoD primary block
+            { start: 0xA00000, end: 0xA00FFF }, // USAF misc
+            { start: 0xADF7C0, end: 0xAFFFFF }, // Extended DoD
+            { start: 0x3E0000, end: 0x3FFFFF }, // NATO/Allied military (some appear over SoCal)
+            { start: 0x43C000, end: 0x43CFFF }, // UK military (joint exercises)
         ];
 
         // Known military callsign prefixes
@@ -716,18 +718,26 @@
             }
 
             // Check callsign
-            const cs = (flight.callsign || '').toUpperCase();
+            const cs = (flight.callsign || '').toUpperCase().trim();
             if (!cs) return false;
 
             for (const prefix of MIL_CALLSIGN_PREFIXES) {
                 if (cs.startsWith(prefix)) return true;
             }
 
-            // Check if callsign looks military (all numbers after a short letter prefix common in military)
+            // Check if callsign looks military (letter prefix + numbers, common in military tactical)
             if (/^[A-Z]{2,5}\d{2,4}$/.test(cs)) {
-                // Could be military tactical callsign
                 const letterPart = cs.match(/^[A-Z]+/)[0];
-                if (['RCH', 'PAT', 'MC', 'CG'].includes(letterPart)) return true;
+                if (['RCH', 'PAT', 'MC', 'CG', 'CNV', 'VFA', 'VP', 'VQ', 'HSC', 'HSM', 'HMH', 'VMM'].includes(letterPart)) return true;
+            }
+
+            // Broad US military hex range check (A-prefix addresses with no commercial airline callsign pattern)
+            // Commercial airlines use patterns like AAL123, UAL456, SWA789 etc.
+            const commercialPrefixes = ['AAL', 'UAL', 'SWA', 'DAL', 'ASA', 'JBU', 'FFT', 'SKW', 'ENY', 'RPA', 'NKS', 'FDX', 'UPS', 'GTI', 'ABX', 'N'];
+            const isCommercial = commercialPrefixes.some(p => cs.startsWith(p));
+            if (!isCommercial && icaoNum >= 0xA00000 && icaoNum <= 0xAFFFFF) {
+                // A-block aircraft with non-commercial callsign - likely military
+                return true;
             }
 
             return false;
@@ -747,16 +757,25 @@
             return 'Military';
         }
 
+        // Track scan stats for diagnostics
+        let lastScanStats = { total: 0, military: 0, apiStatus: '' };
+
         // ── Fetch flights from OpenSky Network ──
         async function fetchFlights() {
             const { lamin, lamax, lomin, lomax } = SOCAL_BOUNDS;
             const url = `https://opensky-network.org/api/states/all?lamin=${lamin}&lomin=${lomin}&lamax=${lamax}&lomax=${lomax}`;
 
             const resp = await fetch(url);
-            if (!resp.ok) throw new Error(`OpenSky API returned ${resp.status}`);
+            if (!resp.ok) {
+                lastScanStats.apiStatus = `HTTP ${resp.status}`;
+                throw new Error(`OpenSky API returned ${resp.status}`);
+            }
             const json = await resp.json();
 
-            if (!json.states) return [];
+            if (!json.states) {
+                lastScanStats = { total: 0, military: 0, apiStatus: 'OK (no states)' };
+                return [];
+            }
 
             const allFlights = json.states.map(s => ({
                 icao24: s[0],
@@ -773,7 +792,9 @@
             })).filter(f => f.lat != null && f.lng != null);
 
             // Filter to military only
-            return allFlights.filter(isMilitaryFlight);
+            const military = allFlights.filter(isMilitaryFlight);
+            lastScanStats = { total: allFlights.length, military: military.length, apiStatus: 'OK' };
+            return military;
         }
 
         // ── Filter buttons ──
@@ -962,12 +983,17 @@
             document.getElementById('planeCount').textContent = filtered.length;
 
             if (filtered.length === 0) {
+                const scanInfo = lastScanStats.total > 0
+                    ? `Scanned ${lastScanStats.total} aircraft over SoCal \u2014 none matched military signatures. Most military flights operate with transponders off or use encrypted modes.`
+                    : (lastScanStats.apiStatus
+                        ? `API status: ${lastScanStats.apiStatus}. Waiting for data...`
+                        : 'Connecting to OpenSky Network...');
                 list.innerHTML = `
                     <div class="no-planes">
                         <div class="icon">&#9992;</div>
-                        <h4>${militaryFlights.length === 0 ? 'Scanning Airspace...' : 'No Matches'}</h4>
+                        <h4>${militaryFlights.length === 0 ? 'No Military Aircraft Detected' : 'No Matches'}</h4>
                         <p>${militaryFlights.length === 0
-                            ? 'No military aircraft detected over Southern California right now. Many military flights operate with transponders off. Data refreshes every 15 seconds.'
+                            ? scanInfo + ' Data refreshes every 15 seconds.'
                             : 'No aircraft match the current filter. Try "All" to see all military aircraft.'
                         }</p>
                     </div>`;
@@ -1027,19 +1053,24 @@
 
                 const now = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
                 document.getElementById('sidebarStatus').querySelector('span').textContent =
-                    `Updated ${now} \u2022 ${militaryFlights.length} military aircraft`;
+                    `${now} \u2022 ${militaryFlights.length} military of ${lastScanStats.total} total aircraft`;
 
             } catch (err) {
                 console.error('Failed to fetch:', err);
+                const errMsg = err.message || 'Unknown error';
+                const isRateLimit = errMsg.includes('429');
                 document.getElementById('sidebarStatus').querySelector('span').textContent =
-                    'API error. Retrying...';
+                    isRateLimit ? 'Rate limited. Retrying in 15s...' : `API error: ${errMsg}`;
                 // Show error in sidebar if first load
                 if (!lastUpdated) {
                     document.getElementById('planeList').innerHTML = `
                         <div class="no-planes">
                             <div class="icon">&#9888;</div>
-                            <h4>Connection Error</h4>
-                            <p>Failed to reach OpenSky API: ${err.message}. Will retry automatically.</p>
+                            <h4>${isRateLimit ? 'Rate Limited' : 'Connection Error'}</h4>
+                            <p>${isRateLimit
+                                ? 'OpenSky API rate limit reached (anonymous: ~1 req/10s). Will retry automatically.'
+                                : `Failed to reach OpenSky API: ${errMsg}. Will retry automatically.`
+                            }</p>
                         </div>`;
                 }
             }
