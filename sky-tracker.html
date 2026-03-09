@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Sky Tracker - SoCal Military Aircraft</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f1117;
+            color: #e1e4e8;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1d28, #252836);
+            padding: 14px 20px;
+            border-bottom: 1px solid #2d3040;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            z-index: 1000;
+        }
+
+        .header-left { display: flex; align-items: center; gap: 16px; }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #60a5fa, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header .subtitle { color: #8b8fa3; font-size: 12px; margin-top: 2px; }
+
+        .header-right { display: flex; align-items: center; gap: 10px; }
+
+        .live-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            background: #8b5cf620;
+            border: 1px solid #8b5cf640;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #a78bfa;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: #a78bfa;
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        .nav-link {
+            padding: 6px 12px;
+            background: #252836;
+            color: #60a5fa;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            border: 1px solid #2d3040;
+            transition: all 0.2s;
+        }
+        .nav-link:hover { background: #2d3040; color: #a78bfa; }
+
+        .main-content {
+            display: flex;
+            height: calc(100vh - 56px);
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 360px;
+            background: #1a1d28;
+            border-right: 1px solid #2d3040;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            z-index: 5;
+        }
+
+        .sidebar-header {
+            padding: 14px 16px;
+            border-bottom: 1px solid #2d3040;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar-header h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #e1e4e8;
+        }
+
+        .plane-count {
+            font-size: 12px;
+            color: #a78bfa;
+            background: #8b5cf620;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+
+        .filter-bar {
+            padding: 10px 16px;
+            border-bottom: 1px solid #2d3040;
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 5px 12px;
+            background: transparent;
+            color: #8b8fa3;
+            border: 1px solid #2d3040;
+            border-radius: 14px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .filter-btn.active {
+            background: #8b5cf620;
+            color: #a78bfa;
+            border-color: #8b5cf640;
+        }
+
+        .filter-btn:hover:not(.active) {
+            border-color: #8b8fa3;
+            color: #e1e4e8;
+        }
+
+        .sidebar-status {
+            padding: 10px 16px;
+            border-bottom: 1px solid #2d3040;
+            font-size: 11px;
+            color: #8b8fa3;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .refresh-link {
+            color: #60a5fa;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .refresh-link:hover { color: #a78bfa; }
+
+        .plane-list {
+            flex: 1;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #2d3040 transparent;
+        }
+
+        .plane-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #1e2130;
+            cursor: pointer;
+            transition: background 0.15s;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .plane-item:hover { background: #252836; }
+        .plane-item.selected { background: #252836; border-left: 3px solid #8b5cf6; }
+
+        .plane-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+            background: #8b5cf620;
+            color: #a78bfa;
+            font-weight: 700;
+        }
+
+        .plane-icon.airborne { background: #3b82f620; color: #60a5fa; }
+        .plane-icon.ground { background: #f59e0b20; color: #fbbf24; }
+        .plane-icon.high-alt { background: #8b5cf620; color: #a78bfa; }
+
+        .plane-info { flex: 1; min-width: 0; }
+
+        .plane-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #e1e4e8;
+            margin-bottom: 2px;
+        }
+
+        .plane-detail {
+            font-size: 11px;
+            color: #8b8fa3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .plane-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 5px;
+            flex-wrap: wrap;
+        }
+
+        .plane-badge {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 6px;
+        }
+
+        .plane-badge.alt { background: #8b5cf620; color: #a78bfa; }
+        .plane-badge.speed { background: #3b82f620; color: #60a5fa; }
+        .plane-badge.status-airborne { background: #10b98120; color: #34d399; }
+        .plane-badge.status-ground { background: #f59e0b20; color: #fbbf24; }
+        .plane-badge.branch { background: #1e213040; color: #8b8fa3; }
+
+        /* Map area */
+        .map-area {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            background: #0f1117;
+        }
+
+        /* Stats bar overlay */
+        .stats-bar {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            display: flex;
+            gap: 8px;
+            z-index: 1000;
+            flex-wrap: wrap;
+        }
+
+        .stat-chip {
+            background: #1a1d28ee;
+            backdrop-filter: blur(12px);
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            padding: 8px 14px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .stat-chip .count {
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .stat-chip .label { color: #8b8fa3; }
+
+        /* Map controls */
+        .map-controls {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 1000;
+        }
+
+        .map-ctrl-btn {
+            width: 40px;
+            height: 40px;
+            background: #1a1d28ee;
+            backdrop-filter: blur(12px);
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            color: #8b8fa3;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.15s;
+        }
+
+        .map-ctrl-btn:hover { background: #252836; color: #e1e4e8; }
+        .map-ctrl-btn.active { background: #8b5cf6; color: white; border-color: #8b5cf6; }
+
+        /* Legend */
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: #1a1d28ee;
+            backdrop-filter: blur(12px);
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 11px;
+            z-index: 1000;
+        }
+
+        .legend-title {
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #e1e4e8;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 3px;
+            color: #8b8fa3;
+        }
+
+        .legend-swatch {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+        }
+
+        /* Info panel */
+        .info-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            max-width: 400px;
+            background: #1a1d28ee;
+            backdrop-filter: blur(12px);
+            border-radius: 16px;
+            border: 1px solid #2d3040;
+            padding: 16px;
+            display: none;
+            z-index: 1000;
+        }
+
+        .info-panel.visible { display: block; }
+
+        .info-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .info-panel-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #a78bfa;
+        }
+
+        .info-panel-close {
+            width: 28px;
+            height: 28px;
+            background: #252836;
+            border: 1px solid #2d3040;
+            border-radius: 8px;
+            color: #8b8fa3;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .info-panel-close:hover { background: #2d3040; color: #e1e4e8; }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .info-item {
+            background: #0f111780;
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        .info-label {
+            font-size: 10px;
+            color: #8b8fa3;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .info-value.blue { color: #60a5fa; }
+        .info-value.purple { color: #a78bfa; }
+        .info-value.green { color: #34d399; }
+        .info-value.yellow { color: #fbbf24; }
+        .info-value.red { color: #f87171; }
+        .info-value.white { color: #e1e4e8; }
+
+        /* No planes message */
+        .no-planes {
+            padding: 40px 20px;
+            text-align: center;
+            color: #8b8fa3;
+        }
+
+        .no-planes .icon { font-size: 40px; margin-bottom: 12px; }
+        .no-planes h4 { color: #60a5fa; font-size: 16px; margin-bottom: 6px; }
+        .no-planes p { font-size: 12px; line-height: 1.5; }
+
+        /* Loading state */
+        .loading-msg {
+            padding: 40px 20px;
+            text-align: center;
+            color: #8b8fa3;
+            font-size: 13px;
+        }
+
+        .spinner {
+            width: 28px;
+            height: 28px;
+            border: 3px solid #2d3040;
+            border-top-color: #8b5cf6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 12px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Military airfield markers */
+        .airfield-label {
+            background: none !important;
+            border: none !important;
+            box-shadow: none !important;
+            font-size: 10px;
+            color: #6b6f80;
+            white-space: nowrap;
+        }
+
+        /* Countdown */
+        .countdown {
+            font-size: 11px;
+            color: #6b6f80;
+            padding: 8px 16px;
+            border-top: 1px solid #2d3040;
+            text-align: center;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .header { padding: 10px 14px; }
+            .header h1 { font-size: 16px; }
+            .stat-chip { padding: 6px 10px; font-size: 11px; }
+            .info-panel { left: 10px; right: 10px; max-width: none; }
+            .legend { bottom: 10px; right: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <div>
+                <h1>Sky Tracker</h1>
+                <div class="subtitle">Live military planes &amp; helicopters over Southern California &bull; OpenSky Network &bull; Auto-refreshes every 15s</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="live-badge">
+                <span class="live-dot"></span>
+                LIVE
+            </div>
+            <a href="index.html" class="nav-link">&larr; Home</a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h3>Military Aircraft</h3>
+                <span class="plane-count" id="planeCount">0</span>
+            </div>
+            <div class="filter-bar">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="airborne">Airborne</button>
+                <button class="filter-btn" data-filter="ground">On Ground</button>
+                <button class="filter-btn" data-filter="high">High Alt (25k+)</button>
+            </div>
+            <div class="sidebar-status" id="sidebarStatus">
+                <span>Loading...</span>
+                <button class="refresh-link" id="refreshBtn">Refresh</button>
+            </div>
+            <div class="plane-list" id="planeList">
+                <div class="loading-msg">
+                    <div class="spinner"></div>
+                    Scanning SoCal airspace for military aircraft...
+                </div>
+            </div>
+            <div class="countdown" id="countdown">Auto-refresh: 15s</div>
+        </div>
+
+        <div class="map-area">
+            <div id="map"></div>
+
+            <div class="stats-bar" id="statsBar">
+                <div class="stat-chip">
+                    <span class="count" id="totalPlanes" style="color:#a78bfa">0</span>
+                    <span class="label">Military</span>
+                </div>
+                <div class="stat-chip">
+                    <span class="count" id="airborneCount" style="color:#34d399">0</span>
+                    <span class="label">Airborne</span>
+                </div>
+                <div class="stat-chip">
+                    <span class="count" id="avgAlt" style="color:#60a5fa">0</span>
+                    <span class="label">Avg Alt (ft)</span>
+                </div>
+            </div>
+
+            <div class="map-controls">
+                <button class="map-ctrl-btn" id="centerBtn" title="Fit all aircraft">&#8982;</button>
+                <button class="map-ctrl-btn" id="basesBtn" title="Toggle airfield labels">&#9992;</button>
+            </div>
+
+            <div class="legend">
+                <div class="legend-title">Aircraft Status</div>
+                <div class="legend-item"><div class="legend-swatch" style="background:#a78bfa"></div> Fixed Wing (Airborne)</div>
+                <div class="legend-item"><div class="legend-swatch" style="background:#a78bfa;border-radius:50%"></div> Helicopter (Airborne)</div>
+                <div class="legend-item"><div class="legend-swatch" style="background:#fbbf24"></div> On Ground</div>
+                <div class="legend-item"><div class="legend-swatch" style="background:#ef4444"></div> High Speed (400+ kts)</div>
+                <div class="legend-item"><div class="legend-swatch" style="background:#22c55e30;border:1px dashed #22c55e"></div> Military Airfield</div>
+            </div>
+
+            <div class="info-panel" id="infoPanel">
+                <div class="info-panel-header">
+                    <span class="info-panel-title" id="infoPanelTitle"></span>
+                    <button class="info-panel-close" id="infoPanelClose">&times;</button>
+                </div>
+                <div class="info-grid" id="infoPanelGrid"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // ── State ──
+        let map;
+        let selectedIcao = null;
+        let activeFilter = 'all';
+        let militaryFlights = [];
+        let flightMarkers = [];
+        let airfieldMarkers = [];
+        let showAirfields = true;
+        let lastUpdated = null;
+        let countdownTimer = null;
+        let countdownVal = 15;
+        const REFRESH_INTERVAL = 15; // seconds
+
+        // ── Southern California bounding box (covers SD, LA, OC, Riverside, SB, Ventura, Kern) ──
+        const SOCAL_BOUNDS = {
+            lamin: 32.4,
+            lamax: 35.8,
+            lomin: -121.0,
+            lomax: -115.5
+        };
+
+        // ── Known US military ICAO hex prefix ranges ──
+        // ICAO allocates specific address blocks for military aircraft
+        const MIL_ICAO_RANGES = [
+            { start: 0xAE0000, end: 0xAFFFFF }, // US DoD primary block
+            { start: 0xA00000, end: 0xA00FFF }, // USAF misc
+            { start: 0xADF7C0, end: 0xAFFFFF }, // Extended DoD
+            { start: 0x3E0000, end: 0x3FFFFF }, // NATO/Allied military (some appear over SoCal)
+            { start: 0x43C000, end: 0x43CFFF }, // UK military (joint exercises)
+        ];
+
+        // Known military callsign prefixes
+        const MIL_CALLSIGN_PREFIXES = [
+            'RCH',   // AMC (Air Mobility Command) - C-17, C-5
+            'REACH', // AMC
+            'EVAC',  // Aeromedical evacuation
+            'DUKE',  // Army/Navy
+            'NAVY',  // US Navy
+            'TOPGN', // Navy Fighter Weapons School
+            'VIPER', // Navy/Marine fighters
+            'SNAKE', // Military
+            'HAWK',  // Military
+            'NIGHT', // Military
+            'PAT',   // Patrol (P-8, P-3)
+            'BISON', // Marine Corps
+            'CODY',  // Army
+            'ARMY',  // Army
+            'GUARD', // Coast Guard / ANG
+            'COAST', // Coast Guard
+            'CG',    // Coast Guard
+            'CNV',   // Convair/Navy
+            'KING',  // USAF rescue
+            'JOLLY', // USAF rescue
+            'PEDRO', // USAF rescue
+            'SLAM',  // Navy
+            'FURY',  // Military
+            'MAGMA', // Military
+            'TITAN', // Military
+            'BRAVO', // Military
+            'PHNX',  // Military
+            'BOLT',  // Military
+            'RAGE',  // Military
+            'RAIDER',// B-21 / Marine
+            'BONE',  // B-1 Lancer
+            'DEATH', // B-2 Spirit
+            'GHOST', // Stealth
+            'VADER', // Military
+            'EAGLE', // F-15
+            'VENOM', // Military
+            'WARHAWK',// Military
+            'BLADE', // Military
+            'TALON', // T-38
+            'TEXAN', // T-6
+            'SNTL',  // Sentinel
+            'STEEL', // Military
+            'TORCH', // Military
+            'SPEAR', // Military
+            'LANCE', // Military
+            'SABER', // Military
+            'WOLF',  // Military
+            'IRON',  // Military
+            'RONIN', // Military
+            'RCH',   // AMC C-17
+            'MC',    // Marine Corps
+            'VMFA',  // Marine Fighter Attack
+            'VFA',   // Navy Fighter Attack
+            'VAQ',   // Electronic Attack
+            'VP',    // Patrol
+            'VQ',    // Fleet Air Recon
+            'HSC',   // Helicopter Sea Combat
+            'HSM',   // Helicopter Maritime Strike
+            'HMH',   // Marine Heavy Helicopter
+            'HMM',   // Marine Medium Helicopter
+            'HMLA',  // Marine Light Attack
+            'VMGR',  // Marine Aerial Refueler
+            'VMM',   // Marine Medium Tiltrotor
+            'HAVOC', // Apache
+            'DUSTOFF',// Army medevac
+            'BOXER', // Military
+            'MACHO', // Military
+            'BRONCO',// Military
+            'STORM', // Military
+            'CHAOS', // Military
+            'SKULL', // Military
+            'REAPER',// MQ-9
+            'PREDATOR', // MQ-1
+            'GLOBAL',// RQ-4 Global Hawk
+            'FORTE', // RQ-4 / reconnaissance
+            'GORDO', // USMC
+            'ATLAS', // C-17
+            'MOOSE', // C-17
+        ];
+
+        // ── Known military airfields in SoCal ──
+        const MILITARY_AIRFIELDS = [
+            { name: 'MCAS Miramar', lat: 33.0228, lng: -117.1434, branch: 'USMC' },
+            { name: 'NAS North Island', lat: 32.6992, lng: -117.2053, branch: 'USN' },
+            { name: 'Naval Base Point Loma', lat: 32.6921, lng: -117.2440, branch: 'USN' },
+            { name: 'Camp Pendleton', lat: 33.2975, lng: -117.3544, branch: 'USMC' },
+            { name: 'Edwards AFB', lat: 34.9240, lng: -117.8868, branch: 'USAF' },
+            { name: 'March ARB', lat: 33.8808, lng: -117.2581, branch: 'USAFR' },
+            { name: 'Vandenberg SFB', lat: 34.7420, lng: -120.5724, branch: 'USSF' },
+            { name: 'Los Alamitos JFTB', lat: 33.7900, lng: -118.0500, branch: 'CANG' },
+            { name: 'Plant 42 / Palmdale', lat: 34.6625, lng: -118.0856, branch: 'USAF' },
+            { name: 'China Lake NAWS', lat: 35.6855, lng: -117.6928, branch: 'USN' },
+            { name: 'Twentynine Palms', lat: 34.2367, lng: -116.0567, branch: 'USMC' },
+            { name: 'Fort Irwin', lat: 35.2625, lng: -116.6833, branch: 'USA' },
+            { name: 'Point Mugu NBVC', lat: 34.1204, lng: -119.1051, branch: 'USN' },
+            { name: 'LA AFB / El Segundo', lat: 33.9192, lng: -118.3848, branch: 'USSF' },
+            { name: 'San Nicolas Island', lat: 33.2397, lng: -119.4580, branch: 'USN' },
+        ];
+
+        // ── Check if flight is military ──
+        function isMilitaryFlight(flight) {
+            // Check ICAO hex range
+            const icaoNum = parseInt(flight.icao24, 16);
+            for (const range of MIL_ICAO_RANGES) {
+                if (icaoNum >= range.start && icaoNum <= range.end) return true;
+            }
+
+            // Check callsign
+            const cs = (flight.callsign || '').toUpperCase().trim();
+            if (!cs) return false;
+
+            for (const prefix of MIL_CALLSIGN_PREFIXES) {
+                if (cs.startsWith(prefix)) return true;
+            }
+
+            // Check if callsign looks military (letter prefix + numbers, common in military tactical)
+            if (/^[A-Z]{2,5}\d{2,4}$/.test(cs)) {
+                const letterPart = cs.match(/^[A-Z]+/)[0];
+                if (['RCH', 'PAT', 'MC', 'CG', 'CNV', 'VFA', 'VP', 'VQ', 'HSC', 'HSM', 'HMH', 'VMM'].includes(letterPart)) return true;
+            }
+
+            // Broad US military hex range check (A-prefix addresses with no commercial airline callsign pattern)
+            // Commercial airlines use patterns like AAL123, UAL456, SWA789 etc.
+            const commercialPrefixes = ['AAL', 'UAL', 'SWA', 'DAL', 'ASA', 'JBU', 'FFT', 'SKW', 'ENY', 'RPA', 'NKS', 'FDX', 'UPS', 'GTI', 'ABX', 'N'];
+            const isCommercial = commercialPrefixes.some(p => cs.startsWith(p));
+            if (!isCommercial && icaoNum >= 0xA00000 && icaoNum <= 0xAFFFFF) {
+                // A-block aircraft with non-commercial callsign - likely military
+                return true;
+            }
+
+            return false;
+        }
+
+        // ── Guess branch from callsign ──
+        function guessBranch(flight) {
+            const cs = (flight.callsign || '').toUpperCase();
+            if (cs.startsWith('NAVY') || cs.startsWith('VFA') || cs.startsWith('VAQ') || cs.startsWith('VP') || cs.startsWith('HSC') || cs.startsWith('HSM') || cs.startsWith('PAT') || cs.startsWith('CNV')) return 'Navy';
+            if (cs.startsWith('VMFA') || cs.startsWith('VMM') || cs.startsWith('HMLA') || cs.startsWith('HMH') || cs.startsWith('VMGR') || cs.startsWith('BISON') || cs.startsWith('GORDO') || cs.startsWith('MC')) return 'Marines';
+            if (cs.startsWith('ARMY') || cs.startsWith('CODY') || cs.startsWith('DUSTOFF') || cs.startsWith('HAVOC')) return 'Army';
+            if (cs.startsWith('GUARD') || cs.startsWith('COAST') || cs.startsWith('CG')) return 'Coast Guard';
+            if (cs.startsWith('RCH') || cs.startsWith('REACH') || cs.startsWith('KING') || cs.startsWith('JOLLY') || cs.startsWith('PEDRO')) return 'Air Force';
+            // Default for hex-identified military
+            const icaoNum = parseInt(flight.icao24, 16);
+            if (icaoNum >= 0xAE0000 && icaoNum <= 0xAFFFFF) return 'US Military';
+            return 'Military';
+        }
+
+        // Track scan stats for diagnostics
+        let lastScanStats = { total: 0, military: 0, apiStatus: '' };
+
+        // ── Fetch flights from OpenSky Network ──
+        async function fetchFlights() {
+            const { lamin, lamax, lomin, lomax } = SOCAL_BOUNDS;
+            const url = `https://opensky-network.org/api/states/all?lamin=${lamin}&lomin=${lomin}&lamax=${lamax}&lomax=${lomax}`;
+
+            const resp = await fetch(url);
+            if (!resp.ok) {
+                lastScanStats.apiStatus = `HTTP ${resp.status}`;
+                throw new Error(`OpenSky API returned ${resp.status}`);
+            }
+            const json = await resp.json();
+
+            if (!json.states) {
+                lastScanStats = { total: 0, military: 0, apiStatus: 'OK (no states)' };
+                return [];
+            }
+
+            const allFlights = json.states.map(s => ({
+                icao24: s[0],
+                callsign: (s[1] || '').trim(),
+                country: s[2],
+                lng: s[5],
+                lat: s[6],
+                altitude: s[7],
+                onGround: s[8],
+                velocity: s[9],
+                heading: s[10],
+                verticalRate: s[11],
+                geoAltitude: s[13],
+            })).filter(f => f.lat != null && f.lng != null);
+
+            // Filter to military only
+            const military = allFlights.filter(isMilitaryFlight);
+            lastScanStats = { total: allFlights.length, military: military.length, apiStatus: 'OK' };
+            return military;
+        }
+
+        // ── Filter buttons ──
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                activeFilter = btn.dataset.filter;
+                renderSidebar();
+            });
+        });
+
+        function getFilteredFlights() {
+            if (activeFilter === 'all') return militaryFlights;
+            if (activeFilter === 'airborne') return militaryFlights.filter(f => !f.onGround);
+            if (activeFilter === 'ground') return militaryFlights.filter(f => f.onGround);
+            if (activeFilter === 'high') return militaryFlights.filter(f => !f.onGround && f.altitude != null && f.altitude * 3.281 >= 25000);
+            return militaryFlights;
+        }
+
+        // Helicopter callsign prefixes/patterns
+        const HELI_CALLSIGN_HINTS = ['HSC', 'HSM', 'HMH', 'HMM', 'HMLA', 'DUSTOFF', 'HAVOC', 'PEDRO', 'JOLLY', 'COAST', 'CG'];
+
+        function isHelicopter(flight) {
+            const cs = (flight.callsign || '').toUpperCase().trim();
+            for (const h of HELI_CALLSIGN_HINTS) {
+                if (cs.startsWith(h)) return true;
+            }
+            // Low speed + low altitude is a heuristic for rotary wing
+            const speedKts = flight.velocity != null ? flight.velocity * 1.944 : null;
+            const altFt = flight.altitude != null ? flight.altitude * 3.281 : null;
+            if (speedKts != null && speedKts < 160 && altFt != null && altFt < 10000 && !flight.onGround) return true;
+            return false;
+        }
+
+        // ── Create aircraft icon for Leaflet ──
+        function createPlaneIcon(heading, onGround, isSelected, isHighSpeed, heli) {
+            const rotation = heading != null ? heading : 0;
+            const color = onGround ? '#fbbf24' : (isHighSpeed ? '#ef4444' : '#a78bfa');
+            const size = isSelected ? 32 : 24;
+            const stroke = isSelected ? '#fff' : '#ffffff60';
+            const sw = isSelected ? 1.5 : 0.8;
+
+            const planePath = 'M18 3 L20 14 L32 18 L20 20 L20 29 L24 32 L24 33 L18 31 L12 33 L12 32 L16 29 L16 20 L4 18 L16 14 Z';
+            const heliPath = 'M18 6 L18 14 M10 10 L26 10 M16 14 L16 28 L20 28 L20 14 Z M14 28 L22 28 M12 22 L8 18 M24 22 L28 18';
+            const path = heli ? heliPath : planePath;
+            const fillRule = heli ? '' : '';
+
+            return L.divIcon({
+                className: '',
+                iconSize: [size, size],
+                iconAnchor: [size / 2, size / 2],
+                html: `<svg width="${size}" height="${size}" viewBox="0 0 36 36" style="transform: rotate(${rotation}deg); filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));">
+                    <path d="${path}" fill="${heli ? 'none' : color}" stroke="${heli ? color : stroke}" stroke-width="${heli ? 2.5 : sw}" stroke-linejoin="round" stroke-linecap="round"/>
+                    ${heli ? `<circle cx="18" cy="21" r="5" fill="${color}" stroke="${stroke}" stroke-width="${sw}"/>` : ''}
+                </svg>`
+            });
+        }
+
+        // ── Render markers on map ──
+        function renderMarkers() {
+            if (!map) return;
+
+            flightMarkers.forEach(m => map.removeLayer(m));
+            flightMarkers = [];
+
+            const bounds = L.latLngBounds();
+            let hasPoints = false;
+
+            militaryFlights.forEach(f => {
+                const altFt = f.altitude != null ? Math.round(f.altitude * 3.281) : null;
+                const speedKts = f.velocity != null ? Math.round(f.velocity * 1.944) : null;
+                const isHighSpeed = speedKts != null && speedKts > 400;
+                const isSelected = f.icao24 === selectedIcao;
+                const branch = guessBranch(f);
+                const vrFpm = f.verticalRate != null ? Math.round(f.verticalRate * 196.85) : null;
+                const vrSign = f.verticalRate > 0 ? '+' : '';
+
+                const heli = isHelicopter(f);
+                const icon = createPlaneIcon(f.heading, f.onGround, isSelected, isHighSpeed, heli);
+                const acType = heli ? 'Helicopter' : 'Fixed Wing';
+
+                const popupContent = `
+                    <div style="min-width:180px;font-family:-apple-system,sans-serif;">
+                        <strong style="font-size:15px;color:#1a1d28;">${f.callsign || 'Unknown'}</strong><br>
+                        <span style="color:#666;font-size:11px;">${f.icao24.toUpperCase()} &bull; ${branch} &bull; ${acType}</span>
+                        <hr style="border:none;border-top:1px solid #e5e7eb;margin:6px 0;">
+                        <div style="font-size:12px;line-height:1.8;color:#374151;">
+                            Altitude: <strong>${altFt != null ? altFt.toLocaleString() + ' ft' : '—'}</strong><br>
+                            Speed: <strong>${speedKts != null ? speedKts + ' kts' : '—'}</strong><br>
+                            Heading: <strong>${f.heading != null ? Math.round(f.heading) + '°' : '—'}</strong><br>
+                            V/S: <strong>${vrFpm != null ? vrSign + vrFpm + ' fpm' : '—'}</strong><br>
+                            ${f.onGround ? '<span style="color:#d97706;">On Ground</span>' : '<span style="color:#059669;">Airborne</span>'}
+                        </div>
+                    </div>`;
+
+                const marker = L.marker([f.lat, f.lng], { icon, zIndexOffset: isSelected ? 1000 : 0 })
+                    .addTo(map)
+                    .bindPopup(popupContent);
+
+                marker._icao = f.icao24;
+                marker.on('click', () => selectPlane(f.icao24));
+
+                flightMarkers.push(marker);
+                bounds.extend([f.lat, f.lng]);
+                hasPoints = true;
+            });
+
+            if (hasPoints && !selectedIcao) {
+                map.fitBounds(bounds, { padding: [60, 60] });
+            }
+        }
+
+        // ── Render airfield markers ──
+        function renderAirfields() {
+            if (!map) return;
+
+            airfieldMarkers.forEach(m => map.removeLayer(m));
+            airfieldMarkers = [];
+
+            if (!showAirfields) return;
+
+            MILITARY_AIRFIELDS.forEach(af => {
+                // Circle for airfield zone
+                const circle = L.circle([af.lat, af.lng], {
+                    radius: 5000,
+                    color: '#22c55e',
+                    fillColor: '#22c55e',
+                    fillOpacity: 0.05,
+                    weight: 1,
+                    dashArray: '5 5',
+                });
+                circle.addTo(map);
+                airfieldMarkers.push(circle);
+
+                // Label
+                const label = L.marker([af.lat, af.lng], {
+                    icon: L.divIcon({
+                        className: 'airfield-label',
+                        html: `<div style="font-size:10px;color:#4ade80;text-shadow:0 1px 3px rgba(0,0,0,0.8);white-space:nowrap;pointer-events:none;">${af.name}</div>`,
+                        iconSize: [100, 14],
+                        iconAnchor: [50, -8],
+                    }),
+                    interactive: false,
+                });
+                label.addTo(map);
+                airfieldMarkers.push(label);
+            });
+        }
+
+        // ── Select plane ──
+        function selectPlane(icao24) {
+            selectedIcao = icao24;
+            const f = militaryFlights.find(x => x.icao24 === icao24);
+            if (!f) return;
+
+            const altFt = f.altitude != null ? Math.round(f.altitude * 3.281) : null;
+            const speedKts = f.velocity != null ? Math.round(f.velocity * 1.944) : null;
+            const vrFpm = f.verticalRate != null ? Math.round(f.verticalRate * 196.85) : null;
+            const vrSign = f.verticalRate > 0 ? '+' : '';
+            const branch = guessBranch(f);
+            const heli = isHelicopter(f);
+            const acType = heli ? 'Helicopter' : 'Fixed Wing';
+
+            const panel = document.getElementById('infoPanel');
+            document.getElementById('infoPanelTitle').textContent = f.callsign || f.icao24.toUpperCase();
+
+            document.getElementById('infoPanelGrid').innerHTML = `
+                <div class="info-item">
+                    <div class="info-label">ICAO Hex</div>
+                    <div class="info-value purple">${f.icao24.toUpperCase()}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Branch</div>
+                    <div class="info-value blue">${branch}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Type</div>
+                    <div class="info-value white">${acType}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Altitude</div>
+                    <div class="info-value white">${altFt != null ? altFt.toLocaleString() + ' ft' : '—'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Speed</div>
+                    <div class="info-value green">${speedKts != null ? speedKts + ' kts' : '—'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Heading</div>
+                    <div class="info-value yellow">${f.heading != null ? Math.round(f.heading) + '°' : '—'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Vertical Rate</div>
+                    <div class="info-value ${f.verticalRate > 0 ? 'green' : f.verticalRate < 0 ? 'red' : 'white'}">${vrFpm != null ? vrSign + vrFpm + ' fpm' : '—'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Status</div>
+                    <div class="info-value ${f.onGround ? 'yellow' : 'green'}">${f.onGround ? 'On Ground' : 'Airborne'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Country</div>
+                    <div class="info-value white">${f.country}</div>
+                </div>
+            `;
+
+            panel.classList.add('visible');
+            map.setView([f.lat, f.lng], 10);
+            renderMarkers();
+            renderSidebar();
+        }
+
+        // ── Sidebar ──
+        function renderSidebar() {
+            const list = document.getElementById('planeList');
+            const filtered = getFilteredFlights();
+            document.getElementById('planeCount').textContent = filtered.length;
+
+            if (filtered.length === 0) {
+                const scanInfo = lastScanStats.total > 0
+                    ? `Scanned ${lastScanStats.total} aircraft over SoCal \u2014 none matched military signatures. Most military flights operate with transponders off or use encrypted modes.`
+                    : (lastScanStats.apiStatus
+                        ? `API status: ${lastScanStats.apiStatus}. Waiting for data...`
+                        : 'Connecting to OpenSky Network...');
+                list.innerHTML = `
+                    <div class="no-planes">
+                        <div class="icon">&#9992;</div>
+                        <h4>${militaryFlights.length === 0 ? 'No Military Aircraft Detected' : 'No Matches'}</h4>
+                        <p>${militaryFlights.length === 0
+                            ? scanInfo + ' Data refreshes every 15 seconds.'
+                            : 'No aircraft match the current filter. Try "All" to see all military aircraft.'
+                        }</p>
+                    </div>`;
+                return;
+            }
+
+            list.innerHTML = filtered.map(f => {
+                const altFt = f.altitude != null ? Math.round(f.altitude * 3.281) : null;
+                const speedKts = f.velocity != null ? Math.round(f.velocity * 1.944) : null;
+                const branch = guessBranch(f);
+                const heli = isHelicopter(f);
+                const iconClass = f.onGround ? 'ground' : (altFt && altFt >= 25000 ? 'high-alt' : 'airborne');
+                const iconChar = heli ? '&#128681;' : '&#9992;';
+
+                return `
+                <div class="plane-item ${f.icao24 === selectedIcao ? 'selected' : ''}" onclick="selectPlane('${f.icao24}')">
+                    <div class="plane-icon ${iconClass}">${iconChar}</div>
+                    <div class="plane-info">
+                        <div class="plane-name">${f.callsign || f.icao24.toUpperCase()}</div>
+                        <div class="plane-detail">${branch} &bull; ${heli ? 'Helicopter' : 'Fixed Wing'} &bull; ${f.country}</div>
+                        <div class="plane-meta">
+                            ${altFt != null ? `<span class="plane-badge alt">${altFt.toLocaleString()} ft</span>` : ''}
+                            ${speedKts != null ? `<span class="plane-badge speed">${speedKts} kts</span>` : ''}
+                            <span class="plane-badge ${f.onGround ? 'status-ground' : 'status-airborne'}">${f.onGround ? 'Ground' : 'Airborne'}</span>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // ── Update stats ──
+        function updateStats() {
+            document.getElementById('totalPlanes').textContent = militaryFlights.length;
+            const airborne = militaryFlights.filter(f => !f.onGround);
+            document.getElementById('airborneCount').textContent = airborne.length;
+            const avgAltVal = airborne.length > 0
+                ? Math.round(airborne.filter(f => f.altitude != null).reduce((s, f) => s + f.altitude * 3.281, 0) / airborne.length)
+                : 0;
+            document.getElementById('avgAlt').textContent = avgAltVal.toLocaleString();
+        }
+
+        // ── Main data load ──
+        async function loadData() {
+            document.getElementById('sidebarStatus').querySelector('span').textContent = 'Scanning...';
+
+            try {
+                militaryFlights = await fetchFlights();
+                lastUpdated = new Date();
+
+                // Sort: airborne first, then by altitude descending
+                militaryFlights.sort((a, b) => {
+                    if (a.onGround !== b.onGround) return a.onGround ? 1 : -1;
+                    return (b.altitude || 0) - (a.altitude || 0);
+                });
+
+                renderMarkers();
+                renderSidebar();
+                updateStats();
+
+                const now = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+                document.getElementById('sidebarStatus').querySelector('span').textContent =
+                    `${now} \u2022 ${militaryFlights.length} military of ${lastScanStats.total} total aircraft`;
+
+            } catch (err) {
+                console.error('Failed to fetch:', err);
+                const errMsg = err.message || 'Unknown error';
+                const isRateLimit = errMsg.includes('429');
+                document.getElementById('sidebarStatus').querySelector('span').textContent =
+                    isRateLimit ? 'Rate limited. Retrying in 15s...' : `API error: ${errMsg}`;
+                // Show error in sidebar if first load
+                if (!lastUpdated) {
+                    document.getElementById('planeList').innerHTML = `
+                        <div class="no-planes">
+                            <div class="icon">&#9888;</div>
+                            <h4>${isRateLimit ? 'Rate Limited' : 'Connection Error'}</h4>
+                            <p>${isRateLimit
+                                ? 'OpenSky API rate limit reached (anonymous: ~1 req/10s). Will retry automatically.'
+                                : `Failed to reach OpenSky API: ${errMsg}. Will retry automatically.`
+                            }</p>
+                        </div>`;
+                }
+            }
+
+            resetCountdown();
+        }
+
+        // ── Auto-refresh countdown ──
+        function resetCountdown() {
+            countdownVal = REFRESH_INTERVAL;
+            if (countdownTimer) clearInterval(countdownTimer);
+            countdownTimer = setInterval(() => {
+                countdownVal--;
+                const el = document.getElementById('countdown');
+                if (el) el.textContent = `Auto-refresh: ${countdownVal}s`;
+                if (countdownVal <= 0) {
+                    loadData();
+                }
+            }, 1000);
+        }
+
+        // ── Controls ──
+        document.getElementById('refreshBtn').addEventListener('click', loadData);
+
+        document.getElementById('infoPanelClose').addEventListener('click', () => {
+            document.getElementById('infoPanel').classList.remove('visible');
+            selectedIcao = null;
+            renderMarkers();
+            renderSidebar();
+        });
+
+        document.getElementById('centerBtn').addEventListener('click', () => {
+            selectedIcao = null;
+            document.getElementById('infoPanel').classList.remove('visible');
+            if (militaryFlights.length > 0) {
+                const bounds = L.latLngBounds(militaryFlights.map(f => [f.lat, f.lng]));
+                map.fitBounds(bounds, { padding: [60, 60] });
+            } else {
+                map.setView([33.8, -117.5], 7);
+            }
+            renderMarkers();
+            renderSidebar();
+        });
+
+        document.getElementById('basesBtn').addEventListener('click', () => {
+            showAirfields = !showAirfields;
+            document.getElementById('basesBtn').classList.toggle('active', showAirfields);
+            renderAirfields();
+        });
+
+        // ── Initialize Map ──
+        function initMap() {
+            map = L.map('map', {
+                center: [33.8, -117.5],
+                zoom: 7,
+                zoomControl: false,
+            });
+
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+            // Dark tile layer
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+                subdomains: 'abcd',
+                maxZoom: 19
+            }).addTo(map);
+
+            // Render airfield zones
+            renderAirfields();
+            document.getElementById('basesBtn').classList.add('active');
+
+            // Start fetching data
+            loadData();
+        }
+
+        // Start when page loads
+        document.addEventListener('DOMContentLoaded', initMap);
+    </script>
+</body>
+</html>

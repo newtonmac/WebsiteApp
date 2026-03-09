@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gold Price Tracker</title>
+    <title>Gold, Silver &amp; Bitcoin Price Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
     <style>
@@ -35,8 +35,6 @@
             margin-top: 4px;
             font-size: 14px;
         }
-
-        .nav-links { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; }
 
         .container {
             max-width: 1200px;
@@ -72,7 +70,7 @@
 
         .btn-group button.active {
             background: #f59e0b;
-            color: #0f1117;
+            color: white;
         }
 
         .btn-group button:hover:not(.active) {
@@ -106,6 +104,7 @@
             background: #1a1d28;
             border-radius: 16px;
             border: 1px solid #2d3040;
+            flex-wrap: wrap;
         }
 
         .price-hero .current-price {
@@ -121,9 +120,14 @@
         .price-hero .price-change.up { color: #34d399; }
         .price-hero .price-change.down { color: #f87171; }
 
-        .price-hero .asset-label {
+        .price-hero .metal-label {
             font-size: 16px;
             color: #8b8fa3;
+        }
+
+        .price-hero .metal-icon {
+            font-size: 28px;
+            margin-right: 4px;
         }
 
         .chart-container {
@@ -131,6 +135,10 @@
             border-radius: 16px;
             border: 1px solid #2d3040;
             padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .chart-container {
             position: relative;
             height: 350px;
             margin-bottom: 24px;
@@ -162,11 +170,16 @@
             margin-bottom: 8px;
         }
 
-        .stat-card .value { font-size: 24px; font-weight: 700; }
+        .stat-card .value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
         .stat-card .value.green { color: #34d399; }
         .stat-card .value.red { color: #f87171; }
         .stat-card .value.blue { color: #60a5fa; }
         .stat-card .value.purple { color: #a78bfa; }
+        .stat-card .value.amber { color: #fbbf24; }
 
         .recent-table {
             background: #1a1d28;
@@ -175,9 +188,15 @@
             padding: 24px;
         }
 
-        .recent-table h3 { margin-bottom: 16px; font-size: 18px; }
+        .recent-table h3 {
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
 
-        .recent-table table { width: 100%; border-collapse: collapse; }
+        .recent-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
 
         .recent-table th {
             text-align: left;
@@ -195,7 +214,9 @@
             font-size: 14px;
         }
 
-        .recent-table tr:last-child td { border-bottom: none; }
+        .recent-table tr:last-child td {
+            border-bottom: none;
+        }
 
         .loading {
             text-align: center;
@@ -251,11 +272,14 @@
             letter-spacing: 0.5px;
         }
 
+        .data-status .source-freegoldapi { background: #fbbf2420; color: #fbbf24; }
+        .data-status .source-coingecko { background: #8dc63f20; color: #8dc63f; }
         .data-status .source-yahoo { background: #6d28d920; color: #c084fc; }
         .data-status .source-twelvedata { background: #10b98120; color: #34d399; }
 
         .nav-link {
             display: inline-block;
+            margin-top: 8px;
             padding: 6px 14px;
             background: #252836;
             color: #60a5fa;
@@ -271,23 +295,29 @@
 </head>
 <body>
     <div class="header">
-        <h1>Gold Price Tracker</h1>
-        <p>Live data &bull; Yahoo Finance &bull; Updated daily</p>
-        <div class="nav-links">
-            <a href="index.html" class="nav-link">Oil Tracker</a>
-            <a href="silver-tracker.html" class="nav-link">Silver Tracker</a>
-            <a href="bitcoin-tracker.html" class="nav-link">Bitcoin Tracker</a>
-            <a href="flight-tracker.html" class="nav-link">Flight Tracker</a>
-        </div>
+        <h1>Gold, Silver &amp; Bitcoin Tracker</h1>
+        <p>Live data &bull; FreeGoldAPI, CoinGecko, Yahoo &amp; Twelve Data &bull; Updated daily</p>
+        <a href="index.html" class="nav-link">&larr; Oil Tracker</a>
+        <a href="currency-tracker.html" class="nav-link">MXN/USD Tracker &rarr;</a>
+        <a href="flight-tracker.html" class="nav-link">Flight Tracker &rarr;</a>
+        <a href="traffic-dashboard.html" class="nav-link">Traffic Dashboard</a>
+        <a href="powerwall-dashboard.html" class="nav-link">Powerwall Dashboard</a>
+        <a href="webcam-dashboard.html" class="nav-link">SD Webcams</a>
     </div>
 
     <div class="container">
         <div class="controls">
+            <div class="btn-group" id="metalType">
+                <button class="active" data-type="gold">Gold</button>
+                <button data-type="silver">Silver</button>
+                <button data-type="bitcoin">Bitcoin</button>
+            </div>
             <div class="btn-group" id="timeRange">
                 <button data-range="7">1W</button>
                 <button class="active" data-range="30">1M</button>
                 <button data-range="90">3M</button>
                 <button data-range="180">6M</button>
+                <button data-range="ytd">YTD</button>
                 <button data-range="365">1Y</button>
             </div>
             <button class="refresh-btn" id="refreshBtn">&#x21bb; Refresh</button>
@@ -296,28 +326,67 @@
         <div id="content">
             <div class="loading">
                 <div class="spinner"></div>
-                Loading live gold prices...
+                Loading live precious metal prices...
             </div>
         </div>
     </div>
 
     <script>
         let goldPrices = [];
+        let silverPrices = [];
+        let bitcoinPrices = [];
+        let selectedType = 'gold';
         let selectedRange = 30;
         let chart = null;
         let lastUpdated = null;
+        let dataSources = [];
+
+        // Controls
+        document.querySelectorAll('#metalType button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('#metalType button').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                selectedType = btn.dataset.type;
+                render();
+            });
+        });
 
         document.querySelectorAll('#timeRange button').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('#timeRange button').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                selectedRange = parseInt(btn.dataset.range);
+                selectedRange = btn.dataset.range === 'ytd' ? 'ytd' : parseInt(btn.dataset.range);
                 render();
             });
         });
 
-        document.getElementById('refreshBtn').addEventListener('click', fetchPrices);
+        document.getElementById('refreshBtn').addEventListener('click', fetchAllPrices);
 
+        // Yahoo Finance
+        async function fetchYahooFinance(symbol) {
+            try {
+                const resp = await fetch(
+                    'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(symbol) +
+                    '?range=1y&interval=1d'
+                );
+                const json = await resp.json();
+                if (json.chart && json.chart.result && json.chart.result[0]) {
+                    const result = json.chart.result[0];
+                    const timestamps = result.timestamp || [];
+                    const closes = result.indicators.quote[0].close || [];
+                    return timestamps.map((ts, i) => {
+                        const d = new Date(ts * 1000);
+                        const dateStr = d.toISOString().split('T')[0];
+                        return { date: dateStr, price: closes[i], source: 'Yahoo' };
+                    }).filter(p => p.price != null && !isNaN(p.price));
+                }
+            } catch (e) {
+                console.warn('Yahoo Finance fetch failed:', e.message);
+            }
+            return [];
+        }
+
+        // Twelve Data API
         const TWELVE_DATA_KEY = '52f351e2d67042889eb1c6d16cd9769f';
 
         async function fetchTwelveData(symbol) {
@@ -349,56 +418,157 @@
             return Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date));
         }
 
-        async function fetchYahooFinance(symbol, range) {
-            const resp = await fetch(
-                'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(symbol) +
-                '?range=' + range + '&interval=1d'
-            );
-            const json = await resp.json();
-            if (json.chart && json.chart.result && json.chart.result[0]) {
-                const result = json.chart.result[0];
-                const timestamps = result.timestamp || [];
-                const closes = result.indicators.quote[0].close || [];
-                return timestamps.map((ts, i) => {
-                    const d = new Date(ts * 1000);
-                    const dateStr = d.toISOString().split('T')[0];
-                    return { date: dateStr, price: closes[i], source: 'Yahoo' };
-                }).filter(p => p.price != null && !isNaN(p.price));
+        function formatPrice(value) {
+            if (selectedType === 'bitcoin') {
+                return '$' + value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+            return '$' + value.toFixed(2);
+        }
+
+        // Free Gold API - no key required, CORS enabled
+        // Try CSV first (has silver data), fall back to JSON (gold only)
+        async function fetchGoldSilverPrices() {
+            const oneYearAgo = new Date();
+            oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+            const startDate = oneYearAgo.toISOString().split('T')[0];
+
+            // Attempt 1: CSV with gold + silver ratio data
+            try {
+                console.log('Fetching gold/silver CSV from freegoldapi.com...');
+                const resp = await fetch('https://freegoldapi.com/data/gold_silver_ratio_enriched.csv');
+                if (!resp.ok) throw new Error('CSV HTTP ' + resp.status);
+                const text = await resp.text();
+                console.log('CSV fetched, length:', text.length);
+                const lines = text.trim().split('\n').slice(1);
+
+                const gold = [];
+                const silver = [];
+
+                for (const line of lines) {
+                    const [date, price, currency, ratio] = line.split(',');
+                    if (currency !== 'USD' || !price || date < startDate) continue;
+
+                    const goldPrice = parseFloat(price);
+                    if (isNaN(goldPrice)) continue;
+
+                    gold.push({ date, price: goldPrice, source: 'FreeGoldAPI' });
+
+                    if (ratio) {
+                        const silverPrice = goldPrice / parseFloat(ratio);
+                        if (!isNaN(silverPrice)) {
+                            silver.push({ date, price: silverPrice, source: 'FreeGoldAPI' });
+                        }
+                    }
+                }
+
+                console.log('Parsed gold:', gold.length, 'silver:', silver.length);
+                if (gold.length > 0) return { gold, silver };
+            } catch (e) {
+                console.warn('FreeGoldAPI CSV failed:', e.message);
+            }
+
+            // Attempt 2: JSON endpoint (gold only, no silver ratios)
+            try {
+                console.log('Trying JSON fallback from freegoldapi.com...');
+                const resp = await fetch('https://freegoldapi.com/data/latest.json');
+                if (!resp.ok) throw new Error('JSON HTTP ' + resp.status);
+                const data = await resp.json();
+                console.log('JSON fetched, entries:', data.length);
+
+                const gold = data
+                    .filter(d => d.date >= startDate && d.price > 0 && d.source && d.source.includes('yahoo'))
+                    .map(d => ({ date: d.date, price: d.price, source: 'FreeGoldAPI' }));
+
+                console.log('JSON gold entries:', gold.length);
+                return { gold, silver: [] };
+            } catch (e) {
+                console.warn('FreeGoldAPI JSON also failed:', e.message);
+            }
+
+            return { gold: [], silver: [] };
+        }
+
+        // CoinGecko for Bitcoin (free, CORS enabled, no API key)
+        async function fetchBitcoin() {
+            try {
+                console.log('Fetching Bitcoin from CoinGecko...');
+                const resp = await fetch(
+                    'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=365&interval=daily'
+                );
+                if (!resp.ok) throw new Error('CoinGecko HTTP ' + resp.status);
+                const json = await resp.json();
+
+                if (json.prices) {
+                    const results = json.prices.map(([timestamp, price]) => {
+                        const d = new Date(timestamp);
+                        const date = d.toISOString().split('T')[0];
+                        return { date, price, source: 'CoinGecko' };
+                    });
+                    console.log('Bitcoin entries:', results.length);
+                    return results;
+                }
+            } catch (e) {
+                console.warn('CoinGecko fetch failed:', e.message);
             }
             return [];
         }
 
-        async function fetchPrices() {
+        async function fetchAllPrices() {
             document.getElementById('content').innerHTML = `
                 <div class="loading">
                     <div class="spinner"></div>
-                    Loading gold prices from Yahoo Finance...
+                    Loading from multiple sources...
                 </div>`;
 
             try {
-                const [yahooResult, tdResult] = await Promise.allSettled([
-                    fetchYahooFinance('GC=F', '1y'),
-                    fetchTwelveData('XAU/USD')
+                dataSources = [];
+
+                const [metalsResult, btcResult, yahooGold, yahooSilver, yahooBtc, tdGold, tdSilver, tdBtc] = await Promise.allSettled([
+                    fetchGoldSilverPrices(),
+                    fetchBitcoin(),
+                    fetchYahooFinance('GC=F'),
+                    fetchYahooFinance('SI=F'),
+                    fetchYahooFinance('BTC-USD'),
+                    fetchTwelveData('XAU/USD'),
+                    fetchTwelveData('XAG/USD'),
+                    fetchTwelveData('BTC/USD')
                 ]);
+
                 const val = r => r.status === 'fulfilled' ? r.value : [];
-                const yahooData = val(yahooResult);
-                const tdData = val(tdResult);
+                const metals = metalsResult.status === 'fulfilled' ? metalsResult.value : { gold: [], silver: [] };
+                const btcData = val(btcResult);
 
-                const sources = [];
-                if (yahooData.length > 0) sources.push('Yahoo');
-                if (tdData.length > 0) sources.push('TwelveData');
+                const yahooGoldData = val(yahooGold);
+                const yahooSilverData = val(yahooSilver);
+                const yahooBtcData = val(yahooBtc);
+                const tdGoldData = val(tdGold);
+                const tdSilverData = val(tdSilver);
+                const tdBtcData = val(tdBtc);
 
-                goldPrices = mergePrices(yahooData, tdData);
-                goldPrices._sources = sources;
+                if (metals.gold.length > 0 || metals.silver.length > 0) dataSources.push('FreeGoldAPI');
+                if (btcData.length > 0) dataSources.push('CoinGecko');
+                if (yahooGoldData.length > 0 || yahooSilverData.length > 0 || yahooBtcData.length > 0) dataSources.push('Yahoo');
+                if (tdGoldData.length > 0 || tdSilverData.length > 0 || tdBtcData.length > 0) dataSources.push('TwelveData');
+
+                // Merge: FreeGoldAPI/CoinGecko first, then Yahoo, then Twelve Data
+                goldPrices = mergePrices(metals.gold, yahooGoldData, tdGoldData);
+                silverPrices = mergePrices(metals.silver, yahooSilverData, tdSilverData);
+                bitcoinPrices = mergePrices(btcData, yahooBtcData, tdBtcData);
+
                 lastUpdated = new Date();
 
-                if (goldPrices.length === 0) {
+                if (goldPrices.length === 0 && silverPrices.length === 0 && bitcoinPrices.length === 0) {
+                    const errors = [];
+                    if (metalsResult.status === 'rejected') errors.push('Gold/Silver: ' + metalsResult.reason);
+                    if (btcResult.status === 'rejected') errors.push('Bitcoin: ' + btcResult.reason);
                     document.getElementById('content').innerHTML = `
                         <div class="error-msg">
-                            Unable to fetch gold prices. Check your connection.
+                            Unable to fetch data from any source. Check your connection and browser console for details.
+                            ${errors.length ? '<br>' + errors.join('<br>') : ''}
                         </div>`;
                     return;
                 }
+
                 render();
             } catch (err) {
                 document.getElementById('content').innerHTML = `
@@ -409,9 +579,12 @@
         }
 
         function getFilteredPrices() {
-            const cutoff = new Date();
-            cutoff.setDate(cutoff.getDate() - selectedRange);
-            return goldPrices.filter(p => new Date(p.date) >= cutoff);
+            const typeMap = { gold: goldPrices, silver: silverPrices, bitcoin: bitcoinPrices };
+            const all = typeMap[selectedType] || goldPrices;
+            const cutoff = selectedRange === 'ytd'
+                ? new Date(new Date().getFullYear(), 0, 1)
+                : (() => { const d = new Date(); d.setDate(d.getDate() - selectedRange); return d; })();
+            return all.filter(p => new Date(p.date) >= cutoff);
         }
 
         function render() {
@@ -430,26 +603,38 @@
             const variance = prices.reduce((s, p) => s + Math.pow(p.price - avg, 2), 0) / (prices.length - 1);
             const volatility = (Math.sqrt(variance) / avg) * 100;
 
+            // Period change (first to last)
+            const first = prices[0];
+            const periodChange = latest.price - first.price;
+            const periodPct = (periodChange / first.price) * 100;
+
+            const typeLabels = { gold: 'Gold (XAU/USD)', silver: 'Silver (XAG/USD)', bitcoin: 'Bitcoin (BTC/USD)' };
+            const typeColors = { gold: '#fbbf24', silver: '#94a3b8', bitcoin: '#f7931a' };
+            const typeLabel = typeLabels[selectedType];
+            const color = typeColors[selectedType];
+
+            const latestDate = latest.date;
             const updatedStr = lastUpdated ? lastUpdated.toLocaleString('en-US', {
                 month: 'short', day: 'numeric', year: 'numeric',
                 hour: 'numeric', minute: '2-digit', hour12: true
             }) : '—';
+            const sourcesTags = dataSources.map(s =>
+                `<span class="source-tag source-${s.toLowerCase()}">${s}</span>`
+            ).join(' ');
 
             document.getElementById('content').innerHTML = `
                 <div class="data-status">
-                    <div>Latest: <strong>${latest.date}</strong> &bull; Updated: <strong>${updatedStr}</strong></div>
-                    <div>Sources: ${(goldPrices._sources || ['Yahoo']).map(s =>
-                        '<span class="source-tag source-' + s.toLowerCase() + '">' + s + '</span>'
-                    ).join(' ')}</div>
+                    <div>Latest data: <strong>${latestDate}</strong> &bull; Updated: <strong>${updatedStr}</strong></div>
+                    <div>Sources: ${sourcesTags}</div>
                 </div>
                 <div class="price-hero">
                     <div>
-                        <div class="asset-label">Gold (GC=F)</div>
-                        <span class="current-price">$${latest.price.toFixed(2)}</span>
+                        <div class="metal-label">${typeLabel}</div>
+                        <span class="current-price">${formatPrice(latest.price)}</span>
                     </div>
                     <div class="price-change ${isUp ? 'up' : 'down'}">
                         ${isUp ? '&#9650;' : '&#9660;'}
-                        ${change >= 0 ? '+' : ''}${change.toFixed(2)}
+                        ${change >= 0 ? '+' : ''}${formatPrice(Math.abs(change)).replace('$', change < 0 ? '-$' : '$')}
                         (${pctChange >= 0 ? '+' : ''}${pctChange.toFixed(2)}%)
                     </div>
                 </div>
@@ -461,19 +646,30 @@
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="label">High</div>
-                        <div class="value green">$${high.toFixed(2)}</div>
+                        <div class="value green">${formatPrice(high)}</div>
                     </div>
                     <div class="stat-card">
                         <div class="label">Low</div>
-                        <div class="value red">$${low.toFixed(2)}</div>
+                        <div class="value red">${formatPrice(low)}</div>
                     </div>
                     <div class="stat-card">
                         <div class="label">Average</div>
-                        <div class="value blue">$${avg.toFixed(2)}</div>
+                        <div class="value blue">${formatPrice(avg)}</div>
                     </div>
                     <div class="stat-card">
                         <div class="label">Volatility</div>
                         <div class="value purple">${volatility.toFixed(2)}%</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Period Change</div>
+                        <div class="value ${periodChange >= 0 ? 'green' : 'red'}">
+                            ${periodChange >= 0 ? '+' : '-'}${formatPrice(Math.abs(periodChange))}
+                            (${periodPct >= 0 ? '+' : ''}${periodPct.toFixed(2)}%)
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Spread (High-Low)</div>
+                        <div class="value amber">${formatPrice(high - low)}</div>
                     </div>
                 </div>
 
@@ -495,9 +691,9 @@
                                 const cls = dayChange >= 0 ? 'up' : 'down';
                                 return `<tr>
                                     <td>${p.date}</td>
-                                    <td><strong>$${p.price.toFixed(2)}</strong></td>
+                                    <td><strong>${formatPrice(p.price)}</strong></td>
                                     <td class="price-change ${cls}">
-                                        ${dayChange >= 0 ? '+' : ''}${dayChange.toFixed(2)}
+                                        ${dayChange >= 0 ? '+' : '-'}${formatPrice(Math.abs(dayChange)).replace('$','')}
                                         (${dayPct >= 0 ? '+' : ''}${dayPct.toFixed(2)}%)
                                     </td>
                                 </tr>`;
@@ -507,12 +703,11 @@
                 </div>
             `;
 
-            renderChart(prices);
+            renderChart(prices, color);
         }
 
-        function renderChart(prices) {
+        function renderChart(prices, color) {
             const ctx = document.getElementById('priceChart').getContext('2d');
-            const color = '#f59e0b';
 
             if (chart) chart.destroy();
 
@@ -541,7 +736,10 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: { intersect: false, mode: 'index' },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
                     plugins: {
                         legend: { display: false },
                         tooltip: {
@@ -553,7 +751,7 @@
                             padding: 12,
                             displayColors: false,
                             callbacks: {
-                                label: ctx => `$${ctx.parsed.y.toFixed(2)}`
+                                label: ctx => formatPrice(ctx.parsed.y)
                             }
                         }
                     },
@@ -563,21 +761,35 @@
                             time: {
                                 parser: 'yyyy-MM-dd',
                                 tooltipFormat: 'MMM d, yyyy',
-                                displayFormats: { day: 'MMM d', week: 'MMM d', month: 'MMM yyyy' }
+                                displayFormats: {
+                                    day: 'MMM d',
+                                    week: 'MMM d',
+                                    month: 'MMM yyyy'
+                                }
                             },
-                            grid: { color: '#2d304040', drawBorder: false },
+                            grid: {
+                                color: '#2d304040',
+                                drawBorder: false
+                            },
                             ticks: { color: '#8b8fa3', maxTicksLimit: 8 }
                         },
                         y: {
-                            grid: { color: '#2d304040', drawBorder: false },
-                            ticks: { color: '#8b8fa3', callback: v => '$' + v }
+                            grid: {
+                                color: '#2d304040',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#8b8fa3',
+                                callback: v => '$' + v.toLocaleString('en-US')
+                            }
                         }
                     }
                 }
             });
         }
 
-        fetchPrices();
+        // Initial load
+        fetchAllPrices();
     </script>
 </body>
 </html>

@@ -1,0 +1,1919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>San Diego County & Unincorporated Areas Fire Tracker</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f1117;
+            color: #e1e4e8;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1d28, #252836);
+            padding: 14px 20px;
+            border-bottom: 1px solid #2d3040;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        .header-left { display: flex; align-items: center; gap: 16px; }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #f97316, #ef4444);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header .subtitle { color: #8b8fa3; font-size: 12px; margin-top: 2px; }
+
+        .header-right { display: flex; align-items: center; gap: 10px; }
+
+        .live-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            background: #ef444420;
+            border: 1px solid #ef444440;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #f87171;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: #f87171;
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        .nav-link {
+            padding: 6px 12px;
+            background: #252836;
+            color: #60a5fa;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            border: 1px solid #2d3040;
+            transition: all 0.2s;
+        }
+        .nav-link:hover { background: #2d3040; color: #a78bfa; }
+
+        .main-content {
+            display: flex;
+            height: 70vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 340px;
+            background: #1a1d28;
+            border-right: 1px solid #2d3040;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            z-index: 5;
+        }
+
+        .sidebar-header {
+            padding: 14px 16px;
+            border-bottom: 1px solid #2d3040;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar-header h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #e1e4e8;
+        }
+
+        .fire-count {
+            font-size: 12px;
+            color: #f87171;
+            background: #ef444420;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+
+        .filter-bar {
+            padding: 10px 16px;
+            border-bottom: 1px solid #2d3040;
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 5px 12px;
+            background: transparent;
+            color: #8b8fa3;
+            border: 1px solid #2d3040;
+            border-radius: 14px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .filter-btn.active {
+            background: #f9731620;
+            color: #f97316;
+            border-color: #f9731640;
+        }
+
+        .filter-btn:hover:not(.active) {
+            border-color: #8b8fa3;
+            color: #e1e4e8;
+        }
+
+        .sidebar-status {
+            padding: 10px 16px;
+            border-bottom: 1px solid #2d3040;
+            font-size: 11px;
+            color: #8b8fa3;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .refresh-link {
+            color: #60a5fa;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .refresh-link:hover { color: #a78bfa; }
+
+        .fire-list {
+            flex: 1;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #2d3040 transparent;
+        }
+
+        .fire-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #1e2130;
+            cursor: pointer;
+            transition: background 0.15s;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .fire-item:hover { background: #252836; }
+        .fire-item.selected { background: #252836; border-left: 3px solid #f97316; }
+
+        .fire-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+            background: #ef444420;
+        }
+
+        .fire-info { flex: 1; min-width: 0; }
+
+        .fire-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #e1e4e8;
+            margin-bottom: 2px;
+        }
+
+        .fire-location {
+            font-size: 11px;
+            color: #8b8fa3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .fire-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 5px;
+            flex-wrap: wrap;
+        }
+
+        .fire-badge {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 6px;
+        }
+
+        .fire-badge.acres {
+            background: #f9731620;
+            color: #f97316;
+        }
+
+        .fire-badge.contained {
+            background: #10b98120;
+            color: #34d399;
+        }
+
+        .fire-badge.contained.low {
+            background: #ef444420;
+            color: #f87171;
+        }
+
+        .fire-badge.contained.mid {
+            background: #f59e0b20;
+            color: #fbbf24;
+        }
+
+        .fire-badge.county {
+            background: #3b82f620;
+            color: #60a5fa;
+        }
+
+        /* Map area */
+        .map-area {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Info panel overlay */
+        .info-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            max-width: 420px;
+            background: #1a1d28ee;
+            backdrop-filter: blur(12px);
+            border-radius: 16px;
+            border: 1px solid #2d3040;
+            padding: 16px;
+            display: none;
+            z-index: 5;
+        }
+
+        .info-panel.visible { display: block; }
+
+        .info-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .info-panel-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #f97316;
+        }
+
+        .info-panel-close {
+            width: 28px;
+            height: 28px;
+            background: #252836;
+            border: 1px solid #2d3040;
+            border-radius: 8px;
+            color: #8b8fa3;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .info-panel-close:hover { background: #2d3040; color: #e1e4e8; }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .info-item {
+            background: #0f111780;
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        .info-label {
+            font-size: 10px;
+            color: #8b8fa3;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .info-value.green { color: #34d399; }
+        .info-value.blue { color: #60a5fa; }
+        .info-value.orange { color: #f97316; }
+        .info-value.red { color: #f87171; }
+        .info-value.yellow { color: #fbbf24; }
+        .info-value.purple { color: #a78bfa; }
+
+        .info-link {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 6px 14px;
+            background: #f9731620;
+            color: #f97316;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid #f9731640;
+            transition: all 0.2s;
+        }
+        .info-link:hover { background: #f9731640; }
+
+        /* Map controls overlay */
+        .map-controls {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 5;
+        }
+
+        .map-ctrl-btn {
+            width: 40px;
+            height: 40px;
+            background: #1a1d28ee;
+            backdrop-filter: blur(12px);
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            color: #8b8fa3;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.15s;
+        }
+
+        .map-ctrl-btn:hover { background: #252836; color: #e1e4e8; }
+        .map-ctrl-btn.active { background: #f97316; color: white; border-color: #f97316; }
+
+        /* Stats bar */
+        .stats-bar {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            display: flex;
+            gap: 8px;
+            z-index: 5;
+            flex-wrap: wrap;
+        }
+
+        .stat-chip {
+            background: #1a1d28ee;
+            backdrop-filter: blur(12px);
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            padding: 8px 14px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .stat-chip .count {
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .stat-chip .label { color: #8b8fa3; }
+
+        /* Weather panel */
+        .weather-panel {
+            position: absolute;
+            top: 60px;
+            left: 16px;
+            z-index: 5;
+            background: #1a1d28ee;
+            backdrop-filter: blur(12px);
+            border: 1px solid #2d3040;
+            border-radius: 12px;
+            padding: 12px 16px;
+            min-width: 280px;
+            max-width: 340px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .weather-panel:hover { border-color: #3d4050; }
+        .weather-panel.expanded { max-width: 340px; }
+
+        .weather-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .weather-header .weather-temp {
+            font-size: 22px;
+            font-weight: 700;
+            color: #e1e4e8;
+        }
+        .weather-header .weather-condition {
+            font-size: 12px;
+            color: #8b8fa3;
+        }
+        .weather-header .weather-station {
+            font-size: 10px;
+            color: #6b6f80;
+            margin-top: 2px;
+        }
+        .weather-icon-text {
+            font-size: 24px;
+            line-height: 1;
+        }
+
+        .weather-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #2d3040;
+        }
+        .weather-grid.hidden { display: none; }
+        .weather-stat {
+            text-align: center;
+        }
+        .weather-stat .ws-val {
+            font-size: 13px;
+            font-weight: 600;
+            color: #e1e4e8;
+        }
+        .weather-stat .ws-label {
+            font-size: 10px;
+            color: #6b6f80;
+            margin-top: 2px;
+        }
+        .weather-fire-risk {
+            margin-top: 8px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            text-align: center;
+        }
+        .weather-fire-risk.hidden { display: none; }
+        .risk-low { background: #22c55e20; color: #4ade80; }
+        .risk-moderate { background: #f59e0b20; color: #fbbf24; }
+        .risk-high { background: #ef444420; color: #f87171; }
+        .risk-extreme { background: #dc262620; color: #ef4444; }
+
+        .weather-toggle {
+            font-size: 10px;
+            color: #6b6f80;
+            text-align: center;
+            margin-top: 6px;
+        }
+        .weather-toggle.hidden { display: none; }
+
+        /* No fires message */
+        .no-fires {
+            padding: 40px 20px;
+            text-align: center;
+            color: #8b8fa3;
+        }
+
+        .no-fires .icon { font-size: 40px; margin-bottom: 12px; }
+        .no-fires h4 { color: #34d399; font-size: 16px; margin-bottom: 6px; }
+        .no-fires p { font-size: 12px; line-height: 1.5; }
+
+        /* Loading state */
+        .loading-msg {
+            padding: 40px 20px;
+            text-align: center;
+            color: #8b8fa3;
+            font-size: 13px;
+        }
+
+        .spinner {
+            width: 28px;
+            height: 28px;
+            border: 3px solid #2d3040;
+            border-top-color: #f97316;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 12px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Perimeter legend */
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: #1a1d28ee;
+            backdrop-filter: blur(12px);
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 11px;
+            z-index: 5;
+        }
+
+        .legend-title {
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #e1e4e8;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 3px;
+            color: #8b8fa3;
+        }
+
+        .legend-swatch {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+        }
+
+
+        /* Fire list below map */
+        .fire-table-section {
+            padding: 24px 20px 40px;
+            background: #0f1117;
+        }
+
+        .fire-table-section h2 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            background: linear-gradient(90deg, #f97316, #ef4444);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: inline-block;
+        }
+
+        .fire-table-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .fire-table-tab {
+            padding: 6px 16px;
+            background: transparent;
+            color: #8b8fa3;
+            border: 1px solid #2d3040;
+            border-radius: 14px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .fire-table-tab.active {
+            background: #f9731620;
+            color: #f97316;
+            border-color: #f9731640;
+        }
+
+        .fire-table-tab:hover:not(.active) {
+            border-color: #8b8fa3;
+            color: #e1e4e8;
+        }
+
+        .fire-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .fire-table thead th {
+            text-align: left;
+            padding: 10px 12px;
+            color: #8b8fa3;
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #2d3040;
+            white-space: nowrap;
+        }
+
+        .fire-table tbody tr {
+            border-bottom: 1px solid #1a1d28;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .fire-table tbody tr:hover {
+            background: #1a1d28;
+        }
+
+        .fire-table td {
+            padding: 12px;
+            vertical-align: middle;
+        }
+
+        .fire-table .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .fire-table .status-dot.active { background: #ef4444; }
+        .fire-table .status-dot.partial { background: #f59e0b; }
+        .fire-table .status-dot.contained { background: #22c55e; }
+
+        .fire-table .fire-link {
+            color: #60a5fa;
+            text-decoration: none;
+            font-size: 11px;
+        }
+
+        .fire-table .fire-link:hover { text-decoration: underline; }
+
+        .fire-table-empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: #8b8fa3;
+            font-size: 14px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .header { padding: 10px 14px; }
+            .header h1 { font-size: 16px; }
+            .stat-chip { padding: 6px 10px; font-size: 11px; }
+            .info-panel { left: 10px; right: 10px; }
+            .legend { bottom: 10px; right: 10px; }
+            .fire-table-section { padding: 16px 12px 32px; }
+            .fire-table { font-size: 12px; }
+            .fire-table thead th, .fire-table td { padding: 8px 6px; }
+            .fire-table .hide-mobile { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <div>
+                <h1>San Diego County &amp; Unincorporated Areas Fire Tracker</h1>
+                <div class="subtitle">A tool for local residents &bull; Auto-refreshes every 5 min</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="live-badge">
+                <span class="live-dot"></span>
+                LIVE
+            </div>
+            <a href="index.html" class="nav-link">&larr; Home</a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h3>Fire Incidents</h3>
+                <span class="fire-count" id="fireCount">0</span>
+            </div>
+            <div class="filter-bar">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="active">Active</button>
+                <button class="filter-btn" data-filter="contained">Contained</button>
+                <button class="filter-btn" data-filter="large">100+ Acres</button>
+            </div>
+            <div class="sidebar-status" id="sidebarStatus">
+                <span>Loading...</span>
+                <button class="refresh-link" id="refreshBtn">Refresh</button>
+            </div>
+            <div class="fire-list" id="fireList">
+                <div class="loading-msg">
+                    <div class="spinner"></div>
+                    Fetching fire data...
+                </div>
+            </div>
+        </div>
+
+        <div class="map-area">
+            <div id="map"></div>
+
+            <div class="stats-bar" id="statsBar">
+                <div class="stat-chip">
+                    <span class="count" id="totalFires" style="color:#f97316">0</span>
+                    <span class="label">Fires</span>
+                </div>
+                <div class="stat-chip">
+                    <span class="count" id="totalAcres" style="color:#f87171">0</span>
+                    <span class="label">Total Acres</span>
+                </div>
+                <div class="stat-chip">
+                    <span class="count" id="activeFires" style="color:#fbbf24">0</span>
+                    <span class="label">Active</span>
+                </div>
+            </div>
+
+            <div class="weather-panel" id="weatherPanel" onclick="toggleWeatherDetails()" style="display:none">
+                <div class="weather-header">
+                    <div>
+                        <span class="weather-temp" id="wxTemp">--</span>
+                        <span style="color:#6b6f80;font-size:12px" id="wxFeelsLike"></span>
+                        <div class="weather-condition" id="wxCondition">Loading...</div>
+                        <div class="weather-station" id="wxStation"></div>
+                    </div>
+                    <div class="weather-icon-text" id="wxIcon"></div>
+                </div>
+                <div class="weather-grid hidden" id="wxGrid">
+                    <div class="weather-stat"><div class="ws-val" id="wxHumidity">--</div><div class="ws-label">Humidity</div></div>
+                    <div class="weather-stat"><div class="ws-val" id="wxWind">--</div><div class="ws-label">Wind</div></div>
+                    <div class="weather-stat"><div class="ws-val" id="wxGust">--</div><div class="ws-label">Gust</div></div>
+                    <div class="weather-stat"><div class="ws-val" id="wxDewPoint">--</div><div class="ws-label">Dew Point</div></div>
+                    <div class="weather-stat"><div class="ws-val" id="wxPressure">--</div><div class="ws-label">Pressure</div></div>
+                    <div class="weather-stat"><div class="ws-val" id="wxUV">--</div><div class="ws-label">UV Index</div></div>
+                    <div class="weather-stat"><div class="ws-val" id="wxPrecip">--</div><div class="ws-label">Rain Today</div></div>
+                    <div class="weather-stat"><div class="ws-val" id="wxHiLo">--</div><div class="ws-label">Hi / Lo</div></div>
+                    <div class="weather-stat"><div class="ws-val" id="wxDeltaT">--</div><div class="ws-label">Delta T</div></div>
+                </div>
+                <div class="weather-fire-risk hidden" id="wxFireRisk"></div>
+                <div class="weather-toggle hidden" id="wxToggle">tap to expand</div>
+            </div>
+
+            <div class="map-controls">
+                <button class="map-ctrl-btn" id="centerBtn" title="Fit all fires">&#8982;</button>
+                <button class="map-ctrl-btn" id="perimeterBtn" title="Toggle perimeters">&#9634;</button>
+                <button class="map-ctrl-btn" id="terrainBtn" title="Toggle terrain">&#9650;</button>
+            </div>
+
+            <div class="legend" id="legend" style="display:none">
+                <div class="legend-title">Fire Status</div>
+                <div class="legend-item"><div class="legend-swatch" style="background:#ef4444"></div> Active (&lt;50% contained)</div>
+                <div class="legend-item"><div class="legend-swatch" style="background:#f59e0b"></div> Partially (50-99%)</div>
+                <div class="legend-item"><div class="legend-swatch" style="background:#22c55e"></div> Fully contained</div>
+                <div class="legend-item"><div class="legend-swatch" style="background:#ef444440;border:1px solid #ef4444"></div> Active perimeter</div>
+                <div class="legend-item"><div class="legend-swatch" style="background:#f59e0b40;border:1px solid #f59e0b"></div> Past perimeter</div>
+                <div class="legend-item"><div class="legend-swatch" style="background:#ff6b00;border-radius:50%"></div> VIIRS satellite hotspot</div>
+                <div class="legend-item"><div class="legend-swatch" style="background:#ff0000;clip-path:polygon(50% 0%,0% 100%,100% 100%)"></div> SD Fire Dispatch (live)</div>
+                <div class="legend-item"><div class="legend-swatch" style="background:#1e90ff;font-size:14px;display:flex;align-items:center;justify-content:center">&#9992;</div> Cal Fire aircraft</div>
+            </div>
+
+            <div class="info-panel" id="infoPanel">
+                <div class="info-panel-header">
+                    <span class="info-panel-title" id="infoPanelTitle"></span>
+                    <button class="info-panel-close" id="infoPanelClose">&times;</button>
+                </div>
+                <div class="info-grid" id="infoPanelGrid"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="fire-table-section">
+        <h2>Fire Incidents — San Diego County</h2>
+        <div class="fire-table-tabs">
+            <button class="fire-table-tab active" data-tab="all">All</button>
+            <button class="fire-table-tab" data-tab="active">Active</button>
+            <button class="fire-table-tab" data-tab="contained">Contained</button>
+        </div>
+        <div style="overflow-x:auto">
+            <table class="fire-table">
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Name</th>
+                        <th>County</th>
+                        <th>Acres</th>
+                        <th>Contained</th>
+                        <th class="hide-mobile">Started</th>
+                        <th class="hide-mobile">Agency</th>
+                        <th>Link</th>
+                    </tr>
+                </thead>
+                <tbody id="fireTableBody">
+                    <tr><td colspan="8" class="fire-table-empty">Loading fire data...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCvbijNp_WBn0pgnoVtXyAl1AMcZb7zrZ8&callback=initMap" async defer></script>
+
+    <script>
+        // ── State ──
+        let map;
+        let selectedId = null;
+        let activeFilter = 'all';
+        let fireMarkers = {};
+        let perimeterPolygons = [];
+        let showPerimeters = true;
+        let incidents = [];
+        let refreshTimer;
+
+
+        // ── Data Sources ──
+        // WFIGS Interagency Perimeters — same IRWIN/NIFC source Watch Duty uses
+        const WFIGS_PERIMETERS_API = 'https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/WFIGS_Interagency_Perimeters/FeatureServer/0/query';
+        // NIFC IRWIN active fire points (for fires without perimeters yet)
+        const NIFC_POINTS_API = 'https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/USA_Wildfires_v1/FeatureServer/0/query';
+        // SD Fire Dispatch (via Cloudflare Worker proxy)
+        const SD_DISPATCH_API = 'https://sd-fire-proxy.newtonmac.workers.dev';
+        // NASA FIRMS VIIRS satellite hotspots
+        const FIRMS_API = 'https://firms.modaps.eosdis.nasa.gov/api/area/csv';
+        const TEMPEST_API = 'https://swd.weatherflow.com/swd/rest/better_forecast?station_id=180751&units_temp=f&units_wind=mph&units_pressure=inhg&units_precip=in&units_distance=mi&token=ee5c243a-9bf9-423a-9838-c48d9953fa22';
+        const FIRMS_MAP_KEY = 'da31ea356ef43651e01dc79ff76b1553';
+        const SD_BBOX = '-117.6,32.4,-116.0,33.5'; // San Diego County bounding box
+        const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
+        let satelliteHotspots = [];
+        let hotspotMarkers = [];
+        let dispatchIncidents = [];
+        let dispatchMarkers = [];
+        let aircraftMarkers = [];
+        let aircraftRefreshTimer = null;
+
+        // Cal Fire fleet ICAO hex codes (verified against FAA registry)
+        const CALFIRE_AIRCRAFT = {
+            'a57624': { type: 'helicopter', label: 'Firehawk C613' },
+            'a5ff34': { type: 'helicopter', label: 'Firehawk C607' },
+            'a5d7b5': { type: 'helicopter', label: 'Firehawk C608' },
+            'a5db6c': { type: 'helicopter', label: 'Firehawk C604' },
+            'a5df23': { type: 'helicopter', label: 'Firehawk C605' },
+            'a5e2da': { type: 'helicopter', label: 'Firehawk C602' },
+            'a5f058': { type: 'helicopter', label: 'Firehawk C601' },
+            'a5f7c6': { type: 'helicopter', label: 'Firehawk C609' },
+            'a5fb7d': { type: 'helicopter', label: 'Firehawk C606' },
+            'a602eb': { type: 'helicopter', label: 'Firehawk C603' },
+            'a631d8': { type: 'helicopter', label: 'Super Huey C910' },
+            'a61b8e': { type: 'helicopter', label: 'Super Huey C102' },
+            'a5eca1': { type: 'helicopter', label: 'Super Huey C909' },
+            'a622fc': { type: 'helicopter', label: 'Super Huey C624' },
+            'a62a6a': { type: 'helicopter', label: 'Super Huey C914' },
+            'a61069': { type: 'helicopter', label: 'Super Huey C906' },
+            'a61420': { type: 'helicopter', label: 'Super Huey C620' },
+            'a606a2': { type: 'helicopter', label: 'Super Huey C623' },
+            'a61f45': { type: 'helicopter', label: 'Super Huey C907' },
+            'a62e21': { type: 'helicopter', label: 'Super Huey C622' },
+            'a60a59': { type: 'helicopter', label: 'Super Huey C901' },
+            'a515f1': { type: 'tanker', label: 'S-2T Tanker 70' },
+            'a52add': { type: 'tanker', label: 'S-2T Tanker 71' },
+            'a53602': { type: 'tanker', label: 'S-2T Tanker 72' },
+            'a53d70': { type: 'tanker', label: 'S-2T Tanker 73' },
+            'a544de': { type: 'tanker', label: 'S-2T Tanker 74' },
+            'a559ca': { type: 'tanker', label: 'S-2T Tanker 75' },
+            'a539b9': { type: 'tanker', label: 'S-2T Tanker 76' },
+            'a52726': { type: 'tanker', label: 'S-2T Tanker 78' },
+            'a59025': { type: 'tanker', label: 'S-2T Tanker 79' },
+            'a55d81': { type: 'tanker', label: 'S-2T Tanker 80' },
+            'a5035e': { type: 'tanker', label: 'S-2T Tanker 82' },
+            'a50acc': { type: 'tanker', label: 'S-2T Tanker 83' },
+            'a54ea5': { type: 'tanker', label: 'S-2T Tanker 100' },
+            'a5726d': { type: 'tanker', label: 'S-2T Tanker 93' },
+            'a5a15a': { type: 'tanker', label: 'C-130 Tanker 122' },
+            'a4acf2': { type: 'air_attack', label: 'OV-10A Air Attack 410' },
+            'a4b460': { type: 'air_attack', label: 'OV-10A Air Attack 210' },
+            'a4b0a9': { type: 'air_attack', label: 'OV-10A Air Attack 440' },
+            'a5236f': { type: 'air_attack', label: 'OV-10A Air Attack 430' },
+            'a4ce61': { type: 'air_attack', label: 'OV-10A Air Attack 330' },
+            'a4ffa7': { type: 'air_attack', label: 'OV-10A Air Attack 240' },
+            'a4caaa': { type: 'air_attack', label: 'OV-10A Air Attack 230' },
+            'a59da3': { type: 'transport', label: 'King Air A200CT' },
+        };
+
+        // ── Fetch fire incidents + perimeters from WFIGS (same source as Watch Duty) ──
+        async function fetchIncidents() {
+            document.getElementById('sidebarStatus').querySelector('span').textContent = 'Updating...';
+
+            try {
+                // Fetch ALL perimeters for San Diego County (includes full history with polygons)
+                const perimParams = new URLSearchParams({
+                    where: `attr_POOCounty='San Diego'`,
+                    outFields: 'attr_IncidentName,attr_POOCounty,poly_GISAcres,attr_PercentContained,attr_FireDiscoveryDateTime,attr_ContainmentDateTime,attr_FireOutDateTime,attr_IncidentManagementOrg,attr_UniqueFireIdentifier,attr_IncidentSize,attr_CalculatedAcres',
+                    f: 'geojson',
+                    resultRecordCount: '500',
+                    orderByFields: 'attr_FireDiscoveryDateTime DESC',
+                });
+
+                // Also fetch IRWIN point data for any current fires that may not have perimeters yet
+                const pointParams = new URLSearchParams({
+                    where: `POOState='US-CA' AND POOCounty='San Diego'`,
+                    outFields: 'IncidentName,POOCounty,DailyAcres,CalculatedAcres,PercentContained,FireDiscoveryDateTime,ContainmentDateTime,FireOutDateTime,IncidentManagementOrganization,UniqueFireIdentifier',
+                    f: 'geojson',
+                    resultRecordCount: '500',
+                    orderByFields: 'FireDiscoveryDateTime DESC',
+                });
+
+                const [perimResp, pointResp] = await Promise.all([
+                    fetch(WFIGS_PERIMETERS_API + '?' + perimParams.toString()),
+                    fetch(NIFC_POINTS_API + '?' + pointParams.toString()),
+                ]);
+
+                const perimData = await perimResp.json();
+                const pointData = await pointResp.json();
+
+                const combined = [];
+                const seenIds = new Set();
+
+                // Process perimeter features (these have polygon geometry for the map)
+                if (perimData.features) {
+                    perimData.features.forEach(f => {
+                        if (!f.geometry || !f.geometry.coordinates) return;
+                        const props = f.properties || {};
+                        const incident = normalizePerimeterIncident(props, f.geometry);
+                        seenIds.add(incident.id);
+                        combined.push(incident);
+                    });
+                }
+
+                // Add point-only fires not already in perimeter data
+                if (pointData.features) {
+                    pointData.features.forEach(f => {
+                        const coords = f.geometry && f.geometry.coordinates;
+                        if (!coords) return;
+                        const props = f.properties || {};
+                        const id = props.UniqueFireIdentifier || props.IncidentName;
+                        if (seenIds.has(id)) return;
+                        combined.push(normalizePointIncident(props, coords));
+                    });
+                }
+
+                // Sort: active first, then by acres descending
+                combined.sort((a, b) => {
+                    if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
+                    return b.acres - a.acres;
+                });
+
+                incidents = combined;
+                updateUI();
+                renderPerimeters();
+
+                const now = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                document.getElementById('sidebarStatus').querySelector('span').textContent =
+                    `Updated ${now} \u2022 Source: IRWIN / WFIGS`;
+
+            } catch (err) {
+                console.error('Failed to fetch incidents:', err);
+                document.getElementById('sidebarStatus').querySelector('span').textContent =
+                    'Error loading data. Retrying...';
+                setTimeout(fetchIncidents, 30000);
+            }
+        }
+
+        // Fires older than this are never considered active (handles stale IRWIN data)
+        const STALE_FIRE_DAYS = 30;
+
+        function normalizePerimeterIncident(props, geometry) {
+            const pct = props.attr_PercentContained != null ? parseInt(props.attr_PercentContained) : null;
+            const isContained = props.attr_FireOutDateTime != null || props.attr_ContainmentDateTime != null;
+            const startDate = props.attr_FireDiscoveryDateTime ? new Date(props.attr_FireDiscoveryDateTime) : null;
+            const isStale = startDate && (Date.now() - startDate.getTime()) > STALE_FIRE_DAYS * 86400000;
+            const isActive = !isStale && !isContained && (pct == null || pct < 100);
+            const acres = props.poly_GISAcres || props.attr_IncidentSize || props.attr_CalculatedAcres || 0;
+
+            // Calculate centroid from perimeter for marker placement
+            let lat, lng;
+            const coords = geometry.type === 'MultiPolygon'
+                ? geometry.coordinates[0][0]
+                : geometry.coordinates[0];
+            const sumLat = coords.reduce((s, c) => s + c[1], 0);
+            const sumLng = coords.reduce((s, c) => s + c[0], 0);
+            lat = sumLat / coords.length;
+            lng = sumLng / coords.length;
+
+            return {
+                id: props.attr_UniqueFireIdentifier || props.attr_IncidentName,
+                name: props.attr_IncidentName || 'Unknown Fire',
+                lat, lng,
+                acres: parseFloat(acres) || 0,
+                contained: pct,
+                county: 'San Diego',
+                location: '',
+                started: props.attr_FireDiscoveryDateTime ? new Date(props.attr_FireDiscoveryDateTime).toISOString() : null,
+                updated: null,
+                agency: props.attr_IncidentManagementOrg || '',
+                isActive,
+                url: null,
+                geometry, // Keep geometry for perimeter rendering
+            };
+        }
+
+        function normalizePointIncident(props, coords) {
+            const pct = props.PercentContained != null ? parseInt(props.PercentContained) : null;
+            const isContained = props.FireOutDateTime != null || props.ContainmentDateTime != null;
+            const startDate = props.FireDiscoveryDateTime ? new Date(props.FireDiscoveryDateTime) : null;
+            const isStale = startDate && (Date.now() - startDate.getTime()) > STALE_FIRE_DAYS * 86400000;
+            const isActive = !isStale && !isContained && (pct == null || pct < 100);
+            const acres = props.DailyAcres || props.CalculatedAcres || 0;
+
+            return {
+                id: props.UniqueFireIdentifier || props.IncidentName,
+                name: props.IncidentName || 'Unknown Fire',
+                lat: coords[1],
+                lng: coords[0],
+                acres: parseFloat(acres) || 0,
+                contained: pct,
+                county: 'San Diego',
+                location: '',
+                started: props.FireDiscoveryDateTime ? new Date(props.FireDiscoveryDateTime).toISOString() : null,
+                updated: null,
+                agency: props.IncidentManagementOrganization || '',
+                isActive,
+                url: null,
+                geometry: null,
+            };
+        }
+
+        // ── Render fire perimeters on map ──
+        function renderPerimeters() {
+            if (!map) return;
+
+            perimeterPolygons.forEach(p => p.setMap(null));
+            perimeterPolygons = [];
+
+            incidents.forEach(f => {
+                if (!f.geometry) return;
+
+                const coords = f.geometry.type === 'MultiPolygon'
+                    ? f.geometry.coordinates.flat()
+                    : f.geometry.coordinates;
+
+                const color = f.isActive ? '#ef4444' : '#f59e0b';
+
+                coords.forEach(ring => {
+                    const path = ring.map(c => ({ lat: c[1], lng: c[0] }));
+                    const polygon = new google.maps.Polygon({
+                        paths: path,
+                        strokeColor: color,
+                        strokeOpacity: 0.8,
+                        strokeWeight: 2,
+                        fillColor: color,
+                        fillOpacity: f.isActive ? 0.2 : 0.1,
+                        map: showPerimeters ? map : null,
+                        zIndex: 1,
+                    });
+
+                    polygon.addListener('click', () => selectFire(f.id));
+                    perimeterPolygons.push(polygon);
+                });
+            });
+        }
+
+        // ── Fetch NASA FIRMS satellite hotspots (all 3 VIIRS sensors) ──
+        const VIIRS_SENSORS = ['VIIRS_SNPP_NRT', 'VIIRS_NOAA20_NRT', 'VIIRS_NOAA21_NRT'];
+
+        async function fetchHotspots() {
+            if (!FIRMS_MAP_KEY) return;
+            try {
+                // Fetch from all 3 VIIRS satellites for maximum coverage
+                const responses = await Promise.all(
+                    VIIRS_SENSORS.map(sensor =>
+                        fetch(`${FIRMS_API}/${FIRMS_MAP_KEY}/${sensor}/${SD_BBOX}/10`)
+                            .then(r => r.text())
+                            .catch(() => '')
+                    )
+                );
+
+                satelliteHotspots = [];
+                const seen = new Set();
+
+                responses.forEach(csv => {
+                    if (!csv || csv.startsWith('Invalid')) return;
+                    const lines = csv.trim().split('\n');
+                    if (lines.length < 2) return;
+
+                    const headers = lines[0].split(',');
+                    const latIdx = headers.indexOf('latitude');
+                    const lngIdx = headers.indexOf('longitude');
+                    const briIdx = headers.indexOf('bright_ti4');
+                    const confIdx = headers.indexOf('confidence');
+                    const dateIdx = headers.indexOf('acq_date');
+                    const timeIdx = headers.indexOf('acq_time');
+                    const satIdx = headers.indexOf('satellite');
+                    const frpIdx = headers.indexOf('frp');
+                    const dnIdx = headers.indexOf('daynight');
+
+                    for (let i = 1; i < lines.length; i++) {
+                        const cols = lines[i].split(',');
+                        const lat = parseFloat(cols[latIdx]);
+                        const lng = parseFloat(cols[lngIdx]);
+                        // Deduplicate nearby hotspots (within ~375m)
+                        const key = `${lat.toFixed(3)},${lng.toFixed(3)}`;
+                        if (seen.has(key)) continue;
+                        seen.add(key);
+
+                        satelliteHotspots.push({
+                            lat, lng,
+                            brightness: parseFloat(cols[briIdx]),
+                            confidence: cols[confIdx],
+                            date: cols[dateIdx],
+                            time: cols[timeIdx],
+                            satellite: cols[satIdx] || '',
+                            frp: parseFloat(cols[frpIdx]) || 0,
+                            daynight: cols[dnIdx] === 'D' ? 'Day' : 'Night',
+                        });
+                    }
+                });
+
+                renderHotspots();
+            } catch (err) {
+                console.warn('FIRMS hotspot fetch failed:', err);
+            }
+        }
+
+        function renderHotspots() {
+            if (!map) return;
+            hotspotMarkers.forEach(m => m.setMap(null));
+            hotspotMarkers = [];
+
+            const now = new Date();
+            satelliteHotspots.forEach(h => {
+                // Age-based fade: full opacity for today, dimmer for older detections
+                const detDate = new Date(h.date + 'T' + String(h.time).padStart(4,'0').replace(/(\d{2})(\d{2})/, '$1:$2') + 'Z');
+                const ageDays = Math.max(0, (now - detDate) / 86400000);
+                const opacity = Math.max(0.15, 1 - (ageDays / 10) * 0.85);
+                const scale = ageDays < 1 ? 6 : ageDays < 3 ? 5 : 4;
+
+                const marker = new google.maps.Marker({
+                    position: { lat: h.lat, lng: h.lng },
+                    map: map,
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        fillColor: '#ff6b00',
+                        fillOpacity: opacity,
+                        strokeColor: '#ff0000',
+                        strokeOpacity: opacity,
+                        strokeWeight: 1,
+                        scale: scale,
+                    },
+                    title: `VIIRS Hotspot\n${h.date} ${h.time}\nBrightness: ${h.brightness}K\nConfidence: ${h.confidence}`,
+                    zIndex: 3,
+                    cursor: 'pointer',
+                });
+
+                const confLabel = h.confidence === 'h' ? 'High' : h.confidence === 'n' ? 'Nominal' : h.confidence === 'l' ? 'Low' : h.confidence;
+                const ageLabel = ageDays < 1 ? 'Today' : ageDays < 2 ? '1 day ago' : `${Math.floor(ageDays)} days ago`;
+                const firmsUrl = `https://firms.modaps.eosdis.nasa.gov/map/#d:today;l:fires_viirs_snpp;@${h.lng},${h.lat},14z`;
+                const info = new google.maps.InfoWindow({
+                    content: `<div style="color:#000;font-size:13px;max-width:250px">
+                        <strong>VIIRS Satellite Hotspot</strong> <span style="color:#888;font-size:11px">(${ageLabel})</span><br>
+                        <span style="color:#666">${h.date} ${h.time} UTC &bull; ${h.daynight} pass</span><br>
+                        <strong>Brightness:</strong> ${h.brightness}K<br>
+                        <strong>FRP:</strong> ${h.frp} MW<br>
+                        <strong>Confidence:</strong> ${confLabel}<br>
+                        <strong>Satellite:</strong> ${h.satellite === 'N' ? 'Suomi NPP' : h.satellite === '1' ? 'NOAA-20' : h.satellite === '2' ? 'NOAA-21' : h.satellite}<br>
+                        <span style="color:#888;font-size:11px">Lat: ${h.lat.toFixed(4)}, Lng: ${h.lng.toFixed(4)}</span><br>
+                        <a href="${firmsUrl}" target="_blank" style="color:#1a73e8;font-size:12px">View on NASA FIRMS &rarr;</a>
+                    </div>`,
+                });
+                marker.addListener('click', () => info.open(map, marker));
+
+                hotspotMarkers.push(marker);
+            });
+        }
+
+        // ── Fetch SD Fire Dispatch (local active calls via Cloudflare Worker proxy) ──
+        async function fetchDispatch() {
+            if (!SD_DISPATCH_API || SD_DISPATCH_API.includes('YOUR_SUBDOMAIN')) return;
+            try {
+                const resp = await fetch(SD_DISPATCH_API);
+                const data = await resp.json();
+                if (data.error) return;
+
+                dispatchIncidents = data.map(d => ({
+                    id: 'dispatch-' + d.MasterIncidentNumber,
+                    masterIncidentNumber: d.MasterIncidentNumber,
+                    name: d.IncidentTypeName || d.CallType || 'Fire Call',
+                    address: d.Address || '',
+                    crossStreet: d.CrossStreet || '',
+                    city: d.City || 'San Diego',
+                    date: d.ResponseDate,
+                    callType: d.CallType,
+                    units: (d.Units || []).map(u => u.Code).join(', '),
+                    status: d.status || 'inactive',
+                    isDispatch: true,
+                }));
+
+                renderDispatchMarkers();
+                renderFireTable();
+            } catch (err) {
+                console.warn('SD Dispatch fetch failed:', err);
+            }
+        }
+
+        function renderDispatchMarkers() {
+            if (!map) return;
+            // Dispatch calls don't have lat/lng from the API, only addresses
+            // We use Google Maps Geocoder to place them on the map
+            dispatchMarkers.forEach(m => m.setMap(null));
+            dispatchMarkers = [];
+
+            if (!window.geocoder) {
+                window.geocoder = new google.maps.Geocoder();
+            }
+
+            const markerColors = {
+                active_not_contained: '#ff0000',
+                active_contained: '#f59e0b',
+                inactive: '#22c55e',
+            };
+            dispatchIncidents.forEach(d => {
+                const addr = `${d.address}, ${d.city}, CA`;
+                const markerColor = markerColors[d.status] || '#ff0000';
+                window.geocoder.geocode({ address: addr }, (results, status) => {
+                    if (status === 'OK' && results[0]) {
+                        const pos = results[0].geometry.location;
+                        const marker = new google.maps.Marker({
+                            position: pos,
+                            map: map,
+                            icon: {
+                                path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
+                                fillColor: markerColor,
+                                fillOpacity: 0.9,
+                                strokeColor: '#fff',
+                                strokeWeight: 2,
+                                scale: 7,
+                            },
+                            title: `${d.name}\n${d.address}\nUnits: ${d.units}`,
+                            zIndex: d.status === 'active_not_contained' ? 20 : 15,
+                        });
+
+                        const info = new google.maps.InfoWindow({
+                            content: `<div style="color:#000;font-size:13px;max-width:250px">
+                                <strong>${d.name}</strong><br>
+                                ${d.address}${d.crossStreet ? ' @ ' + d.crossStreet : ''}<br>
+                                <span style="color:#666">${d.city} &bull; ${new Date(d.date).toLocaleTimeString()}</span><br>
+                                ${d.units ? '<strong>Units:</strong> ' + d.units : ''}<br>
+                                <span style="color:#888;font-size:11px">Incident #${d.masterIncidentNumber}</span><br>
+                                <a href="https://webapps.sandiego.gov/SDFireDispatch/" target="_blank" style="color:#1a73e8;font-size:12px">View on SD Fire Dispatch &rarr;</a>
+                            </div>`,
+                        });
+                        marker._dispatchId = d.id;
+                        marker.addListener('click', () => info.open(map, marker));
+
+                        dispatchMarkers.push(marker);
+                    }
+                });
+            });
+        }
+
+        // Legacy alias
+        function fetchPerimeters() {
+            // Perimeters now fetched as part of fetchIncidents
+        }
+
+        // ── UI Updates ──
+        let tableFilter = 'all';
+
+        function updateUI() {
+            renderSidebar();
+            updateStats();
+            renderMarkers();
+            renderFireTable();
+        }
+
+        function getTableIncidents() {
+            if (tableFilter === 'active') return incidents.filter(f => f.isActive);
+            if (tableFilter === 'contained') return incidents.filter(f => !f.isActive || f.contained === 100);
+            return incidents;
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '—';
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        function getStatusDot(f) {
+            if (!f.isActive || f.contained === 100) return '<span class="status-dot contained"></span>Contained';
+            if (f.contained != null && f.contained >= 50) return '<span class="status-dot partial"></span>Partial';
+            return '<span class="status-dot active"></span>Active';
+        }
+
+        function renderFireTable() {
+            const tbody = document.getElementById('fireTableBody');
+            const filtered = getTableIncidents();
+            let html = '';
+
+            // Show dispatch calls grouped by status category
+            if (dispatchIncidents.length > 0) {
+                const statusConfig = {
+                    active_not_contained: { label: 'Active - Not Contained', dot: 'active', bg: '#ef444418', color: '#f87171' },
+                    active_contained: { label: 'Active - Contained', dot: 'partial', bg: '#f59e0b18', color: '#fbbf24' },
+                    inactive: { label: 'Inactive', dot: 'contained', bg: '#22c55e10', color: '#4ade80' },
+                };
+                const groups = ['active_not_contained', 'active_contained', 'inactive'];
+                const filteredGroups = tableFilter === 'contained'
+                    ? ['active_contained', 'inactive']
+                    : tableFilter === 'active' ? ['active_not_contained'] : groups;
+
+                filteredGroups.forEach(statusKey => {
+                    const items = dispatchIncidents.filter(d => d.status === statusKey);
+                    if (items.length === 0) return;
+                    const cfg = statusConfig[statusKey];
+                    html += `<tr><td colspan="8" style="background:#1a1d28;padding:8px 12px;font-weight:600;font-size:12px;color:${cfg.color};text-transform:uppercase;letter-spacing:0.5px">${cfg.label} (${items.length})</td></tr>`;
+                    html += items.map(d => `
+                        <tr style="background:${cfg.bg}">
+                            <td><span class="status-dot ${cfg.dot}"></span>Dispatch</td>
+                            <td><strong>${d.name}</strong><br><span style="color:#8b8fa3;font-size:11px">${d.address}${d.crossStreet ? ' @ ' + d.crossStreet : ''}</span></td>
+                            <td>${d.city}</td>
+                            <td>—</td>
+                            <td>—</td>
+                            <td class="hide-mobile">${d.date ? formatDate(d.date) : '—'}</td>
+                            <td class="hide-mobile">${d.units || '—'}</td>
+                            <td><span style="color:${cfg.color};font-size:11px">${statusKey === 'active_not_contained' ? 'LIVE' : statusKey === 'active_contained' ? 'CONTAINED' : 'CLOSED'}</span><br><a href="https://webapps.sandiego.gov/SDFireDispatch/" target="_blank" class="fire-link" style="font-size:10px" onclick="event.stopPropagation()">Source</a></td>
+                        </tr>
+                    `).join('');
+                });
+            }
+
+            html += filtered.map(f => `
+                <tr onclick="selectFire('${f.id}')">
+                    <td>${getStatusDot(f)}</td>
+                    <td><strong>${f.name}</strong></td>
+                    <td>${f.county}</td>
+                    <td>${f.acres > 0 ? formatAcres(f.acres) : '—'}</td>
+                    <td>${f.contained != null ? f.contained + '%' : '—'}</td>
+                    <td class="hide-mobile">${formatDate(f.started)}</td>
+                    <td class="hide-mobile">${f.agency || '—'}</td>
+                    <td>${f.url ? `<a href="${f.url}" target="_blank" class="fire-link" onclick="event.stopPropagation()">Details</a>` : '—'}</td>
+                </tr>
+            `).join('');
+
+            if (!html) {
+                tbody.innerHTML = '<tr><td colspan="8" class="fire-table-empty">No fire incidents match this filter.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = html;
+        }
+
+        function getFilteredIncidents() {
+            if (activeFilter === 'all') return incidents;
+            if (activeFilter === 'active') return incidents.filter(f => f.isActive);
+            if (activeFilter === 'contained') return incidents.filter(f => f.contained === 100);
+            if (activeFilter === 'large') return incidents.filter(f => f.acres >= 100);
+            return incidents;
+        }
+
+        // ── Cal Fire Aircraft Tracking (OpenSky Network) ──
+        const OPENSKY_API = 'https://opensky-network.org/api/states/all';
+        const AIRCRAFT_REFRESH = 30 * 1000; // 30 seconds
+
+        async function fetchAircraft() {
+            if (!map) return;
+            try {
+                // Query OpenSky for aircraft in the SD bounding box
+                const resp = await fetch(
+                    `${OPENSKY_API}?lamin=32.4&lomin=-117.6&lamax=33.5&lomax=-116.0`
+                );
+                if (!resp.ok) return;
+                const data = await resp.json();
+                if (!data.states) { renderAircraft([]); return; }
+
+                const calFireAircraft = [];
+                data.states.forEach(s => {
+                    const icao = s[0]; // ICAO24 hex
+                    const info = CALFIRE_AIRCRAFT[icao];
+                    if (!info) return;
+                    const lat = s[6];
+                    const lng = s[5];
+                    if (lat == null || lng == null) return;
+                    calFireAircraft.push({
+                        icao,
+                        lat, lng,
+                        altitude: s[7] != null ? Math.round(s[7] * 3.281) : null, // meters to feet
+                        velocity: s[9] != null ? Math.round(s[9] * 2.237) : null, // m/s to mph
+                        heading: s[10] || 0,
+                        onGround: s[8],
+                        callsign: (s[1] || '').trim(),
+                        ...info,
+                    });
+                });
+
+                renderAircraft(calFireAircraft);
+            } catch (err) {
+                console.warn('Aircraft fetch failed:', err);
+            }
+        }
+
+        function renderAircraft(aircraft) {
+            if (!map) return;
+            aircraftMarkers.forEach(m => m.setMap(null));
+            aircraftMarkers = [];
+
+            aircraft.forEach(a => {
+                const isHeli = a.type === 'helicopter';
+                const color = isHeli ? '#1e90ff' : a.type === 'tanker' ? '#ff4500' : '#ffa500';
+                const icon = {
+                    path: isHeli
+                        ? 'M-8,0 L0,-12 L8,0 L0,4 Z M-12,0 L12,0 M0,-12 L0,6' // diamond for heli
+                        : google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                    fillColor: color,
+                    fillOpacity: 0.9,
+                    strokeColor: '#fff',
+                    strokeWeight: 1.5,
+                    scale: isHeli ? 1.2 : 5,
+                    rotation: a.heading || 0,
+                    anchor: isHeli ? new google.maps.Point(0, 0) : undefined,
+                };
+
+                const marker = new google.maps.Marker({
+                    position: { lat: a.lat, lng: a.lng },
+                    map: map,
+                    icon: icon,
+                    title: a.label,
+                    zIndex: 10,
+                    cursor: 'pointer',
+                });
+
+                const statusLine = a.onGround ? 'On ground' :
+                    `${a.altitude != null ? a.altitude.toLocaleString() + ' ft' : '?'} · ${a.velocity != null ? a.velocity + ' mph' : '?'}`;
+                const typeLabel = { helicopter: 'Helicopter', tanker: 'Air Tanker', air_attack: 'Air Attack', transport: 'Transport' }[a.type] || a.type;
+
+                const info = new google.maps.InfoWindow({
+                    content: `<div style="color:#000;font-size:13px;max-width:250px">
+                        <strong style="color:${color}">${a.label}</strong><br>
+                        <span style="color:#666">${typeLabel} · Cal Fire</span><br>
+                        <strong>Status:</strong> ${statusLine}<br>
+                        <strong>Heading:</strong> ${Math.round(a.heading)}°<br>
+                        ${a.callsign ? `<strong>Callsign:</strong> ${a.callsign}<br>` : ''}
+                        <span style="color:#888;font-size:11px">ICAO: ${a.icao.toUpperCase()}</span><br>
+                        <a href="https://globe.adsbexchange.com/?icao=${a.icao}" target="_blank" style="color:#1a73e8;font-size:12px">Track on ADS-B Exchange &rarr;</a>
+                    </div>`,
+                });
+                marker.addListener('click', () => info.open(map, marker));
+
+                aircraftMarkers.push(marker);
+            });
+        }
+
+        function renderSidebar() {
+            const list = document.getElementById('fireList');
+            const filtered = getFilteredIncidents();
+            const totalCount = filtered.length + dispatchIncidents.length;
+            document.getElementById('fireCount').textContent = totalCount;
+
+            let dispatchHtml = '';
+            if (dispatchIncidents.length > 0) {
+                const sidebarStatusConfig = {
+                    active_not_contained: { label: 'ACTIVE', badgeClass: 'contained low', borderColor: '#ef4444', icon: '&#128680;' },
+                    active_contained: { label: 'CONTAINED', badgeClass: 'contained mid', borderColor: '#f59e0b', icon: '&#9989;' },
+                    inactive: { label: 'INACTIVE', badgeClass: 'contained', borderColor: '#22c55e', icon: '&#9898;' },
+                };
+                ['active_not_contained', 'active_contained', 'inactive'].forEach(statusKey => {
+                    const items = dispatchIncidents.filter(d => d.status === statusKey);
+                    if (items.length === 0) return;
+                    const cfg = sidebarStatusConfig[statusKey];
+                    dispatchHtml += items.map(d => `
+                        <div class="fire-item" style="border-left:3px solid ${cfg.borderColor};cursor:pointer" onclick="panToDispatch('${d.id}')">
+                            <div class="fire-icon">${cfg.icon}</div>
+                            <div class="fire-info">
+                                <div class="fire-name">${d.name}</div>
+                                <div class="fire-location">${d.address}${d.crossStreet ? ' @ ' + d.crossStreet : ''}, ${d.city}</div>
+                                <div class="fire-meta">
+                                    <span class="fire-badge ${cfg.badgeClass}">${cfg.label}</span>
+                                    ${d.units ? `<span class="fire-badge county">${d.units}</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                });
+            }
+
+            if (filtered.length === 0 && incidents.length === 0 && dispatchIncidents.length === 0) {
+                list.innerHTML = `
+                    <div class="no-fires">
+                        <div class="icon">&#9996;</div>
+                        <h4>No Active Fires</h4>
+                        <p>There are currently no reported fire incidents in San Diego County. Data refreshes automatically every 5 minutes.</p>
+                    </div>`;
+                return;
+            }
+
+            if (filtered.length === 0) {
+                list.innerHTML = `
+                    <div class="no-fires">
+                        <p>No fires match the current filter.</p>
+                    </div>`;
+                return;
+            }
+
+            list.innerHTML = dispatchHtml + filtered.map(f => {
+                const containedClass = f.contained == null ? '' :
+                    f.contained >= 100 ? 'contained' :
+                    f.contained >= 50 ? 'contained mid' : 'contained low';
+
+                return `
+                <div class="fire-item ${f.id === selectedId ? 'selected' : ''}" onclick="selectFire('${f.id}')">
+                    <div class="fire-icon">${f.isActive ? '&#128293;' : '&#9989;'}</div>
+                    <div class="fire-info">
+                        <div class="fire-name">${f.name}</div>
+                        <div class="fire-location">${f.county} County &bull; ${f.location || 'Location unavailable'}</div>
+                        <div class="fire-meta">
+                            ${f.acres > 0 ? `<span class="fire-badge acres">${formatAcres(f.acres)} acres</span>` : ''}
+                            ${f.contained != null ? `<span class="fire-badge ${containedClass}">${f.contained}% contained</span>` : ''}
+                            <span class="fire-badge county">${f.county}</span>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function formatAcres(n) {
+            if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+            return n.toLocaleString();
+        }
+
+        function updateStats() {
+            const active = incidents.filter(f => f.isActive);
+            const totalAcres = incidents.reduce((s, f) => s + f.acres, 0);
+            document.getElementById('totalFires').textContent = incidents.length;
+            document.getElementById('totalAcres').textContent = formatAcres(totalAcres);
+            document.getElementById('activeFires').textContent = active.length;
+        }
+
+        // ── Map markers ──
+        function getMarkerColor(f) {
+            if (!f.isActive || f.contained === 100) return '#22c55e';
+            if (f.contained != null && f.contained >= 50) return '#f59e0b';
+            return '#ef4444';
+        }
+
+        function getMarkerScale(f) {
+            if (f.id === selectedId) return 14;
+            if (f.acres >= 10000) return 14;
+            if (f.acres >= 1000) return 12;
+            if (f.acres >= 100) return 10;
+            return 8;
+        }
+
+        function renderMarkers() {
+            if (!map) return;
+
+            // Remove old markers
+            Object.values(fireMarkers).forEach(m => m.setMap(null));
+            fireMarkers = {};
+
+            getFilteredIncidents().forEach(f => {
+                const color = getMarkerColor(f);
+                const scale = getMarkerScale(f);
+
+                const marker = new google.maps.Marker({
+                    position: { lat: f.lat, lng: f.lng },
+                    map: map,
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        fillColor: color,
+                        fillOpacity: f.isActive ? 0.9 : 0.5,
+                        strokeColor: '#fff',
+                        strokeWeight: f.id === selectedId ? 3 : 1.5,
+                        scale: scale,
+                    },
+                    title: f.name,
+                    zIndex: f.isActive ? 10 : 5,
+                });
+
+                marker.addListener('click', () => selectFire(f.id));
+                fireMarkers[f.id] = marker;
+            });
+        }
+
+        // ── Pan to dispatch marker and open its InfoWindow ──
+        function panToDispatch(id) {
+            const marker = dispatchMarkers.find(m => m._dispatchId === id);
+            if (marker && map) {
+                map.panTo(marker.getPosition());
+                map.setZoom(14);
+                google.maps.event.trigger(marker, 'click');
+            }
+        }
+
+        // ── Selection ──
+        function selectFire(id) {
+            selectedId = id;
+            const f = incidents.find(i => i.id === id);
+            if (!f || !map) return;
+
+            map.panTo({ lat: f.lat, lng: f.lng });
+            map.setZoom(10);
+
+            showInfoPanel(f);
+            renderSidebar();
+            renderMarkers();
+        }
+
+        function showInfoPanel(f) {
+            const panel = document.getElementById('infoPanel');
+            document.getElementById('infoPanelTitle').textContent = f.name;
+
+            const startDate = f.started ? new Date(f.started).toLocaleDateString('en-US', {
+                month: 'short', day: 'numeric', year: 'numeric'
+            }) : 'Unknown';
+
+            const updatedStr = f.updated ? new Date(f.updated).toLocaleString('en-US', {
+                month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+            }) : 'Unknown';
+
+            const containedColor = f.contained == null ? '' :
+                f.contained >= 100 ? 'green' :
+                f.contained >= 50 ? 'yellow' : 'red';
+
+            document.getElementById('infoPanelGrid').innerHTML = `
+                <div class="info-item">
+                    <div class="info-label">Status</div>
+                    <div class="info-value ${f.isActive ? 'orange' : 'green'}">${f.isActive ? 'Active' : 'Contained'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Acres Burned</div>
+                    <div class="info-value red">${f.acres > 0 ? f.acres.toLocaleString() : 'Unknown'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Containment</div>
+                    <div class="info-value ${containedColor}">${f.contained != null ? f.contained + '%' : 'Unknown'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">County</div>
+                    <div class="info-value blue">${f.county}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Started</div>
+                    <div class="info-value">${startDate}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Last Update</div>
+                    <div class="info-value">${updatedStr}</div>
+                </div>
+                <div class="info-item" style="grid-column: span 2">
+                    <div class="info-label">Agency</div>
+                    <div class="info-value" style="font-size:12px">${f.agency || 'Unknown'}</div>
+                </div>
+                ${f.location ? `
+                <div class="info-item" style="grid-column: span 2">
+                    <div class="info-label">Location</div>
+                    <div class="info-value" style="font-size:12px;color:#8b8fa3">${f.location}</div>
+                </div>` : ''}
+                ${f.url ? `
+                <div class="info-item" style="grid-column: span 2; padding-bottom: 2px;">
+                    <a href="${f.url}" target="_blank" class="info-link">View on CAL FIRE &rarr;</a>
+                </div>` : ''}
+            `;
+            panel.classList.add('visible');
+        }
+
+        // ── Weather ──
+        let weatherExpanded = false;
+
+        function toggleWeatherDetails() {
+            weatherExpanded = !weatherExpanded;
+            document.getElementById('wxGrid').classList.toggle('hidden', !weatherExpanded);
+            document.getElementById('wxFireRisk').classList.toggle('hidden', !weatherExpanded);
+            document.getElementById('wxToggle').textContent = weatherExpanded ? 'tap to collapse' : 'tap to expand';
+        }
+
+        function getWeatherIcon(conditions) {
+            if (!conditions) return '';
+            const c = conditions.toLowerCase();
+            if (c.includes('clear') || c.includes('sunny')) return '☀️';
+            if (c.includes('partly') || c.includes('mostly cloudy')) return '⛅';
+            if (c.includes('cloudy') || c.includes('overcast')) return '☁️';
+            if (c.includes('rain') || c.includes('drizzle')) return '🌧️';
+            if (c.includes('thunder') || c.includes('storm')) return '⛈️';
+            if (c.includes('fog') || c.includes('haze')) return '🌫️';
+            if (c.includes('wind')) return '💨';
+            if (c.includes('snow')) return '❄️';
+            return '🌤️';
+        }
+
+        function getFireRisk(data) {
+            // Simple fire weather risk based on conditions
+            const humidity = data.current.humidity;
+            const wind = data.current.wind_gust || data.current.wind_avg || 0;
+            const temp = data.current.temperature;
+
+            let score = 0;
+            if (humidity != null) {
+                if (humidity < 15) score += 3;
+                else if (humidity < 25) score += 2;
+                else if (humidity < 35) score += 1;
+            }
+            if (wind > 30) score += 3;
+            else if (wind > 20) score += 2;
+            else if (wind > 10) score += 1;
+            if (temp > 95) score += 2;
+            else if (temp > 85) score += 1;
+
+            if (score >= 6) return { level: 'EXTREME', cls: 'risk-extreme', msg: 'Extreme fire weather conditions' };
+            if (score >= 4) return { level: 'HIGH', cls: 'risk-high', msg: 'High fire risk — low humidity & high winds' };
+            if (score >= 2) return { level: 'MODERATE', cls: 'risk-moderate', msg: 'Moderate fire risk' };
+            return { level: 'LOW', cls: 'risk-low', msg: 'Low fire risk' };
+        }
+
+        async function fetchWeather() {
+            try {
+                const resp = await fetch(TEMPEST_API);
+                const data = await resp.json();
+                if (data.status && data.status.status_code !== 0) return;
+
+                const current = data.current_conditions || {};
+                const forecast = ((data.forecast || {}).daily || [])[0] || {};
+
+                const panel = document.getElementById('weatherPanel');
+                panel.style.display = '';
+                document.getElementById('wxToggle').classList.remove('hidden');
+
+                document.getElementById('wxTemp').textContent = current.air_temperature != null ? Math.round(current.air_temperature) + '°F' : '--';
+                document.getElementById('wxFeelsLike').textContent = current.feels_like != null ? '(feels ' + Math.round(current.feels_like) + '°)' : '';
+                document.getElementById('wxCondition').textContent = current.conditions || '--';
+                document.getElementById('wxStation').textContent = data.station_name || '';
+                document.getElementById('wxIcon').textContent = getWeatherIcon(current.conditions);
+
+                document.getElementById('wxHumidity').textContent = current.relative_humidity != null ? current.relative_humidity + '%' : '--';
+                document.getElementById('wxWind').textContent = current.wind_avg != null ? Math.round(current.wind_avg) + ' ' + (current.wind_direction_cardinal || '') : '--';
+                document.getElementById('wxGust').textContent = current.wind_gust != null ? Math.round(current.wind_gust) + ' mph' : '--';
+                document.getElementById('wxDewPoint').textContent = current.dew_point != null ? Math.round(current.dew_point) + '°F' : '--';
+                document.getElementById('wxPressure').textContent = current.sea_level_pressure != null ? current.sea_level_pressure.toFixed(2) + '"' : '--';
+                document.getElementById('wxUV').textContent = current.uv != null ? current.uv : '--';
+                document.getElementById('wxPrecip').textContent = current.precip_accum_local_day != null ? current.precip_accum_local_day.toFixed(2) + '"' : '0.00"';
+                document.getElementById('wxDeltaT').textContent = current.delta_t != null ? current.delta_t.toFixed(1) + '°' : '--';
+
+                const hi = forecast.air_temp_high != null ? Math.round(forecast.air_temp_high) : '--';
+                const lo = forecast.air_temp_low != null ? Math.round(forecast.air_temp_low) : '--';
+                document.getElementById('wxHiLo').textContent = hi + '° / ' + lo + '°';
+
+                // Fire risk assessment
+                const wxData = {
+                    current: {
+                        humidity: current.relative_humidity,
+                        wind_avg: current.wind_avg,
+                        wind_gust: current.wind_gust,
+                        temperature: current.air_temperature,
+                    }
+                };
+                const risk = getFireRisk(wxData);
+                const riskEl = document.getElementById('wxFireRisk');
+                riskEl.textContent = risk.level + ' FIRE RISK — ' + risk.msg;
+                riskEl.className = 'weather-fire-risk ' + risk.cls;
+                if (weatherExpanded) riskEl.classList.remove('hidden');
+
+            } catch (err) {
+                console.warn('Weather fetch failed:', err);
+            }
+        }
+
+        // ── Google Maps init ──
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: { lat: 32.79, lng: -116.87 },
+                zoom: 10,
+                mapTypeId: 'roadmap',
+                styles: [
+                    { elementType: 'geometry', stylers: [{ color: '#1a1d28' }] },
+                    { elementType: 'labels.text.stroke', stylers: [{ color: '#1a1d28' }] },
+                    { elementType: 'labels.text.fill', stylers: [{ color: '#8b8fa3' }] },
+                    { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#2d3040' }] },
+                    { featureType: 'administrative.province', elementType: 'geometry.stroke', stylers: [{ color: '#4a5568' }] },
+                    { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+                    { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#1e2a1e' }] },
+                    { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#2d3040' }] },
+                    { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#1e2130' }] },
+                    { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#3b3f54' }] },
+                    { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#2d3040' }] },
+                    { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0e1525' }] },
+                    { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#4a5568' }] },
+                ],
+                disableDefaultUI: true,
+                zoomControl: true,
+                zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_BOTTOM },
+            });
+
+            document.getElementById('legend').style.display = 'block';
+
+            // Load fire data from all sources
+            fetchIncidents();
+            fetchHotspots();
+            fetchDispatch();
+            fetchWeather();
+            fetchAircraft();
+
+            // Auto-refresh
+            refreshTimer = setInterval(() => {
+                fetchIncidents();
+                fetchHotspots();
+                fetchDispatch();
+                fetchWeather();
+            }, REFRESH_INTERVAL);
+
+            // Aircraft refresh more frequently (every 30s)
+            aircraftRefreshTimer = setInterval(fetchAircraft, AIRCRAFT_REFRESH);
+        }
+
+        // ── Controls ──
+        document.getElementById('infoPanelClose').addEventListener('click', () => {
+            document.getElementById('infoPanel').classList.remove('visible');
+            selectedId = null;
+            renderSidebar();
+            renderMarkers();
+        });
+
+        document.getElementById('centerBtn').addEventListener('click', () => {
+            if (!map) return;
+            if (incidents.length === 0) {
+                map.setCenter({ lat: 37.5, lng: -119.5 });
+                map.setZoom(6);
+                return;
+            }
+            const bounds = new google.maps.LatLngBounds();
+            incidents.forEach(f => bounds.extend({ lat: f.lat, lng: f.lng }));
+            map.fitBounds(bounds, 60);
+            selectedId = null;
+            document.getElementById('infoPanel').classList.remove('visible');
+            renderSidebar();
+            renderMarkers();
+        });
+
+        document.getElementById('perimeterBtn').addEventListener('click', function() {
+            showPerimeters = !showPerimeters;
+            this.classList.toggle('active', showPerimeters);
+            perimeterPolygons.forEach(p => p.setMap(showPerimeters ? map : null));
+        });
+
+        document.getElementById('terrainBtn').addEventListener('click', function() {
+            const current = map.getMapTypeId();
+            const next = current === 'terrain' ? 'roadmap' : 'terrain';
+            map.setMapTypeId(next);
+            this.classList.toggle('active', next === 'terrain');
+        });
+
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            fetchIncidents();
+            fetchHotspots();
+            fetchDispatch();
+            fetchWeather();
+            fetchAircraft();
+        });
+
+        // Filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                activeFilter = btn.dataset.filter;
+                renderSidebar();
+                renderMarkers();
+            });
+        });
+
+        // Fire table tabs
+        document.querySelectorAll('.fire-table-tab').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.fire-table-tab').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                tableFilter = btn.dataset.tab;
+                renderFireTable();
+            });
+        });
+
+        // Google Maps loaded via script tag with embedded API key
+    </script>
+</body>
+</html>

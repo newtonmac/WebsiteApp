@@ -1,0 +1,1753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>QuoteView 3D — Sales Tool v6</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f6f5f2;
+  --bg2:#edecea;
+  --white:#ffffff;
+  --dark:#111113;
+  --mid:#737378;
+  --light:#c9c9cc;
+  --accent:#d4522a;
+  --accent-hover:#b8421f;
+  --accent-light:#fdf0ec;
+  --accent-glow:rgba(212,82,42,0.12);
+  --border:#dddcda;
+  --radius:14px;
+  --shadow:0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06);
+  --shadow-lg:0 4px 24px rgba(0,0,0,0.1);
+  --font:'Outfit',sans-serif;
+  --mono:'IBM Plex Mono',monospace;
+}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);
+  font-family:var(--font);
+  color:var(--dark);
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+}
+body::before{
+  content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
+  opacity:0.025;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:128px 128px;
+}
+header{
+  background:var(--white);
+  border-bottom:1px solid var(--border);
+  padding:0 2rem;
+  height:58px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  position:sticky;
+  top:0;
+  z-index:100;
+  backdrop-filter:blur(12px);
+  background:rgba(255,255,255,0.92);
+}
+.logo{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  font-weight:600;
+  font-size:0.95rem;
+  color:var(--dark);
+  letter-spacing:-0.02em;
+}
+.logo-mark{
+  width:32px;height:32px;
+  background:var(--accent);
+  border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  position:relative;
+  overflow:hidden;
+}
+.logo-mark::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,0.2) 0%,transparent 50%);
+}
+.logo-mark svg{width:16px;height:16px;fill:white;position:relative;z-index:1;}
+.header-right{display:flex;align-items:center;gap:12px;}
+.header-badge{
+  font-family:var(--mono);
+  font-size:0.62rem;
+  background:var(--accent-light);
+  color:var(--accent);
+  padding:4px 10px;
+  border-radius:999px;
+  letter-spacing:0.06em;
+  font-weight:500;
+}
+.version-tag{
+  font-family:var(--mono);
+  font-size:0.58rem;
+  color:var(--light);
+  letter-spacing:0.04em;
+}
+.page{
+  flex:1;
+  max-width:880px;
+  margin:0 auto;
+  padding:2rem 1.5rem 4rem;
+  width:100%;
+}
+.page-header{
+  margin-bottom:2rem;
+  padding-bottom:1.5rem;
+  border-bottom:1px solid var(--border);
+}
+.page-title{
+  font-size:1.5rem;
+  font-weight:700;
+  letter-spacing:-0.03em;
+  margin-bottom:0.35rem;
+  line-height:1.2;
+}
+.page-sub{
+  color:var(--mid);
+  font-size:0.85rem;
+  line-height:1.6;
+  max-width:600px;
+}
+.stepper{
+  display:flex;
+  gap:0;
+  margin-bottom:2rem;
+  background:var(--white);
+  border-radius:12px;
+  border:1px solid var(--border);
+  overflow:hidden;
+  box-shadow:0 1px 3px rgba(0,0,0,0.03);
+}
+.stepper-item{
+  flex:1;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:14px 16px;
+  font-size:0.78rem;
+  color:var(--light);
+  font-weight:500;
+  transition:all 0.3s ease;
+  position:relative;
+  letter-spacing:-0.01em;
+}
+.stepper-item:not(:last-child)::after{
+  content:'';position:absolute;right:0;top:20%;height:60%;
+  width:1px;background:var(--border);
+}
+.stepper-item.active{color:var(--accent);background:var(--accent-light);}
+.stepper-item.done{color:var(--dark);}
+.step-num{
+  width:24px;height:24px;
+  border-radius:50%;
+  border:2px solid currentColor;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);
+  font-size:0.65rem;
+  font-weight:600;
+  flex-shrink:0;
+  transition:all 0.3s ease;
+}
+.stepper-item.done .step-num{
+  background:var(--dark);
+  border-color:var(--dark);
+  color:white;
+}
+.stepper-item.active .step-num{
+  border-color:var(--accent);
+  background:var(--accent);
+  color:white;
+}
+.card{
+  background:var(--white);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:1.6rem;
+  margin-bottom:1.25rem;
+  box-shadow:var(--shadow);
+  transition:box-shadow 0.2s;
+}
+.card:hover{box-shadow:var(--shadow-lg);}
+.card-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:1.2rem;
+}
+.card-title{
+  font-size:0.72rem;
+  font-weight:600;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+  color:var(--mid);
+}
+.card-badge{
+  font-family:var(--mono);
+  font-size:0.58rem;
+  padding:3px 8px;
+  border-radius:4px;
+  background:var(--bg);
+  color:var(--mid);
+  border:1px solid var(--border);
+}
+.info-box{
+  background:linear-gradient(135deg,#fdf7f4 0%,#fef3ee 100%);
+  border:1px solid #f0d4c6;
+  border-radius:12px;
+  padding:1.1rem 1.3rem;
+  font-size:0.8rem;
+  color:#7a2e0e;
+  line-height:1.7;
+  margin-bottom:1.25rem;
+  display:flex;
+  gap:12px;
+}
+.info-box-icon{
+  width:36px;height:36px;flex-shrink:0;
+  background:var(--accent);
+  border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  margin-top:2px;
+}
+.info-box-icon svg{width:18px;height:18px;fill:white;}
+.info-box strong{font-weight:600;}
+.info-box code{
+  font-family:var(--mono);
+  font-size:0.72rem;
+  background:rgba(212,82,42,0.1);
+  padding:1px 5px;
+  border-radius:3px;
+}
+.upload-zone{
+  display:block;
+  border:2px dashed var(--border);
+  border-radius:12px;
+  padding:2.5rem 2rem;
+  text-align:center;
+  cursor:pointer;
+  transition:all 0.25s ease;
+  position:relative;
+  background:var(--bg);
+}
+.upload-zone:hover,.upload-zone.dragover{
+  border-color:var(--accent);
+  background:var(--accent-light);
+  transform:translateY(-1px);
+}
+.upload-icon{
+  width:52px;height:52px;
+  margin:0 auto 0.8rem;
+  background:var(--white);
+  border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--border);
+  box-shadow:0 2px 8px rgba(0,0,0,0.04);
+}
+.upload-zone h3{font-size:0.95rem;font-weight:600;margin-bottom:0.3rem;letter-spacing:-0.01em;}
+.upload-zone p{font-size:0.78rem;color:var(--mid);}
+.upload-zone input{/* inline-styled for Safari compatibility */}
+.file-types{
+  display:flex;gap:5px;justify-content:center;margin-top:0.8rem;flex-wrap:wrap;
+}
+.file-type-tag{
+  font-family:var(--mono);
+  font-size:0.6rem;
+  font-weight:500;
+  padding:3px 8px;
+  border-radius:5px;
+  background:var(--white);
+  border:1px solid var(--border);
+  color:var(--mid);
+  letter-spacing:0.02em;
+}
+.file-type-tag.new{
+  background:var(--accent-light);
+  border-color:var(--accent);
+  color:var(--accent);
+}
+.file-loaded{
+  display:none;
+  align-items:center;
+  gap:1rem;
+  padding:1rem;
+  background:var(--bg);
+  border-radius:10px;
+  border:1px solid var(--border);
+}
+.file-loaded.show{display:flex;}
+.file-icon{
+  width:42px;height:42px;
+  background:var(--accent);
+  border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.file-icon svg{width:20px;height:20px;fill:white;}
+.file-info{flex:1;min-width:0;}
+.file-name{font-weight:600;font-size:0.88rem;margin-bottom:2px;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.file-size{font-family:var(--mono);font-size:0.68rem;color:var(--mid);}
+.btn-change{
+  background:none;
+  border:1px solid var(--border);
+  color:var(--mid);
+  font-family:var(--font);
+  font-size:0.75rem;
+  font-weight:500;
+  padding:7px 14px;
+  border-radius:8px;
+  cursor:pointer;
+  transition:all 0.15s;
+  white-space:nowrap;
+}
+.btn-change:hover{border-color:var(--dark);color:var(--dark);}
+.form-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:1rem;
+}
+.form-group{display:flex;flex-direction:column;gap:5px;}
+.form-group.full{grid-column:1/-1;}
+label{
+  font-size:0.75rem;
+  font-weight:500;
+  color:var(--dark);
+  letter-spacing:-0.01em;
+}
+label .optional{
+  font-weight:400;
+  color:var(--light);
+  font-size:0.68rem;
+}
+input[type=text],input[type=email],textarea,select{
+  font-family:var(--font);
+  font-size:0.85rem;
+  padding:10px 13px;
+  border:1px solid var(--border);
+  border-radius:9px;
+  background:var(--bg);
+  color:var(--dark);
+  outline:none;
+  transition:all 0.2s ease;
+  width:100%;
+}
+input[type=text]:focus,input[type=email]:focus,textarea:focus{
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px var(--accent-glow);
+}
+textarea{resize:vertical;min-height:80px;line-height:1.5;}
+.btn-generate{
+  width:100%;
+  padding:15px;
+  background:var(--accent);
+  color:white;
+  border:none;
+  border-radius:11px;
+  font-family:var(--font);
+  font-size:0.95rem;
+  font-weight:600;
+  cursor:pointer;
+  transition:all 0.2s ease;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:9px;
+  letter-spacing:-0.01em;
+  position:relative;
+  overflow:hidden;
+}
+.btn-generate::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,0.15) 0%,transparent 50%);
+  pointer-events:none;
+}
+.btn-generate:hover:not(:disabled){
+  background:var(--accent-hover);
+  transform:translateY(-1px);
+  box-shadow:0 6px 20px rgba(212,82,42,0.3);
+}
+.btn-generate:active:not(:disabled){transform:translateY(0);box-shadow:none;}
+.btn-generate:disabled{background:var(--light);cursor:not-allowed;transform:none;box-shadow:none;}
+.progress-wrap{display:none;margin-top:1.2rem;}
+.progress-wrap.show{display:block;}
+.progress-label{font-size:0.75rem;color:var(--mid);margin-bottom:7px;display:flex;justify-content:space-between;}
+.progress-label span:last-child{font-family:var(--mono);color:var(--accent);font-weight:500;}
+.progress-bar{height:5px;background:var(--border);border-radius:999px;overflow:hidden;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),#e8794f);border-radius:999px;width:0%;transition:width 0.4s ease;}
+.success-banner{
+  display:none;
+  background:linear-gradient(135deg,#f0faf4 0%,#e8f9ef 100%);
+  border:1px solid #86efac;
+  border-radius:11px;
+  padding:1.2rem 1.4rem;
+  margin-top:1.2rem;
+  align-items:center;
+  gap:14px;
+}
+.success-banner.show{display:flex;}
+.success-icon{width:38px;height:38px;background:#22c55e;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.success-icon svg{width:18px;height:18px;fill:white;}
+.success-text{flex:1;}
+.success-text strong{display:block;font-size:0.88rem;margin-bottom:2px;letter-spacing:-0.01em;}
+.success-text span{font-size:0.78rem;color:#166534;}
+.btn-download{
+  background:#22c55e;
+  color:white;
+  border:none;
+  font-family:var(--font);
+  font-size:0.8rem;
+  font-weight:600;
+  padding:9px 18px;
+  border-radius:8px;
+  cursor:pointer;
+  white-space:nowrap;
+  transition:all 0.15s;
+}
+.btn-download:hover{background:#16a34a;transform:translateY(-1px);}
+.preview-card{display:none;}
+.preview-card.show{display:block;}
+#preview-canvas-wrap{
+  width:100%;
+  height:360px;
+  background:#eaebee;
+  border-radius:10px;
+  position:relative;
+  overflow:hidden;
+}
+.preview-toolbar{
+  position:absolute;
+  bottom:12px;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  gap:4px;
+  background:rgba(0,0,0,0.6);
+  backdrop-filter:blur(12px);
+  border:1px solid rgba(255,255,255,0.08);
+  padding:4px;
+  border-radius:10px;
+  z-index:10;
+}
+.preview-tbtn{
+  font-family:var(--mono);
+  font-size:0.6rem;
+  color:rgba(255,255,255,0.5);
+  background:transparent;
+  border:none;
+  padding:6px 10px;
+  border-radius:7px;
+  cursor:pointer;
+  transition:all 0.15s;
+  letter-spacing:0.03em;
+  white-space:nowrap;
+}
+.preview-tbtn:hover,.preview-tbtn.on{color:white;background:rgba(255,255,255,0.1);}
+.preview-tbtn.measure-active{color:#22c55e;background:rgba(34,197,94,0.15);}
+.measure-info{
+  position:absolute;
+  top:12px;
+  left:12px;
+  font-family:var(--mono);
+  font-size:0.65rem;
+  color:rgba(255,255,255,0.6);
+  background:rgba(0,0,0,0.5);
+  backdrop-filter:blur(8px);
+  padding:8px 12px;
+  border-radius:8px;
+  border:1px solid rgba(255,255,255,0.08);
+  display:none;
+  z-index:10;
+  line-height:1.6;
+}
+.measure-info.show{display:block;}
+.measure-val{color:#22c55e;font-weight:500;}
+.bin-prompt{
+  display:none;
+  margin-top:1rem;
+  background:linear-gradient(135deg,#fff8f0 0%,#fff5eb 100%);
+  border:1px solid #f5cba7;
+  border-radius:10px;
+  padding:1rem 1.2rem;
+  gap:10px;
+  flex-direction:column;
+}
+.bin-prompt.show{display:flex;}
+.bin-prompt-title{font-size:0.85rem;font-weight:600;color:#7a3b0e;display:flex;align-items:center;gap:6px;}
+.bin-prompt-desc{font-size:0.78rem;color:#9a4b1e;line-height:1.5;}
+.btn-bin{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  background:var(--accent);
+  color:white;
+  padding:8px 16px;
+  border-radius:8px;
+  cursor:pointer;
+  font-family:var(--font);
+  font-size:0.8rem;
+  font-weight:600;
+  border:none;
+  transition:all 0.15s;
+  align-self:flex-start;
+  position:relative;
+}
+.btn-bin:hover{background:var(--accent-hover);}
+.page-footer{
+  text-align:center;
+  padding:2rem 1rem;
+  font-size:0.7rem;
+  color:var(--light);
+  font-family:var(--mono);
+  letter-spacing:0.02em;
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.card{animation:fadeUp 0.4s ease both;}
+.card:nth-child(2){animation-delay:0.06s;}
+.card:nth-child(3){animation-delay:0.12s;}
+.card:nth-child(4){animation-delay:0.18s;}
+@media(max-width:640px){
+  .page{padding:1.2rem 1rem 3rem;}
+  .form-grid{grid-template-columns:1fr;}
+  .stepper-item{padding:10px 8px;font-size:0.68rem;}
+  header{padding:0 1rem;}
+  #preview-canvas-wrap{height:260px;}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    QuoteView 3D
+  </div>
+  <div class="header-right">
+    <div class="header-badge">SALES TOOL</div>
+    <div class="version-tag">v6.0</div>
+  </div>
+</header>
+<div class="page">
+  <div class="page-header">
+    <h1 class="page-title">Create 3D Quote Viewer</h1>
+    <p class="page-sub">Upload a CAD model, add quote details, and generate a self-contained HTML file your customers can open in any browser — no plugins needed.</p>
+  </div>
+  <div class="stepper">
+    <div class="stepper-item active" id="step1"><div class="step-num">1</div> Upload Model</div>
+    <div class="stepper-item" id="step2"><div class="step-num">2</div> Quote Details</div>
+    <div class="stepper-item" id="step3"><div class="step-num">3</div> Generate</div>
+  </div>
+  <div class="info-box">
+    <div class="info-box-icon">
+      <svg viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9" fill="none" stroke="white" stroke-width="1.5"/></svg>
+    </div>
+    <div>
+      <strong>Supported formats:</strong><br>
+      <code>.GLB</code> — native upload. Detects GLTF+BIN pairs automatically.<br>
+      <code>.STL</code> / <code>.OBJ</code> — export from SolidWorks via <em>File → Save As</em>.<br>
+      <code>.STEP</code> <span style="color:var(--accent);font-weight:600;">NEW</span> — basic STEP geometry support (AP203/AP214).<br>
+      <span style="color:#999;font-size:0.75rem;">For .SLDPRT files, export as STL or STEP from SolidWorks first.</span>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">Upload 3D Model</div>
+      <div class="card-badge">STEP 1</div>
+    </div>
+    <label class="upload-zone" id="upload-zone">
+      <input type="file" id="file-input" accept=".glb,.gltf,.stl,.obj,.step,.stp,.GLB,.GLTF,.STL,.OBJ,.STEP,.STP" style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2;">
+      <div class="upload-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#737378" stroke-width="1.5" width="26" height="26">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+        </svg>
+      </div>
+      <h3>Drop your 3D file here</h3>
+      <p>or click to browse files</p>
+      <div class="file-types">
+        <span class="file-type-tag">.GLB</span>
+        <span class="file-type-tag">.GLTF</span>
+        <span class="file-type-tag">.STL</span>
+        <span class="file-type-tag">.OBJ</span>
+        <span class="file-type-tag new">.STEP</span>
+        <span class="file-type-tag new">.STP</span>
+      </div>
+    </label>
+    <div class="file-loaded" id="file-loaded">
+      <div class="file-icon">
+        <svg viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+      </div>
+      <div class="file-info">
+        <div class="file-name" id="loaded-name">—</div>
+        <div class="file-size" id="loaded-size">—</div>
+      </div>
+      <button class="btn-change" onclick="resetFile()">Change</button>
+    </div>
+    <div class="bin-prompt" id="bin-prompt">
+      <div class="bin-prompt-title">⚠️ Companion <code id="bin-filename">.bin</code> required</div>
+      <div class="bin-prompt-desc">Your file is a GLTF (JSON) referencing an external binary. Select the companion .bin file.</div>
+      <input type="file" id="bin-input" accept=".bin,.BIN" style="display:none;">
+      <label for="bin-input" class="btn-bin" id="bin-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        Select .bin file
+      </label>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">Quote Details</div>
+      <div class="card-badge">STEP 2</div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Your Company Name</label>
+        <input type="text" id="company" placeholder="Acme Manufacturing Co.">
+      </div>
+      <div class="form-group">
+        <label>Sales Rep Name</label>
+        <input type="text" id="rep" placeholder="John Smith">
+      </div>
+      <div class="form-group">
+        <label>Sales Rep Email</label>
+        <input type="email" id="email" placeholder="john@acme.com">
+      </div>
+      <div class="form-group">
+        <label>Sales Rep Phone <span class="optional">(optional)</span></label>
+        <input type="text" id="phone" placeholder="+1 (555) 000-0000">
+      </div>
+      <div class="form-group">
+        <label>Part / Product Name</label>
+        <input type="text" id="partname" placeholder="Custom Bracket Assembly">
+      </div>
+      <div class="form-group">
+        <label>Quote Number <span class="optional">(optional)</span></label>
+        <input type="text" id="quotenum" placeholder="QT-2024-0042">
+      </div>
+      <div class="form-group full">
+        <label>Notes for Customer <span class="optional">(optional)</span></label>
+        <textarea id="notes" placeholder="e.g. Manufactured in 6061 Aluminum, anodized finish. Lead time 2-3 weeks."></textarea>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">Generate & Download</div>
+      <div class="card-badge">STEP 3</div>
+    </div>
+    <button class="btn-generate" id="btn-generate" onclick="generateViewer()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      Generate 3D Viewer File
+    </button>
+    <div class="progress-wrap" id="progress-wrap">
+      <div class="progress-label"><span id="progress-msg">Processing model…</span><span id="progress-pct">0%</span></div>
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+    </div>
+    <div class="success-banner" id="success-banner">
+      <div class="success-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="success-text">
+        <strong>Viewer ready!</strong>
+        <span>Attach this HTML file to your quote email. Customer double-clicks to view.</span>
+      </div>
+      <button class="btn-download" id="btn-download">⬇ Download</button>
+    </div>
+  </div>
+  <div class="card preview-card" id="preview-card">
+    <div class="card-head">
+      <div class="card-title">Live Preview</div>
+      <div class="card-badge">CUSTOMER VIEW</div>
+    </div>
+    <div id="preview-canvas-wrap">
+      <div id="preview-canvas-container" style="width:100%;height:100%;"></div>
+      <div class="measure-info" id="measure-info">
+        Click two points on the model to measure distance.<br>
+        <span class="measure-val" id="measure-val"></span>
+      </div>
+      <div class="preview-toolbar">
+        <button class="preview-tbtn on" id="pb-rot" onclick="togglePreviewAutoRot()">AUTO ROTATE</button>
+        <button class="preview-tbtn" id="pb-grid" onclick="togglePreviewGrid()">GRID</button>
+        <button class="preview-tbtn" id="pb-reset" onclick="resetPreviewCam()">RESET</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:16px;justify-content:center;align-items:flex-start;padding:1rem 0 0.5rem;flex-wrap:wrap;">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+        <span style="font-family:'DM Mono',monospace;font-size:0.6rem;color:#e74c3c;letter-spacing:0.08em;font-weight:500;">X-AXIS</span>
+        <button class="prev-rot-btn" data-axis="x-up" title="Tilt up">&#9650;</button>
+        <button class="prev-rot-btn" data-axis="x-dn" title="Tilt down">&#9660;</button>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+        <span style="font-family:'DM Mono',monospace;font-size:0.6rem;color:#2ecc71;letter-spacing:0.08em;font-weight:500;">Y-AXIS</span>
+        <div style="display:flex;gap:4px;">
+          <button class="prev-rot-btn" data-axis="y-left" title="Rotate left">&#9664;</button>
+          <button class="prev-rot-btn" data-axis="y-right" title="Rotate right">&#9654;</button>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+        <span style="font-family:'DM Mono',monospace;font-size:0.6rem;color:#3498db;letter-spacing:0.08em;font-weight:500;">Z-ROLL</span>
+        <div style="display:flex;gap:4px;">
+          <button class="prev-rot-btn" data-axis="z-ccw" title="Roll left">&#8634;</button>
+          <button class="prev-rot-btn" data-axis="z-cw" title="Roll right">&#8635;</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="page-footer">QuoteView 3D · v6.0 · Self-contained HTML generation</div>
+<script>
+// ── File upload (no Three.js dependency) ──────────────────────────────────
+let uploadedFile = null;
+let uploadedBinFile = null;
+const selectedColor = '#d4522a';
+(function initUpload() {
+  const fileInput = document.getElementById('file-input');
+  const uploadZone = document.getElementById('upload-zone');
+  if (!fileInput || !uploadZone) { console.error('Upload elements not found'); return; }
+  fileInput.addEventListener('change', function(e) { if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]); });
+  uploadZone.addEventListener('dragover', function(e) { e.preventDefault(); uploadZone.classList.add('dragover'); });
+  uploadZone.addEventListener('dragleave', function() { uploadZone.classList.remove('dragover'); });
+  uploadZone.addEventListener('drop', function(e) {
+    e.preventDefault();
+    uploadZone.classList.remove('dragover');
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+  window._fileInput = fileInput;
+  window._uploadZone = uploadZone;
+  // .bin file picker
+  var binBtn = document.getElementById('bin-btn');
+  var binInput = document.getElementById('bin-input');
+  if (binBtn && binInput) {
+    binInput.addEventListener('click', function() { binInput.value = ''; });
+    binInput.addEventListener('change', function() { if (binInput.files && binInput.files[0]) handleBinFile(binInput.files[0]); });
+  }
+})();
+function handleFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['glb','gltf','stl','obj','step','stp'].includes(ext)) {
+    alert('Please upload a .GLB, .GLTF, .STL, .OBJ, .STEP, or .STP file.');
+    return;
+  }
+  uploadedFile = file;
+  uploadedBinFile = null;
+  document.getElementById('loaded-name').textContent = file.name;
+  document.getElementById('loaded-size').textContent = formatBytes(file.size);
+  var uz = window._uploadZone || document.getElementById('upload-zone');
+  uz.style.display = 'none';
+  document.getElementById('file-loaded').classList.add('show');
+  document.getElementById('bin-prompt').classList.remove('show');
+  if (ext === 'glb') {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var header = new Uint8Array(e.target.result);
+      var magic = (header[0] | (header[1]<<8) | (header[2]<<16) | (header[3]<<24)) >>> 0;
+      if (magic !== 0x46546c67 && magic !== 0x46546C67) {
+        showBinPrompt(file.name.replace(/\.glb$/i, '.bin'));
+      } else {
+        setStep(2);
+        if (typeof loadPreview === 'function') loadPreview(file);
+      }
+    };
+    reader.readAsArrayBuffer(file.slice(0, 4));
+  } else if (ext === 'gltf') {
+    // GLTF (JSON) files typically reference an external .bin — prompt for it
+    var reader2 = new FileReader();
+    reader2.onload = function(e) {
+      try {
+        var json = JSON.parse(new TextDecoder().decode(e.target.result));
+        if (json.buffers && json.buffers.length > 0 && json.buffers[0].uri) {
+          showBinPrompt(json.buffers[0].uri);
+        } else {
+          setStep(2);
+          if (typeof loadPreview === 'function') loadPreview(file);
+        }
+      } catch(err) {
+        setStep(2);
+        if (typeof loadPreview === 'function') loadPreview(file);
+      }
+    };
+    reader2.readAsArrayBuffer(file);
+  } else {
+    setStep(2);
+    if (typeof loadPreview === 'function') loadPreview(file);
+  }
+}
+function showBinPrompt(binName) {
+  document.getElementById('loaded-size').textContent += ' ⚠️ Needs .bin';
+  document.getElementById('bin-filename').textContent = binName;
+  document.getElementById('bin-prompt').classList.add('show');
+}
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
+  return (b/1024/1024).toFixed(1) + ' MB';
+}
+function resetFile() {
+  uploadedFile = null;
+  var uz = window._uploadZone || document.getElementById('upload-zone');
+  uz.style.display = '';
+  document.getElementById('file-loaded').classList.remove('show');
+  document.getElementById('bin-prompt').classList.remove('show');
+  var fi = window._fileInput || document.getElementById('file-input');
+  fi.value = '';
+  document.getElementById('preview-card').classList.remove('show');
+  if (typeof previewAnim !== 'undefined' && previewAnim) cancelAnimationFrame(previewAnim);
+  if (typeof previewRenderer !== 'undefined' && previewRenderer) {
+    previewRenderer.dispose();
+    document.getElementById('preview-canvas-container').innerHTML = '';
+    previewRenderer = null;
+  }
+  setStep(1);
+}
+function setStep(n) {
+  ['step1','step2','step3'].forEach(function(id,i) {
+    var el = document.getElementById(id);
+    if (el) el.className = 'stepper-item' + (i+1 < n ? ' done' : i+1 === n ? ' active' : '');
+  });
+}
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ── 3D State ──────────────────────────────────────────────────────────────
+const fileInput = window._fileInput || document.getElementById('file-input');
+const uploadZone = window._uploadZone || document.getElementById('upload-zone');
+let previewRenderer = null;
+let previewScene = null;
+let previewCamera = null;
+let previewAnim = null;
+let previewSpherical = { theta: 0.5, phi: 1.1, radius: 5 };
+let previewTarget = new THREE.Vector3();
+let previewDragging = false, previewRight = false, previewPrev = {x:0,y:0};
+let previewAutoRot = true;
+let previewGrid = null;
+let previewModel = null;
+let previewInitR = 5;
+let measureMode = false;
+let measurePoints = [];
+let measureMarkers = [];
+let measureLine = null;
+let measureLabel = null;
+let raycaster = new THREE.Raycaster();
+let mouse = new THREE.Vector2();
+function handleBinFile(file) {
+  if (!file.name.toLowerCase().endsWith('.bin')) { alert('Please select the .bin companion file.'); return; }
+  uploadedBinFile = file;
+  document.getElementById('bin-prompt').classList.remove('show');
+  document.getElementById('loaded-size').textContent = formatBytes(uploadedFile.size) + ' + ' + formatBytes(file.size) + ' (.bin)';
+  setStep(2);
+  const r1 = new FileReader(), r2 = new FileReader();
+  r1.onload = e1 => { r2.onload = e2 => {
+    const merged = mergeGltfBin(e1.target.result, e2.target.result);
+    if (!merged) { alert('Failed to merge GLTF+BIN files.'); return; }
+    uploadedFile = new File([merged], uploadedFile.name.replace(/\.(glb|gltf)$/i,'_merged.glb'), {type:'model/gltf-binary'});
+    uploadedBinFile = null;
+    document.getElementById('loaded-name').textContent = uploadedFile.name;
+    loadPreview(uploadedFile);
+  }; r2.readAsArrayBuffer(uploadedBinFile); };
+  r1.readAsArrayBuffer(uploadedFile);
+}
+function mergeGltfBin(gltfBuf, binBuf) {
+  try {
+    const json = JSON.parse(new TextDecoder().decode(gltfBuf));
+    if (json.buffers && json.buffers[0]) { delete json.buffers[0].uri; json.buffers[0].byteLength = binBuf.byteLength; }
+    const jsonStr = JSON.stringify(json);
+    let jsonBytes = new TextEncoder().encode(jsonStr);
+    while (jsonBytes.byteLength % 4 !== 0) jsonBytes = new Uint8Array([...jsonBytes, 0x20]);
+    const binBytes = new Uint8Array(binBuf);
+    const binPadded = new Uint8Array(Math.ceil(binBytes.byteLength / 4) * 4);
+    binPadded.set(binBytes);
+    const totalLen = 12 + 8 + jsonBytes.byteLength + 8 + binPadded.byteLength;
+    const out = new ArrayBuffer(totalLen);
+    const view = new DataView(out);
+    view.setUint32(0, 0x46546c67, true);
+    view.setUint32(4, 2, true);
+    view.setUint32(8, totalLen, true);
+    view.setUint32(12, jsonBytes.byteLength, true);
+    view.setUint32(16, 0x4E4F534A, true);
+    new Uint8Array(out, 20, jsonBytes.byteLength).set(jsonBytes);
+    const bo = 20 + jsonBytes.byteLength;
+    view.setUint32(bo, binPadded.byteLength, true);
+    view.setUint32(bo + 4, 0x004E4942, true);
+    new Uint8Array(out, bo + 8, binPadded.byteLength).set(binPadded);
+    return out;
+  } catch(e) { console.error('merge error:', e); return null; }
+}
+// ── Preview ────────────────────────────────────────────────────────────────
+function loadPreview(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  const container = document.getElementById('preview-canvas-container');
+  const wrap = document.getElementById('preview-canvas-wrap');
+  if (previewAnim) cancelAnimationFrame(previewAnim);
+  if (previewRenderer) { previewRenderer.dispose(); container.innerHTML = ''; }
+  previewRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  previewRenderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  previewRenderer.setSize(wrap.clientWidth, wrap.clientHeight);
+  previewRenderer.outputEncoding = THREE.sRGBEncoding;
+  previewRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+  previewRenderer.toneMappingExposure = 1.2;
+  container.appendChild(previewRenderer.domElement);
+  previewScene = new THREE.Scene();
+  previewCamera = new THREE.PerspectiveCamera(45, wrap.clientWidth/wrap.clientHeight, 0.001, 100000);
+  previewScene.add(new THREE.AmbientLight(0xffffff, 0.8));
+  const dl = new THREE.DirectionalLight(0xffffff, 1.2);
+  dl.position.set(5,10,5);
+  previewScene.add(dl);
+  previewScene.add(Object.assign(new THREE.DirectionalLight(0x8899ff,0.4), {position: new THREE.Vector3(-5,-3,-5)}));
+  previewGrid = new THREE.GridHelper(20,30,0xcccccc,0xdddddd);
+  previewGrid.visible = false;
+  previewScene.add(previewGrid);
+  previewSpherical = { theta: 0.5, phi: 1.1, radius: 5 };
+  previewTarget = new THREE.Vector3();
+  previewAutoRot = true;
+  document.getElementById('pb-rot').classList.add('on');
+  document.getElementById('pb-grid').classList.remove('on');
+  const updateCam = () => {
+    previewCamera.position.set(
+      previewTarget.x + previewSpherical.radius * Math.sin(previewSpherical.phi) * Math.sin(previewSpherical.theta),
+      previewTarget.y + previewSpherical.radius * Math.cos(previewSpherical.phi),
+      previewTarget.z + previewSpherical.radius * Math.sin(previewSpherical.phi) * Math.cos(previewSpherical.theta)
+    );
+    previewCamera.lookAt(previewTarget);
+  };
+  window._prevUpdateCam = updateCam;
+  updateCam();
+  previewRenderer.domElement.addEventListener('mousedown', e => {
+    if (measureMode && e.button === 0) { handleMeasureClick(e); return; }
+    previewDragging=true; previewRight=e.button===2; previewPrev={x:e.clientX,y:e.clientY};
+    previewAutoRot=false; document.getElementById('pb-rot').classList.remove('on');
+  });
+  window.addEventListener('mouseup', () => previewDragging=false);
+  window.addEventListener('mousemove', e => {
+    if (!previewDragging) return;
+    const dx=(e.clientX-previewPrev.x)*0.005, dy=(e.clientY-previewPrev.y)*0.005;
+    previewPrev={x:e.clientX,y:e.clientY};
+    if(previewRight){
+      const r=new THREE.Vector3().crossVectors(previewCamera.getWorldDirection(new THREE.Vector3()),previewCamera.up).normalize();
+      previewTarget.addScaledVector(r,-dx*previewSpherical.radius*0.5);
+      previewTarget.y+=dy*previewSpherical.radius*0.5;
+    } else {
+      previewSpherical.theta-=dx;
+      previewSpherical.phi=Math.max(0.05,Math.min(Math.PI-0.05,previewSpherical.phi+dy));
+    }
+    updateCam();
+  });
+  previewRenderer.domElement.addEventListener('wheel', e => { previewSpherical.radius=Math.max(0.01,previewSpherical.radius+e.deltaY*0.005); updateCam(); }, {passive:true});
+  previewRenderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
+  let touches=[];
+  previewRenderer.domElement.addEventListener('touchstart', e => { touches=[...e.touches]; previewAutoRot=false; document.getElementById('pb-rot').classList.remove('on'); });
+  previewRenderer.domElement.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if(e.touches.length===1&&touches.length===1){
+      const dx=(e.touches[0].clientX-touches[0].clientX)*0.007,dy=(e.touches[0].clientY-touches[0].clientY)*0.007;
+      previewSpherical.theta-=dx;previewSpherical.phi=Math.max(0.05,Math.min(Math.PI-0.05,previewSpherical.phi+dy));updateCam();
+    } else if(e.touches.length===2&&touches.length===2){
+      const d0=Math.hypot(touches[0].clientX-touches[1].clientX,touches[0].clientY-touches[1].clientY);
+      const d1=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+      previewSpherical.radius=Math.max(0.01,previewSpherical.radius*(d0/d1));updateCam();
+    }
+    touches=[...e.touches];
+  }, {passive:false});
+  const reader = new FileReader();
+  reader.onload = e => {
+    const ab = e.target.result;
+    loadModelIntoScene(ext, ab, previewScene, (model) => {
+      if (!model) return;
+      previewModel = model;
+      fitCamera(model, previewSpherical, previewTarget, updateCam);
+      previewInitR = previewSpherical.radius;
+      document.getElementById('preview-card').classList.add('show');
+      setStep(3);
+    });
+  };
+  reader.readAsArrayBuffer(file);
+  const animate = () => {
+    previewAnim = requestAnimationFrame(animate);
+    if (previewAutoRot) { previewSpherical.theta += 0.004; updateCam(); }
+    previewRenderer.render(previewScene, previewCamera);
+  };
+  animate();
+  const ro = new ResizeObserver(() => {
+    if (!previewRenderer) return;
+    previewRenderer.setSize(wrap.clientWidth, wrap.clientHeight);
+    previewCamera.aspect = wrap.clientWidth/wrap.clientHeight;
+    previewCamera.updateProjectionMatrix();
+  });
+  ro.observe(wrap);
+}
+function fitCamera(model, sph, tgt, updateCam) {
+  const box = new THREE.Box3().setFromObject(model);
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z);
+  const scale = 2 / maxDim;
+  model.scale.setScalar(scale);
+  model.position.sub(center.multiplyScalar(scale));
+  sph.radius = maxDim * scale * 2.5;
+  tgt.set(0,0,0);
+  updateCam();
+}
+function togglePreviewAutoRot() {
+  previewAutoRot = !previewAutoRot;
+  document.getElementById('pb-rot').classList.toggle('on', previewAutoRot);
+}
+function togglePreviewGrid() {
+  if (previewGrid) {
+    previewGrid.visible = !previewGrid.visible;
+    document.getElementById('pb-grid').classList.toggle('on', previewGrid.visible);
+  }
+}
+let previewZRot = 0;
+function resetPreviewCam() {
+  previewSpherical = { theta: 0.5, phi: 1.1, radius: previewInitR };
+  previewTarget.set(0,0,0);
+  previewZRot = 0;
+  previewCamera.up.set(0,1,0);
+  previewCamera.position.set(
+    previewSpherical.radius * Math.sin(previewSpherical.phi) * Math.sin(previewSpherical.theta),
+    previewSpherical.radius * Math.cos(previewSpherical.phi),
+    previewSpherical.radius * Math.sin(previewSpherical.phi) * Math.cos(previewSpherical.theta)
+  );
+  previewCamera.lookAt(previewTarget);
+}
+const PRS = 0.12;
+document.querySelectorAll('.prev-rot-btn').forEach(btn => {
+  const axis = btn.dataset.axis;
+  let iv = null;
+  const act = () => {
+    if (!window._prevUpdateCam) return;
+    previewAutoRot = false;
+    document.getElementById('pb-rot').classList.remove('on');
+    if (axis === 'x-up') previewSpherical.phi = Math.max(0.05, previewSpherical.phi - PRS);
+    else if (axis === 'x-dn') previewSpherical.phi = Math.min(Math.PI - 0.05, previewSpherical.phi + PRS);
+    else if (axis === 'y-left') previewSpherical.theta -= PRS;
+    else if (axis === 'y-right') previewSpherical.theta += PRS;
+    else if (axis === 'z-ccw') { previewZRot -= PRS; previewCamera.up.set(Math.sin(previewZRot), Math.cos(previewZRot), 0); }
+    else if (axis === 'z-cw') { previewZRot += PRS; previewCamera.up.set(Math.sin(previewZRot), Math.cos(previewZRot), 0); }
+    window._prevUpdateCam();
+  };
+  const start = () => { act(); iv = setInterval(act, 60); };
+  const stop = () => { if (iv) clearInterval(iv); iv = null; };
+  btn.addEventListener('mousedown', start);
+  btn.addEventListener('mouseup', stop);
+  btn.addEventListener('mouseleave', stop);
+  btn.addEventListener('touchstart', e => { e.preventDefault(); start(); });
+  btn.addEventListener('touchend', stop);
+});
+// ── Measurement tool ───────────────────────────────────────────────────────
+function toggleMeasure() {
+  measureMode = !measureMode;
+  document.getElementById('pb-measure').classList.toggle('measure-active', measureMode);
+  document.getElementById('measure-info').classList.toggle('show', measureMode);
+  if (measureMode) {
+    document.getElementById('measure-val').textContent = '';
+    clearMeasure();
+    previewRenderer.domElement.style.cursor = 'crosshair';
+  } else {
+    previewRenderer.domElement.style.cursor = '';
+    clearMeasure();
+  }
+}
+function clearMeasure() {
+  measurePoints = [];
+  measureMarkers.forEach(m => previewScene.remove(m));
+  measureMarkers = [];
+  if (measureLine) { previewScene.remove(measureLine); measureLine = null; }
+}
+function handleMeasureClick(e) {
+  const rect = previewRenderer.domElement.getBoundingClientRect();
+  mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(mouse, previewCamera);
+  const meshes = [];
+  if (previewModel) previewModel.traverse(c => { if (c.isMesh) meshes.push(c); });
+  const hits = raycaster.intersectObjects(meshes, false);
+  if (hits.length === 0) return;
+  const pt = hits[0].point.clone();
+  const marker = new THREE.Mesh(
+    new THREE.SphereGeometry(0.03, 16, 16),
+    new THREE.MeshBasicMaterial({ color: 0x22c55e })
+  );
+  marker.position.copy(pt);
+  previewScene.add(marker);
+  measureMarkers.push(marker);
+  measurePoints.push(pt);
+  if (measurePoints.length === 2) {
+    const geo = new THREE.BufferGeometry().setFromPoints(measurePoints);
+    measureLine = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0x22c55e, linewidth: 2 }));
+    previewScene.add(measureLine);
+    const dist = measurePoints[0].distanceTo(measurePoints[1]);
+    const info = document.getElementById('measure-val');
+    info.textContent = `Distance: ${dist.toFixed(4)} in`;
+  }
+  if (measurePoints.length >= 2) {
+    setTimeout(() => {
+      clearMeasure();
+      document.getElementById('measure-val').textContent += ' — Click again to measure';
+    }, 3000);
+  }
+}
+// ── Model loader ───────────────────────────────────────────────────────────
+function loadModelIntoScene(ext, arrayBuffer, scene, onLoaded) {
+  try {
+    if (ext === 'glb' || ext === 'gltf') parseGLB(arrayBuffer, scene, onLoaded);
+    else if (ext === 'stl') parseSTL(arrayBuffer, scene, onLoaded);
+    else if (ext === 'obj') parseOBJ(new TextDecoder().decode(arrayBuffer), scene, onLoaded);
+    else if (ext === 'step' || ext === 'stp') parseSTEP(new TextDecoder().decode(arrayBuffer), scene, onLoaded);
+  } catch(e) {
+    console.error('Load error:', e);
+    alert('Error loading model: ' + e.message);
+  }
+}
+// ── GLB parser ─────────────────────────────────────────────────────────────
+function parseGLB(buffer, scene, onLoaded) {
+  try {
+    const dv = new DataView(buffer);
+    const magic = dv.getUint32(0, true);
+    if (magic !== 0x46546C67 && magic !== 0x46546c67) { onLoaded(null, 'Not a valid GLB'); return; }
+    const jLen = dv.getUint32(12, true);
+    const json = JSON.parse(new TextDecoder().decode(new Uint8Array(buffer, 20, jLen)));
+    const bo = 12 + 8 + jLen;
+    let bin = null;
+    if (bo + 8 <= buffer.byteLength) { const bl = dv.getUint32(bo, true); bin = buffer.slice(bo + 8, bo + 8 + bl); }
+    const CT = { 5120:Int8Array, 5121:Uint8Array, 5122:Int16Array, 5123:Uint16Array, 5125:Uint32Array, 5126:Float32Array };
+    const CC = { SCALAR:1, VEC2:2, VEC3:3, VEC4:4, MAT4:16 };
+    const getAcc = idx => {
+      const a = json.accessors[idx], n = CC[a.type]||1, T = CT[a.componentType], bpe = T.BYTES_PER_ELEMENT;
+      if (a.bufferView === undefined) return new T(a.count * n);
+      const bv = json.bufferViews[a.bufferView], bvo = bv.byteOffset||0, abo = a.byteOffset||0, stride = bv.byteStride||0, es = n*bpe;
+      if (!stride || stride === es) return new T(bin, bvo+abo, a.count*n);
+      const out = new T(a.count*n), sdv = new DataView(bin);
+      const isF=T===Float32Array, isU32=T===Uint32Array, isU16=T===Uint16Array;
+      for (let i=0; i<a.count; i++) { const src = bvo+abo+i*stride; for (let c=0; c<n; c++) { const bp = src+c*bpe; out[i*n+c] = isF?sdv.getFloat32(bp,true):isU32?sdv.getUint32(bp,true):isU16?sdv.getUint16(bp,true):sdv.getUint8(bp); } }
+      return out;
+    };
+    const defMat = new THREE.MeshStandardMaterial({ color:0xcccccc, roughness:0.5, metalness:0.2, side:THREE.DoubleSide });
+    const meshObjects = (json.meshes||[]).map(mesh => {
+      const grp = new THREE.Group();
+      (mesh.primitives||[]).forEach(prim => {
+        const geo = new THREE.BufferGeometry(), at = prim.attributes||{};
+        if (at.POSITION!==undefined) geo.setAttribute('position', new THREE.BufferAttribute(getAcc(at.POSITION),3));
+        if (at.NORMAL!==undefined) geo.setAttribute('normal', new THREE.BufferAttribute(getAcc(at.NORMAL),3));
+        if (at.TEXCOORD_0!==undefined) geo.setAttribute('uv', new THREE.BufferAttribute(getAcc(at.TEXCOORD_0),2));
+        if (prim.indices!==undefined) geo.setIndex(new THREE.BufferAttribute(getAcc(prim.indices),1));
+        if (!at.NORMAL) geo.computeVertexNormals();
+        let mat = defMat;
+        if (prim.material!==undefined && json.materials?.[prim.material]) {
+          const gm = json.materials[prim.material], pbr = gm.pbrMetallicRoughness||{}, col = pbr.baseColorFactor||[0.8,0.8,0.8,1];
+          mat = new THREE.MeshStandardMaterial({ color:new THREE.Color(col[0],col[1],col[2]), roughness:pbr.roughnessFactor??0.5, metalness:pbr.metallicFactor??0.1, side:THREE.DoubleSide });
+        }
+        grp.add(new THREE.Mesh(geo, mat));
+      });
+      return grp;
+    });
+    const buildNode = ni => {
+      const node = json.nodes[ni], obj = new THREE.Object3D();
+      obj.name = node.name || '';
+      if (node.matrix) { obj.matrix.set(...node.matrix); obj.matrix.transpose(); obj.matrix.decompose(obj.position, obj.quaternion, obj.scale); }
+      else { if (node.translation) obj.position.set(...node.translation); if (node.rotation) obj.quaternion.set(node.rotation[0],node.rotation[1],node.rotation[2],node.rotation[3]); if (node.scale) obj.scale.set(...node.scale); }
+      if (node.mesh !== undefined && meshObjects[node.mesh]) obj.add(meshObjects[node.mesh]);
+      (node.children||[]).forEach(ci => obj.add(buildNode(ci)));
+      return obj;
+    };
+    const root = new THREE.Group();
+    const sd = json.scenes?.[json.scene??0];
+    (sd?.nodes||[]).forEach(ni => root.add(buildNode(ni)));
+    scene.add(root); onLoaded(root);
+  } catch(e) { console.error('GLB parse error:', e); onLoaded(null, e.message); }
+}
+// ── STL parser ─────────────────────────────────────────────────────────────
+function parseSTL(buffer, scene, onLoaded) {
+  const geo = new THREE.BufferGeometry();
+  const view = new DataView(buffer);
+  const numTris = view.getUint32(80, true);
+  const isBinary = buffer.byteLength === 84 + numTris * 50 && numTris > 0;
+  let positions = [], normals = [];
+  if (isBinary) {
+    for (let i = 0; i < numTris; i++) {
+      const off = 84 + i * 50;
+      const nx = view.getFloat32(off, true), ny = view.getFloat32(off+4, true), nz = view.getFloat32(off+8, true);
+      for (let v = 0; v < 3; v++) {
+        const vo = off + 12 + v * 12;
+        positions.push(view.getFloat32(vo,true), view.getFloat32(vo+4,true), view.getFloat32(vo+8,true));
+        normals.push(nx, ny, nz);
+      }
+    }
+  } else {
+    let nx=0,ny=0,nz=0;
+    for (const line of new TextDecoder().decode(buffer).split('\n')) {
+      const t = line.trim();
+      if (t.startsWith('facet normal')) { const p = t.split(/\s+/); nx=+p[2]; ny=+p[3]; nz=+p[4]; }
+      else if (t.startsWith('vertex')) { const p = t.split(/\s+/); positions.push(+p[1],+p[2],+p[3]); normals.push(nx,ny,nz); }
+    }
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
+  geo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(normals), 3));
+  if (normals.every(n => n === 0)) geo.computeVertexNormals();
+  const mat = new THREE.MeshStandardMaterial({ color: 0x2a2d35, roughness: 0.28, metalness: 0.75, side: THREE.DoubleSide });
+  const mesh = new THREE.Mesh(geo, mat);
+  scene.add(mesh); onLoaded(mesh);
+}
+// ── OBJ parser ─────────────────────────────────────────────────────────────
+function parseOBJ(text, scene, onLoaded) {
+  const verts = [], uvs = [], norms = [], posArr = [], uvArr = [], normArr = [];
+  for (const raw of text.split('\n')) {
+    const line = raw.trim();
+    if (!line || line[0] === '#') continue;
+    const p = line.split(/\s+/), cmd = p[0];
+    if (cmd === 'v') verts.push(+p[1],+p[2],+p[3]);
+    else if (cmd === 'vt') uvs.push(+p[1],+p[2]);
+    else if (cmd === 'vn') norms.push(+p[1],+p[2],+p[3]);
+    else if (cmd === 'f') {
+      const fv = p.slice(1).map(t => { const i = t.split('/').map(s => parseInt(s)||0); return {v:i[0]-1,t:i[1]-1,n:i[2]-1}; });
+      for (let i = 1; i < fv.length - 1; i++) {
+        for (const f of [fv[0],fv[i],fv[i+1]]) {
+          posArr.push(verts[f.v*3],verts[f.v*3+1],verts[f.v*3+2]);
+          if (f.t >= 0 && uvs.length) uvArr.push(uvs[f.t*2],uvs[f.t*2+1]);
+          if (f.n >= 0 && norms.length) normArr.push(norms[f.n*3],norms[f.n*3+1],norms[f.n*3+2]);
+        }
+      }
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(posArr), 3));
+  if (uvArr.length) geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uvArr), 2));
+  if (normArr.length) geo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(normArr), 3));
+  else geo.computeVertexNormals();
+  const mat = new THREE.MeshStandardMaterial({ color: 0x2a2d35, roughness: 0.28, metalness: 0.75, side: THREE.DoubleSide });
+  const mesh = new THREE.Mesh(geo, mat);
+  scene.add(mesh); onLoaded(mesh);
+}
+// ── STEP parser (basic AP203/AP214 B-Rep tessellation) ─────────────────────
+function parseSTEP(text, scene, onLoaded) {
+  try {
+    const entities = {};
+    const lines = text.split('\n');
+    let currentLine = '';
+    for (const line of lines) {
+      currentLine += line.trim();
+      if (!currentLine.includes(';')) continue;
+      const match = currentLine.match(/^#(\d+)\s*=\s*(.+);/);
+      if (match) {
+        entities[match[1]] = match[2].trim();
+      }
+      currentLine = '';
+    }
+    const points = {};
+    const directions = {};
+    const vertexPoints = {};
+    for (const [id, data] of Object.entries(entities)) {
+      if (data.startsWith('CARTESIAN_POINT')) {
+        const m = data.match(/\(\s*'[^']*'\s*,\s*\(\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*\)/);
+        if (m) points[id] = [+m[1], +m[2], +m[3]];
+      }
+      if (data.startsWith('DIRECTION')) {
+        const m = data.match(/\(\s*'[^']*'\s*,\s*\(\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*\)/);
+        if (m) directions[id] = [+m[1], +m[2], +m[3]];
+      }
+      if (data.startsWith('VERTEX_POINT')) {
+        const m = data.match(/#(\d+)/);
+        if (m) vertexPoints[id] = m[1];
+      }
+    }
+    const allPositions = [];
+    const allNormals = [];
+    const shells = [];
+    const faces = [];
+    for (const [id, data] of Object.entries(entities)) {
+      if (data.startsWith('CLOSED_SHELL') || data.startsWith('OPEN_SHELL')) {
+        const refs = data.match(/#\d+/g);
+        if (refs) shells.push(...refs.map(r => r.slice(1)));
+      }
+    }
+    for (const [id, data] of Object.entries(entities)) {
+      if (data.startsWith('ADVANCED_FACE')) {
+        faces.push({ id, data });
+      }
+    }
+    let edgePoints = [];
+    for (const [id, data] of Object.entries(entities)) {
+      if (data.startsWith('EDGE_CURVE')) {
+        const refs = data.match(/#(\d+)/g);
+        if (refs && refs.length >= 3) {
+          const vp1 = refs[1].slice(1);
+          const vp2 = refs[2].slice(1);
+          const pid1 = vertexPoints[vp1];
+          const pid2 = vertexPoints[vp2];
+          if (pid1 && pid2 && points[pid1] && points[pid2]) {
+            edgePoints.push(points[pid1], points[pid2]);
+          }
+        }
+      }
+    }
+    let hasTriangulated = false;
+    for (const [id, data] of Object.entries(entities)) {
+      if (data.startsWith('TRIANGULATED_FACE') || data.includes('TESSELLATED')) {
+        hasTriangulated = true;
+      }
+    }
+    if (edgePoints.length > 0) {
+      const group = new THREE.Group();
+      const lineGeo = new THREE.BufferGeometry();
+      const linePositions = [];
+      for (let i = 0; i < edgePoints.length; i += 2) {
+        linePositions.push(...edgePoints[i], ...edgePoints[i+1]);
+      }
+      lineGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(linePositions), 3));
+      const lineMat = new THREE.LineBasicMaterial({ color: 0x88aacc, linewidth: 1 });
+      group.add(new THREE.LineSegments(lineGeo, lineMat));
+      const uniqueVerts = [];
+      const vertMap = new Map();
+      function addVert(p) {
+        const key = p.map(v => v.toFixed(6)).join(',');
+        if (!vertMap.has(key)) {
+          vertMap.set(key, uniqueVerts.length);
+          uniqueVerts.push(p);
+        }
+        return vertMap.get(key);
+      }
+      for (const [id, data] of Object.entries(entities)) {
+        if (data.startsWith('EDGE_LOOP')) {
+          const refs = data.match(/#(\d+)/g);
+          if (!refs) continue;
+          const loopVerts = [];
+          for (const ref of refs) {
+            const oeId = ref.slice(1);
+            const oeData = entities[oeId];
+            if (!oeData || !oeData.startsWith('ORIENTED_EDGE')) continue;
+            const oeRefs = oeData.match(/#(\d+)/g);
+            if (!oeRefs) continue;
+            for (const oeRef of oeRefs) {
+              const ecId = oeRef.slice(1);
+              const ecData = entities[ecId];
+              if (!ecData || !ecData.startsWith('EDGE_CURVE')) continue;
+              const ecRefs = ecData.match(/#(\d+)/g);
+              if (!ecRefs || ecRefs.length < 3) continue;
+              const vpId = ecRefs[1].slice(1);
+              const ptId = vertexPoints[vpId];
+              if (ptId && points[ptId]) {
+                const vi = addVert(points[ptId]);
+                if (loopVerts.length === 0 || loopVerts[loopVerts.length-1] !== vi) {
+                  loopVerts.push(vi);
+                }
+              }
+            }
+          }
+          if (loopVerts.length >= 3) {
+            for (let i = 1; i < loopVerts.length - 1; i++) {
+              const a = uniqueVerts[loopVerts[0]];
+              const b = uniqueVerts[loopVerts[i]];
+              const c = uniqueVerts[loopVerts[i+1]];
+              allPositions.push(...a, ...b, ...c);
+              const ab = [b[0]-a[0],b[1]-a[1],b[2]-a[2]];
+              const ac = [c[0]-a[0],c[1]-a[1],c[2]-a[2]];
+              const nx = ab[1]*ac[2]-ab[2]*ac[1];
+              const ny = ab[2]*ac[0]-ab[0]*ac[2];
+              const nz = ab[0]*ac[1]-ab[1]*ac[0];
+              const len = Math.sqrt(nx*nx+ny*ny+nz*nz)||1;
+              allNormals.push(nx/len,ny/len,nz/len, nx/len,ny/len,nz/len, nx/len,ny/len,nz/len);
+            }
+          }
+        }
+      }
+      if (allPositions.length > 0) {
+        const meshGeo = new THREE.BufferGeometry();
+        meshGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(allPositions), 3));
+        meshGeo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(allNormals), 3));
+        const meshMat = new THREE.MeshStandardMaterial({
+          color: 0x88aacc,
+          roughness: 0.4,
+          metalness: 0.3,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.85
+        });
+        group.add(new THREE.Mesh(meshGeo, meshMat));
+      }
+      const dotGeo = new THREE.BufferGeometry();
+      const dotPositions = [];
+      uniqueVerts.forEach(v => dotPositions.push(...v));
+      dotGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(dotPositions), 3));
+      const dotMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.02, sizeAttenuation: true });
+      group.add(new THREE.Points(dotGeo, dotMat));
+      scene.add(group);
+      onLoaded(group);
+    } else if (Object.keys(points).length > 0) {
+      const pts = Object.values(points);
+      const geo = new THREE.BufferGeometry();
+      const pos = new Float32Array(pts.flat());
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      const mat = new THREE.PointsMaterial({ color: 0x88aacc, size: 0.03, sizeAttenuation: true });
+      const pc = new THREE.Points(geo, mat);
+      scene.add(pc);
+      onLoaded(pc);
+    } else {
+      alert('Could not parse geometry from STEP file. Try exporting as STL or GLB instead.');
+      onLoaded(null);
+    }
+  } catch(e) {
+    console.error('STEP parse error:', e);
+    alert('STEP parsing error: ' + e.message + '. Try exporting as STL or GLB instead.');
+    onLoaded(null);
+  }
+}
+// ── Generate viewer ────────────────────────────────────────────────────────
+async function generateViewer() {
+  if (!uploadedFile) { alert('Please upload a 3D file first.'); return; }
+  const company = document.getElementById('company').value || 'Your Company';
+  const rep = document.getElementById('rep').value || '';
+  const email = document.getElementById('email').value || '';
+  const phone = document.getElementById('phone').value || '';
+  const partname = document.getElementById('partname').value || uploadedFile.name;
+  const quotenum = document.getElementById('quotenum').value || '';
+  const notes = document.getElementById('notes').value || '';
+  const color = selectedColor;
+  setProgress(true, 'Reading file…', 10);
+  document.getElementById('btn-generate').disabled = true;
+  await sleep(100);
+  const arrayBuffer = await readFileAsArrayBuffer(uploadedFile);
+  setProgress(true, 'Encoding model…', 35);
+  await sleep(100);
+  const b64 = arrayBufferToBase64(arrayBuffer);
+  setProgress(true, 'Building viewer…', 65);
+  await sleep(100);
+  const ext = uploadedFile.name.split('.').pop().toLowerCase();
+  const html = buildViewerHTML({ b64, ext, company, rep, email, phone, partname, quotenum, notes, color, filename: uploadedFile.name });
+  setProgress(true, 'Finalizing…', 95);
+  await sleep(300);
+  setProgress(false);
+  window._generatedHTML = html;
+  window._generatedFilename = (partname || 'model').replace(/[^a-z0-9]/gi,'_') + '_3D_viewer.html';
+  document.getElementById('success-banner').classList.add('show');
+  document.getElementById('btn-generate').disabled = false;
+  document.getElementById('btn-download').onclick = downloadHTML;
+}
+function downloadHTML() {
+  const blob = new Blob([window._generatedHTML], { type: 'text/html' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = window._generatedFilename;
+  a.click();
+}
+function readFileAsArrayBuffer(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result);
+    r.onerror = rej;
+    r.readAsArrayBuffer(file);
+  });
+}
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 8192;
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+function setProgress(show, msg='', pct=0) {
+  const wrap = document.getElementById('progress-wrap');
+  wrap.classList.toggle('show', show);
+  document.getElementById('progress-msg').textContent = msg;
+  document.getElementById('progress-pct').textContent = pct + '%';
+  document.getElementById('progress-fill').style.width = pct + '%';
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+// ── Build parser functions for output HTML ────────────────────────────────
+function buildParserFunctions() {
+  return `
+function parseGLB(buffer,scene,onLoaded){
+  try{
+    const dv=new DataView(buffer);const magic=dv.getUint32(0,true);
+    if(magic!==0x46546C67&&magic!==0x46546c67){onLoaded(null,'Not a valid GLB');return;}
+    const jLen=dv.getUint32(12,true);const json=JSON.parse(new TextDecoder().decode(new Uint8Array(buffer,20,jLen)));
+    const bo=12+8+jLen;let bin=null;
+    if(bo+8<=buffer.byteLength){const bl=dv.getUint32(bo,true);bin=buffer.slice(bo+8,bo+8+bl);}
+    const CT={5120:Int8Array,5121:Uint8Array,5122:Int16Array,5123:Uint16Array,5125:Uint32Array,5126:Float32Array};
+    const CC={SCALAR:1,VEC2:2,VEC3:3,VEC4:4,MAT4:16};
+    const getAcc=idx=>{const a=json.accessors[idx],n=CC[a.type]||1,T=CT[a.componentType],bpe=T.BYTES_PER_ELEMENT;if(a.bufferView===undefined)return new T(a.count*n);const bv=json.bufferViews[a.bufferView],bvo=bv.byteOffset||0,abo=a.byteOffset||0,stride=bv.byteStride||0,es=n*bpe;if(!stride||stride===es)return new T(bin,bvo+abo,a.count*n);const out=new T(a.count*n),sdv=new DataView(bin);const isF=T===Float32Array,isU32=T===Uint32Array,isU16=T===Uint16Array;for(let i=0;i<a.count;i++){const src=bvo+abo+i*stride;for(let c=0;c<n;c++){const bp=src+c*bpe;out[i*n+c]=isF?sdv.getFloat32(bp,true):isU32?sdv.getUint32(bp,true):isU16?sdv.getUint16(bp,true):sdv.getUint8(bp);}}return out;};
+    const defMat=new THREE.MeshStandardMaterial({color:0xcccccc,roughness:0.5,metalness:0.2,side:THREE.DoubleSide});
+    const meshObjects=(json.meshes||[]).map(mesh=>{const grp=new THREE.Group();(mesh.primitives||[]).forEach(prim=>{const geo=new THREE.BufferGeometry(),at=prim.attributes||{};if(at.POSITION!==undefined)geo.setAttribute('position',new THREE.BufferAttribute(getAcc(at.POSITION),3));if(at.NORMAL!==undefined)geo.setAttribute('normal',new THREE.BufferAttribute(getAcc(at.NORMAL),3));if(at.TEXCOORD_0!==undefined)geo.setAttribute('uv',new THREE.BufferAttribute(getAcc(at.TEXCOORD_0),2));if(prim.indices!==undefined)geo.setIndex(new THREE.BufferAttribute(getAcc(prim.indices),1));if(!at.NORMAL)geo.computeVertexNormals();let mat=defMat;if(prim.material!==undefined&&json.materials?.[prim.material]){const gm=json.materials[prim.material],pbr=gm.pbrMetallicRoughness||{},col=pbr.baseColorFactor||[0.8,0.8,0.8,1];mat=new THREE.MeshStandardMaterial({color:new THREE.Color(col[0],col[1],col[2]),roughness:pbr.roughnessFactor??0.5,metalness:pbr.metallicFactor??0.1,side:THREE.DoubleSide});}grp.add(new THREE.Mesh(geo,mat));});return grp;});
+    const buildNode=ni=>{const node=json.nodes[ni],obj=new THREE.Object3D();obj.name=node.name||'';if(node.matrix){obj.matrix.set(...node.matrix);obj.matrix.transpose();obj.matrix.decompose(obj.position,obj.quaternion,obj.scale);}else{if(node.translation)obj.position.set(...node.translation);if(node.rotation)obj.quaternion.set(node.rotation[0],node.rotation[1],node.rotation[2],node.rotation[3]);if(node.scale)obj.scale.set(...node.scale);}if(node.mesh!==undefined&&meshObjects[node.mesh])obj.add(meshObjects[node.mesh]);(node.children||[]).forEach(ci=>obj.add(buildNode(ci)));return obj;};
+    const root=new THREE.Group();const sd=json.scenes?.[json.scene??0];(sd?.nodes||[]).forEach(ni=>root.add(buildNode(ni)));scene.add(root);onLoaded(root);
+  }catch(e){console.error('GLB parse error:',e);onLoaded(null,e.message);}
+}
+function parseSTL(buffer,scene,onLoaded){
+  try{const v=new DataView(buffer);const pos=[],nor=[];const nt=v.getUint32(80,true);const isBin=buffer.byteLength===84+nt*50&&nt>0;
+  if(isBin){for(let i=0;i<nt;i++){const o=84+i*50;const nx=v.getFloat32(o,true),ny=v.getFloat32(o+4,true),nz=v.getFloat32(o+8,true);for(let j=0;j<3;j++){const vo=o+12+j*12;pos.push(v.getFloat32(vo,true),v.getFloat32(vo+4,true),v.getFloat32(vo+8,true));nor.push(nx,ny,nz);}}}
+  else{let nx=0,ny=0,nz=0;for(const l of new TextDecoder().decode(buffer).split('\\n')){const t=l.trim();if(t.startsWith('facet normal')){const p=t.split(/\\s+/);nx=+p[2];ny=+p[3];nz=+p[4];}else if(t.startsWith('vertex')){const p=t.split(/\\s+/);pos.push(+p[1],+p[2],+p[3]);nor.push(nx,ny,nz);}}}
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(pos),3));geo.setAttribute('normal',new THREE.BufferAttribute(new Float32Array(nor),3));if(nor.every(n=>n===0))geo.computeVertexNormals();
+  const mesh=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:0x2a2d35,roughness:0.28,metalness:0.75,side:THREE.DoubleSide}));scene.add(mesh);onLoaded(mesh);
+  }catch(e){onLoaded(null,e.message);}
+}
+function parseOBJ(text,scene,onLoaded){
+  try{const verts=[],uvs=[],norms=[],posA=[],uvA=[],norA=[];
+  for(const raw of text.split('\\n')){const l=raw.trim();if(!l||l[0]==='#')continue;const p=l.split(/\\s+/),cmd=p[0];
+    if(cmd==='v')verts.push(+p[1],+p[2],+p[3]);else if(cmd==='vt')uvs.push(+p[1],+p[2]);else if(cmd==='vn')norms.push(+p[1],+p[2],+p[3]);
+    else if(cmd==='f'){const fv=p.slice(1).map(t=>{const i=t.split('/').map(s=>parseInt(s)||0);return{v:i[0]-1,t:i[1]-1,n:i[2]-1};});for(let i=1;i<fv.length-1;i++){for(const f of[fv[0],fv[i],fv[i+1]]){posA.push(verts[f.v*3],verts[f.v*3+1],verts[f.v*3+2]);if(f.t>=0&&uvs.length)uvA.push(uvs[f.t*2],uvs[f.t*2+1]);if(f.n>=0&&norms.length)norA.push(norms[f.n*3],norms[f.n*3+1],norms[f.n*3+2]);}}}}
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(posA),3));
+  if(uvA.length)geo.setAttribute('uv',new THREE.BufferAttribute(new Float32Array(uvA),2));
+  if(norA.length)geo.setAttribute('normal',new THREE.BufferAttribute(new Float32Array(norA),3));else geo.computeVertexNormals();
+  const mesh=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:0x2a2d35,roughness:0.28,metalness:0.75,side:THREE.DoubleSide}));scene.add(mesh);onLoaded(mesh);
+  }catch(e){onLoaded(null,e.message);}
+}
+function parseSTEP(text,scene,onLoaded){
+  try{
+    const entities={};const lines=text.split('\\n');let cl='';
+    for(const line of lines){cl+=line.trim();if(!cl.includes(';'))continue;const m=cl.match(/^#(\\d+)\\s*=\\s*(.+);/);if(m)entities[m[1]]=m[2].trim();cl='';}
+    const points={},vertexPoints={};
+    for(const[id,data]of Object.entries(entities)){
+      if(data.startsWith('CARTESIAN_POINT')){const m=data.match(/\\(\\s*'[^']*'\\s*,\\s*\\(\\s*([-\\d.eE+]+)\\s*,\\s*([-\\d.eE+]+)\\s*,\\s*([-\\d.eE+]+)\\s*\\)/);if(m)points[id]=[+m[1],+m[2],+m[3]];}
+      if(data.startsWith('VERTEX_POINT')){const m=data.match(/#(\\d+)/);if(m)vertexPoints[id]=m[1];}
+    }
+    const allPos=[],allNor=[];let edgePoints=[];
+    for(const[id,data]of Object.entries(entities)){
+      if(data.startsWith('EDGE_CURVE')){const refs=data.match(/#(\\d+)/g);if(refs&&refs.length>=3){const vp1=refs[1].slice(1),vp2=refs[2].slice(1),pid1=vertexPoints[vp1],pid2=vertexPoints[vp2];if(pid1&&pid2&&points[pid1]&&points[pid2])edgePoints.push(points[pid1],points[pid2]);}}
+    }
+    const uniqueVerts=[];const vertMap=new Map();
+    function addV(p){const k=p.map(v=>v.toFixed(6)).join(',');if(!vertMap.has(k)){vertMap.set(k,uniqueVerts.length);uniqueVerts.push(p);}return vertMap.get(k);}
+    for(const[id,data]of Object.entries(entities)){
+      if(data.startsWith('EDGE_LOOP')){const refs=data.match(/#(\\d+)/g);if(!refs)continue;const lv=[];
+        for(const ref of refs){const oeId=ref.slice(1),oeData=entities[oeId];if(!oeData||!oeData.startsWith('ORIENTED_EDGE'))continue;const oeRefs=oeData.match(/#(\\d+)/g);if(!oeRefs)continue;
+          for(const oeRef of oeRefs){const ecId=oeRef.slice(1),ecData=entities[ecId];if(!ecData||!ecData.startsWith('EDGE_CURVE'))continue;const ecRefs=ecData.match(/#(\\d+)/g);if(!ecRefs||ecRefs.length<3)continue;const vpId=ecRefs[1].slice(1),ptId=vertexPoints[vpId];if(ptId&&points[ptId]){const vi=addV(points[ptId]);if(!lv.length||lv[lv.length-1]!==vi)lv.push(vi);}}}
+        if(lv.length>=3){for(let i=1;i<lv.length-1;i++){const a=uniqueVerts[lv[0]],b=uniqueVerts[lv[i]],c=uniqueVerts[lv[i+1]];allPos.push(...a,...b,...c);const ab=[b[0]-a[0],b[1]-a[1],b[2]-a[2]],ac=[c[0]-a[0],c[1]-a[1],c[2]-a[2]];const nx=ab[1]*ac[2]-ab[2]*ac[1],ny=ab[2]*ac[0]-ab[0]*ac[2],nz=ab[0]*ac[1]-ab[1]*ac[0],len=Math.sqrt(nx*nx+ny*ny+nz*nz)||1;allNor.push(nx/len,ny/len,nz/len,nx/len,ny/len,nz/len,nx/len,ny/len,nz/len);}}
+      }
+    }
+    const group=new THREE.Group();
+    if(edgePoints.length){const lg=new THREE.BufferGeometry(),lp=[];for(let i=0;i<edgePoints.length;i+=2)lp.push(...edgePoints[i],...edgePoints[i+1]);lg.setAttribute('position',new THREE.BufferAttribute(new Float32Array(lp),3));group.add(new THREE.LineSegments(lg,new THREE.LineBasicMaterial({color:0x88aacc})));}
+    if(allPos.length){const mg=new THREE.BufferGeometry();mg.setAttribute('position',new THREE.BufferAttribute(new Float32Array(allPos),3));mg.setAttribute('normal',new THREE.BufferAttribute(new Float32Array(allNor),3));group.add(new THREE.Mesh(mg,new THREE.MeshStandardMaterial({color:0x88aacc,roughness:0.4,metalness:0.3,side:THREE.DoubleSide,transparent:true,opacity:0.85})));}
+    if(uniqueVerts.length){const dg=new THREE.BufferGeometry(),dp=[];uniqueVerts.forEach(v=>dp.push(...v));dg.setAttribute('position',new THREE.BufferAttribute(new Float32Array(dp),3));group.add(new THREE.Points(dg,new THREE.PointsMaterial({color:0xffffff,size:0.02,sizeAttenuation:true})));}
+    if(edgePoints.length||allPos.length){scene.add(group);onLoaded(group);}
+    else if(Object.keys(points).length){const pts=Object.values(points);const pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.BufferAttribute(new Float32Array(pts.flat()),3));const pc=new THREE.Points(pg,new THREE.PointsMaterial({color:0x88aacc,size:0.03,sizeAttenuation:true}));scene.add(pc);onLoaded(pc);}
+    else{onLoaded(null,'No geometry found in STEP file');}
+  }catch(e){console.error('STEP parse error:',e);onLoaded(null,e.message);}
+}`;
+}
+// ── Build the output HTML (with measurement tool included) ────────────────
+function buildViewerHTML({ b64, ext, company, rep, email, phone, partname, quotenum, notes, color, filename }) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>${escHtml(partname)} — 3D Viewer · ${escHtml(company)}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--accent:${color};--bg:#f5f5f5;--panel:#ffffff;--border:rgba(0,0,0,0.08);--text:#1a1a1a;--muted:#6b7280;--font:'Outfit',sans-serif;--mono:'IBM Plex Mono',monospace;}
+body{background:var(--bg);color:var(--text);font-family:var(--font);height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+header{background:var(--panel);border-bottom:1px solid var(--border);padding:0 1.5rem;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.logo{font-weight:600;font-size:0.92rem;display:flex;align-items:center;gap:8px;letter-spacing:-0.02em;color:var(--text);}
+.logo-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.7)}}
+.layout{flex:1;display:grid;grid-template-columns:1fr 280px;min-height:0;}
+.canvas-wrap{position:relative;overflow:hidden;background:#eaebee;}
+#canvas-container{width:100%;height:100%;}
+.grid-bg{position:absolute;inset:0;background-image:linear-gradient(rgba(0,0,0,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.04) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;}
+.glow{position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 40% 40%,color-mix(in srgb,var(--accent) 5%,transparent) 0%,transparent 70%);pointer-events:none;}
+.loader{position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:20;transition:opacity 0.5s;}
+.loader.gone{opacity:0;pointer-events:none;}
+.spinner{width:36px;height:36px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loader-msg{font-family:var(--mono);font-size:0.7rem;color:var(--muted);letter-spacing:0.08em;}
+.sidebar{border-left:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;background:var(--panel);}.sb-section{padding:1.1rem 1.3rem;border-bottom:1px solid var(--border);}
+.sb-label{font-family:var(--mono);font-size:0.6rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:0.7rem;}
+.part-name{font-size:1rem;font-weight:600;letter-spacing:-0.01em;line-height:1.3;margin-bottom:0.3rem;}
+.quote-num{font-family:var(--mono);font-size:0.68rem;color:var(--accent);}
+.notes-text{font-size:0.8rem;color:var(--muted);line-height:1.6;}
+.contact-row{display:flex;align-items:center;gap:8px;padding:0.3rem 0;font-size:0.8rem;}
+.contact-icon{width:26px;height:26px;border-radius:6px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.contact-icon svg{width:12px;height:12px;stroke:var(--muted);fill:none;stroke-width:1.8;}
+.contact-val{color:var(--text);}
+.contact-val a{color:var(--accent);text-decoration:none;}
+.controls-section{padding:1.1rem 1.3rem;border-bottom:1px solid var(--border);}
+.ctrl-row{margin-bottom:0.8rem;}
+.ctrl-label{display:flex;justify-content:space-between;font-size:0.72rem;color:var(--muted);margin-bottom:4px;}
+.ctrl-label span{font-family:var(--mono);color:var(--accent);}
+input[type=range]{-webkit-appearance:none;width:100%;height:2px;background:var(--border);border-radius:999px;outline:none;cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;background:var(--accent);border-radius:50%;box-shadow:0 0 6px var(--accent);}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.tbtn{background:rgba(0,0,0,0.03);border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:0.62rem;padding:6px;border-radius:6px;cursor:pointer;transition:all 0.15s;letter-spacing:0.04em;}
+.tbtn:hover,.tbtn.on{border-color:var(--accent);color:var(--accent);background:rgba(0,0,0,0.05);}
+.tbtn.measure-on{border-color:#22c55e;color:#22c55e;background:rgba(34,197,94,0.1);}
+.measure-info-output{position:absolute;top:10px;left:10px;font-family:var(--mono);font-size:0.65rem;color:#1a1a1a;background:rgba(255,255,255,0.85);backdrop-filter:blur(8px);padding:7px 11px;border-radius:7px;border:1px solid rgba(0,0,0,0.1);display:none;z-index:10;line-height:1.6;}
+.measure-info-output.show{display:block;}
+.measure-val{color:#22c55e;font-weight:500;}
+.hints{margin-top:auto;padding:0.8rem 1.3rem;display:flex;flex-direction:column;gap:4px;}
+.hint{font-family:var(--mono);font-size:0.58rem;color:var(--muted);display:flex;gap:6px;align-items:center;}
+kbd{background:rgba(0,0,0,0.05);border:1px solid var(--border);padding:1px 5px;border-radius:3px;color:var(--muted);}
+.cta-btn{display:block;margin:1rem 1.3rem 0;padding:10px;background:var(--accent);color:white;border:none;border-radius:8px;font-family:var(--font);font-size:0.82rem;font-weight:600;cursor:pointer;text-align:center;text-decoration:none;transition:opacity 0.15s;letter-spacing:-0.01em;}
+.cta-btn:hover{opacity:0.85;}
+.rot-controls{padding:1rem 1.3rem;border-bottom:1px solid var(--border);}
+.rot-axes{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+.rot-axis{display:flex;flex-direction:column;align-items:center;gap:3px;}
+.rot-axis-label{font-family:var(--mono);font-size:0.55rem;letter-spacing:0.08em;padding:2px 6px;border-radius:4px;}
+.rot-axis-x .rot-axis-label{color:#e74c3c;background:rgba(231,76,60,0.08);}
+.rot-axis-y .rot-axis-label{color:#2ecc71;background:rgba(46,204,113,0.08);}
+.rot-axis-z .rot-axis-label{color:#3498db;background:rgba(52,152,219,0.08);}
+.arw{width:32px;height:32px;border-radius:7px;border:1px solid var(--border);background:rgba(0,0,0,0.02);color:var(--muted);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;user-select:none;-webkit-user-select:none;padding:0;line-height:1;}
+.arw:hover,.arw:active{background:rgba(0,0,0,0.06);}
+.arw:active{transform:scale(0.9);}
+.rot-axis-x .arw:hover{border-color:#e74c3c;color:#e74c3c;}
+.rot-axis-y .arw:hover{border-color:#2ecc71;color:#2ecc71;}
+.rot-axis-z .arw:hover{border-color:#3498db;color:#3498db;}
+.arw-row{display:flex;gap:4px;}
+@media(max-width:640px){.layout{grid-template-columns:1fr;}.sidebar{max-height:280px;overflow-y:auto;border-left:none;border-top:1px solid var(--border);}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><div class="logo-dot"></div>${escHtml(company)}</div>
+  <div style="font-family:var(--mono);font-size:0.65rem;color:var(--muted);">INTERACTIVE 3D QUOTE</div>
+</header>
+<div class="layout">
+  <div class="canvas-wrap">
+    <div class="grid-bg"></div>
+    <div class="glow"></div>
+    <div class="loader" id="loader"><div class="spinner"></div><div class="loader-msg" id="lmsg">LOADING MODEL…</div></div>
+    <div id="canvas-container"></div>
+  </div>
+  <div class="sidebar">
+    <div class="sb-section">
+      <div class="sb-label">Part Details</div>
+      <div class="part-name">${escHtml(partname)}</div>
+      ${quotenum ? `<div class="quote-num">Quote: ${escHtml(quotenum)}</div>` : ''}
+    </div>
+    ${notes ? `<div class="sb-section"><div class="sb-label">Notes</div><div class="notes-text">${escHtml(notes).replace(/\n/g,'<br>')}</div></div>` : ''}
+    <div class="sb-section">
+      <div class="sb-label">Contact</div>
+      ${rep ? `<div class="contact-row"><div class="contact-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div><div class="contact-val">${escHtml(rep)}</div></div>` : ''}
+      ${email ? `<div class="contact-row"><div class="contact-icon"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 7l10 7 10-7"/></svg></div><div class="contact-val"><a href="mailto:${escHtml(email)}">${escHtml(email)}</a></div></div>` : ''}
+      ${phone ? `<div class="contact-row"><div class="contact-icon"><svg viewBox="0 0 24 24"><path d="M6 2a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V4a2 2 0 00-2-2H6zm6 17a1 1 0 110-2 1 1 0 010 2z"/></svg></div><div class="contact-val">${escHtml(phone)}</div></div>` : ''}
+    </div>
+    <div class="controls-section">
+      <div class="sb-label">Lighting</div>
+      <div class="ctrl-row"><div class="ctrl-label">Ambient <span id="av">0.80</span></div><input type="range" id="sl-amb" min="0" max="2" step="0.05" value="0.8"></div>
+      <div class="ctrl-row"><div class="ctrl-label">Light <span id="dv">1.20</span></div><input type="range" id="sl-dir" min="0" max="3" step="0.1" value="1.2"></div>
+      <div class="sb-label" style="margin-top:0.8rem;">View</div>
+      <div class="btns">
+        <button class="tbtn" id="b-grid">GRID</button>
+        <button class="tbtn" id="b-reset" style="grid-column:1/-1">RESET VIEW</button>
+      </div>
+    </div>
+    <div class="rot-controls">
+      <div class="sb-label">Rotation</div>
+      <div class="rot-axes">
+        <div class="rot-axis rot-axis-x"><div class="rot-axis-label">X</div><button class="arw" id="rx-up">&#9650;</button><button class="arw" id="rx-dn">&#9660;</button></div>
+        <div class="rot-axis rot-axis-y"><div class="rot-axis-label">Y</div><div class="arw-row"><button class="arw" id="ry-l">&#9664;</button><button class="arw" id="ry-r">&#9654;</button></div></div>
+        <div class="rot-axis rot-axis-z"><div class="rot-axis-label">Z</div><div class="arw-row"><button class="arw" id="rz-l">&#8634;</button><button class="arw" id="rz-r">&#8635;</button></div></div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:4px;padding:0.8rem 1.3rem;border-bottom:1px solid var(--border);">
+      <button class="tbtn" id="qv-front" style="font-size:0.55rem;padding:5px 2px;">FRONT</button>
+      <button class="tbtn" id="qv-back" style="font-size:0.55rem;padding:5px 2px;">BACK</button>
+      <button class="tbtn" id="qv-top" style="font-size:0.55rem;padding:5px 2px;">TOP</button>
+      <button class="tbtn" id="qv-side" style="font-size:0.55rem;padding:5px 2px;">SIDE</button>
+      <button class="tbtn" id="qv-iso" style="font-size:0.55rem;padding:5px 2px;">ISO</button>
+    </div>
+    ${email ? `<a class="cta-btn" href="mailto:${escHtml(email)}?subject=Re: Quote ${escHtml(quotenum)}&body=Hi ${escHtml(rep)},%0D%0A%0D%0AI've reviewed the 3D model for ${escHtml(partname)}.">Reply to Quote</a>` : ''}
+    <div class="hints">
+      <div class="hint"><kbd>drag</kbd> Rotate</div>
+      <div class="hint"><kbd>scroll</kbd> Zoom</div>
+      <div class="hint"><kbd>right drag</kbd> Pan</div>
+      <div class="hint"><kbd>arrows</kbd> Step rotate</div>
+      <div class="hint"><kbd>Q / E</kbd> Roll Z</div>
+    </div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>
+<script>
+const B64='${b64}';
+const MODEL_EXT='${ext}';
+function b64ToAB(b){
+  const bin=atob(b);const buf=new ArrayBuffer(bin.length);const v=new Uint8Array(buf);
+  for(let i=0;i<bin.length;i+=8192){const end=Math.min(i+8192,bin.length);for(let j=i;j<end;j++)v[j]=bin.charCodeAt(j);}
+  return buf;
+}
+${buildParserFunctions()}
+const cont=document.getElementById('canvas-container');
+const loaderEl=document.getElementById('loader');
+const ren=new THREE.WebGLRenderer({antialias:true,alpha:true});
+ren.setPixelRatio(Math.min(devicePixelRatio,2));
+ren.setSize(cont.clientWidth,cont.clientHeight);
+ren.outputEncoding=THREE.sRGBEncoding;
+ren.toneMapping=THREE.ACESFilmicToneMapping;
+ren.toneMappingExposure=1.2;
+ren.shadowMap.enabled=true;
+cont.appendChild(ren.domElement);
+const scene=new THREE.Scene();
+const cam=new THREE.PerspectiveCamera(45,cont.clientWidth/cont.clientHeight,0.001,100000);
+const amb=new THREE.AmbientLight(0xffffff,0.5);scene.add(amb);
+const dir=new THREE.DirectionalLight(0xffffff,1.2);dir.position.set(5,10,7);dir.castShadow=true;scene.add(dir);
+const fill=new THREE.DirectionalLight(0xc8d8ff,0.7);fill.position.set(-5,3,-5);scene.add(fill);
+const grid=new THREE.GridHelper(20,30,0xcccccc,0xdddddd);grid.visible=false;scene.add(grid);
+let sph={theta:0.3,phi:0.35,r:5},tgt=new THREE.Vector3(),autoRot=false;
+function upCam(){cam.position.set(tgt.x+sph.r*Math.sin(sph.phi)*Math.sin(sph.theta),tgt.y+sph.r*Math.cos(sph.phi),tgt.z+sph.r*Math.sin(sph.phi)*Math.cos(sph.theta));cam.lookAt(tgt);}
+upCam();
+let drag=false,rDrag=false,pm={x:0,y:0};
+ren.domElement.addEventListener('mousedown',e=>{
+  drag=true;rDrag=e.button===2;pm={x:e.clientX,y:e.clientY};autoRot=false;
+});
+window.addEventListener('mouseup',()=>drag=false);
+window.addEventListener('mousemove',e=>{if(!drag)return;const dx=(e.clientX-pm.x)*0.005,dy=(e.clientY-pm.y)*0.005;pm={x:e.clientX,y:e.clientY};if(rDrag){const r=new THREE.Vector3().crossVectors(cam.getWorldDirection(new THREE.Vector3()),cam.up).normalize();tgt.addScaledVector(r,-dx*sph.r*0.5);tgt.y+=dy*sph.r*0.5;}else{sph.theta-=dx;sph.phi=Math.max(0.05,Math.min(Math.PI-0.05,sph.phi+dy));}upCam();});
+ren.domElement.addEventListener('wheel',e=>{sph.r=Math.max(0.01,sph.r+e.deltaY*0.005);upCam();},{passive:true});
+ren.domElement.addEventListener('contextmenu',e=>e.preventDefault());
+let touches=[];
+ren.domElement.addEventListener('touchstart',e=>{touches=[...e.touches];autoRot=false;});
+ren.domElement.addEventListener('touchmove',e=>{e.preventDefault();if(e.touches.length===1&&touches.length===1){const dx=(e.touches[0].clientX-touches[0].clientX)*0.007,dy=(e.touches[0].clientY-touches[0].clientY)*0.007;sph.theta-=dx;sph.phi=Math.max(0.05,Math.min(Math.PI-0.05,sph.phi+dy));upCam();}else if(e.touches.length===2&&touches.length===2){const d0=Math.hypot(touches[0].clientX-touches[1].clientX,touches[0].clientY-touches[1].clientY),d1=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);sph.r=Math.max(0.01,sph.r*(d0/d1));upCam();}touches=[...e.touches];},{passive:false});
+document.getElementById('sl-amb').addEventListener('input',e=>{amb.intensity=+e.target.value;document.getElementById('av').textContent=(+e.target.value).toFixed(2);});
+document.getElementById('sl-dir').addEventListener('input',e=>{dir.intensity=+e.target.value;document.getElementById('dv').textContent=(+e.target.value).toFixed(2);});
+document.getElementById('b-grid').addEventListener('click',()=>{grid.visible=!grid.visible;document.getElementById('b-grid').classList.toggle('on',grid.visible);});
+document.getElementById('b-reset').addEventListener('click',()=>{sph={theta:0.3,phi:0.35,r:window._initR||5};tgt.set(0,0,0);zRot=0;cam.up.set(0,1,0);upCam();});
+const RS=0.12;let zRot=0;
+function arwBind(id,fn){const el=document.getElementById(id);if(!el)return;let iv;
+const go=()=>{autoRot=false;fn();};
+const start=()=>{go();iv=setInterval(go,60);};const stop=()=>clearInterval(iv);
+el.addEventListener('mousedown',start);el.addEventListener('mouseup',stop);el.addEventListener('mouseleave',stop);
+el.addEventListener('touchstart',e=>{e.preventDefault();start();});el.addEventListener('touchend',stop);}
+arwBind('rx-up',()=>{sph.phi=Math.max(0.05,sph.phi-RS);upCam();});
+arwBind('rx-dn',()=>{sph.phi=Math.min(Math.PI-0.05,sph.phi+RS);upCam();});
+arwBind('ry-l',()=>{sph.theta-=RS;upCam();});
+arwBind('ry-r',()=>{sph.theta+=RS;upCam();});
+arwBind('rz-l',()=>{zRot-=RS;cam.up.set(Math.sin(zRot),Math.cos(zRot),0);upCam();});
+arwBind('rz-r',()=>{zRot+=RS;cam.up.set(Math.sin(zRot),Math.cos(zRot),0);upCam();});
+document.addEventListener('keydown',e=>{const k=e.key;const m={ArrowUp:()=>{sph.phi=Math.max(0.05,sph.phi-RS);},ArrowDown:()=>{sph.phi=Math.min(Math.PI-0.05,sph.phi+RS);},ArrowLeft:()=>{sph.theta-=RS;},ArrowRight:()=>{sph.theta+=RS;},q:()=>{zRot-=RS;cam.up.set(Math.sin(zRot),Math.cos(zRot),0);},Q:()=>{zRot-=RS;cam.up.set(Math.sin(zRot),Math.cos(zRot),0);},e:()=>{zRot+=RS;cam.up.set(Math.sin(zRot),Math.cos(zRot),0);},E:()=>{zRot+=RS;cam.up.set(Math.sin(zRot),Math.cos(zRot),0);}};if(m[k]){e.preventDefault();autoRot=false;m[k]();upCam();}});
+function snapView(t,p){autoRot=false;zRot=0;cam.up.set(0,1,0);sph.theta=t;sph.phi=p;tgt.set(0,0,0);upCam();}
+if(document.getElementById('qv-front'))document.getElementById('qv-front').addEventListener('click',function(){snapView(0,Math.PI/2);});
+if(document.getElementById('qv-back'))document.getElementById('qv-back').addEventListener('click',function(){snapView(Math.PI,Math.PI/2);});
+if(document.getElementById('qv-top'))document.getElementById('qv-top').addEventListener('click',function(){snapView(0,0.05);});
+if(document.getElementById('qv-side'))document.getElementById('qv-side').addEventListener('click',function(){snapView(Math.PI/2,Math.PI/2);});
+if(document.getElementById('qv-iso'))document.getElementById('qv-iso').addEventListener('click',function(){snapView(0.6,1.0);});
+function onModelLoaded(m,err){
+  if(!m){document.getElementById('lmsg').textContent='ERROR: '+(err||'unknown');return;}
+  try{var ps=new THREE.Box3().setFromObject(m).getSize(new THREE.Vector3());var pn=Math.min(ps.x,ps.y,ps.z),px=Math.max(ps.x,ps.y,ps.z);if(ps.y===pn&&ps.y<px*0.15){m.rotation.x=-Math.PI/2;m.updateMatrixWorld(true);}}catch(e){}
+  var box=new THREE.Box3().setFromObject(m);var c=box.getCenter(new THREE.Vector3()),sz=box.getSize(new THREE.Vector3());
+  const mx=Math.max(sz.x,sz.y,sz.z),sc=2/mx;
+  m.scale.setScalar(sc);m.position.sub(c.multiplyScalar(sc));
+  sph.r=mx*sc*2.5;window._initR=sph.r;window._m=m;upCam();
+  loaderEl.classList.add('gone');
+}
+const ab=b64ToAB(B64);
+if(MODEL_EXT==='stl')parseSTL(ab,scene,onModelLoaded);
+else if(MODEL_EXT==='obj')parseOBJ(new TextDecoder().decode(ab),scene,onModelLoaded);
+else if(MODEL_EXT==='step'||MODEL_EXT==='stp')parseSTEP(new TextDecoder().decode(ab),scene,onModelLoaded);
+else parseGLB(ab,scene,onModelLoaded);
+(function animate(){requestAnimationFrame(animate);if(autoRot){sph.theta+=0.004;upCam();}ren.render(scene,cam);})();
+window.addEventListener('resize',()=>{ren.setSize(cont.clientWidth,cont.clientHeight);cam.aspect=cont.clientWidth/cont.clientHeight;cam.updateProjectionMatrix();});
+<\/script>
+</body>
+</html>`;
+}
+</script>
+</body>
+</html>

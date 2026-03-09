@@ -283,9 +283,11 @@
         <p>Live flights near 91935 &bull; Jamul, CA &bull; OpenSky Network</p>
         <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
             <a href="index.html" class="nav-link">Oil Tracker</a>
-            <a href="gold-tracker.html" class="nav-link">Gold Tracker</a>
-            <a href="silver-tracker.html" class="nav-link">Silver Tracker</a>
-            <a href="bitcoin-tracker.html" class="nav-link">Bitcoin Tracker</a>
+            <a href="gold-tracker.html" class="nav-link">Gold/Silver/BTC &rarr;</a>
+            <a href="currency-tracker.html" class="nav-link">MXN/USD Tracker &rarr;</a>
+            <a href="traffic-dashboard.html" class="nav-link">Traffic Dashboard</a>
+            <a href="powerwall-dashboard.html" class="nav-link">Powerwall Dashboard</a>
+            <a href="webcam-dashboard.html" class="nav-link">SD Webcams &rarr;</a>
         </div>
     </div>
 
@@ -326,13 +328,14 @@ let countdownTimer = null;
 function createPlaneIcon(heading, onGround) {
     const color = onGround ? '#8b8fa3' : '#60a5fa';
     const rotation = heading || 0;
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28" style="transform: rotate(${rotation}deg)">
-        <path d="M12 2L8 9H3l2 3.5L3 16h5l4 6 4-6h5l-2-3.5L21 9h-5L12 2z" fill="${color}" stroke="#0f1117" stroke-width="0.8"/>
+    // Airplane silhouette pointing up (nose at top)
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="30" height="30" style="transform: rotate(${rotation}deg); filter: drop-shadow(0 1px 3px rgba(0,0,0,0.6));">
+        <path d="M16 1.5 L14.5 10 L4 16 L4 18 L14.5 15 L14 25 L10 27.5 L10 29 L16 27.5 L22 29 L22 27.5 L18 25 L17.5 15 L28 18 L28 16 L17.5 10 Z" fill="${color}" stroke="#0f1117" stroke-width="0.7" stroke-linejoin="round"/>
     </svg>`;
     return L.divIcon({
         html: svg,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
+        iconSize: [30, 30],
+        iconAnchor: [15, 15],
         className: ''
     });
 }
