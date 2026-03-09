@@ -597,9 +597,9 @@ async function fetchAllPrices() {
             // Yahoo Finance
             fetchYahooFinance('CL=F'),
             fetchYahooFinance('BZ=F'),
-            // Twelve Data (XTI/USD for WTI, XBR/USD for Brent)
-            fetchTwelveData('XTI/USD'),
-            fetchTwelveData('XBR/USD')
+            // Twelve Data (CL for WTI crude futures)
+            fetchTwelveData('CL'),
+            fetchTwelveData('CL')
         ]);
 
         const val = r => r.status === 'fulfilled' ? r.value : [];

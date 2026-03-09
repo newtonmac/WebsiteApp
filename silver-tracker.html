@@ -375,19 +375,17 @@
                 </div>`;
 
             try {
-                const [yahooResult, tdResult] = await Promise.allSettled([
-                    fetchYahooFinance('SI=F', '1y'),
-                    fetchTwelveData('XAG/USD')
+                // XAG/USD paywalled on Twelve Data free tier, Yahoo SI=F is primary source
+                const [yahooResult] = await Promise.allSettled([
+                    fetchYahooFinance('SI=F', '1y')
                 ]);
                 const val = r => r.status === 'fulfilled' ? r.value : [];
                 const yahooData = val(yahooResult);
-                const tdData = val(tdResult);
 
                 const sources = [];
                 if (yahooData.length > 0) sources.push('Yahoo');
-                if (tdData.length > 0) sources.push('TwelveData');
 
-                silverPrices = mergePrices(yahooData, tdData);
+                silverPrices = mergePrices(yahooData);
                 silverPrices._sources = sources;
                 lastUpdated = new Date();
 
