@@ -614,7 +614,7 @@
         <div class="header-left">
             <div>
                 <h1>California Fire Tracker</h1>
-                <div class="subtitle">CAL FIRE real-time incidents &bull; Auto-refreshes every 5 min</div>
+                <div class="subtitle">NIFC real-time incidents &bull; Auto-refreshes every 5 min</div>
             </div>
         </div>
         <div class="header-right">
@@ -734,51 +734,38 @@
         let refreshTimer;
 
 
-        const CALFIRE_API = 'https://incidents.fire.ca.gov/umbraco/api/IncidentApi/GeoJsonList';
+        const NIFC_API = 'https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/USA_Wildfires_v1/FeatureServer/0/query';
         const PERIMETER_API = 'https://services2.arcgis.com/cFEFS0EWrhfDeVw9/arcgis/rest/services/California_Fire_Perimeters/FeatureServer/0/query';
         const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
-        // ── Fetch active fire incidents from CAL FIRE ──
+        // ── Fetch fire incidents from NIFC ArcGIS (CORS-friendly) ──
         async function fetchIncidents() {
             document.getElementById('sidebarStatus').querySelector('span').textContent = 'Updating...';
 
             try {
-                // Fetch active fires
-                const activeResp = await fetch(CALFIRE_API + '?inactive=false');
-                const activeData = await activeResp.json();
-
-                // Also fetch recent inactive to show recently contained fires
-                const allResp = await fetch(CALFIRE_API + '?inactive=true');
-                const allData = await allResp.json();
-
-                // Combine: active fires + recent inactive (last 30 days)
                 const thirtyDaysAgo = new Date();
                 thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                const dateStr = thirtyDaysAgo.toISOString().split('T')[0];
 
-                const activeIds = new Set();
+                const params = new URLSearchParams({
+                    where: `POOState='US-CA' AND FireDiscoveryDateTime >= TIMESTAMP '${dateStr}'`,
+                    outFields: 'IncidentName,POOCounty,DailyAcres,CalculatedAcres,PercentContained,FireDiscoveryDateTime,ContainmentDateTime,FireOutDateTime,IncidentManagementOrganization,IncidentTypeCategory,UniqueFireIdentifier',
+                    f: 'geojson',
+                    resultRecordCount: '500',
+                    orderByFields: 'FireDiscoveryDateTime DESC',
+                });
+
+                const resp = await fetch(NIFC_API + '?' + params.toString());
+                const data = await resp.json();
+
                 const combined = [];
 
-                // Add active fires
-                if (activeData.features) {
-                    activeData.features.forEach(f => {
+                if (data.features) {
+                    data.features.forEach(f => {
+                        const coords = f.geometry && f.geometry.coordinates;
+                        if (!coords) return;
                         const props = f.properties || {};
-                        if (props.Latitude && props.Longitude) {
-                            activeIds.add(props.UniqueId);
-                            combined.push(normalizeIncident(props, true));
-                        }
-                    });
-                }
-
-                // Add recent inactive fires
-                if (allData.features) {
-                    allData.features.forEach(f => {
-                        const props = f.properties || {};
-                        if (props.Latitude && props.Longitude && !activeIds.has(props.UniqueId)) {
-                            const started = props.Started ? new Date(props.Started) : null;
-                            if (started && started >= thirtyDaysAgo) {
-                                combined.push(normalizeIncident(props, false));
-                            }
-                        }
+                        combined.push(normalizeIncident(props, coords));
                     });
                 }
 
@@ -793,34 +780,37 @@
 
                 const now = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
                 document.getElementById('sidebarStatus').querySelector('span').textContent =
-                    `Updated ${now} \u2022 Source: CAL FIRE`;
+                    `Updated ${now} \u2022 Source: NIFC`;
 
             } catch (err) {
                 console.error('Failed to fetch incidents:', err);
                 document.getElementById('sidebarStatus').querySelector('span').textContent =
                     'Error loading data. Retrying...';
-                // Retry in 30 seconds
                 setTimeout(fetchIncidents, 30000);
             }
         }
 
-        function normalizeIncident(props, isActive) {
+        function normalizeIncident(props, coords) {
             const pct = props.PercentContained != null ? parseInt(props.PercentContained) : null;
+            const isContained = props.FireOutDateTime != null || props.ContainmentDateTime != null;
+            const isActive = !isContained && (pct == null || pct < 100);
+            const acres = props.DailyAcres || props.CalculatedAcres || 0;
+
             return {
-                id: props.UniqueId || props.Name,
-                name: props.Name || 'Unknown Fire',
-                lat: parseFloat(props.Latitude),
-                lng: parseFloat(props.Longitude),
-                acres: props.AcresBurned ? parseFloat(props.AcresBurned) : 0,
+                id: props.UniqueFireIdentifier || props.IncidentName,
+                name: props.IncidentName || 'Unknown Fire',
+                lat: coords[1],
+                lng: coords[0],
+                acres: parseFloat(acres) || 0,
                 contained: pct,
-                county: props.County || 'Unknown',
-                location: props.Location || '',
-                started: props.Started || null,
-                updated: props.Updated || null,
-                agency: props.AgencyNames || props.AdminUnit || '',
+                county: (props.POOCounty || 'Unknown').replace(' County', ''),
+                location: '',
+                started: props.FireDiscoveryDateTime ? new Date(props.FireDiscoveryDateTime).toISOString() : null,
+                updated: null,
+                agency: props.IncidentManagementOrganization || '',
                 isActive: isActive,
-                url: props.Url || null,
-                controlStatement: props.ControlStatement || '',
+                url: null,
+                controlStatement: '',
             };
         }
 
