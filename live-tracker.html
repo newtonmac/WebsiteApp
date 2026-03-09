@@ -423,6 +423,104 @@
 
         .stat-chip .label { color: #8b8fa3; }
 
+        /* Weather panel */
+        .weather-panel {
+            position: absolute;
+            top: 60px;
+            left: 16px;
+            z-index: 5;
+            background: #1a1d28ee;
+            backdrop-filter: blur(12px);
+            border: 1px solid #2d3040;
+            border-radius: 12px;
+            padding: 12px 16px;
+            min-width: 280px;
+            max-width: 340px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .weather-panel:hover { border-color: #3d4050; }
+        .weather-panel.expanded { max-width: 340px; }
+
+        .weather-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .weather-header .weather-temp {
+            font-size: 22px;
+            font-weight: 700;
+            color: #e1e4e8;
+        }
+        .weather-header .weather-condition {
+            font-size: 12px;
+            color: #8b8fa3;
+        }
+        .weather-header .weather-station {
+            font-size: 10px;
+            color: #6b6f80;
+            margin-top: 2px;
+        }
+        .weather-icon-text {
+            font-size: 24px;
+            line-height: 1;
+        }
+
+        .weather-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #2d3040;
+        }
+        .weather-grid.hidden { display: none; }
+        .weather-stat {
+            text-align: center;
+        }
+        .weather-stat .ws-val {
+            font-size: 13px;
+            font-weight: 600;
+            color: #e1e4e8;
+        }
+        .weather-stat .ws-label {
+            font-size: 10px;
+            color: #6b6f80;
+            margin-top: 2px;
+        }
+        .weather-fire-risk {
+            margin-top: 8px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            text-align: center;
+        }
+        .weather-fire-risk.hidden { display: none; }
+        .risk-low { background: #22c55e20; color: #4ade80; }
+        .risk-moderate { background: #f59e0b20; color: #fbbf24; }
+        .risk-high { background: #ef444420; color: #f87171; }
+        .risk-extreme { background: #dc262620; color: #ef4444; }
+
+        .weather-toggle {
+            font-size: 10px;
+            color: #6b6f80;
+            text-align: center;
+            margin-top: 6px;
+        }
+        .weather-toggle.hidden { display: none; }
+        .weather-link {
+            display: block;
+            text-align: center;
+            font-size: 10px;
+            color: #6b6f80;
+            text-decoration: none;
+            margin-top: 4px;
+        }
+        .weather-link:hover { color: #8b8fa3; }
+        .weather-link.hidden { display: none; }
+
         /* No fires message */
         .no-fires {
             padding: 40px 20px;
@@ -668,6 +766,32 @@
                 </div>
             </div>
 
+            <div class="weather-panel" id="weatherPanel" onclick="toggleWeatherDetails()" style="display:none">
+                <div class="weather-header">
+                    <div>
+                        <span class="weather-temp" id="wxTemp">--</span>
+                        <span style="color:#6b6f80;font-size:12px" id="wxFeelsLike"></span>
+                        <div class="weather-condition" id="wxCondition">Loading...</div>
+                        <div class="weather-station" id="wxStation"></div>
+                    </div>
+                    <div class="weather-icon-text" id="wxIcon"></div>
+                </div>
+                <div class="weather-grid hidden" id="wxGrid">
+                    <div class="weather-stat"><div class="ws-val" id="wxHumidity">--</div><div class="ws-label">Humidity</div></div>
+                    <div class="weather-stat"><div class="ws-val" id="wxWind">--</div><div class="ws-label">Wind</div></div>
+                    <div class="weather-stat"><div class="ws-val" id="wxGust">--</div><div class="ws-label">Gust</div></div>
+                    <div class="weather-stat"><div class="ws-val" id="wxDewPoint">--</div><div class="ws-label">Dew Point</div></div>
+                    <div class="weather-stat"><div class="ws-val" id="wxPressure">--</div><div class="ws-label">Pressure</div></div>
+                    <div class="weather-stat"><div class="ws-val" id="wxUV">--</div><div class="ws-label">UV Index</div></div>
+                    <div class="weather-stat"><div class="ws-val" id="wxPrecip">--</div><div class="ws-label">Rain Today</div></div>
+                    <div class="weather-stat"><div class="ws-val" id="wxHiLo">--</div><div class="ws-label">Hi / Lo</div></div>
+                    <div class="weather-stat"><div class="ws-val" id="wxDeltaT">--</div><div class="ws-label">Delta T</div></div>
+                </div>
+                <div class="weather-fire-risk hidden" id="wxFireRisk"></div>
+                <div class="weather-toggle hidden" id="wxToggle">tap to expand</div>
+                <a href="https://tempestwx.com/station/180751" target="_blank" class="weather-link hidden" id="wxLink" onclick="event.stopPropagation()">View full station &rarr;</a>
+            </div>
+
             <div class="map-controls">
                 <button class="map-ctrl-btn" id="centerBtn" title="Fit all fires">&#8982;</button>
                 <button class="map-ctrl-btn" id="perimeterBtn" title="Toggle perimeters">&#9634;</button>
@@ -746,6 +870,7 @@
         const SD_DISPATCH_API = 'https://sd-fire-proxy.newtonmac.workers.dev';
         // NASA FIRMS VIIRS satellite hotspots
         const FIRMS_API = 'https://firms.modaps.eosdis.nasa.gov/api/area/csv';
+        const TEMPEST_API = 'https://swd.weatherflow.com/swd/rest/better_forecast?station_id=180751&units_temp=f&units_wind=mph&units_pressure=inhg&units_precip=in&units_distance=mi&token=ee5c243a-9bf9-423a-9838-c48d9953fa22';
         const FIRMS_MAP_KEY = 'da31ea356ef43651e01dc79ff76b1553';
         const SD_BBOX = '-117.6,32.4,-116.0,33.5'; // San Diego County bounding box
         const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
@@ -834,10 +959,15 @@
             }
         }
 
+        // Fires older than this are never considered active (handles stale IRWIN data)
+        const STALE_FIRE_DAYS = 30;
+
         function normalizePerimeterIncident(props, geometry) {
             const pct = props.attr_PercentContained != null ? parseInt(props.attr_PercentContained) : null;
             const isContained = props.attr_FireOutDateTime != null || props.attr_ContainmentDateTime != null;
-            const isActive = !isContained && (pct == null || pct < 100);
+            const startDate = props.attr_FireDiscoveryDateTime ? new Date(props.attr_FireDiscoveryDateTime) : null;
+            const isStale = startDate && (Date.now() - startDate.getTime()) > STALE_FIRE_DAYS * 86400000;
+            const isActive = !isStale && !isContained && (pct == null || pct < 100);
             const acres = props.poly_GISAcres || props.attr_IncidentSize || props.attr_CalculatedAcres || 0;
 
             // Calculate centroid from perimeter for marker placement
@@ -870,7 +1000,9 @@
         function normalizePointIncident(props, coords) {
             const pct = props.PercentContained != null ? parseInt(props.PercentContained) : null;
             const isContained = props.FireOutDateTime != null || props.ContainmentDateTime != null;
-            const isActive = !isContained && (pct == null || pct < 100);
+            const startDate = props.FireDiscoveryDateTime ? new Date(props.FireDiscoveryDateTime) : null;
+            const isStale = startDate && (Date.now() - startDate.getTime()) > STALE_FIRE_DAYS * 86400000;
+            const isActive = !isStale && !isContained && (pct == null || pct < 100);
             const acres = props.DailyAcres || props.CalculatedAcres || 0;
 
             return {
@@ -1018,6 +1150,7 @@
 
                 dispatchIncidents = data.map(d => ({
                     id: 'dispatch-' + d.MasterIncidentNumber,
+                    masterIncidentNumber: d.MasterIncidentNumber,
                     name: d.IncidentTypeName || d.CallType || 'Fire Call',
                     address: d.Address || '',
                     crossStreet: d.CrossStreet || '',
@@ -1078,7 +1211,9 @@
                                 <strong>${d.name}</strong><br>
                                 ${d.address}${d.crossStreet ? ' @ ' + d.crossStreet : ''}<br>
                                 <span style="color:#666">${d.city} &bull; ${new Date(d.date).toLocaleTimeString()}</span><br>
-                                ${d.units ? '<strong>Units:</strong> ' + d.units : ''}
+                                ${d.units ? '<strong>Units:</strong> ' + d.units : ''}<br>
+                                <span style="color:#888;font-size:11px">Incident #${d.masterIncidentNumber}</span><br>
+                                <a href="https://webapps.sandiego.gov/SDFireDispatch/" target="_blank" style="color:#1a73e8;font-size:12px">View on SD Fire Dispatch &rarr;</a>
                             </div>`,
                         });
                         marker.addListener('click', () => info.open(map, marker));
@@ -1153,7 +1288,7 @@
                             <td>—</td>
                             <td class="hide-mobile">${d.date ? formatDate(d.date) : '—'}</td>
                             <td class="hide-mobile">${d.units || '—'}</td>
-                            <td><span style="color:${cfg.color};font-size:11px">${statusKey === 'active_not_contained' ? 'LIVE' : statusKey === 'active_contained' ? 'CONTAINED' : 'CLOSED'}</span></td>
+                            <td><span style="color:${cfg.color};font-size:11px">${statusKey === 'active_not_contained' ? 'LIVE' : statusKey === 'active_contained' ? 'CONTAINED' : 'CLOSED'}</span><br><a href="https://webapps.sandiego.gov/SDFireDispatch/" target="_blank" class="fire-link" style="font-size:10px" onclick="event.stopPropagation()">Source</a></td>
                         </tr>
                     `).join('');
                 });
@@ -1391,6 +1526,107 @@
             panel.classList.add('visible');
         }
 
+        // ── Weather ──
+        let weatherExpanded = false;
+
+        function toggleWeatherDetails() {
+            weatherExpanded = !weatherExpanded;
+            document.getElementById('wxGrid').classList.toggle('hidden', !weatherExpanded);
+            document.getElementById('wxFireRisk').classList.toggle('hidden', !weatherExpanded);
+            document.getElementById('wxLink').classList.toggle('hidden', !weatherExpanded);
+            document.getElementById('wxToggle').textContent = weatherExpanded ? 'tap to collapse' : 'tap to expand';
+        }
+
+        function getWeatherIcon(conditions) {
+            if (!conditions) return '';
+            const c = conditions.toLowerCase();
+            if (c.includes('clear') || c.includes('sunny')) return '☀️';
+            if (c.includes('partly') || c.includes('mostly cloudy')) return '⛅';
+            if (c.includes('cloudy') || c.includes('overcast')) return '☁️';
+            if (c.includes('rain') || c.includes('drizzle')) return '🌧️';
+            if (c.includes('thunder') || c.includes('storm')) return '⛈️';
+            if (c.includes('fog') || c.includes('haze')) return '🌫️';
+            if (c.includes('wind')) return '💨';
+            if (c.includes('snow')) return '❄️';
+            return '🌤️';
+        }
+
+        function getFireRisk(data) {
+            // Simple fire weather risk based on conditions
+            const humidity = data.current.humidity;
+            const wind = data.current.wind_gust || data.current.wind_avg || 0;
+            const temp = data.current.temperature;
+
+            let score = 0;
+            if (humidity != null) {
+                if (humidity < 15) score += 3;
+                else if (humidity < 25) score += 2;
+                else if (humidity < 35) score += 1;
+            }
+            if (wind > 30) score += 3;
+            else if (wind > 20) score += 2;
+            else if (wind > 10) score += 1;
+            if (temp > 95) score += 2;
+            else if (temp > 85) score += 1;
+
+            if (score >= 6) return { level: 'EXTREME', cls: 'risk-extreme', msg: 'Extreme fire weather conditions' };
+            if (score >= 4) return { level: 'HIGH', cls: 'risk-high', msg: 'High fire risk — low humidity & high winds' };
+            if (score >= 2) return { level: 'MODERATE', cls: 'risk-moderate', msg: 'Moderate fire risk' };
+            return { level: 'LOW', cls: 'risk-low', msg: 'Low fire risk' };
+        }
+
+        async function fetchWeather() {
+            try {
+                const resp = await fetch(TEMPEST_API);
+                const data = await resp.json();
+                if (data.status && data.status.status_code !== 0) return;
+
+                const current = data.current_conditions || {};
+                const forecast = ((data.forecast || {}).daily || [])[0] || {};
+
+                const panel = document.getElementById('weatherPanel');
+                panel.style.display = '';
+                document.getElementById('wxToggle').classList.remove('hidden');
+
+                document.getElementById('wxTemp').textContent = current.air_temperature != null ? Math.round(current.air_temperature) + '°F' : '--';
+                document.getElementById('wxFeelsLike').textContent = current.feels_like != null ? '(feels ' + Math.round(current.feels_like) + '°)' : '';
+                document.getElementById('wxCondition').textContent = current.conditions || '--';
+                document.getElementById('wxStation').textContent = data.station_name || '';
+                document.getElementById('wxIcon').textContent = getWeatherIcon(current.conditions);
+
+                document.getElementById('wxHumidity').textContent = current.relative_humidity != null ? current.relative_humidity + '%' : '--';
+                document.getElementById('wxWind').textContent = current.wind_avg != null ? Math.round(current.wind_avg) + ' ' + (current.wind_direction_cardinal || '') : '--';
+                document.getElementById('wxGust').textContent = current.wind_gust != null ? Math.round(current.wind_gust) + ' mph' : '--';
+                document.getElementById('wxDewPoint').textContent = current.dew_point != null ? Math.round(current.dew_point) + '°F' : '--';
+                document.getElementById('wxPressure').textContent = current.sea_level_pressure != null ? current.sea_level_pressure.toFixed(2) + '"' : '--';
+                document.getElementById('wxUV').textContent = current.uv != null ? current.uv : '--';
+                document.getElementById('wxPrecip').textContent = current.precip_accum_local_day != null ? current.precip_accum_local_day.toFixed(2) + '"' : '0.00"';
+                document.getElementById('wxDeltaT').textContent = current.delta_t != null ? current.delta_t.toFixed(1) + '°' : '--';
+
+                const hi = forecast.air_temp_high != null ? Math.round(forecast.air_temp_high) : '--';
+                const lo = forecast.air_temp_low != null ? Math.round(forecast.air_temp_low) : '--';
+                document.getElementById('wxHiLo').textContent = hi + '° / ' + lo + '°';
+
+                // Fire risk assessment
+                const wxData = {
+                    current: {
+                        humidity: current.relative_humidity,
+                        wind_avg: current.wind_avg,
+                        wind_gust: current.wind_gust,
+                        temperature: current.air_temperature,
+                    }
+                };
+                const risk = getFireRisk(wxData);
+                const riskEl = document.getElementById('wxFireRisk');
+                riskEl.textContent = risk.level + ' FIRE RISK — ' + risk.msg;
+                riskEl.className = 'weather-fire-risk ' + risk.cls;
+                if (weatherExpanded) riskEl.classList.remove('hidden');
+
+            } catch (err) {
+                console.warn('Weather fetch failed:', err);
+            }
+        }
+
         // ── Google Maps init ──
         function initMap() {
             map = new google.maps.Map(document.getElementById('map'), {
@@ -1423,12 +1659,14 @@
             fetchIncidents();
             fetchHotspots();
             fetchDispatch();
+            fetchWeather();
 
             // Auto-refresh
             refreshTimer = setInterval(() => {
                 fetchIncidents();
                 fetchHotspots();
                 fetchDispatch();
+                fetchWeather();
             }, REFRESH_INTERVAL);
         }
 
@@ -1473,6 +1711,7 @@
             fetchIncidents();
             fetchHotspots();
             fetchDispatch();
+            fetchWeather();
         });
 
         // Filter buttons
