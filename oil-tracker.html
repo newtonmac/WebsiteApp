@@ -224,6 +224,7 @@
         .data-status .source-eia { background: #3b82f620; color: #60a5fa; }
         .data-status .source-fred { background: #f59e0b20; color: #fbbf24; }
         .data-status .source-alphavantage { background: #8b5cf620; color: #a78bfa; }
+        .data-status .source-yahoo { background: #6d28d920; color: #c084fc; }
 
         .nav-link {
             display: inline-block;
@@ -245,7 +246,12 @@
     <div class="header">
         <h1>Crude Oil Tracker</h1>
         <p>Live data &bull; EIA, FRED &amp; Alpha Vantage &bull; Updated daily</p>
-        <a href="flight-tracker.html" class="nav-link">Flight Tracker &rarr;</a>
+        <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+            <a href="gold-tracker.html" class="nav-link">Gold Tracker</a>
+            <a href="silver-tracker.html" class="nav-link">Silver Tracker</a>
+            <a href="bitcoin-tracker.html" class="nav-link">Bitcoin Tracker</a>
+            <a href="flight-tracker.html" class="nav-link">Flight Tracker</a>
+        </div>
     </div>
 
     <div class="container">
@@ -508,6 +514,30 @@ async function fetchAlphaVantage(func) {
     return [];
 }
 
+// Yahoo Finance - daily commodity prices
+async function fetchYahooFinance(symbol) {
+    try {
+        const resp = await fetch(
+            'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(symbol) +
+            '?range=1y&interval=1d'
+        );
+        const json = await resp.json();
+        if (json.chart && json.chart.result && json.chart.result[0]) {
+            const result = json.chart.result[0];
+            const timestamps = result.timestamp || [];
+            const closes = result.indicators.quote[0].close || [];
+            return timestamps.map((ts, i) => {
+                const d = new Date(ts * 1000);
+                const dateStr = d.toISOString().split('T')[0];
+                return { date: dateStr, price: closes[i], source: 'Yahoo' };
+            }).filter(p => p.price != null && !isNaN(p.price));
+        }
+    } catch (e) {
+        console.warn('Yahoo Finance fetch failed:', e.message);
+    }
+    return [];
+}
+
 function mergePrices(...priceSets) {
     const dateMap = new Map();
     // First set has highest priority, subsequent sets fill gaps
@@ -530,7 +560,7 @@ async function fetchAllPrices() {
 
         const [
             eiaWti, eiaBrent, fredWti, fredBrent, eiaCanadian, eiaMaya,
-            avWti, avBrent
+            avWti, avBrent, yahooWti, yahooBrent
         ] = await Promise.allSettled([
             fetchEIASeries('RWTC'),
             fetchEIASeries('RBRTE'),
@@ -540,7 +570,10 @@ async function fetchAllPrices() {
             fetchEIAImportSeries('IMX2810004'),
             // Alpha Vantage (built-in commodity functions)
             fetchAlphaVantage('WTI'),
-            fetchAlphaVantage('BRENT')
+            fetchAlphaVantage('BRENT'),
+            // Yahoo Finance
+            fetchYahooFinance('CL=F'),
+            fetchYahooFinance('BZ=F')
         ]);
 
         const val = r => r.status === 'fulfilled' ? r.value : [];
@@ -551,14 +584,17 @@ async function fetchAllPrices() {
         const fredBrentData = val(fredBrent);
         const avWtiData = val(avWti);
         const avBrentData = val(avBrent);
+        const yahooWtiData = val(yahooWti);
+        const yahooBrentData = val(yahooBrent);
 
         if (eiaWtiData.length > 0 || eiaBrentData.length > 0) dataSources.push('EIA');
         if (fredWtiData.length > 0 || fredBrentData.length > 0) dataSources.push('FRED');
         if (avWtiData.length > 0 || avBrentData.length > 0) dataSources.push('AlphaVantage');
+        if (yahooWtiData.length > 0 || yahooBrentData.length > 0) dataSources.push('Yahoo');
 
-        // Merge all sources: EIA first (most authoritative), then FRED, Alpha Vantage
-        wtiPrices = mergePrices(eiaWtiData, fredWtiData, avWtiData);
-        brentPrices = mergePrices(eiaBrentData, fredBrentData, avBrentData);
+        // Merge all sources: EIA first (most authoritative), then FRED, Alpha Vantage, Yahoo
+        wtiPrices = mergePrices(eiaWtiData, fredWtiData, avWtiData, yahooWtiData);
+        brentPrices = mergePrices(eiaBrentData, fredBrentData, avBrentData, yahooBrentData);
         canadianPrices = val(eiaCanadian);
         mayaPrices = val(eiaMaya);
 

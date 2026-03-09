@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crude Oil Price Tracker</title>
+    <title>Bitcoin Price Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
     <style>
@@ -25,7 +25,7 @@
         .header h1 {
             font-size: 28px;
             font-weight: 700;
-            background: linear-gradient(90deg, #60a5fa, #a78bfa);
+            background: linear-gradient(90deg, #f97316, #fb923c);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -35,6 +35,8 @@
             margin-top: 4px;
             font-size: 14px;
         }
+
+        .nav-links { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; }
 
         .container {
             max-width: 1200px;
@@ -69,7 +71,7 @@
         }
 
         .btn-group button.active {
-            background: #3b82f6;
+            background: #f97316;
             color: white;
         }
 
@@ -119,7 +121,7 @@
         .price-hero .price-change.up { color: #34d399; }
         .price-hero .price-change.down { color: #f87171; }
 
-        .price-hero .oil-label {
+        .price-hero .asset-label {
             font-size: 16px;
             color: #8b8fa3;
         }
@@ -129,10 +131,6 @@
             border-radius: 16px;
             border: 1px solid #2d3040;
             padding: 24px;
-            margin-bottom: 24px;
-        }
-
-        .chart-container {
             position: relative;
             height: 350px;
             margin-bottom: 24px;
@@ -164,11 +162,7 @@
             margin-bottom: 8px;
         }
 
-        .stat-card .value {
-            font-size: 24px;
-            font-weight: 700;
-        }
-
+        .stat-card .value { font-size: 24px; font-weight: 700; }
         .stat-card .value.green { color: #34d399; }
         .stat-card .value.red { color: #f87171; }
         .stat-card .value.blue { color: #60a5fa; }
@@ -181,15 +175,9 @@
             padding: 24px;
         }
 
-        .recent-table h3 {
-            margin-bottom: 16px;
-            font-size: 18px;
-        }
+        .recent-table h3 { margin-bottom: 16px; font-size: 18px; }
 
-        .recent-table table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+        .recent-table table { width: 100%; border-collapse: collapse; }
 
         .recent-table th {
             text-align: left;
@@ -207,9 +195,7 @@
             font-size: 14px;
         }
 
-        .recent-table tr:last-child td {
-            border-bottom: none;
-        }
+        .recent-table tr:last-child td { border-bottom: none; }
 
         .loading {
             text-align: center;
@@ -222,7 +208,7 @@
             width: 40px;
             height: 40px;
             border: 3px solid #2d3040;
-            border-top-color: #3b82f6;
+            border-top-color: #f97316;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
             margin: 0 auto 16px;
@@ -265,14 +251,10 @@
             letter-spacing: 0.5px;
         }
 
-        .data-status .source-eia { background: #3b82f620; color: #60a5fa; }
-        .data-status .source-fred { background: #f59e0b20; color: #fbbf24; }
-        .data-status .source-alphavantage { background: #8b5cf620; color: #a78bfa; }
         .data-status .source-yahoo { background: #6d28d920; color: #c084fc; }
 
         .nav-link {
             display: inline-block;
-            margin-top: 8px;
             padding: 6px 14px;
             background: #252836;
             color: #60a5fa;
@@ -288,24 +270,18 @@
 </head>
 <body>
     <div class="header">
-        <h1>Crude Oil Price Tracker</h1>
-        <p>Live data &bull; EIA, FRED &amp; Alpha Vantage &bull; Updated daily</p>
-        <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+        <h1>Bitcoin Price Tracker</h1>
+        <p>Live data &bull; Yahoo Finance &bull; Updated daily</p>
+        <div class="nav-links">
+            <a href="index.html" class="nav-link">Oil Tracker</a>
             <a href="gold-tracker.html" class="nav-link">Gold Tracker</a>
             <a href="silver-tracker.html" class="nav-link">Silver Tracker</a>
-            <a href="bitcoin-tracker.html" class="nav-link">Bitcoin Tracker</a>
             <a href="flight-tracker.html" class="nav-link">Flight Tracker</a>
         </div>
     </div>
 
     <div class="container">
         <div class="controls">
-            <div class="btn-group" id="oilType">
-                <button class="active" data-type="wti">WTI Crude</button>
-                <button data-type="brent">Brent Crude</button>
-                <button data-type="canadian">Canadian</button>
-                <button data-type="maya">Mexican Maya</button>
-            </div>
             <div class="btn-group" id="timeRange">
                 <button data-range="7">1W</button>
                 <button class="active" data-range="30">1M</button>
@@ -319,40 +295,16 @@
         <div id="content">
             <div class="loading">
                 <div class="spinner"></div>
-                Loading live crude oil prices...
+                Loading live bitcoin prices...
             </div>
         </div>
     </div>
 
     <script>
-        const API_KEY = 'q9kHzRa6tXnuEZOOPw0bbsdgfu9Mq5J0FJmIOrj6';
-        const EIA_SPOT = 'https://api.eia.gov/v2/petroleum/pri/spt/data/';
-        const EIA_IMPORT = 'https://api.eia.gov/v2/petroleum/pri/imc2/data/';
-        const FRED_KEY = 'b157e132862f8b31185abd4da930b21a';
-        const FRED_BASE = 'https://api.stlouisfed.org/fred/series/observations';
-
-        // Alpha Vantage: https://www.alphavantage.co/support/#api-key (25 req/day free)
-        const ALPHA_VANTAGE_KEY = 'T01QSR206V2E0IR2';
-
-        let wtiPrices = [];
-        let brentPrices = [];
-        let canadianPrices = [];
-        let mayaPrices = [];
-        let selectedType = 'wti';
+        let btcPrices = [];
         let selectedRange = 30;
         let chart = null;
         let lastUpdated = null;
-        let dataSources = [];
-
-        // Controls
-        document.querySelectorAll('#oilType button').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('#oilType button').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                selectedType = btn.dataset.type;
-                render();
-            });
-        });
 
         document.querySelectorAll('#timeRange button').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -363,212 +315,45 @@
             });
         });
 
-        document.getElementById('refreshBtn').addEventListener('click', fetchAllPrices);
+        document.getElementById('refreshBtn').addEventListener('click', fetchPrices);
 
-        async function fetchEIASeries(seriesId) {
-            const params = new URLSearchParams({
-                api_key: API_KEY,
-                frequency: 'daily',
-                'data[0]': 'value',
-                'sort[0][column]': 'period',
-                'sort[0][direction]': 'desc',
-                length: '365'
-            });
-            params.append(`facets[series][]`, seriesId);
-
-            const url = `${EIA_SPOT}?${params.toString()}`;
-            const response = await fetch(url);
-            const json = await response.json();
-
-            if (json.response && json.response.data) {
-                return json.response.data
-                    .filter(d => d.value != null && d.value !== '')
-                    .map(d => ({
-                        date: d.period,
-                        price: parseFloat(d.value),
-                        source: 'EIA'
-                    }))
-                    .reverse();
+        async function fetchYahooFinance(symbol, range) {
+            const resp = await fetch(
+                'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(symbol) +
+                '?range=' + range + '&interval=1d'
+            );
+            const json = await resp.json();
+            if (json.chart && json.chart.result && json.chart.result[0]) {
+                const result = json.chart.result[0];
+                const timestamps = result.timestamp || [];
+                const closes = result.indicators.quote[0].close || [];
+                return timestamps.map((ts, i) => {
+                    const d = new Date(ts * 1000);
+                    const dateStr = d.toISOString().split('T')[0];
+                    return { date: dateStr, price: closes[i], source: 'Yahoo' };
+                }).filter(p => p.price != null && !isNaN(p.price));
             }
             return [];
         }
 
-        async function fetchEIAImportSeries(seriesId) {
-            const params = new URLSearchParams({
-                api_key: API_KEY,
-                frequency: 'monthly',
-                'data[0]': 'value',
-                'sort[0][column]': 'period',
-                'sort[0][direction]': 'desc',
-                length: '36'
-            });
-            params.append(`facets[series][]`, seriesId);
-
-            const url = `${EIA_IMPORT}?${params.toString()}`;
-            const response = await fetch(url);
-            const json = await response.json();
-
-            if (json.response && json.response.data) {
-                return json.response.data
-                    .filter(d => d.value != null && d.value !== '')
-                    .map(d => ({
-                        date: d.period.length === 7 ? d.period + '-01' : d.period,
-                        price: parseFloat(d.value),
-                        source: 'EIA'
-                    }))
-                    .reverse();
-            }
-            return [];
-        }
-
-        async function fetchFREDSeries(seriesId) {
-            try {
-                const oneYearAgo = new Date();
-                oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-                const startDate = oneYearAgo.toISOString().split('T')[0];
-
-                const params = new URLSearchParams({
-                    series_id: seriesId,
-                    api_key: FRED_KEY,
-                    file_type: 'json',
-                    observation_start: startDate,
-                    sort_order: 'asc'
-                });
-
-                const resp = await fetch(FRED_BASE + '?' + params.toString());
-                const json = await resp.json();
-
-                if (json.observations) {
-                    return json.observations
-                        .filter(d => d.value !== '.' && d.value != null)
-                        .map(d => ({ date: d.date, price: parseFloat(d.value), source: 'FRED' }));
-                }
-            } catch (e) {
-                console.warn('FRED fetch failed:', e.message);
-            }
-            return [];
-        }
-
-        // Alpha Vantage - daily commodity prices with history
-        async function fetchAlphaVantage(func) {
-            try {
-                const resp = await fetch(
-                    'https://www.alphavantage.co/query?function=' + func +
-                    '&interval=daily&apikey=' + ALPHA_VANTAGE_KEY
-                );
-                const json = await resp.json();
-                if (json.data) {
-                    return json.data
-                        .filter(d => d.value && d.value !== '.')
-                        .map(d => ({ date: d.date, price: parseFloat(d.value), source: 'AlphaVantage' }))
-                        .sort((a, b) => a.date.localeCompare(b.date));
-                }
-            } catch (e) {
-                console.warn('Alpha Vantage fetch failed:', e.message);
-            }
-            return [];
-        }
-
-        // Yahoo Finance - daily commodity prices
-        async function fetchYahooFinance(symbol) {
-            try {
-                const resp = await fetch(
-                    'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(symbol) +
-                    '?range=1y&interval=1d'
-                );
-                const json = await resp.json();
-                if (json.chart && json.chart.result && json.chart.result[0]) {
-                    const result = json.chart.result[0];
-                    const timestamps = result.timestamp || [];
-                    const closes = result.indicators.quote[0].close || [];
-                    return timestamps.map((ts, i) => {
-                        const d = new Date(ts * 1000);
-                        const dateStr = d.toISOString().split('T')[0];
-                        return { date: dateStr, price: closes[i], source: 'Yahoo' };
-                    }).filter(p => p.price != null && !isNaN(p.price));
-                }
-            } catch (e) {
-                console.warn('Yahoo Finance fetch failed:', e.message);
-            }
-            return [];
-        }
-
-        function mergePrices(...priceSets) {
-            const dateMap = new Map();
-            priceSets.forEach(prices => {
-                prices.forEach(p => {
-                    if (!dateMap.has(p.date)) {
-                        dateMap.set(p.date, p);
-                    }
-                });
-            });
-            return Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date));
-        }
-
-        async function fetchAllPrices() {
+        async function fetchPrices() {
             document.getElementById('content').innerHTML = `
                 <div class="loading">
                     <div class="spinner"></div>
-                    Loading from multiple sources...
+                    Loading bitcoin prices from Yahoo Finance...
                 </div>`;
 
             try {
-                dataSources = [];
-
-                const [
-                    eiaWti, eiaBrent, fredWti, fredBrent, eiaCanadian, eiaMaya,
-                    avWti, avBrent, yahooWti, yahooBrent
-                ] = await Promise.allSettled([
-                    fetchEIASeries('RWTC'),
-                    fetchEIASeries('RBRTE'),
-                    fetchFREDSeries('DCOILWTICO'),
-                    fetchFREDSeries('DCOILBRENTEU'),
-                    fetchEIAImportSeries('I19263000004'),
-                    fetchEIAImportSeries('IMX2810004'),
-                    // Alpha Vantage
-                    fetchAlphaVantage('WTI'),
-                    fetchAlphaVantage('BRENT'),
-                    // Yahoo Finance
-                    fetchYahooFinance('CL=F'),
-                    fetchYahooFinance('BZ=F')
-                ]);
-
-                const val = r => r.status === 'fulfilled' ? r.value : [];
-
-                const eiaWtiData = val(eiaWti);
-                const eiaBrentData = val(eiaBrent);
-                const fredWtiData = val(fredWti);
-                const fredBrentData = val(fredBrent);
-                const avWtiData = val(avWti);
-                const avBrentData = val(avBrent);
-                const yahooWtiData = val(yahooWti);
-                const yahooBrentData = val(yahooBrent);
-
-                if (eiaWtiData.length > 0 || eiaBrentData.length > 0) dataSources.push('EIA');
-                if (fredWtiData.length > 0 || fredBrentData.length > 0) dataSources.push('FRED');
-                if (avWtiData.length > 0 || avBrentData.length > 0) dataSources.push('AlphaVantage');
-                if (yahooWtiData.length > 0 || yahooBrentData.length > 0) dataSources.push('Yahoo');
-
-                // Merge all sources: EIA first (most authoritative), then FRED, Alpha Vantage, Yahoo
-                wtiPrices = mergePrices(eiaWtiData, fredWtiData, avWtiData, yahooWtiData);
-                brentPrices = mergePrices(eiaBrentData, fredBrentData, avBrentData, yahooBrentData);
-                canadianPrices = val(eiaCanadian);
-                mayaPrices = val(eiaMaya);
-
-                if (canadianPrices.length > 0 || mayaPrices.length > 0) {
-                    if (!dataSources.includes('EIA')) dataSources.push('EIA');
-                }
-
+                btcPrices = await fetchYahooFinance('BTC-USD', '1y');
                 lastUpdated = new Date();
 
-                if (wtiPrices.length === 0 && brentPrices.length === 0 && canadianPrices.length === 0 && mayaPrices.length === 0) {
+                if (btcPrices.length === 0) {
                     document.getElementById('content').innerHTML = `
                         <div class="error-msg">
-                            Unable to fetch data from any source. Check your connection.
+                            Unable to fetch bitcoin prices. Check your connection.
                         </div>`;
                     return;
                 }
-
                 render();
             } catch (err) {
                 document.getElementById('content').innerHTML = `
@@ -579,17 +364,13 @@
         }
 
         function getFilteredPrices() {
-            const typeMap = { wti: wtiPrices, brent: brentPrices, canadian: canadianPrices, maya: mayaPrices };
-            const all = typeMap[selectedType] || wtiPrices;
-            // Monthly data (canadian/maya) - map time ranges to useful month counts
-            if (selectedType === 'canadian' || selectedType === 'maya') {
-                const rangeToMonths = { 7: 6, 30: 12, 90: 18, 180: 24, 365: 36 };
-                const months = rangeToMonths[selectedRange] || 12;
-                return all.slice(-months);
-            }
             const cutoff = new Date();
             cutoff.setDate(cutoff.getDate() - selectedRange);
-            return all.filter(p => new Date(p.date) >= cutoff);
+            return btcPrices.filter(p => new Date(p.date) >= cutoff);
+        }
+
+        function formatPrice(val) {
+            return val >= 1000 ? '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '$' + val.toFixed(2);
         }
 
         function render() {
@@ -608,34 +389,24 @@
             const variance = prices.reduce((s, p) => s + Math.pow(p.price - avg, 2), 0) / (prices.length - 1);
             const volatility = (Math.sqrt(variance) / avg) * 100;
 
-            const typeLabels = { wti: 'WTI Crude Oil', brent: 'Brent Crude Oil', canadian: 'Canadian Light Sour Blend', maya: 'Mexican Maya Crude' };
-            const typeColors = { wti: '#3b82f6', brent: '#f59e0b', canadian: '#ef4444', maya: '#10b981' };
-            const typeLabel = typeLabels[selectedType];
-            const color = typeColors[selectedType];
-            const isMonthly = selectedType === 'canadian' || selectedType === 'maya';
-
-            const latestDate = latest.date;
             const updatedStr = lastUpdated ? lastUpdated.toLocaleString('en-US', {
                 month: 'short', day: 'numeric', year: 'numeric',
                 hour: 'numeric', minute: '2-digit', hour12: true
             }) : '—';
-            const sourcesTags = dataSources.map(s =>
-                `<span class="source-tag source-${s.toLowerCase()}">${s}</span>`
-            ).join(' ');
 
             document.getElementById('content').innerHTML = `
                 <div class="data-status">
-                    <div>Latest data: <strong>${latestDate}</strong>${isMonthly ? ' (monthly)' : ''} &bull; Updated: <strong>${updatedStr}</strong></div>
-                    <div>Sources: ${sourcesTags}</div>
+                    <div>Latest: <strong>${latest.date}</strong> &bull; Updated: <strong>${updatedStr}</strong></div>
+                    <div>Source: <span class="source-tag source-yahoo">Yahoo Finance</span></div>
                 </div>
                 <div class="price-hero">
                     <div>
-                        <div class="oil-label">${typeLabel}</div>
-                        <span class="current-price">$${latest.price.toFixed(2)}</span>
+                        <div class="asset-label">Bitcoin (BTC-USD)</div>
+                        <span class="current-price">${formatPrice(latest.price)}</span>
                     </div>
                     <div class="price-change ${isUp ? 'up' : 'down'}">
                         ${isUp ? '&#9650;' : '&#9660;'}
-                        ${change >= 0 ? '+' : ''}${change.toFixed(2)}
+                        ${change >= 0 ? '+' : ''}${formatPrice(Math.abs(change)).replace('$', change < 0 ? '-$' : '$')}
                         (${pctChange >= 0 ? '+' : ''}${pctChange.toFixed(2)}%)
                     </div>
                 </div>
@@ -647,15 +418,15 @@
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="label">High</div>
-                        <div class="value green">$${high.toFixed(2)}</div>
+                        <div class="value green">${formatPrice(high)}</div>
                     </div>
                     <div class="stat-card">
                         <div class="label">Low</div>
-                        <div class="value red">$${low.toFixed(2)}</div>
+                        <div class="value red">${formatPrice(low)}</div>
                     </div>
                     <div class="stat-card">
                         <div class="label">Average</div>
-                        <div class="value blue">$${avg.toFixed(2)}</div>
+                        <div class="value blue">${formatPrice(avg)}</div>
                     </div>
                     <div class="stat-card">
                         <div class="label">Volatility</div>
@@ -681,7 +452,7 @@
                                 const cls = dayChange >= 0 ? 'up' : 'down';
                                 return `<tr>
                                     <td>${p.date}</td>
-                                    <td><strong>$${p.price.toFixed(2)}</strong></td>
+                                    <td><strong>${formatPrice(p.price)}</strong></td>
                                     <td class="price-change ${cls}">
                                         ${dayChange >= 0 ? '+' : ''}${dayChange.toFixed(2)}
                                         (${dayPct >= 0 ? '+' : ''}${dayPct.toFixed(2)}%)
@@ -693,11 +464,12 @@
                 </div>
             `;
 
-            renderChart(prices, color);
+            renderChart(prices);
         }
 
-        function renderChart(prices, color) {
+        function renderChart(prices) {
             const ctx = document.getElementById('priceChart').getContext('2d');
+            const color = '#f97316';
 
             if (chart) chart.destroy();
 
@@ -726,10 +498,7 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: {
-                        intersect: false,
-                        mode: 'index'
-                    },
+                    interaction: { intersect: false, mode: 'index' },
                     plugins: {
                         legend: { display: false },
                         tooltip: {
@@ -741,7 +510,7 @@
                             padding: 12,
                             displayColors: false,
                             callbacks: {
-                                label: ctx => `$${ctx.parsed.y.toFixed(2)}`
+                                label: ctx => '$' + ctx.parsed.y.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                             }
                         }
                     },
@@ -751,26 +520,16 @@
                             time: {
                                 parser: 'yyyy-MM-dd',
                                 tooltipFormat: 'MMM d, yyyy',
-                                displayFormats: {
-                                    day: 'MMM d',
-                                    week: 'MMM d',
-                                    month: 'MMM yyyy'
-                                }
+                                displayFormats: { day: 'MMM d', week: 'MMM d', month: 'MMM yyyy' }
                             },
-                            grid: {
-                                color: '#2d304040',
-                                drawBorder: false
-                            },
+                            grid: { color: '#2d304040', drawBorder: false },
                             ticks: { color: '#8b8fa3', maxTicksLimit: 8 }
                         },
                         y: {
-                            grid: {
-                                color: '#2d304040',
-                                drawBorder: false
-                            },
+                            grid: { color: '#2d304040', drawBorder: false },
                             ticks: {
                                 color: '#8b8fa3',
-                                callback: v => '$' + v
+                                callback: v => '$' + v.toLocaleString()
                             }
                         }
                     }
@@ -778,8 +537,7 @@
             });
         }
 
-        // Initial load
-        fetchAllPrices();
+        fetchPrices();
     </script>
 </body>
 </html>
