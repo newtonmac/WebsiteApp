@@ -1124,7 +1124,20 @@
                     },
                     title: `VIIRS Hotspot\n${h.date} ${h.time}\nBrightness: ${h.brightness}K\nConfidence: ${h.confidence}`,
                     zIndex: 3,
+                    cursor: 'pointer',
                 });
+
+                const info = new google.maps.InfoWindow({
+                    content: `<div style="color:#000;font-size:13px;max-width:220px">
+                        <strong>VIIRS Satellite Hotspot</strong><br>
+                        <span style="color:#666">${h.date} ${h.time} UTC</span><br>
+                        <strong>Brightness:</strong> ${h.brightness}K<br>
+                        <strong>Confidence:</strong> ${h.confidence}<br>
+                        <span style="color:#888;font-size:11px">Lat: ${h.lat.toFixed(4)}, Lng: ${h.lng.toFixed(4)}</span>
+                    </div>`,
+                });
+                marker.addListener('click', () => info.open(map, marker));
+
                 hotspotMarkers.push(marker);
             });
         }
