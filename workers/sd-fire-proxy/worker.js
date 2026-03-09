@@ -28,7 +28,27 @@ export default {
                callType === 'fire' || callType === 'fire system service';
       });
 
-      const response = new Response(JSON.stringify(fireIncidents), {
+      // Categorize each incident by status
+      const categorized = fireIncidents.map(d => {
+        const units = d.Units || [];
+        const hasUnits = units.length > 0;
+        const hasActiveUnits = units.some(u => u.Active === true);
+        let status;
+        if (hasActiveUnits) {
+          status = 'active_not_contained';
+        } else if (hasUnits) {
+          status = 'active_contained';
+        } else {
+          status = 'inactive';
+        }
+        return { ...d, status };
+      });
+
+      // Sort: active_not_contained first, then active_contained, then inactive
+      const order = { active_not_contained: 0, active_contained: 1, inactive: 2 };
+      categorized.sort((a, b) => order[a.status] - order[b.status]);
+
+      const response = new Response(JSON.stringify(categorized), {
         headers: { 'Content-Type': 'application/json' },
       });
 
