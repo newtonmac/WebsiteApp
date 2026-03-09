@@ -282,6 +282,7 @@
         .data-status .source-frankfurter { background: #10b98120; color: #34d399; }
         .data-status .source-yahoo { background: #6d28d920; color: #c084fc; }
         .data-status .source-twelvedata { background: #3b82f620; color: #60a5fa; }
+        .data-status .source-banxico { background: #dc262620; color: #ef4444; }
 
         .nav-link {
             display: inline-block;
@@ -302,7 +303,7 @@
 <body>
     <div class="header">
         <h1>MXN / USD Exchange Rate Tracker</h1>
-        <p>Mexican Peso to US Dollar &bull; FRED &amp; Frankfurter &bull; Updated daily</p>
+        <p>Mexican Peso to US Dollar &bull; FRED, Frankfurter, Yahoo, Twelve Data &amp; Banxico &bull; Updated daily</p>
         <a href="index.html" class="nav-link">&larr; Oil Tracker</a>
         <a href="flight-tracker.html" class="nav-link">Flight Tracker &rarr;</a>
         <a href="traffic-dashboard.html" class="nav-link">Traffic Dashboard</a>
@@ -449,6 +450,43 @@
             return [];
         }
 
+        // Banxico SIE API - SF43718 is the official Peso/Dollar FIX rate
+        // To enable: get a free 64-char token at https://www.banxico.org.mx/SieAPIRest/service/v1/
+        // Then replace the empty string below with your token
+        const BANXICO_TOKEN = '';
+        const BANXICO_BASE = 'https://www.banxico.org.mx/SieAPIRest/service/v1';
+
+        async function fetchBanxico() {
+            if (!BANXICO_TOKEN) { console.info('Banxico: No token configured. Get one at https://www.banxico.org.mx/SieAPIRest/service/v1/'); return []; }
+            try {
+                const oneYearAgo = new Date();
+                oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+                const startDate = oneYearAgo.toISOString().split('T')[0];
+                const endDate = new Date().toISOString().split('T')[0];
+
+                const apiUrl = `${BANXICO_BASE}/series/SF43718/datos/${startDate}/${endDate}?token=${BANXICO_TOKEN}`;
+                const resp = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(apiUrl));
+                const json = await resp.json();
+
+                if (json.bmx && json.bmx.series && json.bmx.series[0] && json.bmx.series[0].datos) {
+                    return json.bmx.series[0].datos
+                        .filter(d => d.dato && d.dato !== 'N/E')
+                        .map(d => {
+                            // Banxico dates are DD/MM/YYYY format
+                            const parts = d.fecha.split('/');
+                            const dateStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                            const mxnPerUsd = parseFloat(d.dato.replace(',', ''));
+                            return { date: dateStr, rate: 1 / mxnPerUsd, source: 'Banxico' };
+                        })
+                        .filter(d => !isNaN(d.rate) && d.rate > 0)
+                        .sort((a, b) => a.date.localeCompare(b.date));
+                }
+            } catch (e) {
+                console.warn('Banxico fetch failed:', e.message);
+            }
+            return [];
+        }
+
         // Twelve Data
         const TWELVE_DATA_KEY = '52f351e2d67042889eb1c6d16cd9769f';
 
@@ -493,11 +531,12 @@
             try {
                 dataSources = [];
 
-                const [fredResult, frankfurterResult, yahooResult, tdResult] = await Promise.allSettled([
+                const [fredResult, frankfurterResult, yahooResult, tdResult, banxicoResult] = await Promise.allSettled([
                     fetchFRED(),
                     fetchFrankfurter(),
                     fetchYahoo(),
-                    fetchTwelveData()
+                    fetchTwelveData(),
+                    fetchBanxico()
                 ]);
 
                 const val = r => r.status === 'fulfilled' ? r.value : [];
@@ -506,13 +545,16 @@
                 const frankfurterData = val(frankfurterResult);
                 const yahooData = val(yahooResult);
                 const tdData = val(tdResult);
+                const banxicoData = val(banxicoResult);
 
                 if (fredData.length > 0) dataSources.push('FRED');
+                if (banxicoData.length > 0) dataSources.push('Banxico');
                 if (frankfurterData.length > 0) dataSources.push('Frankfurter');
                 if (yahooData.length > 0) dataSources.push('Yahoo');
                 if (tdData.length > 0) dataSources.push('TwelveData');
 
-                rateData = mergePrices(fredData, frankfurterData, yahooData, tdData);
+                // Priority: FRED > Banxico > Frankfurter > Yahoo > Twelve Data
+                rateData = mergePrices(fredData, banxicoData, frankfurterData, yahooData, tdData);
 
                 lastUpdated = new Date();
 
