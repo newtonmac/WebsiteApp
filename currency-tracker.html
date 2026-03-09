@@ -280,6 +280,8 @@
 
         .data-status .source-fred { background: #f59e0b20; color: #fbbf24; }
         .data-status .source-frankfurter { background: #10b98120; color: #34d399; }
+        .data-status .source-yahoo { background: #6d28d920; color: #c084fc; }
+        .data-status .source-twelvedata { background: #3b82f620; color: #60a5fa; }
 
         .nav-link {
             display: inline-block;
@@ -425,6 +427,50 @@
             return [];
         }
 
+        // Yahoo Finance (MXNUSD=X returns MXN per 1 USD, we want USD per 1 MXN)
+        async function fetchYahoo() {
+            try {
+                const targetUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/MXNUSD%3DX?range=1y&interval=1d';
+                const resp = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl));
+                const json = await resp.json();
+                if (json.chart && json.chart.result && json.chart.result[0]) {
+                    const result = json.chart.result[0];
+                    const timestamps = result.timestamp || [];
+                    const closes = result.indicators.quote[0].close || [];
+                    return timestamps.map((ts, i) => {
+                        const d = new Date(ts * 1000);
+                        const dateStr = d.toISOString().split('T')[0];
+                        return { date: dateStr, rate: closes[i], source: 'Yahoo' };
+                    }).filter(p => p.rate != null && !isNaN(p.rate) && p.rate > 0);
+                }
+            } catch (e) {
+                console.warn('Yahoo Finance fetch failed:', e.message);
+            }
+            return [];
+        }
+
+        // Twelve Data
+        const TWELVE_DATA_KEY = '52f351e2d67042889eb1c6d16cd9769f';
+
+        async function fetchTwelveData() {
+            try {
+                const resp = await fetch(
+                    'https://api.twelvedata.com/time_series?symbol=USD/MXN&interval=1day&outputsize=365&apikey=' + TWELVE_DATA_KEY
+                );
+                const json = await resp.json();
+                if (json.values) {
+                    return json.values
+                        .filter(d => d.close && d.close !== 'null')
+                        .map(d => ({ date: d.datetime, rate: 1 / parseFloat(d.close), source: 'TwelveData' }))
+                        .filter(d => !isNaN(d.rate) && d.rate > 0)
+                        .sort((a, b) => a.date.localeCompare(b.date));
+                }
+            } catch (e) {
+                console.warn('Twelve Data fetch failed:', e.message);
+            }
+            return [];
+        }
+
         function mergePrices(...priceSets) {
             const dateMap = new Map();
             priceSets.forEach(prices => {
@@ -447,20 +493,26 @@
             try {
                 dataSources = [];
 
-                const [fredResult, frankfurterResult] = await Promise.allSettled([
+                const [fredResult, frankfurterResult, yahooResult, tdResult] = await Promise.allSettled([
                     fetchFRED(),
-                    fetchFrankfurter()
+                    fetchFrankfurter(),
+                    fetchYahoo(),
+                    fetchTwelveData()
                 ]);
 
                 const val = r => r.status === 'fulfilled' ? r.value : [];
 
                 const fredData = val(fredResult);
                 const frankfurterData = val(frankfurterResult);
+                const yahooData = val(yahooResult);
+                const tdData = val(tdResult);
 
                 if (fredData.length > 0) dataSources.push('FRED');
                 if (frankfurterData.length > 0) dataSources.push('Frankfurter');
+                if (yahooData.length > 0) dataSources.push('Yahoo');
+                if (tdData.length > 0) dataSources.push('TwelveData');
 
-                rateData = mergePrices(fredData, frankfurterData);
+                rateData = mergePrices(fredData, frankfurterData, yahooData, tdData);
 
                 lastUpdated = new Date();
 
