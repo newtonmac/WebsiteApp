@@ -269,6 +269,7 @@
         .data-status .source-fred { background: #f59e0b20; color: #fbbf24; }
         .data-status .source-alphavantage { background: #8b5cf620; color: #a78bfa; }
         .data-status .source-yahoo { background: #6d28d920; color: #c084fc; }
+        .data-status .source-twelvedata { background: #10b98120; color: #34d399; }
 
         .nav-link {
             display: inline-block;
@@ -289,7 +290,7 @@
 <body>
     <div class="header">
         <h1>Crude Oil Price Tracker</h1>
-        <p>Live data &bull; EIA, FRED &amp; Alpha Vantage &bull; Updated daily</p>
+        <p>Live data &bull; EIA, FRED, Alpha Vantage, Yahoo &amp; Twelve Data &bull; Updated daily</p>
         <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
             <a href="gold-tracker.html" class="nav-link">Gold Tracker</a>
             <a href="silver-tracker.html" class="nav-link">Silver Tracker</a>
@@ -469,6 +470,28 @@
             return [];
         }
 
+        // Twelve Data API
+        const TWELVE_DATA_KEY = '52f351e2d67042889eb1c6d16cd9769f';
+
+        async function fetchTwelveData(symbol) {
+            try {
+                const resp = await fetch(
+                    'https://api.twelvedata.com/time_series?symbol=' + encodeURIComponent(symbol) +
+                    '&interval=1day&outputsize=365&apikey=' + TWELVE_DATA_KEY
+                );
+                const json = await resp.json();
+                if (json.values) {
+                    return json.values
+                        .filter(d => d.close && d.close !== 'null')
+                        .map(d => ({ date: d.datetime, price: parseFloat(d.close), source: 'TwelveData' }))
+                        .sort((a, b) => a.date.localeCompare(b.date));
+                }
+            } catch (e) {
+                console.warn('Twelve Data fetch failed:', e.message);
+            }
+            return [];
+        }
+
         // Yahoo Finance - daily commodity prices
         async function fetchYahooFinance(symbol) {
             try {
@@ -517,7 +540,7 @@
 
                 const [
                     eiaWti, eiaBrent, fredWti, fredBrent, eiaCanadian, eiaMaya,
-                    avWti, avBrent, yahooWti, yahooBrent
+                    avWti, avBrent, yahooWti, yahooBrent, tdWti, tdBrent
                 ] = await Promise.allSettled([
                     fetchEIASeries('RWTC'),
                     fetchEIASeries('RBRTE'),
@@ -530,7 +553,10 @@
                     fetchAlphaVantage('BRENT'),
                     // Yahoo Finance
                     fetchYahooFinance('CL=F'),
-                    fetchYahooFinance('BZ=F')
+                    fetchYahooFinance('BZ=F'),
+                    // Twelve Data
+                    fetchTwelveData('CL'),
+                    fetchTwelveData('BZ')
                 ]);
 
                 const val = r => r.status === 'fulfilled' ? r.value : [];
@@ -543,15 +569,18 @@
                 const avBrentData = val(avBrent);
                 const yahooWtiData = val(yahooWti);
                 const yahooBrentData = val(yahooBrent);
+                const tdWtiData = val(tdWti);
+                const tdBrentData = val(tdBrent);
 
                 if (eiaWtiData.length > 0 || eiaBrentData.length > 0) dataSources.push('EIA');
                 if (fredWtiData.length > 0 || fredBrentData.length > 0) dataSources.push('FRED');
                 if (avWtiData.length > 0 || avBrentData.length > 0) dataSources.push('AlphaVantage');
                 if (yahooWtiData.length > 0 || yahooBrentData.length > 0) dataSources.push('Yahoo');
+                if (tdWtiData.length > 0 || tdBrentData.length > 0) dataSources.push('TwelveData');
 
-                // Merge all sources: EIA first (most authoritative), then FRED, Alpha Vantage, Yahoo
-                wtiPrices = mergePrices(eiaWtiData, fredWtiData, avWtiData, yahooWtiData);
-                brentPrices = mergePrices(eiaBrentData, fredBrentData, avBrentData, yahooBrentData);
+                // Merge all sources: EIA first (most authoritative), then FRED, Alpha Vantage, Yahoo, Twelve Data
+                wtiPrices = mergePrices(eiaWtiData, fredWtiData, avWtiData, yahooWtiData, tdWtiData);
+                brentPrices = mergePrices(eiaBrentData, fredBrentData, avBrentData, yahooBrentData, tdBrentData);
                 canadianPrices = val(eiaCanadian);
                 mayaPrices = val(eiaMaya);
 

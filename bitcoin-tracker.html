@@ -252,6 +252,7 @@
         }
 
         .data-status .source-yahoo { background: #6d28d920; color: #c084fc; }
+        .data-status .source-twelvedata { background: #10b98120; color: #34d399; }
 
         .nav-link {
             display: inline-block;
@@ -317,6 +318,37 @@
 
         document.getElementById('refreshBtn').addEventListener('click', fetchPrices);
 
+        const TWELVE_DATA_KEY = '52f351e2d67042889eb1c6d16cd9769f';
+
+        async function fetchTwelveData(symbol) {
+            try {
+                const resp = await fetch(
+                    'https://api.twelvedata.com/time_series?symbol=' + encodeURIComponent(symbol) +
+                    '&interval=1day&outputsize=365&apikey=' + TWELVE_DATA_KEY
+                );
+                const json = await resp.json();
+                if (json.values) {
+                    return json.values
+                        .filter(d => d.close && d.close !== 'null')
+                        .map(d => ({ date: d.datetime, price: parseFloat(d.close), source: 'TwelveData' }))
+                        .sort((a, b) => a.date.localeCompare(b.date));
+                }
+            } catch (e) {
+                console.warn('Twelve Data fetch failed:', e.message);
+            }
+            return [];
+        }
+
+        function mergePrices(...priceSets) {
+            const dateMap = new Map();
+            priceSets.forEach(prices => {
+                prices.forEach(p => {
+                    if (!dateMap.has(p.date)) dateMap.set(p.date, p);
+                });
+            });
+            return Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+        }
+
         async function fetchYahooFinance(symbol, range) {
             const resp = await fetch(
                 'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(symbol) +
@@ -344,7 +376,20 @@
                 </div>`;
 
             try {
-                btcPrices = await fetchYahooFinance('BTC-USD', '1y');
+                const [yahooResult, tdResult] = await Promise.allSettled([
+                    fetchYahooFinance('BTC-USD', '1y'),
+                    fetchTwelveData('BTC/USD')
+                ]);
+                const val = r => r.status === 'fulfilled' ? r.value : [];
+                const yahooData = val(yahooResult);
+                const tdData = val(tdResult);
+
+                const sources = [];
+                if (yahooData.length > 0) sources.push('Yahoo');
+                if (tdData.length > 0) sources.push('TwelveData');
+
+                btcPrices = mergePrices(yahooData, tdData);
+                btcPrices._sources = sources;
                 lastUpdated = new Date();
 
                 if (btcPrices.length === 0) {
@@ -397,7 +442,9 @@
             document.getElementById('content').innerHTML = `
                 <div class="data-status">
                     <div>Latest: <strong>${latest.date}</strong> &bull; Updated: <strong>${updatedStr}</strong></div>
-                    <div>Source: <span class="source-tag source-yahoo">Yahoo Finance</span></div>
+                    <div>Sources: ${(btcPrices._sources || ['Yahoo']).map(s =>
+                        '<span class="source-tag source-' + s.toLowerCase() + '">' + s + '</span>'
+                    ).join(' ')}</div>
                 </div>
                 <div class="price-hero">
                     <div>
