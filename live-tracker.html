@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>California Fire Tracker</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f1117;
+            color: #e1e4e8;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1d28, #252836);
+            padding: 14px 20px;
+            border-bottom: 1px solid #2d3040;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        .header-left { display: flex; align-items: center; gap: 16px; }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #f97316, #ef4444);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header .subtitle { color: #8b8fa3; font-size: 12px; margin-top: 2px; }
+
+        .header-right { display: flex; align-items: center; gap: 10px; }
+
+        .live-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            background: #ef444420;
+            border: 1px solid #ef444440;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #f87171;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: #f87171;
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        .nav-link {
+            padding: 6px 12px;
+            background: #252836;
+            color: #60a5fa;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            border: 1px solid #2d3040;
+            transition: all 0.2s;
+        }
+        .nav-link:hover { background: #2d3040; color: #a78bfa; }
+
+        .main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 340px;
+            background: #1a1d28;
+            border-right: 1px solid #2d3040;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            z-index: 5;
+        }
+
+        .sidebar-header {
+            padding: 14px 16px;
+            border-bottom: 1px solid #2d3040;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar-header h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #e1e4e8;
+        }
+
+        .fire-count {
+            font-size: 12px;
+            color: #f87171;
+            background: #ef444420;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+
+        .filter-bar {
+            padding: 10px 16px;
+            border-bottom: 1px solid #2d3040;
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 5px 12px;
+            background: transparent;
+            color: #8b8fa3;
+            border: 1px solid #2d3040;
+            border-radius: 14px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .filter-btn.active {
+            background: #f9731620;
+            color: #f97316;
+            border-color: #f9731640;
+        }
+
+        .filter-btn:hover:not(.active) {
+            border-color: #8b8fa3;
+            color: #e1e4e8;
+        }
+
+        .sidebar-status {
+            padding: 10px 16px;
+            border-bottom: 1px solid #2d3040;
+            font-size: 11px;
+            color: #8b8fa3;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .refresh-link {
+            color: #60a5fa;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .refresh-link:hover { color: #a78bfa; }
+
+        .fire-list {
+            flex: 1;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #2d3040 transparent;
+        }
+
+        .fire-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #1e2130;
+            cursor: pointer;
+            transition: background 0.15s;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .fire-item:hover { background: #252836; }
+        .fire-item.selected { background: #252836; border-left: 3px solid #f97316; }
+
+        .fire-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+            background: #ef444420;
+        }
+
+        .fire-info { flex: 1; min-width: 0; }
+
+        .fire-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #e1e4e8;
+            margin-bottom: 2px;
+        }
+
+        .fire-location {
+            font-size: 11px;
+            color: #8b8fa3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .fire-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 5px;
+            flex-wrap: wrap;
+        }
+
+        .fire-badge {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 6px;
+        }
+
+        .fire-badge.acres {
+            background: #f9731620;
+            color: #f97316;
+        }
+
+        .fire-badge.contained {
+            background: #10b98120;
+            color: #34d399;
+        }
+
+        .fire-badge.contained.low {
+            background: #ef444420;
+            color: #f87171;
+        }
+
+        .fire-badge.contained.mid {
+            background: #f59e0b20;
+            color: #fbbf24;
+        }
+
+        .fire-badge.county {
+            background: #3b82f620;
+            color: #60a5fa;
+        }
+
+        /* Map area */
+        .map-area {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Info panel overlay */
+        .info-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            max-width: 420px;
+            background: #1a1d28ee;
+            backdrop-filter: blur(12px);
+            border-radius: 16px;
+            border: 1px solid #2d3040;
+            padding: 16px;
+            display: none;
+            z-index: 5;
+        }
+
+        .info-panel.visible { display: block; }
+
+        .info-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .info-panel-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #f97316;
+        }
+
+        .info-panel-close {
+            width: 28px;
+            height: 28px;
+            background: #252836;
+            border: 1px solid #2d3040;
+            border-radius: 8px;
+            color: #8b8fa3;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .info-panel-close:hover { background: #2d3040; color: #e1e4e8; }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .info-item {
+            background: #0f111780;
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        .info-label {
+            font-size: 10px;
+            color: #8b8fa3;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .info-value.green { color: #34d399; }
+        .info-value.blue { color: #60a5fa; }
+        .info-value.orange { color: #f97316; }
+        .info-value.red { color: #f87171; }
+        .info-value.yellow { color: #fbbf24; }
+        .info-value.purple { color: #a78bfa; }
+
+        .info-link {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 6px 14px;
+            background: #f9731620;
+            color: #f97316;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid #f9731640;
+            transition: all 0.2s;
+        }
+        .info-link:hover { background: #f9731640; }
+
+        /* Map controls overlay */
+        .map-controls {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 5;
+        }
+
+        .map-ctrl-btn {
+            width: 40px;
+            height: 40px;
+            background: #1a1d28ee;
+            backdrop-filter: blur(12px);
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            color: #8b8fa3;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.15s;
+        }
+
+        .map-ctrl-btn:hover { background: #252836; color: #e1e4e8; }
+        .map-ctrl-btn.active { background: #f97316; color: white; border-color: #f97316; }
+
+        /* Stats bar */
+        .stats-bar {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            display: flex;
+            gap: 8px;
+            z-index: 5;
+            flex-wrap: wrap;
+        }
+
+        .stat-chip {
+            background: #1a1d28ee;
+            backdrop-filter: blur(12px);
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            padding: 8px 14px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .stat-chip .count {
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .stat-chip .label { color: #8b8fa3; }
+
+        /* No fires message */
+        .no-fires {
+            padding: 40px 20px;
+            text-align: center;
+            color: #8b8fa3;
+        }
+
+        .no-fires .icon { font-size: 40px; margin-bottom: 12px; }
+        .no-fires h4 { color: #34d399; font-size: 16px; margin-bottom: 6px; }
+        .no-fires p { font-size: 12px; line-height: 1.5; }
+
+        /* Loading state */
+        .loading-msg {
+            padding: 40px 20px;
+            text-align: center;
+            color: #8b8fa3;
+            font-size: 13px;
+        }
+
+        .spinner {
+            width: 28px;
+            height: 28px;
+            border: 3px solid #2d3040;
+            border-top-color: #f97316;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 12px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Perimeter legend */
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: #1a1d28ee;
+            backdrop-filter: blur(12px);
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 11px;
+            z-index: 5;
+        }
+
+        .legend-title {
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #e1e4e8;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 3px;
+            color: #8b8fa3;
+        }
+
+        .legend-swatch {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+        }
+
+        /* API key modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: #0f1117ee;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.hidden { display: none; }
+
+        .modal {
+            background: #1a1d28;
+            border: 1px solid #2d3040;
+            border-radius: 20px;
+            padding: 32px;
+            max-width: 480px;
+            width: 90%;
+        }
+
+        .modal h2 {
+            font-size: 20px;
+            margin-bottom: 8px;
+            background: linear-gradient(90deg, #f97316, #ef4444);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .modal p {
+            color: #8b8fa3;
+            font-size: 13px;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .modal input {
+            width: 100%;
+            padding: 12px 16px;
+            background: #0f1117;
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            color: #e1e4e8;
+            font-size: 14px;
+            margin-bottom: 12px;
+            outline: none;
+        }
+
+        .modal input:focus { border-color: #f97316; }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 10px 24px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.15s;
+        }
+
+        .modal-btn.primary {
+            background: #f97316;
+            color: white;
+        }
+
+        .modal-btn.primary:hover { background: #ea580c; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .header { padding: 10px 14px; }
+            .header h1 { font-size: 16px; }
+            .stat-chip { padding: 6px 10px; font-size: 11px; }
+            .info-panel { left: 10px; right: 10px; }
+            .legend { bottom: 10px; right: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <div>
+                <h1>California Fire Tracker</h1>
+                <div class="subtitle">CAL FIRE real-time incidents &bull; Auto-refreshes every 5 min</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="live-badge">
+                <span class="live-dot"></span>
+                LIVE
+            </div>
+            <a href="index.html" class="nav-link">&larr; Home</a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h3>Fire Incidents</h3>
+                <span class="fire-count" id="fireCount">0</span>
+            </div>
+            <div class="filter-bar">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="active">Active</button>
+                <button class="filter-btn" data-filter="contained">Contained</button>
+                <button class="filter-btn" data-filter="large">100+ Acres</button>
+            </div>
+            <div class="sidebar-status" id="sidebarStatus">
+                <span>Loading...</span>
+                <button class="refresh-link" id="refreshBtn">Refresh</button>
+            </div>
+            <div class="fire-list" id="fireList">
+                <div class="loading-msg">
+                    <div class="spinner"></div>
+                    Fetching fire data...
+                </div>
+            </div>
+        </div>
+
+        <div class="map-area">
+            <div id="map"></div>
+
+            <div class="stats-bar" id="statsBar">
+                <div class="stat-chip">
+                    <span class="count" id="totalFires" style="color:#f97316">0</span>
+                    <span class="label">Fires</span>
+                </div>
+                <div class="stat-chip">
+                    <span class="count" id="totalAcres" style="color:#f87171">0</span>
+                    <span class="label">Total Acres</span>
+                </div>
+                <div class="stat-chip">
+                    <span class="count" id="activeFires" style="color:#fbbf24">0</span>
+                    <span class="label">Active</span>
+                </div>
+            </div>
+
+            <div class="map-controls">
+                <button class="map-ctrl-btn" id="centerBtn" title="Fit all fires">&#8982;</button>
+                <button class="map-ctrl-btn" id="perimeterBtn" title="Toggle perimeters">&#9634;</button>
+                <button class="map-ctrl-btn" id="terrainBtn" title="Toggle terrain">&#9650;</button>
+            </div>
+
+            <div class="legend" id="legend" style="display:none">
+                <div class="legend-title">Fire Status</div>
+                <div class="legend-item"><div class="legend-swatch" style="background:#ef4444"></div> Active (&lt;50% contained)</div>
+                <div class="legend-item"><div class="legend-swatch" style="background:#f59e0b"></div> Partially (50-99%)</div>
+                <div class="legend-item"><div class="legend-swatch" style="background:#22c55e"></div> Fully contained</div>
+                <div class="legend-item"><div class="legend-swatch" style="background:#ef444440;border:1px solid #ef4444"></div> Fire perimeter</div>
+            </div>
+
+            <div class="info-panel" id="infoPanel">
+                <div class="info-panel-header">
+                    <span class="info-panel-title" id="infoPanelTitle"></span>
+                    <button class="info-panel-close" id="infoPanelClose">&times;</button>
+                </div>
+                <div class="info-grid" id="infoPanelGrid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Key Modal -->
+    <div class="modal-overlay" id="apiKeyModal">
+        <div class="modal">
+            <h2>Google Maps API Key</h2>
+            <p>
+                Enter your Google Maps JavaScript API key to load the fire tracker map.
+                Get one from the
+                <a href="https://console.cloud.google.com/google/maps-apis" target="_blank" style="color:#f97316">Google Cloud Console</a>.
+                Enable the <strong>Maps JavaScript API</strong>.
+            </p>
+            <input type="text" id="apiKeyInput" placeholder="AIza..." spellcheck="false" autocomplete="off">
+            <p style="font-size:11px; margin-bottom:0;">
+                Your key is stored locally in your browser and never sent anywhere except to Google.
+            </p>
+            <div class="modal-actions">
+                <button class="modal-btn primary" id="apiKeySave">Load Map</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ── State ──
+        let map;
+        let selectedId = null;
+        let activeFilter = 'all';
+        let fireMarkers = {};
+        let perimeterPolygons = [];
+        let showPerimeters = true;
+        let incidents = [];
+        let refreshTimer;
+
+        const STORAGE_KEY = 'live_tracker_gmaps_key';
+        const CALFIRE_API = 'https://incidents.fire.ca.gov/umbraco/api/IncidentApi/GeoJsonList';
+        const PERIMETER_API = 'https://services2.arcgis.com/cFEFS0EWrhfDeVw9/arcgis/rest/services/California_Fire_Perimeters/FeatureServer/0/query';
+        const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
+        // ── Fetch active fire incidents from CAL FIRE ──
+        async function fetchIncidents() {
+            document.getElementById('sidebarStatus').querySelector('span').textContent = 'Updating...';
+
+            try {
+                // Fetch active fires
+                const activeResp = await fetch(CALFIRE_API + '?inactive=false');
+                const activeData = await activeResp.json();
+
+                // Also fetch recent inactive to show recently contained fires
+                const allResp = await fetch(CALFIRE_API + '?inactive=true');
+                const allData = await allResp.json();
+
+                // Combine: active fires + recent inactive (last 30 days)
+                const thirtyDaysAgo = new Date();
+                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+                const activeIds = new Set();
+                const combined = [];
+
+                // Add active fires
+                if (activeData.features) {
+                    activeData.features.forEach(f => {
+                        const props = f.properties || {};
+                        if (props.Latitude && props.Longitude) {
+                            activeIds.add(props.UniqueId);
+                            combined.push(normalizeIncident(props, true));
+                        }
+                    });
+                }
+
+                // Add recent inactive fires
+                if (allData.features) {
+                    allData.features.forEach(f => {
+                        const props = f.properties || {};
+                        if (props.Latitude && props.Longitude && !activeIds.has(props.UniqueId)) {
+                            const started = props.Started ? new Date(props.Started) : null;
+                            if (started && started >= thirtyDaysAgo) {
+                                combined.push(normalizeIncident(props, false));
+                            }
+                        }
+                    });
+                }
+
+                // Sort: active first, then by acres descending
+                combined.sort((a, b) => {
+                    if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
+                    return b.acres - a.acres;
+                });
+
+                incidents = combined;
+                updateUI();
+
+                const now = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                document.getElementById('sidebarStatus').querySelector('span').textContent =
+                    `Updated ${now} \u2022 Source: CAL FIRE`;
+
+            } catch (err) {
+                console.error('Failed to fetch incidents:', err);
+                document.getElementById('sidebarStatus').querySelector('span').textContent =
+                    'Error loading data. Retrying...';
+                // Retry in 30 seconds
+                setTimeout(fetchIncidents, 30000);
+            }
+        }
+
+        function normalizeIncident(props, isActive) {
+            const pct = props.PercentContained != null ? parseInt(props.PercentContained) : null;
+            return {
+                id: props.UniqueId || props.Name,
+                name: props.Name || 'Unknown Fire',
+                lat: parseFloat(props.Latitude),
+                lng: parseFloat(props.Longitude),
+                acres: props.AcresBurned ? parseFloat(props.AcresBurned) : 0,
+                contained: pct,
+                county: props.County || 'Unknown',
+                location: props.Location || '',
+                started: props.Started || null,
+                updated: props.Updated || null,
+                agency: props.AgencyNames || props.AdminUnit || '',
+                isActive: isActive,
+                url: props.Url || null,
+                controlStatement: props.ControlStatement || '',
+            };
+        }
+
+        // ── Fetch fire perimeters from ArcGIS ──
+        async function fetchPerimeters() {
+            try {
+                const currentYear = new Date().getFullYear();
+                const params = new URLSearchParams({
+                    where: `YEAR_>=${currentYear - 1}`,
+                    outFields: 'FIRE_NAME,YEAR_,GIS_ACRES,ALARM_DATE,CONT_DATE,AGENCY',
+                    f: 'geojson',
+                    outSR: '4326',
+                    resultRecordCount: '100',
+                });
+
+                const resp = await fetch(PERIMETER_API + '?' + params.toString());
+                const data = await resp.json();
+
+                if (data.features && map) {
+                    // Clear old perimeters
+                    perimeterPolygons.forEach(p => p.setMap(null));
+                    perimeterPolygons = [];
+
+                    data.features.forEach(f => {
+                        if (!f.geometry || !f.geometry.coordinates) return;
+
+                        const coords = f.geometry.type === 'MultiPolygon'
+                            ? f.geometry.coordinates.flat()
+                            : f.geometry.coordinates;
+
+                        coords.forEach(ring => {
+                            const path = ring.map(c => ({ lat: c[1], lng: c[0] }));
+                            const polygon = new google.maps.Polygon({
+                                paths: path,
+                                strokeColor: '#ef4444',
+                                strokeOpacity: 0.7,
+                                strokeWeight: 1.5,
+                                fillColor: '#ef4444',
+                                fillOpacity: 0.15,
+                                map: showPerimeters ? map : null,
+                                zIndex: 1,
+                            });
+                            perimeterPolygons.push(polygon);
+                        });
+                    });
+                }
+            } catch (err) {
+                console.warn('Failed to load perimeters:', err);
+            }
+        }
+
+        // ── UI Updates ──
+        function updateUI() {
+            renderSidebar();
+            updateStats();
+            renderMarkers();
+        }
+
+        function getFilteredIncidents() {
+            if (activeFilter === 'all') return incidents;
+            if (activeFilter === 'active') return incidents.filter(f => f.isActive);
+            if (activeFilter === 'contained') return incidents.filter(f => f.contained === 100);
+            if (activeFilter === 'large') return incidents.filter(f => f.acres >= 100);
+            return incidents;
+        }
+
+        function renderSidebar() {
+            const list = document.getElementById('fireList');
+            const filtered = getFilteredIncidents();
+            document.getElementById('fireCount').textContent = filtered.length;
+
+            if (filtered.length === 0 && incidents.length === 0) {
+                list.innerHTML = `
+                    <div class="no-fires">
+                        <div class="icon">&#9996;</div>
+                        <h4>No Active Fires</h4>
+                        <p>There are currently no reported fire incidents in California. Data refreshes automatically every 5 minutes.</p>
+                    </div>`;
+                return;
+            }
+
+            if (filtered.length === 0) {
+                list.innerHTML = `
+                    <div class="no-fires">
+                        <p>No fires match the current filter.</p>
+                    </div>`;
+                return;
+            }
+
+            list.innerHTML = filtered.map(f => {
+                const containedClass = f.contained == null ? '' :
+                    f.contained >= 100 ? 'contained' :
+                    f.contained >= 50 ? 'contained mid' : 'contained low';
+
+                return `
+                <div class="fire-item ${f.id === selectedId ? 'selected' : ''}" onclick="selectFire('${f.id}')">
+                    <div class="fire-icon">${f.isActive ? '&#128293;' : '&#9989;'}</div>
+                    <div class="fire-info">
+                        <div class="fire-name">${f.name}</div>
+                        <div class="fire-location">${f.county} County &bull; ${f.location || 'Location unavailable'}</div>
+                        <div class="fire-meta">
+                            ${f.acres > 0 ? `<span class="fire-badge acres">${formatAcres(f.acres)} acres</span>` : ''}
+                            ${f.contained != null ? `<span class="fire-badge ${containedClass}">${f.contained}% contained</span>` : ''}
+                            <span class="fire-badge county">${f.county}</span>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function formatAcres(n) {
+            if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+            return n.toLocaleString();
+        }
+
+        function updateStats() {
+            const active = incidents.filter(f => f.isActive);
+            const totalAcres = incidents.reduce((s, f) => s + f.acres, 0);
+            document.getElementById('totalFires').textContent = incidents.length;
+            document.getElementById('totalAcres').textContent = formatAcres(totalAcres);
+            document.getElementById('activeFires').textContent = active.length;
+        }
+
+        // ── Map markers ──
+        function getMarkerColor(f) {
+            if (!f.isActive || f.contained === 100) return '#22c55e';
+            if (f.contained != null && f.contained >= 50) return '#f59e0b';
+            return '#ef4444';
+        }
+
+        function getMarkerScale(f) {
+            if (f.id === selectedId) return 14;
+            if (f.acres >= 10000) return 14;
+            if (f.acres >= 1000) return 12;
+            if (f.acres >= 100) return 10;
+            return 8;
+        }
+
+        function renderMarkers() {
+            if (!map) return;
+
+            // Remove old markers
+            Object.values(fireMarkers).forEach(m => m.setMap(null));
+            fireMarkers = {};
+
+            incidents.forEach(f => {
+                const color = getMarkerColor(f);
+                const scale = getMarkerScale(f);
+
+                const marker = new google.maps.Marker({
+                    position: { lat: f.lat, lng: f.lng },
+                    map: map,
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        fillColor: color,
+                        fillOpacity: f.isActive ? 0.9 : 0.5,
+                        strokeColor: '#fff',
+                        strokeWeight: f.id === selectedId ? 3 : 1.5,
+                        scale: scale,
+                    },
+                    title: f.name,
+                    zIndex: f.isActive ? 10 : 5,
+                });
+
+                marker.addListener('click', () => selectFire(f.id));
+                fireMarkers[f.id] = marker;
+            });
+        }
+
+        // ── Selection ──
+        function selectFire(id) {
+            selectedId = id;
+            const f = incidents.find(i => i.id === id);
+            if (!f || !map) return;
+
+            map.panTo({ lat: f.lat, lng: f.lng });
+            map.setZoom(10);
+
+            showInfoPanel(f);
+            renderSidebar();
+            renderMarkers();
+        }
+
+        function showInfoPanel(f) {
+            const panel = document.getElementById('infoPanel');
+            document.getElementById('infoPanelTitle').textContent = f.name;
+
+            const startDate = f.started ? new Date(f.started).toLocaleDateString('en-US', {
+                month: 'short', day: 'numeric', year: 'numeric'
+            }) : 'Unknown';
+
+            const updatedStr = f.updated ? new Date(f.updated).toLocaleString('en-US', {
+                month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+            }) : 'Unknown';
+
+            const containedColor = f.contained == null ? '' :
+                f.contained >= 100 ? 'green' :
+                f.contained >= 50 ? 'yellow' : 'red';
+
+            document.getElementById('infoPanelGrid').innerHTML = `
+                <div class="info-item">
+                    <div class="info-label">Status</div>
+                    <div class="info-value ${f.isActive ? 'orange' : 'green'}">${f.isActive ? 'Active' : 'Contained'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Acres Burned</div>
+                    <div class="info-value red">${f.acres > 0 ? f.acres.toLocaleString() : 'Unknown'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Containment</div>
+                    <div class="info-value ${containedColor}">${f.contained != null ? f.contained + '%' : 'Unknown'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">County</div>
+                    <div class="info-value blue">${f.county}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Started</div>
+                    <div class="info-value">${startDate}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Last Update</div>
+                    <div class="info-value">${updatedStr}</div>
+                </div>
+                <div class="info-item" style="grid-column: span 2">
+                    <div class="info-label">Agency</div>
+                    <div class="info-value" style="font-size:12px">${f.agency || 'Unknown'}</div>
+                </div>
+                ${f.location ? `
+                <div class="info-item" style="grid-column: span 2">
+                    <div class="info-label">Location</div>
+                    <div class="info-value" style="font-size:12px;color:#8b8fa3">${f.location}</div>
+                </div>` : ''}
+                ${f.url ? `
+                <div class="info-item" style="grid-column: span 2; padding-bottom: 2px;">
+                    <a href="${f.url}" target="_blank" class="info-link">View on CAL FIRE &rarr;</a>
+                </div>` : ''}
+            `;
+            panel.classList.add('visible');
+        }
+
+        // ── Google Maps init ──
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: { lat: 37.5, lng: -119.5 },
+                zoom: 6,
+                mapTypeId: 'roadmap',
+                styles: [
+                    { elementType: 'geometry', stylers: [{ color: '#1a1d28' }] },
+                    { elementType: 'labels.text.stroke', stylers: [{ color: '#1a1d28' }] },
+                    { elementType: 'labels.text.fill', stylers: [{ color: '#8b8fa3' }] },
+                    { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#2d3040' }] },
+                    { featureType: 'administrative.province', elementType: 'geometry.stroke', stylers: [{ color: '#4a5568' }] },
+                    { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+                    { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#1e2a1e' }] },
+                    { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#2d3040' }] },
+                    { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#1e2130' }] },
+                    { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#3b3f54' }] },
+                    { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#2d3040' }] },
+                    { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0e1525' }] },
+                    { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#4a5568' }] },
+                ],
+                disableDefaultUI: true,
+                zoomControl: true,
+                zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_BOTTOM },
+            });
+
+            document.getElementById('legend').style.display = 'block';
+
+            // Load fire data
+            fetchIncidents();
+            fetchPerimeters();
+
+            // Auto-refresh
+            refreshTimer = setInterval(() => {
+                fetchIncidents();
+                fetchPerimeters();
+            }, REFRESH_INTERVAL);
+        }
+
+        // ── Controls ──
+        document.getElementById('infoPanelClose').addEventListener('click', () => {
+            document.getElementById('infoPanel').classList.remove('visible');
+            selectedId = null;
+            renderSidebar();
+            renderMarkers();
+        });
+
+        document.getElementById('centerBtn').addEventListener('click', () => {
+            if (!map) return;
+            if (incidents.length === 0) {
+                map.setCenter({ lat: 37.5, lng: -119.5 });
+                map.setZoom(6);
+                return;
+            }
+            const bounds = new google.maps.LatLngBounds();
+            incidents.forEach(f => bounds.extend({ lat: f.lat, lng: f.lng }));
+            map.fitBounds(bounds, 60);
+            selectedId = null;
+            document.getElementById('infoPanel').classList.remove('visible');
+            renderSidebar();
+            renderMarkers();
+        });
+
+        document.getElementById('perimeterBtn').addEventListener('click', function() {
+            showPerimeters = !showPerimeters;
+            this.classList.toggle('active', showPerimeters);
+            perimeterPolygons.forEach(p => p.setMap(showPerimeters ? map : null));
+        });
+
+        document.getElementById('terrainBtn').addEventListener('click', function() {
+            const current = map.getMapTypeId();
+            const next = current === 'terrain' ? 'roadmap' : 'terrain';
+            map.setMapTypeId(next);
+            this.classList.toggle('active', next === 'terrain');
+        });
+
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            fetchIncidents();
+            fetchPerimeters();
+        });
+
+        // Filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                activeFilter = btn.dataset.filter;
+                renderSidebar();
+            });
+        });
+
+        // ── API Key management ──
+        function loadApiKey() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                document.getElementById('apiKeyModal').classList.add('hidden');
+                loadGoogleMaps(saved);
+            }
+        }
+
+        document.getElementById('apiKeySave').addEventListener('click', () => {
+            const key = document.getElementById('apiKeyInput').value.trim();
+            if (!key) return;
+            localStorage.setItem(STORAGE_KEY, key);
+            document.getElementById('apiKeyModal').classList.add('hidden');
+            loadGoogleMaps(key);
+        });
+
+        document.getElementById('apiKeyInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') document.getElementById('apiKeySave').click();
+        });
+
+        function loadGoogleMaps(apiKey) {
+            const script = document.createElement('script');
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&callback=initMap`;
+            script.async = true;
+            script.defer = true;
+            script.onerror = () => {
+                localStorage.removeItem(STORAGE_KEY);
+                document.getElementById('apiKeyModal').classList.remove('hidden');
+                alert('Failed to load Google Maps. Please check your API key.');
+            };
+            document.head.appendChild(script);
+        }
+
+        // Start
+        loadApiKey();
+    </script>
+</body>
+</html>
