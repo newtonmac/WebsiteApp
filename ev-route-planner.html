@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EV Route Planner — Least Elevation Gain</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -153,6 +153,27 @@
         }
         .plan-btn:hover { opacity: 0.9; }
         .plan-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .gmaps-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 11px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, #4285F4, #1a73e8);
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: opacity 0.2s;
+            margin-top: 10px;
+        }
+        .gmaps-btn:hover { opacity: 0.9; }
+        .gmaps-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
 
         /* route cards */
         .route-card {
@@ -353,6 +374,10 @@
         <div class="sidebar-section" id="routeResults" style="display:none;">
             <h2>Routes Found</h2>
             <div id="routeCards"></div>
+            <a id="gmapsLink" class="gmaps-btn" href="#" target="_blank" rel="noopener" style="display:none;">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z" fill="white"/></svg>
+                Open in Google Maps
+            </a>
         </div>
 
         <div class="elev-chart-wrap" id="elevSection" style="display:none;">
@@ -388,10 +413,21 @@
 // ─── Map Setup ───
 const map = L.map('map', { zoomControl: false }).setView([32.72, -117.16], 11);
 L.control.zoom({ position: 'topright' }).addTo(map);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+
+// Try CARTO dark tiles, fallback to OSM
+const cartoLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
     attribution: '&copy; OpenStreetMap &copy; CARTO',
     maxZoom: 19
-}).addTo(map);
+});
+const osmLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap',
+    maxZoom: 19
+});
+cartoLayer.on('tileerror', function() {
+    map.removeLayer(cartoLayer);
+    osmLayer.addTo(map);
+});
+cartoLayer.addTo(map);
 
 // ─── State ───
 let originCoord = null;   // [lat, lng]
@@ -565,39 +601,53 @@ function samplePoints(coords, maxPoints) {
     return result;
 }
 
-// ─── Fetch elevations from Open-Elevation API ───
+// ─── Fetch elevations — tries Open-Meteo first (most reliable), then Open-Elevation ───
 async function fetchElevations(coords) {
-    // coords are [lng, lat] — API wants {latitude, longitude}
-    // Batch into chunks of 80 to respect API limits
+    // coords are [lng, lat]
+    // Open-Meteo accepts up to ~100 coords per request via query params
     const chunkSize = 80;
     const allElevations = [];
 
     for (let i = 0; i < coords.length; i += chunkSize) {
         const chunk = coords.slice(i, i + chunkSize);
-        const locations = chunk.map(c => ({ latitude: c[1], longitude: c[0] }));
+        let got = false;
 
+        // Try Open-Meteo first (GET, very reliable)
         try {
-            const resp = await fetch('https://api.open-elevation.com/api/v1/lookup', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ locations })
-            });
-            const data = await resp.json();
-            data.results.forEach(r => allElevations.push(r.elevation));
-        } catch(e) {
-            // Fallback: use open-meteo elevation API
             const lats = chunk.map(c => c[1]).join(',');
             const lngs = chunk.map(c => c[0]).join(',');
-            try {
-                const resp2 = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`);
-                const data2 = await resp2.json();
-                if (data2.elevation) {
-                    data2.elevation.forEach(e => allElevations.push(e));
+            const resp = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`);
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data.elevation && data.elevation.length === chunk.length) {
+                    data.elevation.forEach(e => allElevations.push(e));
+                    got = true;
                 }
-            } catch(e2) {
-                // Last resort: fill with 0s
-                chunk.forEach(() => allElevations.push(0));
             }
+        } catch(e) { /* fall through */ }
+
+        // Fallback: Open-Elevation (POST, sometimes down)
+        if (!got) {
+            try {
+                const locations = chunk.map(c => ({ latitude: c[1], longitude: c[0] }));
+                const resp = await fetch('https://api.open-elevation.com/api/v1/lookup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ locations })
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.results) {
+                        data.results.forEach(r => allElevations.push(r.elevation));
+                        got = true;
+                    }
+                }
+            } catch(e2) { /* fall through */ }
+        }
+
+        // Last resort: fill with 0
+        if (!got) {
+            chunk.forEach(() => allElevations.push(0));
         }
     }
     return allElevations;
@@ -731,6 +781,44 @@ function selectRoute(idx) {
     // Draw elevation chart
     drawElevationChart(routesData[idx]);
     document.getElementById('elevSection').style.display = 'block';
+
+    // Build Google Maps link with waypoints to follow this route
+    updateGoogleMapsLink(routesData[idx]);
+}
+
+// ─── Google Maps Deep Link ───
+// Samples waypoints along the selected route so Google Maps follows
+// the elevation-optimized path. Works on iOS, Android, and desktop.
+function updateGoogleMapsLink(route) {
+    const gmapsLink = document.getElementById('gmapsLink');
+    if (!originCoord || !destCoord) { gmapsLink.style.display = 'none'; return; }
+
+    const origin = `${originCoord[0]},${originCoord[1]}`;
+    const dest = `${destCoord[0]},${destCoord[1]}`;
+
+    // Sample up to 8 waypoints along the route (Google Maps URL limit)
+    // Skip first and last since those are origin/destination
+    const coords = route.coords; // [lng, lat]
+    let waypointsStr = '';
+    if (coords.length > 2) {
+        const numWaypoints = Math.min(8, Math.max(3, Math.floor(coords.length / 20)));
+        const step = (coords.length - 1) / (numWaypoints + 1);
+        const waypoints = [];
+        for (let i = 1; i <= numWaypoints; i++) {
+            const idx = Math.round(step * i);
+            if (idx > 0 && idx < coords.length - 1) {
+                waypoints.push(`${coords[idx][1]},${coords[idx][0]}`);
+            }
+        }
+        if (waypoints.length) {
+            waypointsStr = `&waypoints=${waypoints.join('|')}`;
+        }
+    }
+
+    // Use comgooglemaps:// scheme for iOS Google Maps app, with fallback to web
+    const webUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}${waypointsStr}&travelmode=driving`;
+    gmapsLink.href = webUrl;
+    gmapsLink.style.display = 'flex';
 }
 
 // ─── Elevation Chart (Canvas) ───
@@ -836,6 +924,7 @@ function clearRoutes() {
     document.getElementById('routeResults').style.display = 'none';
     document.getElementById('elevSection').style.display = 'none';
     document.getElementById('mapLegend').style.display = 'none';
+    document.getElementById('gmapsLink').style.display = 'none';
     routesData = [];
 }
 function clearRouteLayers() {
