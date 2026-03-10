@@ -1169,22 +1169,29 @@ function calcElevation(elevations) {
 }
 
 // ─── Score routes ───
-// Lower score = better for EV
-// We want to minimize elevation gain while not adding too much time.
-// Formula: score = elevGain + timePenalty
-// timePenalty = max(0, (duration - fastestDuration) / fastestDuration) * penaltyWeight * avgGain
+// Lower score = better for EV.
+// Uses the actual vehicle-specific energy model (which accounts for grade
+// steepness, not just total elevation gain) to rank routes. A route with
+// the same total climb but steeper grades will score WORSE because the
+// motor loses more energy on steep hills.
+// Time penalty prevents picking very long detours just to avoid hills.
 function scoreRoutes(routes) {
     if (!routes.length) return;
+    const ev = getSelectedEV();
     const fastestDur = Math.min(...routes.map(r => r.durMin));
-    const avgGain = routes.reduce((s, r) => s + r.gain, 0) / routes.length || 1;
 
-    routes.forEach(r => {
-        const timeRatio = (r.durMin - fastestDur) / fastestDur; // 0 for fastest, >0 for slower
-        // Penalize time heavily only when it's significantly longer (>20% more)
+    // Compute actual energy for each route using grade-aware model
+    const energies = routes.map(r => estimateTripEnergy(r, ev));
+    const avgEnergy = energies.reduce((s, e) => s + e.totalEnergy, 0) / energies.length || 1;
+
+    routes.forEach((r, i) => {
+        const tripEnergy = energies[i].totalEnergy;
+        const timeRatio = (r.durMin - fastestDur) / fastestDur;
+        // Penalize time heavily only when significantly longer (>20% more)
         const timePenalty = timeRatio > 0.2
-            ? (timeRatio - 0.2) * avgGain * 3
+            ? (timeRatio - 0.2) * avgEnergy * 3
             : 0;
-        r.score = r.gain + timePenalty;
+        r.score = tripEnergy + timePenalty;
     });
 }
 
@@ -1216,20 +1223,24 @@ function displayRoutes(routes) {
     const container = document.getElementById('routeCards');
     container.innerHTML = '';
 
-    const bestGain = Math.min(...routes.map(r => r.gain));
+    const ev = getSelectedEV();
     const fastestDur = Math.min(...routes.map(r => r.durMin));
+    const tripEstimates = routes.map(r => estimateTripEnergy(r, ev));
+    const bestEnergy = Math.min(...tripEstimates.map(t => t.totalEnergy));
 
     routes.forEach((r, i) => {
         const card = document.createElement('div');
         card.className = 'route-card' + (i === 0 ? ' selected best' : '');
         card.dataset.idx = i;
+        const trip = tripEstimates[i];
 
         const badge = i === 0 ? '<span class="rc-badge badge-best">EV Best</span>'
             : (r.durMin === fastestDur ? '<span class="rc-badge badge-fastest">Fastest</span>'
             : '<span class="rc-badge badge-alt">Alt ' + i + '</span>');
 
-        const gainClass = r.gain === bestGain ? 'good' : (r.gain > bestGain * 1.5 ? 'warn' : '');
+        const energyClass = trip.totalEnergy === bestEnergy ? 'good' : (trip.totalEnergy > bestEnergy * 1.3 ? 'warn' : '');
         const timeClass = r.durMin === fastestDur ? 'good' : (r.durMin > fastestDur * 1.3 ? 'warn' : '');
+        const battClass = trip.remainingPct > 30 ? 'good' : (trip.remainingPct > 15 ? 'warn' : 'warn');
 
         // Score bar — normalized 0-100
         const maxScore = Math.max(...routes.map(x => x.score)) || 1;
@@ -1241,8 +1252,8 @@ function displayRoutes(routes) {
             <div class="rc-header">${badge} <span class="rc-name">${r.distMi.toFixed(1)} mi</span></div>
             <div class="rc-stats">
                 <div class="rc-stat"><div class="val ${timeClass}">${formatDuration(r.durMin)}</div><div class="lbl">Time</div></div>
-                <div class="rc-stat"><div class="val ${gainClass}">+${Math.round(r.gain)}m</div><div class="lbl">Elev Gain</div></div>
-                <div class="rc-stat"><div class="val">-${Math.round(r.loss)}m</div><div class="lbl">Elev Loss</div></div>
+                <div class="rc-stat"><div class="val ${energyClass}">${trip.totalEnergy.toFixed(1)}</div><div class="lbl">kWh</div></div>
+                <div class="rc-stat"><div class="val ${battClass}">${Math.round(trip.remainingPct)}%</div><div class="lbl">Batt Left</div></div>
             </div>
             <div class="score-bar"><div class="score-bar-fill" style="width:${scoreNorm}%; background:${barColor};"></div></div>
         `;
