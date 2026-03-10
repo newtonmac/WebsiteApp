@@ -488,6 +488,7 @@ const seriesData = {
     name: 'Kennedy Series',
     desc: 'Heavy-duty industrial workbench with 14-gauge steel tubing frame, 6,600 lb capacity',
     model: 'models/KSeries.glb',
+    accessories: 'models/KennedyAccessories6.glb',
     capacity: '6,600 lb'
   },
   roosevelt: {
@@ -666,7 +667,8 @@ dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/
 gltfLoader.setDRACOLoader(dracoLoader);
 
 let currentModel = null;
-let allNodes = new Map(); // name -> Object3D
+let allNodes = new Map(); // name -> Object3D (accessory nodes only)
+let accessoriesModel = null; // separate accessories scene
 const meshRefData = new Map(); // uuid -> { baseEffScaleX/Y/Z, localSizeX/Y/Z }
 
 function showLoading(msg) {
@@ -682,75 +684,84 @@ function hideLoading() {
   }, 300);
 }
 
+function setupModel(model) {
+  // Auto-fit: scale to reasonable size
+  const box = new THREE.Box3().setFromObject(model);
+  const size = box.getSize(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z);
+  const targetSize = 3.5;
+  const scale = targetSize / maxDim;
+  model.scale.setScalar(scale);
+
+  // Re-center
+  const scaledBox = new THREE.Box3().setFromObject(model);
+  const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
+  model.position.x -= scaledCenter.x;
+  model.position.z -= scaledCenter.z;
+  model.position.y -= scaledBox.min.y;
+
+  // Enable shadows on all meshes
+  model.traverse(function(child) {
+    if (child.isMesh) {
+      child.castShadow = true;
+      child.receiveShadow = true;
+    }
+  });
+}
+
+function fitCamera() {
+  const target = accessoriesModel || currentModel;
+  if (!target) return;
+  const finalBox = new THREE.Box3().setFromObject(modelGroup);
+  const finalCenter = finalBox.getCenter(new THREE.Vector3());
+  const finalSize = finalBox.getSize(new THREE.Vector3());
+  const dist = Math.max(finalSize.x, finalSize.y, finalSize.z) * 2.2;
+  controls.target.copy(finalCenter);
+  camera.position.set(
+    finalCenter.x + dist * 0.6,
+    finalCenter.y + dist * 0.4,
+    finalCenter.z + dist * 0.6
+  );
+  controls.update();
+}
+
 function loadSeriesModel(seriesKey) {
   const data = seriesData[seriesKey];
   if (!data) return;
 
   showLoading('Loading ' + data.name + '...');
 
-  // Clear existing model
+  // Clear existing
   while (modelGroup.children.length) modelGroup.remove(modelGroup.children[0]);
   allNodes.clear();
   currentModel = null;
+  accessoriesModel = null;
 
+  // Load base model
   gltfLoader.load(
     data.model,
     function(gltf) {
       const model = gltf.scene;
-
-      // Auto-fit: scale to reasonable size
-      const box = new THREE.Box3().setFromObject(model);
-      const center = box.getCenter(new THREE.Vector3());
-      const size = box.getSize(new THREE.Vector3());
-      const maxDim = Math.max(size.x, size.y, size.z);
-      const targetSize = 3.5;
-      const scale = targetSize / maxDim;
-      model.scale.setScalar(scale);
-
-      // Re-center
-      const scaledBox = new THREE.Box3().setFromObject(model);
-      const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
-      model.position.x -= scaledCenter.x;
-      model.position.z -= scaledCenter.z;
-      model.position.y -= scaledBox.min.y;
-
-      // Index all named nodes and enable shadows
-      model.traverse(function(child) {
-        if (child.name) {
-          allNodes.set(child.name, child);
-        }
-        if (child.isMesh) {
-          child.castShadow = true;
-          child.receiveShadow = true;
-        }
-      });
-
+      setupModel(model);
       currentModel = model;
       modelGroup.add(model);
 
-      // Store base mesh data for dimension scaling (before any non-uniform scale)
-      modelGroup.scale.set(1, 1, 1);
-      storeBaseMeshData();
-
-      // Apply current configuration
-      applyAccessoryVisibility();
-      applyColors();
-      applyDimensionScale();
-
-      // Fit camera
-      const finalBox = new THREE.Box3().setFromObject(model);
-      const finalCenter = finalBox.getCenter(new THREE.Vector3());
-      const finalSize = finalBox.getSize(new THREE.Vector3());
-      const dist = Math.max(finalSize.x, finalSize.y, finalSize.z) * 2.2;
-      controls.target.copy(finalCenter);
-      camera.position.set(
-        finalCenter.x + dist * 0.6,
-        finalCenter.y + dist * 0.4,
-        finalCenter.z + dist * 0.6
-      );
-      controls.update();
-
-      hideLoading();
+      // If this series has a separate accessories file, load it
+      if (data.accessories) {
+        loadAccessoriesModel(data);
+      } else {
+        // Single-file model: index all named nodes as potential accessories
+        model.traverse(function(child) {
+          if (child.name) allNodes.set(child.name, child);
+        });
+        modelGroup.scale.set(1, 1, 1);
+        storeBaseMeshData();
+        applyAccessoryVisibility();
+        applyColors();
+        applyDimensionScale();
+        fitCamera();
+        hideLoading();
+      }
     },
     function(progress) {
       if (progress.total > 0) {
@@ -760,7 +771,54 @@ function loadSeriesModel(seriesKey) {
       }
     },
     function(error) {
-      console.error('Model load error:', error);
+      console.error('Base model load error:', error);
+      hideLoading();
+    }
+  );
+}
+
+function loadAccessoriesModel(data) {
+  gltfLoader.load(
+    data.accessories,
+    function(gltf) {
+      const accModel = gltf.scene;
+
+      // Match scale & position to the base model
+      accModel.scale.copy(currentModel.scale);
+      accModel.position.copy(currentModel.position);
+
+      // Index all named nodes from accessories model
+      accModel.traverse(function(child) {
+        if (child.name) allNodes.set(child.name, child);
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+
+      // Start with all accessories hidden
+      accModel.traverse(child => { child.visible = false; });
+
+      accessoriesModel = accModel;
+      modelGroup.add(accModel);
+
+      modelGroup.scale.set(1, 1, 1);
+      storeBaseMeshData();
+      applyAccessoryVisibility();
+      applyColors();
+      applyDimensionScale();
+      fitCamera();
+      hideLoading();
+    },
+    null,
+    function(error) {
+      console.error('Accessories model load error:', error);
+      // Still finalize with base model only
+      modelGroup.scale.set(1, 1, 1);
+      storeBaseMeshData();
+      applyColors();
+      applyDimensionScale();
+      fitCamera();
       hideLoading();
     }
   );
@@ -778,17 +836,42 @@ function getAccessoryFeature(nodeName) {
 function applyAccessoryVisibility() {
   if (!currentModel) return;
 
-  // Step 1: Show everything by default (frame, structural parts, hardware)
+  // Base model is always fully visible
   currentModel.traverse(child => { child.visible = true; });
 
-  // Step 2: Hide accessory groups whose toggle is OFF
-  allNodes.forEach((obj, name) => {
-    const feature = getAccessoryFeature(name);
-    if (feature !== null && !config[feature]) {
-      obj.visible = false;
-      obj.traverse(child => { child.visible = false; });
-    }
-  });
+  if (accessoriesModel) {
+    // Dual-model: accessories are in a separate scene
+    // Hide everything in accessories first, then show only toggled-on features
+    accessoriesModel.traverse(child => { child.visible = false; });
+
+    allNodes.forEach((obj, name) => {
+      const feature = getAccessoryFeature(name);
+      if (feature !== null && config[feature]) {
+        obj.visible = true;
+        obj.traverse(child => { child.visible = true; });
+      }
+    });
+
+    // Ensure parent chain is visible for any visible accessory mesh
+    accessoriesModel.traverse(child => {
+      if (child.visible && child.isMesh) {
+        let p = child.parent;
+        while (p && p !== scene) {
+          p.visible = true;
+          p = p.parent;
+        }
+      }
+    });
+  } else {
+    // Single-file model: hide accessory nodes that are toggled off
+    allNodes.forEach((obj, name) => {
+      const feature = getAccessoryFeature(name);
+      if (feature !== null && !config[feature]) {
+        obj.visible = false;
+        obj.traverse(child => { child.visible = false; });
+      }
+    });
+  }
 }
 
 function setSubtreeVisibility(obj, visible) {
@@ -797,26 +880,23 @@ function setSubtreeVisibility(obj, visible) {
 }
 
 // ============ Color Application ============
-function applyColors() {
-  if (!currentModel) return;
+function applyColorsToModel(model) {
+  if (!model) return;
 
   const frameColorHex = new THREE.Color(config.frameColor);
   const topColorHex = new THREE.Color(config.topColor);
   const matDef = materialDefs[config.topMaterial];
 
-  currentModel.traverse(child => {
+  model.traverse(child => {
     if (!child.isMesh || !child.material) return;
 
     const name = child.name || '';
     const parentName = child.parent ? (child.parent.name || '') : '';
-    const path = name + ' ' + parentName;
 
-    // Check if this is a frame/structural part
     const isFrame = frameNodeHints.some(hint =>
       name.includes(hint) || parentName.includes(hint)
     );
 
-    // Check if this is a surface/top part
     const isSurface = surfaceNodeHints.some(hint =>
       name.includes(hint) || parentName.includes(hint)
     );
@@ -833,6 +913,11 @@ function applyColors() {
       child.material = mat;
     }
   });
+}
+
+function applyColors() {
+  applyColorsToModel(currentModel);
+  applyColorsToModel(accessoriesModel);
 }
 
 // ============ Series Selection ============
@@ -866,11 +951,9 @@ function setDim(dim, val) {
 }
 
 // Store base effective scale per mesh (called once after model loads, with modelGroup.scale = 1,1,1)
-function storeBaseMeshData() {
-  meshRefData.clear();
-  if (!currentModel) return;
-
-  currentModel.traverse(child => {
+function storeMeshDataForModel(model) {
+  if (!model) return;
+  model.traverse(child => {
     if (!child.isMesh || !child.geometry) return;
     child.scale.set(1, 1, 1);
     child.updateWorldMatrix(true, false);
@@ -890,6 +973,12 @@ function storeBaseMeshData() {
   });
 }
 
+function storeBaseMeshData() {
+  meshRefData.clear();
+  storeMeshDataForModel(currentModel);
+  storeMeshDataForModel(accessoriesModel);
+}
+
 function applyDimensionScale() {
   if (!currentModel) return;
 
@@ -903,47 +992,44 @@ function applyDimensionScale() {
 
   // Compensate tube cross-sections and surface thickness
   // so only lengths change while profiles stay constant (e.g. 2"x1" tubing)
-  currentModel.traverse(child => {
-    if (!child.isMesh) return;
-    const ref = meshRefData.get(child.uuid);
-    if (!ref) return;
+  function compensateMeshes(model) {
+    if (!model) return;
+    model.traverse(child => {
+      if (!child.isMesh) return;
+      const ref = meshRefData.get(child.uuid);
+      if (!ref) return;
 
-    // Reset mesh scale so world matrix reflects only parent transforms
-    child.scale.set(1, 1, 1);
-    child.updateWorldMatrix(true, false);
+      child.scale.set(1, 1, 1);
+      child.updateWorldMatrix(true, false);
 
-    // Measure current effective scale per local axis from world matrix columns
-    const m = child.matrixWorld.elements;
-    const cx = Math.sqrt(m[0]*m[0] + m[1]*m[1] + m[2]*m[2]);
-    const cy = Math.sqrt(m[4]*m[4] + m[5]*m[5] + m[6]*m[6]);
-    const cz = Math.sqrt(m[8]*m[8] + m[9]*m[9] + m[10]*m[10]);
+      const m = child.matrixWorld.elements;
+      const cx = Math.sqrt(m[0]*m[0] + m[1]*m[1] + m[2]*m[2]);
+      const cy = Math.sqrt(m[4]*m[4] + m[5]*m[5] + m[6]*m[6]);
+      const cz = Math.sqrt(m[8]*m[8] + m[9]*m[9] + m[10]*m[10]);
 
-    // Sort local axes by geometry size to classify shape
-    const dims = [
-      { a: 'x', size: ref.sx, base: ref.bx, cur: cx },
-      { a: 'y', size: ref.sy, base: ref.by, cur: cy },
-      { a: 'z', size: ref.sz, base: ref.bz, cur: cz }
-    ].sort((a, b) => b.size - a.size);
+      const dims = [
+        { a: 'x', size: ref.sx, base: ref.bx, cur: cx },
+        { a: 'y', size: ref.sy, base: ref.by, cur: cy },
+        { a: 'z', size: ref.sz, base: ref.bz, cur: cz }
+      ].sort((a, b) => b.size - a.size);
 
-    const r01 = dims[0].size / Math.max(dims[1].size, 0.0001);
-    const r12 = dims[1].size / Math.max(dims[2].size, 0.0001);
+      const r01 = dims[0].size / Math.max(dims[1].size, 0.0001);
+      const r12 = dims[1].size / Math.max(dims[2].size, 0.0001);
 
-    const comp = { x: 1, y: 1, z: 1 };
+      const comp = { x: 1, y: 1, z: 1 };
 
-    if (r01 > 3 && r12 < 3) {
-      // TUBE: one long axis, two short cross-section axes
-      // Restore cross-section to base scale (keeps 2"x1" profile)
-      comp[dims[1].a] = dims[1].base / dims[1].cur;
-      comp[dims[2].a] = dims[2].base / dims[2].cur;
-    } else if (r01 < 3 && r12 > 5) {
-      // FLAT SURFACE: two large axes, one thin axis
-      // Restore thickness to base scale
-      comp[dims[2].a] = dims[2].base / dims[2].cur;
-    }
-    // else: roughly cubic (bolts, knobs, etc.) - scale naturally
+      if (r01 > 3 && r12 < 3) {
+        comp[dims[1].a] = dims[1].base / dims[1].cur;
+        comp[dims[2].a] = dims[2].base / dims[2].cur;
+      } else if (r01 < 3 && r12 > 5) {
+        comp[dims[2].a] = dims[2].base / dims[2].cur;
+      }
 
-    child.scale.set(comp.x, comp.y, comp.z);
-  });
+      child.scale.set(comp.x, comp.y, comp.z);
+    });
+  }
+  compensateMeshes(currentModel);
+  compensateMeshes(accessoriesModel);
 }
 
 // ============ Feature Toggles ============
