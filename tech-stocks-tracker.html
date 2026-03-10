@@ -359,6 +359,73 @@
         .overview-card .ov-change.up { color: #34d399; }
         .overview-card .ov-change.down { color: #f87171; }
 
+        .signal-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #2d3040;
+        }
+
+        .signal-call {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .signal-call.buy { color: #34d399; }
+        .signal-call.sell { color: #f87171; }
+        .signal-call.hold { color: #fbbf24; }
+
+        .signal-call .arrow {
+            font-size: 16px;
+        }
+
+        .signal-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            font-size: 12px;
+            font-weight: 800;
+            flex-shrink: 0;
+        }
+
+        .signal-icon.buy { background: #34d39920; color: #34d399; }
+        .signal-icon.sell { background: #f8717120; color: #f87171; }
+        .signal-icon.hold { background: #fbbf2420; color: #fbbf24; }
+
+        .signal-pct {
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: auto;
+            padding: 2px 8px;
+            border-radius: 6px;
+        }
+
+        .signal-pct.buy { background: #34d39915; color: #34d399; }
+        .signal-pct.sell { background: #f8717115; color: #f87171; }
+        .signal-pct.hold { background: #fbbf2415; color: #fbbf24; }
+
+        .signal-reason {
+            font-size: 10px;
+            color: #6b7280;
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+
+        .signal-disclaimer {
+            font-size: 10px;
+            color: #4b5060;
+            text-align: center;
+            margin-top: -12px;
+            margin-bottom: 16px;
+        }
+
         @media (max-width: 600px) {
             .header { padding: 16px; }
             .header-text h1 { font-size: 22px; }
@@ -746,16 +813,141 @@
             return { prices: [], meta: {}, source: 'none' };
         }
 
+        // ── Daily Signal: BUY, HOLD, or SELL ──
+        // Analyzes last month of daily data for actionable advice
+        function computeSignal(dailyPrices) {
+            if (!dailyPrices || dailyPrices.length < 20) return null;
+
+            const closes = dailyPrices.map(p => p.price);
+            const volumes = dailyPrices.map(p => p.volume || 0);
+            const n = closes.length;
+            const reasons = [];
+
+            // 1. SMA-5 vs SMA-20 trend direction
+            const sma5 = closes.slice(-5).reduce((s, v) => s + v, 0) / 5;
+            const sma20 = closes.slice(-20).reduce((s, v) => s + v, 0) / 20;
+            const sma5Prev = closes.slice(-6, -1).reduce((s, v) => s + v, 0) / 5;
+            const smaScore = sma5 > sma20 ? 1 : -1;
+            const crossover = (sma5 > sma20 && sma5Prev <= sma20) ? 1
+                : (sma5 < sma20 && sma5Prev >= sma20) ? -1 : 0;
+            if (crossover === 1) reasons.push('Golden cross (SMA5>20)');
+            else if (crossover === -1) reasons.push('Death cross (SMA5<20)');
+            else if (sma5 > sma20) reasons.push('Above SMA-20');
+            else reasons.push('Below SMA-20');
+
+            // 2. RSI (14-period)
+            let gains = 0, losses = 0;
+            const rsiPeriod = Math.min(14, n - 1);
+            for (let i = n - rsiPeriod; i < n; i++) {
+                const diff = closes[i] - closes[i - 1];
+                if (diff > 0) gains += diff;
+                else losses -= diff;
+            }
+            const rs = losses === 0 ? 100 : (gains / rsiPeriod) / (losses / rsiPeriod);
+            const rsi = 100 - (100 / (1 + rs));
+            let rsiScore;
+            if (rsi > 75) { rsiScore = -1.2; reasons.push('RSI ' + rsi.toFixed(0) + ' overbought'); }
+            else if (rsi > 65) { rsiScore = 0.3; reasons.push('RSI ' + rsi.toFixed(0) + ' elevated'); }
+            else if (rsi < 25) { rsiScore = 1.2; reasons.push('RSI ' + rsi.toFixed(0) + ' oversold'); }
+            else if (rsi < 35) { rsiScore = -0.3; reasons.push('RSI ' + rsi.toFixed(0) + ' weak'); }
+            else { rsiScore = rsi > 50 ? 0.2 : -0.2; }
+
+            // 3. 5-day momentum
+            const mom5 = (closes[n - 1] - closes[Math.max(0, n - 6)]) / closes[Math.max(0, n - 6)] * 100;
+            const momScore = mom5 > 3 ? 1.2 : mom5 > 1 ? 0.6 : mom5 < -3 ? -1.2 : mom5 < -1 ? -0.6 : 0;
+            if (Math.abs(mom5) > 1) reasons.push((mom5 > 0 ? '+' : '') + mom5.toFixed(1) + '% 5d momentum');
+
+            // 4. Last 3 days streak
+            let streak = 0;
+            for (let i = n - 1; i >= Math.max(1, n - 3); i--) {
+                const dir = closes[i] > closes[i - 1] ? 1 : closes[i] < closes[i - 1] ? -1 : 0;
+                if (i === n - 1) streak = dir;
+                else if (dir !== streak) { streak = 0; break; }
+            }
+
+            // 5. Volume confirmation
+            const vol5 = volumes.slice(-5).reduce((s, v) => s + v, 0) / 5;
+            const vol20 = volumes.slice(-20).reduce((s, v) => s + v, 0) / 20;
+            const volConfirm = vol5 > vol20 * 1.2;
+            if (volConfirm) reasons.push('High volume');
+
+            // 6. Price vs SMA-20 (support/resistance)
+            const priceVsSma = (closes[n - 1] - sma20) / sma20;
+            const supportScore = priceVsSma > 0.03 ? 0.6 : priceVsSma < -0.03 ? -0.6 : 0;
+
+            // 7. Volatility check — high volatility favors HOLD
+            const returns = [];
+            for (let i = Math.max(1, n - 10); i < n; i++) {
+                returns.push(Math.abs((closes[i] - closes[i - 1]) / closes[i - 1]) * 100);
+            }
+            const avgVol = returns.reduce((s, v) => s + v, 0) / returns.length;
+            const highVolatility = avgVol > 2.5;
+            if (highVolatility) reasons.push('High volatility');
+
+            // 8. Distance from 20-day high/low
+            const high20 = Math.max(...closes.slice(-20));
+            const low20 = Math.min(...closes.slice(-20));
+            const range20 = high20 - low20;
+            const posInRange = range20 > 0 ? (closes[n - 1] - low20) / range20 : 0.5;
+            // Near top = sell pressure, near bottom = buy opportunity
+            const rangeScore = posInRange > 0.85 ? -0.5 : posInRange < 0.15 ? 0.5 : 0;
+
+            // Weighted composite
+            let raw = (smaScore * 0.15)
+                + (rsiScore * 0.20)
+                + (momScore * 0.20)
+                + (streak * 0.08)
+                + (crossover * 0.12)
+                + (supportScore * 0.10)
+                + (rangeScore * 0.15);
+
+            // Volume boost
+            if (volConfirm && Math.sign(raw) === Math.sign(mom5)) {
+                raw += 0.10 * Math.sign(raw);
+            }
+
+            // Volatility dampener — high volatility pushes toward HOLD
+            if (highVolatility) {
+                raw *= 0.6;
+            }
+
+            // Three-way classification:
+            // |raw| < 0.25 → HOLD, raw > 0.25 → BUY, raw < -0.25 → SELL
+            let call, confidence;
+            const absRaw = Math.abs(raw);
+            if (absRaw < 0.25) {
+                call = 'HOLD';
+                // Confidence in hold: higher when closer to zero
+                confidence = Math.round(55 + (1 - absRaw / 0.25) * 30);
+                if (!reasons.some(r => r.includes('volatil'))) reasons.push('Mixed signals');
+            } else if (raw > 0) {
+                call = 'BUY';
+                confidence = Math.round(55 + Math.min((absRaw - 0.25) / 0.75, 1) * 30);
+            } else {
+                call = 'SELL';
+                confidence = Math.round(55 + Math.min((absRaw - 0.25) / 0.75, 1) * 30);
+            }
+
+            // Pick top 2 reasons
+            const topReasons = reasons.slice(0, 2).join(' · ');
+
+            return { call, confidence, reason: topReasons, rsi: rsi.toFixed(0), mom: mom5.toFixed(1) };
+        }
+
         async function fetchOverview() {
             if (overviewFetchController) overviewFetchController.abort();
             overviewFetchController = new AbortController();
             const signal = overviewFetchController.signal;
 
             try {
+                // Fetch both 1D (for price display) and 1M daily (for signal analysis)
                 const results = await Promise.allSettled(
                     Object.keys(STOCKS).map(async sym => {
-                        const data = await fetchStock(sym, '1d', signal);
-                        return { symbol: sym, data };
+                        const [dayData, monthData] = await Promise.all([
+                            fetchStock(sym, '1d', signal),
+                            fetchStock(sym, '1mo', signal)
+                        ]);
+                        return { symbol: sym, dayData, monthData };
                     })
                 );
 
@@ -766,15 +958,30 @@
 
                 results.forEach(r => {
                     if (r.status !== 'fulfilled') return;
-                    const { symbol, data } = r.value;
-                    if (!data?.prices?.length) return;
+                    const { symbol, dayData, monthData } = r.value;
+                    if (!dayData?.prices?.length) return;
 
-                    const latest = data.prices[data.prices.length - 1];
-                    const prevClose = data.meta?.previousClose || data.prices[0].price;
+                    const latest = dayData.prices[dayData.prices.length - 1];
+                    const prevClose = dayData.meta?.previousClose || dayData.prices[0].price;
                     const change = latest.price - prevClose;
                     const pct = (change / prevClose) * 100;
                     const isUp = change >= 0;
                     const stock = STOCKS[symbol];
+
+                    // Daily signal: BUY / HOLD / SELL
+                    const sig = computeSignal(monthData?.prices);
+                    const callClass = sig ? sig.call.toLowerCase() : '';
+                    const callIcon = sig?.call === 'BUY' ? '&#9650;' : sig?.call === 'SELL' ? '&#9660;' : '&#9644;';
+                    const sigHtml = sig
+                        ? `<div class="signal-row">
+                            <span class="signal-icon ${callClass}">${callIcon}</span>
+                            <span class="signal-call ${callClass}">
+                                ${sig.call}
+                            </span>
+                            <span class="signal-pct ${callClass}">${sig.confidence}%</span>
+                           </div>
+                           ${sig.reason ? `<div class="signal-reason">${sig.reason}</div>` : ''}`
+                        : '';
 
                     const card = document.createElement('div');
                     card.className = 'overview-card';
@@ -787,6 +994,7 @@
                             ${change >= 0 ? '+' : ''}${change.toFixed(2)}
                             (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)
                         </div>
+                        ${sigHtml}
                     `;
                     card.addEventListener('click', () => {
                         document.querySelectorAll('.stock-tab').forEach(b => b.classList.remove('active'));
@@ -797,6 +1005,16 @@
                     });
                     grid.appendChild(card);
                 });
+
+                // Add disclaimer below the grid
+                let disc = document.getElementById('signalDisclaimer');
+                if (!disc) {
+                    disc = document.createElement('div');
+                    disc.id = 'signalDisclaimer';
+                    disc.className = 'signal-disclaimer';
+                    grid.parentNode.insertBefore(disc, grid.nextSibling);
+                }
+                disc.textContent = 'Daily BUY/HOLD/SELL signals based on SMA, RSI, momentum & volatility — for fun, not financial advice.';
             } catch (e) {
                 if (e.name === 'AbortError') return;
                 console.warn('Overview fetch failed:', e.message);
