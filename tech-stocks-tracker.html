@@ -583,8 +583,8 @@
         const CACHE_TTL_MS = 60000;
 
         const CORS_PROXIES = [
-            url => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
-            url => 'https://corsproxy.io/?' + encodeURIComponent(url)
+            { url: u => 'https://api.allorigins.win/get?url=' + encodeURIComponent(u), wrapped: true },
+            { url: u => 'https://corsproxy.io/?' + encodeURIComponent(u), wrapped: false }
         ];
 
         // Track which proxy index last succeeded — try it first next time
@@ -592,6 +592,29 @@
         // Track which source last succeeded — reorder waterfall accordingly
         // 0=yahoo, 1=twelve, 2=alphavantage
         let preferredSourceIndex = 0;
+
+        // Fetch via CORS proxy, handling wrapped responses (allorigins /get returns {"contents": "..."})
+        async function fetchViaProxy(targetUrl, signal, responseType = 'json') {
+            for (let attempt = 0; attempt < CORS_PROXIES.length; attempt++) {
+                const idx = (preferredProxyIndex + attempt) % CORS_PROXIES.length;
+                const proxy = CORS_PROXIES[idx];
+                try {
+                    const resp = await fetchWithTimeout(proxy.url(targetUrl), signal);
+                    if (!resp.ok) continue;
+                    if (proxy.wrapped) {
+                        const wrapper = await resp.json();
+                        if (!wrapper.contents) continue;
+                        preferredProxyIndex = idx;
+                        return responseType === 'json' ? JSON.parse(wrapper.contents) : wrapper.contents;
+                    }
+                    preferredProxyIndex = idx;
+                    return responseType === 'json' ? await resp.json() : await resp.text();
+                } catch (e) {
+                    if (e.name === 'AbortError') throw e;
+                }
+            }
+            return null;
+        }
 
         const TWELVE_DATA_MAP = {
             '1d':  { interval: '5min',  outputsize: 78 },
@@ -741,23 +764,8 @@
         async function fetchYahoo(symbol, range, signal) {
             const interval = YAHOO_INTERVAL_MAP[range] || '1d';
             const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`;
-
-            // Try preferred proxy first, then the other
-            for (let attempt = 0; attempt < CORS_PROXIES.length; attempt++) {
-                const idx = (preferredProxyIndex + attempt) % CORS_PROXIES.length;
-                try {
-                    const resp = await fetchWithTimeout(CORS_PROXIES[idx](targetUrl), signal);
-                    if (!resp.ok) continue;
-                    const data = parseYahooResponse(await resp.json());
-                    if (data) {
-                        preferredProxyIndex = idx;
-                        return data;
-                    }
-                } catch (e) {
-                    if (e.name === 'AbortError') throw e;
-                }
-            }
-            return null;
+            const json = await fetchViaProxy(targetUrl, signal, 'json');
+            return json ? parseYahooResponse(json) : null;
         }
 
         // ── Source 2: Twelve Data API ──
@@ -1185,18 +1193,15 @@
             } catch (e) {
                 if (e.name === 'AbortError') throw e;
             }
-            // CNN fallback — single proxy attempt
+            // CNN fallback via proxy
             try {
                 const cnnUrl = 'https://production.dataviz.cnn.io/index/fearandgreed/graphdata';
-                const resp = await fetchWithTimeout(CORS_PROXIES[preferredProxyIndex](cnnUrl), signal);
-                if (resp.ok) {
-                    const json = await resp.json();
-                    if (json.fear_and_greed?.score != null) {
-                        const score = Math.round(json.fear_and_greed.score);
-                        const label = score <= 25 ? 'Extreme Fear' : score <= 45 ? 'Fear'
-                            : score <= 55 ? 'Neutral' : score <= 75 ? 'Greed' : 'Extreme Greed';
-                        return { value: score, label };
-                    }
+                const json = await fetchViaProxy(cnnUrl, signal, 'json');
+                if (json?.fear_and_greed?.score != null) {
+                    const score = Math.round(json.fear_and_greed.score);
+                    const label = score <= 25 ? 'Extreme Fear' : score <= 45 ? 'Fear'
+                        : score <= 55 ? 'Neutral' : score <= 75 ? 'Greed' : 'Extreme Greed';
+                    return { value: score, label };
                 }
             } catch (e) {
                 if (e.name === 'AbortError') throw e;
@@ -1256,13 +1261,10 @@
 
         async function fetchNewsForStock(symbol, signal) {
             try {
-                // Use preferred proxy only — news is low priority, not worth slow fallback
                 const query = encodeURIComponent(`${symbol} stock`);
                 const rssUrl = `https://news.google.com/rss/search?q=${query}&hl=en-US&gl=US&ceid=US:en`;
-                const resp = await fetchWithTimeout(CORS_PROXIES[preferredProxyIndex](rssUrl), signal);
-                if (!resp.ok) return null;
-                const text = await resp.text();
-                return parseNewsSentiment(text, symbol);
+                const text = await fetchViaProxy(rssUrl, signal, 'text');
+                return text ? parseNewsSentiment(text, symbol) : null;
             } catch (e) {
                 if (e.name === 'AbortError') throw e;
             }
