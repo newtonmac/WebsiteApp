@@ -668,11 +668,21 @@ function applyDimensionScale() {
 
       const comp = { x: 1, y: 1, z: 1 };
 
-      if (r01 > 3 && r12 < 3) {
+      if (r01 > 1.8) {
+        // Elongated bar/tube: one axis much longer than the others
+        // Stretch along the long axis, keep cross-section constant
         comp[dims[1].a] = dims[1].base / dims[1].cur;
         comp[dims[2].a] = dims[2].base / dims[2].cur;
-      } else if (r01 < 3 && r12 > 5) {
+      } else if (r12 > 1.8) {
+        // Plate/slab: two large axes, one thin axis
+        // Stretch in the plane, keep thickness constant
         comp[dims[2].a] = dims[2].base / dims[2].cur;
+      } else {
+        // Roughly cubic (glides, brackets, hardware)
+        // Maintain original proportions — don't distort
+        comp.x = ref.bx / cx;
+        comp.y = ref.by / cy;
+        comp.z = ref.bz / cz;
       }
 
       child.scale.set(comp.x, comp.y, comp.z);
