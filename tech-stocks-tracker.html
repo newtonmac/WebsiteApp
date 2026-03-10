@@ -595,29 +595,32 @@
 
         // Fetch via CORS proxy, handling wrapped responses (allorigins /get returns {"contents": "..."})
         async function fetchViaProxy(targetUrl, signal, responseType = 'json') {
-            for (let attempt = 0; attempt < CORS_PROXIES.length; attempt++) {
-                const idx = (preferredProxyIndex + attempt) % CORS_PROXIES.length;
-                const proxy = CORS_PROXIES[idx];
-                try {
-                    console.log(`[proxy ${idx}] fetching:`, targetUrl);
-                    const resp = await fetchWithTimeout(proxy.url(targetUrl), signal);
-                    console.log(`[proxy ${idx}] status:`, resp.status);
-                    if (!resp.ok) continue;
-                    if (proxy.wrapped) {
-                        const wrapper = await resp.json();
-                        if (!wrapper.contents) { console.warn(`[proxy ${idx}] empty contents`); continue; }
+            return proxyLimiter(async () => {
+                for (let attempt = 0; attempt < CORS_PROXIES.length; attempt++) {
+                    const idx = (preferredProxyIndex + attempt) % CORS_PROXIES.length;
+                    const proxy = CORS_PROXIES[idx];
+                    try {
+                        if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+                        console.log(`[proxy ${idx}] fetching:`, targetUrl);
+                        const resp = await fetchWithTimeout(proxy.url(targetUrl), signal);
+                        console.log(`[proxy ${idx}] status:`, resp.status);
+                        if (!resp.ok) continue;
+                        if (proxy.wrapped) {
+                            const wrapper = await resp.json();
+                            if (!wrapper.contents) { console.warn(`[proxy ${idx}] empty contents`); continue; }
+                            preferredProxyIndex = idx;
+                            return responseType === 'json' ? JSON.parse(wrapper.contents) : wrapper.contents;
+                        }
                         preferredProxyIndex = idx;
-                        return responseType === 'json' ? JSON.parse(wrapper.contents) : wrapper.contents;
+                        return responseType === 'json' ? await resp.json() : await resp.text();
+                    } catch (e) {
+                        console.warn(`[proxy ${idx}] error:`, e.message);
+                        if (e.name === 'AbortError') throw e;
                     }
-                    preferredProxyIndex = idx;
-                    return responseType === 'json' ? await resp.json() : await resp.text();
-                } catch (e) {
-                    console.warn(`[proxy ${idx}] error:`, e.message);
-                    if (e.name === 'AbortError') throw e;
                 }
-            }
-            console.warn('[proxy] all proxies failed for:', targetUrl);
-            return null;
+                console.warn('[proxy] all proxies failed for:', targetUrl);
+                return null;
+            });
         }
 
         const TWELVE_DATA_MAP = {
@@ -666,6 +669,25 @@
         // AbortController to cancel stale fetches on rapid navigation
         let currentFetchController = null;
         let overviewFetchController = null;
+
+        // Concurrency limiter to avoid overwhelming CORS proxies
+        function createConcurrencyLimiter(maxConcurrent) {
+            let active = 0;
+            const queue = [];
+            function next() {
+                if (queue.length === 0 || active >= maxConcurrent) return;
+                active++;
+                const { fn, resolve, reject } = queue.shift();
+                fn().then(resolve, reject).finally(() => { active--; next(); });
+            }
+            return function limit(fn) {
+                return new Promise((resolve, reject) => {
+                    queue.push({ fn, resolve, reject });
+                    next();
+                });
+            };
+        }
+        const proxyLimiter = createConcurrencyLimiter(3);
 
         function fetchWithTimeout(url, signal) {
             const timeout = typeof AbortSignal.timeout === 'function'
