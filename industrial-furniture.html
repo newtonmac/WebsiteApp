@@ -803,41 +803,53 @@ function getAccessoryFeature(nodeName) {
   return null;
 }
 
+// Walk descendants but STOP descending into subtrees rooted at named nodes in allNodes
+function traverseUnclaimed(obj, callback) {
+  for (const child of obj.children) {
+    // If this child has a name tracked in allNodes, skip it AND its subtree
+    if (child.name && allNodes.has(child.name)) continue;
+    callback(child);
+    traverseUnclaimed(child, callback);
+  }
+}
+
 function applyAccessoryVisibility() {
   if (!currentModel) return;
 
-  // Classify every named node: accessory first (more specific), then base structure, then unknown
+  // Step 1: Hide EVERYTHING first
+  currentModel.traverse(child => { child.visible = false; });
+
+  // Step 2: Walk named nodes and selectively show what should be visible
   allNodes.forEach((obj, name) => {
-    // Check accessories FIRST - they have more specific names like
-    // "SURFACE TOP SHELF" that would otherwise match the base "SURFACE" prefix
+    // Check accessories FIRST - more specific names like "SURFACE TOP SHELF"
+    // would otherwise match the base "SURFACE" prefix
     const feature = getAccessoryFeature(name);
     if (feature !== null) {
-      setSubtreeVisibility(obj, config[feature]);
+      if (config[feature]) {
+        obj.visible = true;
+        obj.traverse(child => { child.visible = true; });
+      }
       return;
     }
-    // Base structure - always visible
+    // Base structure - show this node and only its own unnamed meshes/geometry,
+    // stopping at any named child (which gets its own classification)
     if (nameMatchesAny(name, baseStructureNodes)) {
-      setSubtreeVisibility(obj, true);
+      obj.visible = true;
+      traverseUnclaimed(obj, child => { child.visible = true; });
       return;
     }
-    // Unknown node - hide (likely an unmapped accessory sub-part)
-    setSubtreeVisibility(obj, false);
+    // Unknown nodes stay hidden (from step 1)
   });
 
-  // Keep the model root and top-level group containers visible
-  // so their visible children can render
-  currentModel.visible = true;
-  function ensureParentsVisible(obj) {
-    let p = obj.parent;
-    while (p && p !== scene) {
-      p.visible = true;
-      p = p.parent;
-    }
-  }
-  // For every visible leaf, ensure all parent groups are visible
+  // Step 3: Ensure parent chain is visible for any visible mesh
+  // (Three.js requires all ancestors to be visible for a mesh to render)
   currentModel.traverse(child => {
     if (child.visible && child.isMesh) {
-      ensureParentsVisible(child);
+      let p = child.parent;
+      while (p && p !== scene) {
+        p.visible = true;
+        p = p.parent;
+      }
     }
   });
 }
