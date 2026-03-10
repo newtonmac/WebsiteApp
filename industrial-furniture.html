@@ -667,23 +667,29 @@ function applyDimensionScale() {
       const r12 = dims[1].size / Math.max(dims[2].size, 0.0001);
 
       const comp = { x: 1, y: 1, z: 1 };
+      let shapeType = '';
 
       if (r01 > 1.8) {
-        // Elongated bar/tube: one axis much longer than the others
-        // Stretch along the long axis, keep cross-section constant
+        shapeType = 'tube';
         comp[dims[1].a] = dims[1].base / dims[1].cur;
         comp[dims[2].a] = dims[2].base / dims[2].cur;
       } else if (r12 > 1.8) {
-        // Plate/slab: two large axes, one thin axis
-        // Stretch in the plane, keep thickness constant
+        shapeType = 'plate';
         comp[dims[2].a] = dims[2].base / dims[2].cur;
       } else {
-        // Roughly cubic (glides, brackets, hardware)
-        // Maintain original proportions — don't distort
+        shapeType = 'cubic';
         comp.x = ref.bx / cx;
         comp.y = ref.by / cy;
         comp.z = ref.bz / cz;
       }
+
+      console.log(
+        '[mesh]', child.name,
+        '| bbox:', ref.sx.toFixed(2), ref.sy.toFixed(2), ref.sz.toFixed(2),
+        '| r01:', r01.toFixed(2), 'r12:', r12.toFixed(2),
+        '| type:', shapeType,
+        '| comp:', comp.x.toFixed(3), comp.y.toFixed(3), comp.z.toFixed(3)
+      );
 
       child.scale.set(comp.x, comp.y, comp.z);
     });
