@@ -158,6 +158,30 @@ header{
 .material-btn:hover{border-color:var(--primary);background:rgba(25,118,210,0.04)}
 .material-btn.active{background:rgba(25,118,210,0.08);border-color:var(--primary);color:var(--primary)}
 
+/* Feature toggles */
+.toggle-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 0;
+  border-bottom:1px solid var(--border-light);
+}
+.toggle-row:last-child{border-bottom:none}
+.toggle-label{font-size:0.82rem;font-weight:500;color:var(--text)}
+.toggle-label span{display:block;font-size:0.68rem;color:var(--text-dim);font-weight:400}
+.toggle{
+  position:relative;width:44px;height:24px;
+  background:var(--surface2);border-radius:12px;
+  cursor:pointer;transition:background 0.2s;
+}
+.toggle.on{background:var(--primary)}
+.toggle::after{
+  content:'';position:absolute;
+  top:3px;left:3px;
+  width:18px;height:18px;
+  background:white;border-radius:50%;
+  transition:transform 0.2s;
+  box-shadow:0 1px 3px rgba(0,0,0,0.2);
+}
+.toggle.on::after{transform:translateX(20px)}
 
 /* 3D Viewport */
 .viewport{
@@ -278,13 +302,6 @@ header{
         <button class="dim-btn" data-val="36" onclick="setDim('depth',36)">36"</button>
         <button class="dim-btn" data-val="48" onclick="setDim('depth',48)">48"</button>
       </div>
-      <div class="section-title" style="margin-top:12px">Height</div>
-      <div class="dim-row" id="heightBtns">
-        <button class="dim-btn" data-val="30" onclick="setDim('height',30)">30"</button>
-        <button class="dim-btn" data-val="32" onclick="setDim('height',32)">32"</button>
-        <button class="dim-btn active" data-val="34" onclick="setDim('height',34)">34"</button>
-        <button class="dim-btn" data-val="36" onclick="setDim('height',36)">36"</button>
-      </div>
     </div>
 
     <!-- Frame Color -->
@@ -326,6 +343,54 @@ header{
       </div>
     </div>
 
+    <!-- Accessories -->
+    <div class="section">
+      <div class="section-title">Accessories</div>
+      <div class="toggle-row">
+        <div class="toggle-label">Upper Shelf<span>Riser shelf above work surface</span></div>
+        <div class="toggle" id="toggleTopShelf" onclick="toggleFeature('topShelf')"></div>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-label">Lower Shelf<span>Bottom storage shelf</span></div>
+        <div class="toggle" id="toggleBottomShelf" onclick="toggleFeature('bottomShelf')"></div>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-label">Cabinet<span>Locking under-cabinet storage</span></div>
+        <div class="toggle" id="toggleCabinet" onclick="toggleFeature('cabinet')"></div>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-label">LED Light Bar<span>Task lighting with switch</span></div>
+        <div class="toggle" id="toggleLedLight" onclick="toggleFeature('ledLight')"></div>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-label">Power Strip<span>48" power strip with outlets</span></div>
+        <div class="toggle" id="togglePowerStrip" onclick="toggleFeature('powerStrip')"></div>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-label">Keyboard Tray<span>Sliding keyboard platform</span></div>
+        <div class="toggle" id="toggleKeyboard" onclick="toggleFeature('keyboard')"></div>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-label">Monitor Arm<span>Articulating monitor holder</span></div>
+        <div class="toggle" id="toggleMonitor" onclick="toggleFeature('monitor')"></div>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-label">CPU Holder<span>Under-desk CPU mount</span></div>
+        <div class="toggle" id="toggleCpuHolder" onclick="toggleFeature('cpuHolder')"></div>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-label">Wire Shelf<span>Wire mesh bottom shelf</span></div>
+        <div class="toggle" id="toggleWireShelf" onclick="toggleFeature('wireShelf')"></div>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-label">Document Holder<span>Angled document rest</span></div>
+        <div class="toggle" id="toggleDocHolder" onclick="toggleFeature('docHolder')"></div>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-label">Bin Boxes<span>Parts bin rack</span></div>
+        <div class="toggle" id="toggleBinBoxes" onclick="toggleFeature('binBoxes')"></div>
+      </div>
+    </div>
 
   </div>
 </div>
@@ -347,23 +412,34 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 // Expose for onclick
 window.resetCamera = resetCamera;
 window.setDim = setDim;
-
-// ============ Series & Model Config ============
-const seriesData = {
-  kennedy: {
-    name: 'Kennedy Series',
-    desc: 'Heavy-duty industrial workbench with 14-gauge steel tubing frame, 6,600 lb capacity',
-    model: 'models/KSeries.glb',
-    capacity: '6,600 lb'
-  }
-};
+window.toggleFeature = toggleFeature;
 
 // ============ Configuration State ============
 const config = {
-  width: 60, depth: 30, height: 34,
+  width: 60, depth: 30,
   frameColor: '#4489b7',
   topColor: '#FFFFFF',
-  topMaterial: 'formica'
+  topMaterial: 'formica',
+  topShelf: false, bottomShelf: false, cabinet: false,
+  ledLight: false, powerStrip: false, keyboard: false,
+  monitor: false, cpuHolder: false, wireShelf: false,
+  docHolder: false, binBoxes: false
+};
+
+// Accessory node name prefixes — must match names in the exported GLBs
+// Update these to match your CAD export naming convention
+const accessoryNodes = {
+  topShelf: ['UPPER_SHELF', 'TOP_SHELF', 'RISER'],
+  bottomShelf: ['LOWER_SHELF', 'BOTTOM_SHELF'],
+  cabinet: ['CABINET', 'DRAWER'],
+  ledLight: ['LED', 'LIGHT_BAR'],
+  powerStrip: ['POWER_STRIP', 'OUTLET'],
+  keyboard: ['KEYBOARD', 'KB_TRAY'],
+  monitor: ['MONITOR_ARM', 'MONITOR'],
+  cpuHolder: ['CPU_HOLDER', 'CPU'],
+  wireShelf: ['WIRE_SHELF'],
+  docHolder: ['DOC_HOLDER', 'DOCUMENT'],
+  binBoxes: ['BIN_BOX', 'BIN']
 };
 
 // Material PBR definitions
@@ -375,7 +451,6 @@ const materialDefs = {
   'esd-static':        { roughness: 0.4, metalness: 0.05, clearcoat: 0.1 },
   'cleanroom-laminate':{ roughness: 0.3, metalness: 0.0, clearcoat: 0.2 }
 };
-
 
 // ============ Three.js Setup ============
 const viewport = document.getElementById('viewport');
@@ -393,7 +468,7 @@ renderer.toneMappingExposure = 1.2;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 viewport.insertBefore(renderer.domElement, viewport.firstChild);
 
-// Lighting - brighter for light theme
+// Lighting
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
 scene.add(ambientLight);
 
@@ -464,7 +539,6 @@ dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/
 gltfLoader.setDRACOLoader(dracoLoader);
 
 let currentModel = null;
-const meshRefData = new Map(); // uuid -> { baseEffScaleX/Y/Z, localSizeX/Y/Z }
 
 function showLoading(msg) {
   document.getElementById('loadingText').textContent = msg || 'Loading 3D Model...';
@@ -480,7 +554,6 @@ function hideLoading() {
 }
 
 function setupModel(model) {
-  // Auto-fit: scale to reasonable size
   const box = new THREE.Box3().setFromObject(model);
   const size = box.getSize(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z);
@@ -488,14 +561,12 @@ function setupModel(model) {
   const scale = targetSize / maxDim;
   model.scale.setScalar(scale);
 
-  // Re-center
   const scaledBox = new THREE.Box3().setFromObject(model);
   const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
   model.position.x -= scaledCenter.x;
   model.position.z -= scaledCenter.z;
   model.position.y -= scaledBox.min.y;
 
-  // Enable shadows on all meshes
   model.traverse(function(child) {
     if (child.isMesh) {
       child.castShadow = true;
@@ -519,28 +590,41 @@ function fitCamera() {
   controls.update();
 }
 
-function loadSeriesModel(seriesKey) {
-  const data = seriesData[seriesKey];
-  if (!data) return;
+// ============ Model Loading ============
+// Model file naming: models/Kennedy-{width}x{depth}.glb
+// e.g. models/Kennedy-60x30.glb, models/Kennedy-96x48.glb
+// Fallback to models/KSeries.glb if size-specific file not found
+function getModelPath() {
+  return 'models/Kennedy-' + config.width + 'x' + config.depth + '.glb';
+}
 
-  showLoading('Loading ' + data.name + '...');
+function loadModel() {
+  const modelPath = getModelPath();
+
+  showLoading('Loading ' + config.width + '" x ' + config.depth + '" ...');
 
   // Clear existing
   while (modelGroup.children.length) modelGroup.remove(modelGroup.children[0]);
   currentModel = null;
 
   gltfLoader.load(
-    data.model,
+    modelPath,
     function(gltf) {
       const model = gltf.scene;
       setupModel(model);
       currentModel = model;
       modelGroup.add(model);
 
-      modelGroup.scale.set(1, 1, 1);
-      storeBaseMeshData();
+      // Log all node names so you can map them to accessory prefixes
+      console.log('=== Model nodes for ' + modelPath + ' ===');
+      model.traverse(function(child) {
+        if (child.name) {
+          console.log('  ' + (child.isMesh ? '[mesh]' : '[node]') + ' ' + child.name);
+        }
+      });
+
+      applyAccessoryVisibility();
       applyColors();
-      applyDimensionScale();
       fitCamera();
       hideLoading();
     },
@@ -548,162 +632,144 @@ function loadSeriesModel(seriesKey) {
       if (progress.total > 0) {
         const pct = Math.round((progress.loaded / progress.total) * 100);
         document.getElementById('loadingBar').style.width = pct + '%';
-        document.getElementById('loadingText').textContent = 'Loading ' + data.name + '... ' + pct + '%';
+        document.getElementById('loadingText').textContent =
+          'Loading ' + config.width + '" x ' + config.depth + '"... ' + pct + '%';
       }
     },
     function(error) {
-      console.error('Model load error:', error);
-      hideLoading();
+      // Fallback: try loading KSeries.glb if size-specific model not found
+      console.warn('Size-specific model not found (' + modelPath + '), loading fallback KSeries.glb');
+      gltfLoader.load(
+        'models/KSeries.glb',
+        function(gltf) {
+          const model = gltf.scene;
+          setupModel(model);
+          currentModel = model;
+          modelGroup.add(model);
+
+          console.log('=== Fallback model nodes ===');
+          model.traverse(function(child) {
+            if (child.name) {
+              console.log('  ' + (child.isMesh ? '[mesh]' : '[node]') + ' ' + child.name);
+            }
+          });
+
+          applyAccessoryVisibility();
+          applyColors();
+          fitCamera();
+          hideLoading();
+        },
+        null,
+        function(err) {
+          console.error('Failed to load fallback model:', err);
+          hideLoading();
+        }
+      );
     }
   );
 }
 
+// ============ Accessory Visibility ============
+function nameMatches(name, prefix) {
+  const upper = name.toUpperCase();
+  const pUpper = prefix.toUpperCase();
+  if (upper === pUpper) return true;
+  if (!upper.startsWith(pUpper)) return false;
+  var ch = upper.charAt(pUpper.length);
+  return ch === '' || ch === '.' || ch === ' ' || ch === '_' || ch === '-' || (ch >= '0' && ch <= '9');
+}
+
+function getAccessoryFeature(nodeName) {
+  for (var feature in accessoryNodes) {
+    var prefixes = accessoryNodes[feature];
+    for (var i = 0; i < prefixes.length; i++) {
+      if (nameMatches(nodeName, prefixes[i])) return feature;
+    }
+  }
+  return null;
+}
+
+function applyAccessoryVisibility() {
+  if (!currentModel) return;
+
+  currentModel.traverse(function(child) {
+    if (!child.name) return;
+
+    var feature = getAccessoryFeature(child.name);
+    if (feature !== null) {
+      // This node belongs to an accessory — show/hide based on toggle state
+      var visible = config[feature];
+      child.visible = visible;
+      // Also set all children
+      child.traverse(function(c) { c.visible = visible; });
+    }
+  });
+
+  // Ensure parent chain is visible for any visible accessory mesh
+  currentModel.traverse(function(child) {
+    if (child.visible && child.isMesh) {
+      var p = child.parent;
+      while (p && p !== scene) {
+        p.visible = true;
+        p = p.parent;
+      }
+    }
+  });
+}
+
+function toggleFeature(feature) {
+  config[feature] = !config[feature];
+  var toggleEl = document.getElementById('toggle' + feature.charAt(0).toUpperCase() + feature.slice(1));
+  if (toggleEl) toggleEl.classList.toggle('on', config[feature]);
+  applyAccessoryVisibility();
+}
 
 // ============ Color Application ============
 function applyColors() {
   if (!currentModel) return;
 
-  const frameColorHex = new THREE.Color(config.frameColor);
-  const topColorHex = new THREE.Color(config.topColor);
-  const matDef = materialDefs[config.topMaterial];
+  var frameColorHex = new THREE.Color(config.frameColor);
+  var topColorHex = new THREE.Color(config.topColor);
+  var matDef = materialDefs[config.topMaterial];
 
-  currentModel.traverse(child => {
+  currentModel.traverse(function(child) {
     if (!child.isMesh || !child.material) return;
 
-    const name = (child.name || '').toUpperCase();
+    var name = (child.name || '').toUpperCase();
+    var parentName = child.parent ? (child.parent.name || '').toUpperCase() : '';
 
-    // Apply surface material to nodes containing SURFACE in name
-    if (name.includes('SURFACE') || name.includes('TOP')) {
-      const mat = child.material.clone();
+    // Apply surface material to nodes containing SURFACE or TOP in name
+    if (name.includes('SURFACE') || name.includes('TOP') ||
+        parentName.includes('SURFACE') || parentName.includes('TOP')) {
+      var mat = child.material.clone();
       mat.color.copy(topColorHex);
       mat.roughness = matDef.roughness;
       mat.metalness = matDef.metalness;
       child.material = mat;
     } else {
-      // Everything else gets frame color
-      const mat = child.material.clone();
-      mat.color.copy(frameColorHex);
-      child.material = mat;
+      var mat2 = child.material.clone();
+      mat2.color.copy(frameColorHex);
+      child.material = mat2;
     }
   });
 }
 
-
 // ============ Dimension Selection ============
 function setDim(dim, val) {
   config[dim] = val;
-  const container = document.getElementById(dim + 'Btns');
-  container.querySelectorAll('.dim-btn').forEach(b => {
+  var container = document.getElementById(dim + 'Btns');
+  container.querySelectorAll('.dim-btn').forEach(function(b) {
     b.classList.toggle('active', parseInt(b.dataset.val) === val);
   });
-  // Dimensions affect scale of the loaded model
-  applyDimensionScale();
-
+  // Load the model for the new size
+  loadModel();
 }
-
-// Store base effective scale per mesh (called once after model loads, with modelGroup.scale = 1,1,1)
-function storeMeshDataForModel(model) {
-  if (!model) return;
-  model.traverse(child => {
-    if (!child.isMesh || !child.geometry) return;
-    child.scale.set(1, 1, 1);
-    child.updateWorldMatrix(true, false);
-
-    const m = child.matrixWorld.elements;
-    if (!child.geometry.boundingBox) child.geometry.computeBoundingBox();
-    const bb = child.geometry.boundingBox;
-    const ls = new THREE.Vector3();
-    bb.getSize(ls);
-
-    meshRefData.set(child.uuid, {
-      bx: Math.sqrt(m[0]*m[0] + m[1]*m[1] + m[2]*m[2]),
-      by: Math.sqrt(m[4]*m[4] + m[5]*m[5] + m[6]*m[6]),
-      bz: Math.sqrt(m[8]*m[8] + m[9]*m[9] + m[10]*m[10]),
-      sx: ls.x, sy: ls.y, sz: ls.z
-    });
-  });
-}
-
-function storeBaseMeshData() {
-  meshRefData.clear();
-  storeMeshDataForModel(currentModel);
-}
-
-function applyDimensionScale() {
-  if (!currentModel) return;
-
-  // Scale ratios relative to base model dimensions (60x30x34)
-  const sx = config.width / 60;
-  const sy = config.height / 34;
-  const sz = config.depth / 30;
-
-  // Apply non-uniform scale at modelGroup (no rotation here, clean world-axis scale)
-  modelGroup.scale.set(sx, sy, sz);
-
-  // Compensate tube cross-sections and surface thickness
-  // so only lengths change while profiles stay constant (e.g. 2"x1" tubing)
-  function compensateMeshes(model) {
-    if (!model) return;
-    model.traverse(child => {
-      if (!child.isMesh) return;
-      const ref = meshRefData.get(child.uuid);
-      if (!ref) return;
-
-      child.scale.set(1, 1, 1);
-      child.updateWorldMatrix(true, false);
-
-      const m = child.matrixWorld.elements;
-      const cx = Math.sqrt(m[0]*m[0] + m[1]*m[1] + m[2]*m[2]);
-      const cy = Math.sqrt(m[4]*m[4] + m[5]*m[5] + m[6]*m[6]);
-      const cz = Math.sqrt(m[8]*m[8] + m[9]*m[9] + m[10]*m[10]);
-
-      const dims = [
-        { a: 'x', size: ref.sx, base: ref.bx, cur: cx },
-        { a: 'y', size: ref.sy, base: ref.by, cur: cy },
-        { a: 'z', size: ref.sz, base: ref.bz, cur: cz }
-      ].sort((a, b) => b.size - a.size);
-
-      const r01 = dims[0].size / Math.max(dims[1].size, 0.0001);
-      const r12 = dims[1].size / Math.max(dims[2].size, 0.0001);
-
-      const comp = { x: 1, y: 1, z: 1 };
-      let shapeType = '';
-
-      if (r01 > 1.8) {
-        shapeType = 'tube';
-        comp[dims[1].a] = dims[1].base / dims[1].cur;
-        comp[dims[2].a] = dims[2].base / dims[2].cur;
-      } else if (r12 > 1.8) {
-        shapeType = 'plate';
-        comp[dims[2].a] = dims[2].base / dims[2].cur;
-      } else {
-        shapeType = 'cubic';
-        comp.x = ref.bx / cx;
-        comp.y = ref.by / cy;
-        comp.z = ref.bz / cz;
-      }
-
-      console.log(
-        '[mesh]', child.name,
-        '| bbox:', ref.sx.toFixed(2), ref.sy.toFixed(2), ref.sz.toFixed(2),
-        '| r01:', r01.toFixed(2), 'r12:', r12.toFixed(2),
-        '| type:', shapeType,
-        '| comp:', comp.x.toFixed(3), comp.y.toFixed(3), comp.z.toFixed(3)
-      );
-
-      child.scale.set(comp.x, comp.y, comp.z);
-    });
-  }
-  compensateMeshes(currentModel);
-}
-
-// ============ Feature Toggles ============
 
 // ============ UI Bindings ============
 // Frame colors
-document.querySelectorAll('#frameColors .swatch').forEach(el => {
-  el.addEventListener('click', () => {
-    document.querySelectorAll('#frameColors .swatch').forEach(s => s.classList.remove('active'));
+document.querySelectorAll('#frameColors .swatch').forEach(function(el) {
+  el.addEventListener('click', function() {
+    document.querySelectorAll('#frameColors .swatch').forEach(function(s) { s.classList.remove('active'); });
     el.classList.add('active');
     config.frameColor = el.dataset.color;
     applyColors();
@@ -711,9 +777,9 @@ document.querySelectorAll('#frameColors .swatch').forEach(el => {
 });
 
 // Top colors
-document.querySelectorAll('#topColors .swatch').forEach(el => {
-  el.addEventListener('click', () => {
-    document.querySelectorAll('#topColors .swatch').forEach(s => s.classList.remove('active'));
+document.querySelectorAll('#topColors .swatch').forEach(function(el) {
+  el.addEventListener('click', function() {
+    document.querySelectorAll('#topColors .swatch').forEach(function(s) { s.classList.remove('active'); });
     el.classList.add('active');
     config.topColor = el.dataset.color;
     applyColors();
@@ -721,19 +787,18 @@ document.querySelectorAll('#topColors .swatch').forEach(el => {
 });
 
 // Materials
-document.querySelectorAll('#topMaterials .material-btn').forEach(el => {
-  el.addEventListener('click', () => {
-    document.querySelectorAll('#topMaterials .material-btn').forEach(b => b.classList.remove('active'));
+document.querySelectorAll('#topMaterials .material-btn').forEach(function(el) {
+  el.addEventListener('click', function() {
+    document.querySelectorAll('#topMaterials .material-btn').forEach(function(b) { b.classList.remove('active'); });
     el.classList.add('active');
     config.topMaterial = el.dataset.material;
     applyColors();
-  
   });
 });
 
 // ============ Render Loop ============
 function onResize() {
-  const rect = viewport.getBoundingClientRect();
+  var rect = viewport.getBoundingClientRect();
   camera.aspect = rect.width / rect.height;
   camera.updateProjectionMatrix();
   renderer.setSize(rect.width, rect.height);
@@ -753,7 +818,7 @@ resetCamera();
 animate();
 
 // Load default model
-loadSeriesModel('kennedy');
+loadModel();
 </script>
 </body>
 </html>
