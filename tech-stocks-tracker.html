@@ -937,21 +937,161 @@
         function calcRSI(closes, period = 14) {
             const n = closes.length;
             if (n < period + 1) return 50;
-            let gains = 0, losses = 0;
-            for (let i = n - period; i < n; i++) {
+            // Wilder's smoothed RSI
+            let avgGain = 0, avgLoss = 0;
+            for (let i = 1; i <= period; i++) {
                 const diff = closes[i] - closes[i - 1];
-                if (diff > 0) gains += diff;
-                else losses -= diff;
+                if (diff > 0) avgGain += diff; else avgLoss -= diff;
             }
-            const rs = losses === 0 ? 100 : (gains / period) / (losses / period);
+            avgGain /= period;
+            avgLoss /= period;
+            for (let i = period + 1; i < n; i++) {
+                const diff = closes[i] - closes[i - 1];
+                avgGain = (avgGain * (period - 1) + (diff > 0 ? diff : 0)) / period;
+                avgLoss = (avgLoss * (period - 1) + (diff < 0 ? -diff : 0)) / period;
+            }
+            if (avgLoss === 0) return 100;
+            const rs = avgGain / avgLoss;
             return 100 - (100 / (1 + rs));
         }
 
+        // ── Stochastic Oscillator (%K / %D) ──
+        function calcStochastic(closes, kPeriod = 14, dPeriod = 3) {
+            if (closes.length < kPeriod + dPeriod) return null;
+            const kValues = [];
+            for (let i = kPeriod - 1; i < closes.length; i++) {
+                const slice = closes.slice(i - kPeriod + 1, i + 1);
+                const high = Math.max(...slice);
+                const low = Math.min(...slice);
+                kValues.push(high !== low ? ((closes[i] - low) / (high - low)) * 100 : 50);
+            }
+            // %D is SMA of %K
+            const dValues = [];
+            for (let i = dPeriod - 1; i < kValues.length; i++) {
+                dValues.push(kValues.slice(i - dPeriod + 1, i + 1).reduce((s, v) => s + v, 0) / dPeriod);
+            }
+            return {
+                k: kValues[kValues.length - 1],
+                d: dValues[dValues.length - 1],
+                prevK: kValues.length > 1 ? kValues[kValues.length - 2] : null,
+                prevD: dValues.length > 1 ? dValues[dValues.length - 2] : null
+            };
+        }
+
+        // ── ADX (Average Directional Index) ──
+        function calcADX(prices, period = 14) {
+            if (prices.length < period * 2 + 1) return null;
+            const plusDM = [], minusDM = [], tr = [];
+            for (let i = 1; i < prices.length; i++) {
+                const h = prices[i].high || prices[i].price;
+                const l = prices[i].low || prices[i].price;
+                const ph = prices[i - 1].high || prices[i - 1].price;
+                const pl = prices[i - 1].low || prices[i - 1].price;
+                const pc = prices[i - 1].price;
+                const upMove = h - ph;
+                const downMove = pl - l;
+                plusDM.push(upMove > downMove && upMove > 0 ? upMove : 0);
+                minusDM.push(downMove > upMove && downMove > 0 ? downMove : 0);
+                tr.push(Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc)));
+            }
+            // Smoothed averages
+            let smoothTR = tr.slice(0, period).reduce((s, v) => s + v, 0);
+            let smoothPlusDM = plusDM.slice(0, period).reduce((s, v) => s + v, 0);
+            let smoothMinusDM = minusDM.slice(0, period).reduce((s, v) => s + v, 0);
+            const dxValues = [];
+            for (let i = period; i < tr.length; i++) {
+                smoothTR = smoothTR - (smoothTR / period) + tr[i];
+                smoothPlusDM = smoothPlusDM - (smoothPlusDM / period) + plusDM[i];
+                smoothMinusDM = smoothMinusDM - (smoothMinusDM / period) + minusDM[i];
+                const plusDI = smoothTR > 0 ? (smoothPlusDM / smoothTR) * 100 : 0;
+                const minusDI = smoothTR > 0 ? (smoothMinusDM / smoothTR) * 100 : 0;
+                const diSum = plusDI + minusDI;
+                dxValues.push(diSum > 0 ? (Math.abs(plusDI - minusDI) / diSum) * 100 : 0);
+            }
+            if (dxValues.length < period) return null;
+            // ADX is smoothed average of DX
+            let adx = dxValues.slice(0, period).reduce((s, v) => s + v, 0) / period;
+            for (let i = period; i < dxValues.length; i++) {
+                adx = (adx * (period - 1) + dxValues[i]) / period;
+            }
+            // Also return latest +DI/-DI for trend direction
+            const lastPlusDI = smoothTR > 0 ? (smoothPlusDM / smoothTR) * 100 : 0;
+            const lastMinusDI = smoothTR > 0 ? (smoothMinusDM / smoothTR) * 100 : 0;
+            return { adx, plusDI: lastPlusDI, minusDI: lastMinusDI };
+        }
+
+        // ── OBV (On-Balance Volume) ──
+        function calcOBV(prices) {
+            if (prices.length < 10) return null;
+            let obv = 0;
+            const obvArr = [0];
+            for (let i = 1; i < prices.length; i++) {
+                const vol = prices[i].volume || 0;
+                if (prices[i].price > prices[i - 1].price) obv += vol;
+                else if (prices[i].price < prices[i - 1].price) obv -= vol;
+                obvArr.push(obv);
+            }
+            // OBV trend: compare 5-period SMA of OBV
+            const n = obvArr.length;
+            if (n < 10) return null;
+            const obvRecent = obvArr.slice(-5).reduce((s, v) => s + v, 0) / 5;
+            const obvPrior = obvArr.slice(-10, -5).reduce((s, v) => s + v, 0) / 5;
+            // Price trend for divergence detection
+            const priceRecent = prices.slice(-5).reduce((s, p) => s + p.price, 0) / 5;
+            const pricePrior = prices.slice(-10, -5).reduce((s, p) => s + p.price, 0) / 5;
+            const obvTrend = obvRecent > obvPrior ? 1 : -1;
+            const priceTrend = priceRecent > pricePrior ? 1 : -1;
+            return {
+                trend: obvTrend,
+                divergence: obvTrend !== priceTrend, // Bearish or bullish divergence
+                bullishDiv: obvTrend > 0 && priceTrend < 0,
+                bearishDiv: obvTrend < 0 && priceTrend > 0
+            };
+        }
+
+        // ── Williams %R ──
+        function calcWilliamsR(closes, period = 14) {
+            if (closes.length < period) return null;
+            const slice = closes.slice(-period);
+            const high = Math.max(...slice);
+            const low = Math.min(...slice);
+            if (high === low) return -50;
+            return ((high - closes[closes.length - 1]) / (high - low)) * -100;
+        }
+
+        // ── Ichimoku Cloud ──
+        function calcIchimoku(prices) {
+            const n = prices.length;
+            if (n < 52) return null;
+            const closes = prices.map(p => p.price);
+            const highs = prices.map(p => p.high || p.price);
+            const lows = prices.map(p => p.low || p.price);
+            // Tenkan-sen (9-period)
+            const tenkan = (Math.max(...highs.slice(-9)) + Math.min(...lows.slice(-9))) / 2;
+            // Kijun-sen (26-period)
+            const kijun = (Math.max(...highs.slice(-26)) + Math.min(...lows.slice(-26))) / 2;
+            // Senkou Span A (average of Tenkan + Kijun, shifted 26 ahead — we use current)
+            const spanA = (tenkan + kijun) / 2;
+            // Senkou Span B (52-period high+low / 2, shifted 26 ahead)
+            const spanB = (Math.max(...highs.slice(-52)) + Math.min(...lows.slice(-52))) / 2;
+            const price = closes[n - 1];
+            const cloudTop = Math.max(spanA, spanB);
+            const cloudBottom = Math.min(spanA, spanB);
+            return {
+                tenkan, kijun, spanA, spanB,
+                aboveCloud: price > cloudTop,
+                belowCloud: price < cloudBottom,
+                inCloud: price >= cloudBottom && price <= cloudTop,
+                tkCross: tenkan > kijun ? 1 : tenkan < kijun ? -1 : 0,
+                cloudBullish: spanA > spanB
+            };
+        }
+
         // ══════════════════════════════════════════
-        // ── Market Context: VIX, SPY, Fear & Greed, News ──
+        // ── Market Context: VIX, SPY, Fear & Greed, News, XLK, Bonds, DXY ──
         // ══════════════════════════════════════════
 
-        let marketContext = { vix: null, spy: null, fearGreed: null, news: {} };
+        let marketContext = { vix: null, spy: null, fearGreed: null, news: {}, xlk: null, treasury10y: null, dxy: null };
         const MARKET_CONTEXT_TTL = 20 * 60 * 1000; // 20 minutes
         let lastMarketContextFetch = 0;
 
@@ -1023,6 +1163,56 @@
             return null;
         }
 
+        async function fetchXLK(signal) {
+            try {
+                const data = await fetchStock('XLK', '1mo', signal);
+                if (!data?.prices?.length || data.prices.length < 6) return null;
+                const closes = data.prices.map(p => p.price);
+                const n = closes.length;
+                const mom5 = (closes[n - 1] - closes[n - 6]) / closes[n - 6] * 100;
+                const mom1 = n >= 2 ? (closes[n - 1] - closes[n - 2]) / closes[n - 2] * 100 : 0;
+                return { price: closes[n - 1], mom5, mom1, closes };
+            } catch (e) {
+                if (e.name === 'AbortError') throw e;
+                console.warn('XLK fetch failed:', e.message);
+                return null;
+            }
+        }
+
+        async function fetchTreasury10Y(signal) {
+            try {
+                const url = `https://api.twelvedata.com/time_series?symbol=US10Y&interval=1day&outputsize=5&apikey=${TWELVE_DATA_KEY}`;
+                const resp = await fetchWithTimeout(url, signal);
+                if (!resp.ok) return null;
+                const json = await resp.json();
+                if (json.status === 'error' || !json.values?.length) return null;
+                const current = parseFloat(json.values[0].close);
+                const prev = json.values.length > 1 ? parseFloat(json.values[1].close) : current;
+                return { yield: current, change: current - prev };
+            } catch (e) {
+                if (e.name === 'AbortError') throw e;
+                console.warn('Treasury 10Y fetch failed:', e.message);
+                return null;
+            }
+        }
+
+        async function fetchDXY(signal) {
+            try {
+                const url = `https://api.twelvedata.com/time_series?symbol=DXY&interval=1day&outputsize=5&apikey=${TWELVE_DATA_KEY}`;
+                const resp = await fetchWithTimeout(url, signal);
+                if (!resp.ok) return null;
+                const json = await resp.json();
+                if (json.status === 'error' || !json.values?.length) return null;
+                const current = parseFloat(json.values[0].close);
+                const prev = json.values.length > 1 ? parseFloat(json.values[1].close) : current;
+                return { value: current, change: ((current - prev) / prev) * 100 };
+            } catch (e) {
+                if (e.name === 'AbortError') throw e;
+                console.warn('DXY fetch failed:', e.message);
+                return null;
+            }
+        }
+
         async function fetchNewsForStock(symbol, signal) {
             try {
                 // Use Google News RSS via proxy
@@ -1069,7 +1259,7 @@
                 'investigation', 'layoff', 'recall', 'warning', 'bearish', 'debt', 'fine', 'penalty',
                 'antitrust', 'regulation', 'tariff', 'ban'];
 
-            let score = 0, bullCount = 0, bearCount = 0, headline = '';
+            let score = 0, bullCount = 0, bearCount = 0;
             const recentTitles = titles.slice(0, 10); // Focus on top 10 headlines
 
             for (const title of recentTitles) {
@@ -1079,8 +1269,8 @@
                 for (const word of bearish) {
                     if (title.includes(word)) { score -= 1; bearCount++; break; }
                 }
-                if (!headline && title.length > 10) headline = titles[0];
             }
+            const headline = recentTitles.find(t => t.length > 10) || '';
 
             const total = recentTitles.length;
             return {
@@ -1098,15 +1288,21 @@
                 return marketContext;
             }
 
-            const [vix, spy, fg] = await Promise.allSettled([
+            const [vix, spy, fg, xlk, treasury, dxy] = await Promise.allSettled([
                 fetchVIX(signal),
                 fetchSPY(signal),
-                fetchFearGreedIndex(signal)
+                fetchFearGreedIndex(signal),
+                fetchXLK(signal),
+                fetchTreasury10Y(signal),
+                fetchDXY(signal)
             ]);
 
             marketContext.vix = vix.status === 'fulfilled' ? vix.value : null;
             marketContext.spy = spy.status === 'fulfilled' ? spy.value : null;
             marketContext.fearGreed = fg.status === 'fulfilled' ? fg.value : null;
+            marketContext.xlk = xlk.status === 'fulfilled' ? xlk.value : null;
+            marketContext.treasury10y = treasury.status === 'fulfilled' ? treasury.value : null;
+            marketContext.dxy = dxy.status === 'fulfilled' ? dxy.value : null;
             lastMarketContextFetch = Date.now();
 
             return marketContext;
@@ -1132,9 +1328,24 @@
                 html += `<div class="ctx-item"><span class="ctx-label">S&P 500</span><span class="ctx-val ${spyClass}">$${ctx.spy.price.toFixed(0)} (${ctx.spy.mom1 >= 0 ? '+' : ''}${ctx.spy.mom1.toFixed(2)}%)</span></div>`;
             }
 
+            if (ctx.xlk) {
+                const xlkClass = ctx.xlk.mom1 >= 0 ? 'up' : 'down';
+                html += `<div class="ctx-item"><span class="ctx-label">XLK Tech</span><span class="ctx-val ${xlkClass}">$${ctx.xlk.price.toFixed(0)} (${ctx.xlk.mom1 >= 0 ? '+' : ''}${ctx.xlk.mom1.toFixed(2)}%)</span></div>`;
+            }
+
             if (ctx.fearGreed) {
                 const fgClass = ctx.fearGreed.value <= 35 ? 'fear' : ctx.fearGreed.value >= 65 ? 'greed' : 'neutral';
                 html += `<div class="ctx-item"><span class="ctx-label">Fear & Greed</span><span class="ctx-val ${fgClass}">${ctx.fearGreed.value} ${ctx.fearGreed.label}</span></div>`;
+            }
+
+            if (ctx.treasury10y) {
+                const yieldClass = ctx.treasury10y.change > 0 ? 'fear' : ctx.treasury10y.change < 0 ? 'greed' : 'neutral';
+                html += `<div class="ctx-item"><span class="ctx-label">10Y Yield</span><span class="ctx-val ${yieldClass}">${ctx.treasury10y.yield.toFixed(2)}% (${ctx.treasury10y.change >= 0 ? '+' : ''}${ctx.treasury10y.change.toFixed(2)})</span></div>`;
+            }
+
+            if (ctx.dxy) {
+                const dxyClass = ctx.dxy.change > 0.2 ? 'fear' : ctx.dxy.change < -0.2 ? 'greed' : 'neutral';
+                html += `<div class="ctx-item"><span class="ctx-label">USD (DXY)</span><span class="ctx-val ${dxyClass}">${ctx.dxy.value.toFixed(1)} (${ctx.dxy.change >= 0 ? '+' : ''}${ctx.dxy.change.toFixed(2)}%)</span></div>`;
             }
 
             const now = new Date();
@@ -1146,7 +1357,7 @@
 
         // ══════════════════════════════════════════
         // ── Enhanced Signal: BUY, HOLD, or SELL ──
-        // Uses 13 indicators + market context + news
+        // Uses 24 weighted indicators + market context + news
         // ══════════════════════════════════════════
 
         function computeSignal(dailyPrices, ctx = {}, newsSentiment = null) {
@@ -1168,7 +1379,7 @@
             if (crossover === 1) reasons.push('Golden cross');
             else if (crossover === -1) reasons.push('Death cross');
 
-            // ── 2. RSI (14-period) ──
+            // ── 2. RSI (14-period, Wilder's smoothed) ──
             const rsi = calcRSI(closes);
             let rsiScore;
             if (rsi > 75) { rsiScore = -1.2; reasons.push('RSI ' + rsi.toFixed(0) + ' overbought'); }
@@ -1208,14 +1419,11 @@
                 } else if (bb.pctB < 0.2) {
                     bbScore = 0.3;
                 }
-                // Bollinger squeeze = low volatility, expect breakout
-                if (bb.bandwidth < 5) {
-                    details.push('BB squeeze');
-                }
+                if (bb.bandwidth < 5) details.push('BB squeeze');
                 details.push('BB%:' + (bb.pctB * 100).toFixed(0));
             }
 
-            // ── 5. EMA-12/26 crossover ──
+            // ── 5. EMA-12/26 crossover (reuse MACD's EMA calc) ──
             let emaScore = 0;
             if (closes.length >= 26) {
                 const ema12 = calcEMA(closes, 12);
@@ -1233,12 +1441,9 @@
 
             // ── 6. ATR (volatility measure) ──
             const atr = calcATR(dailyPrices);
-            let atrScore = 0;
             const atrPct = atr ? (atr / closes[n - 1]) * 100 : 0;
             const highVolatility = atrPct > 3.5;
-            if (highVolatility) {
-                details.push('ATR:' + atrPct.toFixed(1) + '% high');
-            }
+            if (highVolatility) details.push('ATR:' + atrPct.toFixed(1) + '%');
 
             // ── 7. VWAP ──
             const vwap = calcVWAP(dailyPrices.slice(-5));
@@ -1285,23 +1490,16 @@
                 if (ctx.vix > 35) { vixScore = -0.6; reasons.push('VIX ' + ctx.vix.toFixed(0) + ' high fear'); }
                 else if (ctx.vix > 25) { vixScore = -0.3; }
                 else if (ctx.vix < 14) { vixScore = 0.3; }
-                else { vixScore = 0; }
             }
 
             // ── 14. SPY correlation / market trend ──
             let spyScore = 0;
             if (ctx.spy?.closes?.length >= 6) {
-                const spyCloses = ctx.spy.closes;
                 const spyMom = ctx.spy.mom5;
-                // If market is strongly trending, follow it
-                if (spyMom > 2) { spyScore = 0.4; }
-                else if (spyMom < -2) { spyScore = -0.4; }
-
-                // Correlation check: stock vs SPY recent direction
-                const stockRet5 = mom5;
-                if (Math.sign(stockRet5) !== Math.sign(spyMom) && Math.abs(spyMom) > 1) {
-                    // Stock diverging from market — notable
-                    if (stockRet5 > 0) details.push('Outperforming mkt');
+                if (spyMom > 2) spyScore = 0.4;
+                else if (spyMom < -2) spyScore = -0.4;
+                if (Math.sign(mom5) !== Math.sign(spyMom) && Math.abs(spyMom) > 1) {
+                    if (mom5 > 0) details.push('Outperforming mkt');
                     else details.push('Underperforming mkt');
                 }
             }
@@ -1319,39 +1517,164 @@
             // ── 16. News sentiment ──
             let newsScore = 0;
             if (newsSentiment) {
-                newsScore = newsSentiment.score * 0.8; // -0.8 to +0.8
+                newsScore = newsSentiment.score * 0.8;
                 if (newsSentiment.score > 0.3) reasons.push('Positive news');
                 else if (newsSentiment.score < -0.3) reasons.push('Negative news');
                 if (newsSentiment.headline) details.push(newsSentiment.headline.slice(0, 40));
             }
 
+            // ── 17. Stochastic Oscillator ──
+            let stochScore = 0;
+            const stoch = calcStochastic(closes);
+            if (stoch) {
+                if (stoch.k < 20 && stoch.d < 20) {
+                    stochScore = 0.8;
+                    if (stoch.prevK != null && stoch.k > stoch.d && stoch.prevK <= stoch.prevD) {
+                        stochScore = 1.2; reasons.push('Stoch bullish cross');
+                    }
+                } else if (stoch.k > 80 && stoch.d > 80) {
+                    stochScore = -0.8;
+                    if (stoch.prevK != null && stoch.k < stoch.d && stoch.prevK >= stoch.prevD) {
+                        stochScore = -1.2; reasons.push('Stoch bearish cross');
+                    }
+                } else {
+                    stochScore = stoch.k > 50 ? 0.2 : -0.2;
+                }
+                details.push('Stoch:' + stoch.k.toFixed(0) + '/' + stoch.d.toFixed(0));
+            }
+
+            // ── 18. ADX (trend strength) ──
+            let adxScore = 0;
+            let strongTrend = false;
+            const adxData = calcADX(dailyPrices);
+            if (adxData) {
+                strongTrend = adxData.adx > 25;
+                const trendDir = adxData.plusDI > adxData.minusDI ? 1 : -1;
+                if (adxData.adx > 40) {
+                    adxScore = trendDir * 0.6; // Very strong trend — follow it
+                    reasons.push('ADX ' + adxData.adx.toFixed(0) + ' strong ' + (trendDir > 0 ? 'up' : 'down') + ' trend');
+                } else if (adxData.adx > 25) {
+                    adxScore = trendDir * 0.3;
+                } else {
+                    // Weak/no trend — signals less reliable
+                    adxScore = 0;
+                    if (adxData.adx < 15) details.push('ADX:' + adxData.adx.toFixed(0) + ' choppy');
+                }
+            }
+
+            // ── 19. OBV (On-Balance Volume divergence) ──
+            let obvScore = 0;
+            const obv = calcOBV(dailyPrices);
+            if (obv) {
+                if (obv.bullishDiv) {
+                    obvScore = 0.7; reasons.push('OBV bullish divergence');
+                } else if (obv.bearishDiv) {
+                    obvScore = -0.7; reasons.push('OBV bearish divergence');
+                } else {
+                    obvScore = obv.trend * 0.2; // Confirms direction
+                }
+            }
+
+            // ── 20. Williams %R ──
+            let willRScore = 0;
+            const willR = calcWilliamsR(closes);
+            if (willR !== null) {
+                if (willR > -20) { willRScore = -0.5; } // Overbought
+                else if (willR < -80) { willRScore = 0.5; } // Oversold
+                else { willRScore = willR > -50 ? -0.1 : 0.1; }
+            }
+
+            // ── 21. Ichimoku Cloud ──
+            let ichimokuScore = 0;
+            const ichi = calcIchimoku(dailyPrices);
+            if (ichi) {
+                if (ichi.aboveCloud) {
+                    ichimokuScore = 0.5;
+                    if (ichi.tkCross > 0) { ichimokuScore = 0.8; reasons.push('Ichimoku bullish'); }
+                } else if (ichi.belowCloud) {
+                    ichimokuScore = -0.5;
+                    if (ichi.tkCross < 0) { ichimokuScore = -0.8; reasons.push('Ichimoku bearish'); }
+                } else {
+                    ichimokuScore = ichi.cloudBullish ? 0.1 : -0.1;
+                    details.push('In Ichimoku cloud');
+                }
+            }
+
+            // ── 22. XLK Sector Relative Strength ──
+            let xlkScore = 0;
+            if (ctx.xlk?.closes?.length >= 6) {
+                const xlkMom = ctx.xlk.mom5;
+                // Stock outperforming tech sector = bullish
+                const relStrength = mom5 - xlkMom;
+                if (relStrength > 2) { xlkScore = 0.4; details.push('Outperforming XLK'); }
+                else if (relStrength < -2) { xlkScore = -0.4; details.push('Underperforming XLK'); }
+                else { xlkScore = relStrength > 0 ? 0.1 : -0.1; }
+            }
+
+            // ── 23. 10-Year Treasury Yield ──
+            let treasuryScore = 0;
+            if (ctx.treasury10y) {
+                const yld = ctx.treasury10y.yield;
+                const yldChg = ctx.treasury10y.change;
+                // Rising yields hurt growth/tech; falling yields help
+                if (yldChg > 0.05) { treasuryScore = -0.4; }
+                else if (yldChg < -0.05) { treasuryScore = 0.4; }
+                if (yld > 4.5) { treasuryScore -= 0.2; details.push('10Y:' + yld.toFixed(2) + '% high'); }
+                else if (yld < 3.5) { treasuryScore += 0.2; }
+            }
+
+            // ── 24. USD Index (DXY) ──
+            let dxyScore = 0;
+            if (ctx.dxy) {
+                // Strong dollar hurts multinational tech earnings
+                if (ctx.dxy.change > 0.5) { dxyScore = -0.3; details.push('USD strengthening'); }
+                else if (ctx.dxy.change < -0.5) { dxyScore = 0.3; details.push('USD weakening'); }
+                if (ctx.dxy.value > 106) { dxyScore -= 0.1; }
+                else if (ctx.dxy.value < 100) { dxyScore += 0.1; }
+            }
+
             // ══════════════════════════════════════════
-            // Weighted composite — 16 factors
+            // Weighted composite — 24 factors
+            // Weights sum to ~1.0
             // ══════════════════════════════════════════
-            let raw = (smaScore * 0.07)
-                + (rsiScore * 0.10)
-                + (macdScore * 0.12)
-                + (bbScore * 0.08)
-                + (emaScore * 0.07)
-                + (vwapScore * 0.04)
-                + (momScore * 0.10)
-                + (streak * 0.04)
-                + (crossover * 0.06)
-                + (supportScore * 0.05)
-                + (rangeScore * 0.06)
-                + (vixScore * 0.05)
-                + (spyScore * 0.05)
-                + (fgScore * 0.05)
-                + (newsScore * 0.06);
+            let raw = (smaScore * 0.05)
+                + (rsiScore * 0.07)
+                + (macdScore * 0.08)
+                + (bbScore * 0.05)
+                + (emaScore * 0.05)
+                + (vwapScore * 0.03)
+                + (momScore * 0.07)
+                + (streak * 0.02)
+                + (crossover * 0.04)
+                + (supportScore * 0.03)
+                + (rangeScore * 0.04)
+                + (vixScore * 0.04)
+                + (spyScore * 0.04)
+                + (fgScore * 0.04)
+                + (newsScore * 0.05)
+                + (stochScore * 0.06)
+                + (adxScore * 0.05)
+                + (obvScore * 0.05)
+                + (willRScore * 0.03)
+                + (ichimokuScore * 0.05)
+                + (xlkScore * 0.03)
+                + (treasuryScore * 0.04)
+                + (dxyScore * 0.03);
 
             // Volume boost when confirming direction
             if (volConfirm && Math.sign(raw) === Math.sign(mom5)) {
-                raw += 0.08 * Math.sign(raw);
+                raw += 0.06 * Math.sign(raw);
+            }
+
+            // ADX trend strength modifier: amplify in strong trends, dampen in choppy markets
+            if (adxData) {
+                if (adxData.adx > 30) raw *= 1.15; // Strong trend — more conviction
+                else if (adxData.adx < 15) raw *= 0.75; // Choppy — less conviction
             }
 
             // ATR volatility dampener
             if (highVolatility) {
-                raw *= 0.65;
+                raw *= 0.7;
             }
 
             // Three-way classification
@@ -1370,7 +1693,7 @@
             }
 
             const topReasons = reasons.slice(0, 3).join(' · ');
-            const detailStr = details.slice(0, 4).join(' | ');
+            const detailStr = details.slice(0, 5).join(' | ');
 
             return { call, confidence, reason: topReasons, detail: detailStr, rsi: rsi.toFixed(0), mom: mom5.toFixed(1) };
         }
@@ -1473,7 +1796,7 @@
                     disc.className = 'signal-disclaimer';
                     grid.parentNode.insertBefore(disc, grid.nextSibling);
                 }
-                disc.textContent = 'Signals use 16 indicators: MACD, RSI, Bollinger, EMA, ATR, VWAP, SMA, momentum, volume, VIX, S&P 500, Fear & Greed, news sentiment — for fun, not financial advice.';
+                disc.textContent = 'Signals use 24 indicators: MACD, RSI, Stochastic, Bollinger, EMA, Ichimoku, ADX, OBV, Williams %R, ATR, VWAP, SMA, momentum, volume, VIX, S&P 500, XLK sector, Fear & Greed, 10Y yield, USD, news sentiment — for fun, not financial advice.';
 
                 // Show next refresh time
                 let refreshNote = document.getElementById('signalRefreshNote');
