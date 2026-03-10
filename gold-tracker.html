@@ -274,6 +274,7 @@
 
         .data-status .source-freegoldapi { background: #fbbf2420; color: #fbbf24; }
         .data-status .source-coingecko { background: #8dc63f20; color: #8dc63f; }
+        .data-status .source-metals\.live { background: #e0e0e020; color: #e0e0e0; }
 
         .nav-link {
             display: inline-block;
@@ -294,7 +295,7 @@
 <body>
     <div class="header">
         <h1>Gold, Silver &amp; Bitcoin Tracker</h1>
-        <p>Live data &bull; FreeGoldAPI &amp; CoinGecko &bull; Updated daily</p>
+        <p>Live data &bull; FreeGoldAPI, CoinGecko &amp; metals.live &bull; Daily + Intraday</p>
         <a href="index.html" class="nav-link">&larr; Oil Tracker</a>
         <a href="currency-tracker.html" class="nav-link">MXN/USD Tracker &rarr;</a>
         <a href="flight-tracker.html" class="nav-link">Flight Tracker &rarr;</a>
@@ -311,6 +312,7 @@
                 <button data-type="bitcoin">Bitcoin</button>
             </div>
             <div class="btn-group" id="timeRange">
+                <button data-range="1d">1D</button>
                 <button data-range="7">1W</button>
                 <button class="active" data-range="30">1M</button>
                 <button data-range="90">3M</button>
@@ -333,6 +335,9 @@
         let goldPrices = [];
         let silverPrices = [];
         let bitcoinPrices = [];
+        let intradayGold = [];
+        let intradaySilver = [];
+        let intradayBitcoin = [];
         let selectedType = 'gold';
         let selectedRange = 30;
         let chart = null;
@@ -353,7 +358,8 @@
             btn.addEventListener('click', () => {
                 document.querySelectorAll('#timeRange button').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                selectedRange = btn.dataset.range === 'ytd' ? 'ytd' : parseInt(btn.dataset.range);
+                const r = btn.dataset.range;
+                selectedRange = r === 'ytd' ? 'ytd' : r === '1d' ? '1d' : parseInt(r);
                 render();
             });
         });
@@ -455,6 +461,71 @@
             return [];
         }
 
+        // Intraday Bitcoin from CoinGecko (days=1 gives ~5-min intervals)
+        async function fetchIntradayBitcoin() {
+            try {
+                const resp = await fetch(
+                    'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1'
+                );
+                if (!resp.ok) throw new Error('CoinGecko HTTP ' + resp.status);
+                const json = await resp.json();
+                if (json.prices) {
+                    return json.prices.map(([timestamp, price]) => ({
+                        date: new Date(timestamp).toISOString(),
+                        price,
+                        source: 'CoinGecko'
+                    }));
+                }
+            } catch (e) {
+                console.warn('CoinGecko intraday failed:', e.message);
+            }
+            return [];
+        }
+
+        // Intraday gold from metals.live
+        async function fetchIntradayGold() {
+            try {
+                const resp = await fetch('https://api.metals.live/v1/spot/gold');
+                if (!resp.ok) throw new Error('metals.live HTTP ' + resp.status);
+                const data = await resp.json();
+                if (Array.isArray(data)) {
+                    return data
+                        .filter(d => d.timestamp && d.price)
+                        .map(d => ({
+                            date: new Date(d.timestamp * 1000).toISOString(),
+                            price: parseFloat(d.price),
+                            source: 'metals.live'
+                        }))
+                        .sort((a, b) => a.date.localeCompare(b.date));
+                }
+            } catch (e) {
+                console.warn('metals.live gold intraday failed:', e.message);
+            }
+            return [];
+        }
+
+        // Intraday silver from metals.live
+        async function fetchIntradaySilver() {
+            try {
+                const resp = await fetch('https://api.metals.live/v1/spot/silver');
+                if (!resp.ok) throw new Error('metals.live HTTP ' + resp.status);
+                const data = await resp.json();
+                if (Array.isArray(data)) {
+                    return data
+                        .filter(d => d.timestamp && d.price)
+                        .map(d => ({
+                            date: new Date(d.timestamp * 1000).toISOString(),
+                            price: parseFloat(d.price),
+                            source: 'metals.live'
+                        }))
+                        .sort((a, b) => a.date.localeCompare(b.date));
+                }
+            } catch (e) {
+                console.warn('metals.live silver intraday failed:', e.message);
+            }
+            return [];
+        }
+
         async function fetchAllPrices() {
             document.getElementById('content').innerHTML = `
                 <div class="loading">
@@ -465,13 +536,17 @@
             try {
                 dataSources = [];
 
-                const [metalsResult, btcResult] = await Promise.allSettled([
+                const [metalsResult, btcResult, idGold, idSilver, idBtc] = await Promise.allSettled([
                     fetchGoldSilverPrices(),
-                    fetchBitcoin()
+                    fetchBitcoin(),
+                    fetchIntradayGold(),
+                    fetchIntradaySilver(),
+                    fetchIntradayBitcoin()
                 ]);
 
                 const metals = metalsResult.status === 'fulfilled' ? metalsResult.value : { gold: [], silver: [] };
                 const btcData = btcResult.status === 'fulfilled' ? btcResult.value : [];
+                const val = r => r.status === 'fulfilled' ? r.value : [];
 
                 console.log('Metals result:', metalsResult.status, 'gold:', metals.gold.length, 'silver:', metals.silver.length);
                 console.log('BTC result:', btcResult.status, 'count:', btcData.length);
@@ -480,6 +555,13 @@
 
                 if (metals.gold.length > 0 || metals.silver.length > 0) dataSources.push('FreeGoldAPI');
                 if (btcData.length > 0) dataSources.push('CoinGecko');
+
+                intradayGold = val(idGold);
+                intradaySilver = val(idSilver);
+                intradayBitcoin = val(idBtc);
+                if (intradayGold.length > 0 || intradaySilver.length > 0) {
+                    if (!dataSources.includes('metals.live')) dataSources.push('metals.live');
+                }
 
                 goldPrices = metals.gold;
                 silverPrices = metals.silver;
@@ -509,6 +591,10 @@
         }
 
         function getFilteredPrices() {
+            if (selectedRange === '1d') {
+                const intradayMap = { gold: intradayGold, silver: intradaySilver, bitcoin: intradayBitcoin };
+                return intradayMap[selectedType] || [];
+            }
             const typeMap = { gold: goldPrices, silver: silverPrices, bitcoin: bitcoinPrices };
             const all = typeMap[selectedType] || goldPrices;
             const cutoff = selectedRange === 'ytd'
@@ -554,7 +640,7 @@
 
             document.getElementById('content').innerHTML = `
                 <div class="data-status">
-                    <div>Latest data: <strong>${latestDate}</strong> &bull; Updated: <strong>${updatedStr}</strong></div>
+                    <div>Latest data: <strong>${selectedRange === '1d' ? new Date(latestDate).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : latestDate}</strong>${selectedRange === '1d' ? ' (intraday)' : ''} &bull; Updated: <strong>${updatedStr}</strong></div>
                     <div>Sources: ${sourcesTags}</div>
                 </div>
                 <div class="price-hero">
@@ -608,7 +694,7 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>Date</th>
+                                <th>${selectedRange === '1d' ? 'Time' : 'Date'}</th>
                                 <th>Price</th>
                                 <th>Change</th>
                             </tr>
@@ -619,8 +705,11 @@
                                 const dayChange = next ? p.price - next.price : 0;
                                 const dayPct = next ? (dayChange / next.price) * 100 : 0;
                                 const cls = dayChange >= 0 ? 'up' : 'down';
+                                const displayDate = selectedRange === '1d'
+                                    ? new Date(p.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+                                    : p.date;
                                 return `<tr>
-                                    <td>${p.date}</td>
+                                    <td>${displayDate}</td>
                                     <td><strong>${formatPrice(p.price)}</strong></td>
                                     <td class="price-change ${cls}">
                                         ${dayChange >= 0 ? '+' : '-'}${formatPrice(Math.abs(dayChange)).replace('$','')}
@@ -633,10 +722,10 @@
                 </div>
             `;
 
-            renderChart(prices, color);
+            renderChart(prices, color, selectedRange === '1d');
         }
 
-        function renderChart(prices, color) {
+        function renderChart(prices, color, intraday) {
             const ctx = document.getElementById('priceChart').getContext('2d');
 
             if (chart) chart.destroy();
@@ -688,7 +777,13 @@
                     scales: {
                         x: {
                             type: 'time',
-                            time: {
+                            time: intraday ? {
+                                tooltipFormat: 'MMM d, h:mm a',
+                                displayFormats: {
+                                    hour: 'h:mm a',
+                                    minute: 'h:mm a'
+                                }
+                            } : {
                                 parser: 'yyyy-MM-dd',
                                 tooltipFormat: 'MMM d, yyyy',
                                 displayFormats: {
