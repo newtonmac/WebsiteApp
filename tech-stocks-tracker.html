@@ -435,10 +435,23 @@
             AMD:   { name: 'AMD Inc.',         color: '#ed1c24' }
         };
 
+        const TWELVE_DATA_KEY = '52f351e2d67042889eb1c6d16cd9769f';
+
         const CORS_PROXIES = [
             url => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
             url => 'https://corsproxy.io/?' + encodeURIComponent(url)
         ];
+
+        // Map our UI ranges to TwelveData intervals and outputsize
+        const TWELVE_DATA_MAP = {
+            '1d':  { interval: '5min',  outputsize: 78 },
+            '5d':  { interval: '15min', outputsize: 130 },
+            '1mo': { interval: '1h',    outputsize: 160 },
+            '3mo': { interval: '1day',  outputsize: 63 },
+            '6mo': { interval: '1day',  outputsize: 126 },
+            'ytd': { interval: '1day',  outputsize: 365 },
+            '1y':  { interval: '1day',  outputsize: 252 }
+        };
 
         let selectedSymbol = 'NVDA';
         let selectedRange = '1d';
@@ -447,6 +460,7 @@
         let stockCache = {};
         let overviewCache = {};
         let lastUpdated = null;
+        let activeSource = '';
 
         // Stock tab clicks
         document.getElementById('stockTabs').addEventListener('click', e => {
@@ -476,53 +490,219 @@
             fetchOverview();
         });
 
-        async function fetchYahoo(symbol, range, interval) {
-            const cacheKey = `${symbol}_${range}_${interval}`;
-            if (stockCache[cacheKey]) return stockCache[cacheKey];
+        // ── Source 1: Yahoo Finance (via CORS proxies) ──
+        function parseYahooResponse(json) {
+            if (json.chart && json.chart.result && json.chart.result[0]) {
+                const result = json.chart.result[0];
+                const meta = result.meta || {};
+                const timestamps = result.timestamp || [];
+                const quote = result.indicators.quote[0] || {};
+                const closes = quote.close || [];
+                const opens = quote.open || [];
+                const highs = quote.high || [];
+                const lows = quote.low || [];
+                const volumes = quote.volume || [];
 
+                const prices = timestamps.map((ts, i) => ({
+                    date: new Date(ts * 1000).toISOString().replace('Z', '').slice(0, 19),
+                    price: closes[i],
+                    open: opens[i],
+                    high: highs[i],
+                    low: lows[i],
+                    volume: volumes[i]
+                })).filter(p => p.price != null && !isNaN(p.price) && p.price > 0);
+
+                if (prices.length > 0) {
+                    return {
+                        prices,
+                        meta: {
+                            previousClose: meta.chartPreviousClose || meta.previousClose,
+                            regularMarketPrice: meta.regularMarketPrice,
+                            currency: meta.currency || 'USD'
+                        },
+                        source: 'Yahoo Finance'
+                    };
+                }
+            }
+            return null;
+        }
+
+        async function fetchYahoo(symbol, range, interval) {
             const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`;
 
             for (const proxyFn of CORS_PROXIES) {
                 try {
                     const resp = await fetch(proxyFn(targetUrl));
+                    if (!resp.ok) continue;
                     const json = await resp.json();
-                    if (json.chart && json.chart.result && json.chart.result[0]) {
-                        const result = json.chart.result[0];
-                        const meta = result.meta || {};
-                        const timestamps = result.timestamp || [];
-                        const quote = result.indicators.quote[0] || {};
-                        const closes = quote.close || [];
-                        const opens = quote.open || [];
-                        const highs = quote.high || [];
-                        const lows = quote.low || [];
-                        const volumes = quote.volume || [];
-
-                        const prices = timestamps.map((ts, i) => ({
-                            date: new Date(ts * 1000).toISOString().replace('Z', '').slice(0, 19),
-                            price: closes[i],
-                            open: opens[i],
-                            high: highs[i],
-                            low: lows[i],
-                            volume: volumes[i]
-                        })).filter(p => p.price != null && !isNaN(p.price) && p.price > 0);
-
-                        const data = {
-                            prices,
-                            meta: {
-                                previousClose: meta.chartPreviousClose || meta.previousClose,
-                                regularMarketPrice: meta.regularMarketPrice,
-                                currency: meta.currency || 'USD'
-                            }
-                        };
-
-                        stockCache[cacheKey] = data;
-                        return data;
-                    }
+                    const data = parseYahooResponse(json);
+                    if (data) return data;
                 } catch (e) {
-                    console.warn(`Proxy failed for ${symbol}:`, e.message);
+                    console.warn(`Yahoo proxy failed for ${symbol}:`, e.message);
                 }
             }
-            return { prices: [], meta: {} };
+            return null;
+        }
+
+        // ── Source 2: Twelve Data API ──
+        async function fetchTwelveData(symbol, range) {
+            const config = TWELVE_DATA_MAP[range];
+            if (!config) return null;
+
+            try {
+                const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=${config.interval}&outputsize=${config.outputsize}&apikey=${TWELVE_DATA_KEY}`;
+                const resp = await fetch(url);
+                if (!resp.ok) return null;
+                const json = await resp.json();
+
+                if (json.status === 'error') {
+                    console.warn('TwelveData error:', json.message);
+                    return null;
+                }
+
+                if (json.values && json.values.length > 0) {
+                    const prices = json.values
+                        .filter(d => d.close && d.close !== 'null')
+                        .map(d => ({
+                            date: d.datetime.includes(' ')
+                                ? d.datetime.replace(' ', 'T')
+                                : d.datetime + 'T00:00:00',
+                            price: parseFloat(d.close),
+                            open: parseFloat(d.open),
+                            high: parseFloat(d.high),
+                            low: parseFloat(d.low),
+                            volume: parseInt(d.volume) || 0
+                        }))
+                        .filter(p => !isNaN(p.price) && p.price > 0)
+                        .sort((a, b) => a.date.localeCompare(b.date));
+
+                    // Filter for YTD
+                    let filtered = prices;
+                    if (range === 'ytd') {
+                        const ytdCutoff = new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10);
+                        filtered = prices.filter(p => p.date.slice(0, 10) >= ytdCutoff);
+                    }
+
+                    if (filtered.length > 0) {
+                        return {
+                            prices: filtered,
+                            meta: {
+                                previousClose: filtered.length > 1 ? filtered[0].price : null
+                            },
+                            source: 'Twelve Data'
+                        };
+                    }
+                }
+            } catch (e) {
+                console.warn(`TwelveData failed for ${symbol}:`, e.message);
+            }
+            return null;
+        }
+
+        // ── Source 3: Alpha Vantage (free tier, 25 requests/day) ──
+        const ALPHA_VANTAGE_KEY = 'demo'; // free demo key; works for popular symbols
+        const AV_KEYS = ['demo', 'X86NOH6II01P7R24']; // multiple keys for fallback
+        let avKeyIndex = 0;
+
+        async function fetchAlphaVantage(symbol, range) {
+            // Alpha Vantage: intraday (5min, 15min, 60min) or daily
+            const isIntraday = ['1d', '5d', '1mo'].includes(range);
+            const avIntervalMap = { '1d': '5min', '5d': '15min', '1mo': '60min' };
+
+            for (let attempt = 0; attempt < AV_KEYS.length; attempt++) {
+                const key = AV_KEYS[(avKeyIndex + attempt) % AV_KEYS.length];
+                try {
+                    let url;
+                    if (isIntraday) {
+                        const avInterval = avIntervalMap[range];
+                        url = `https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${encodeURIComponent(symbol)}&interval=${avInterval}&outputsize=full&apikey=${key}`;
+                    } else {
+                        url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${encodeURIComponent(symbol)}&outputsize=full&apikey=${key}`;
+                    }
+
+                    const resp = await fetch(url);
+                    if (!resp.ok) continue;
+                    const json = await resp.json();
+
+                    // Check for rate limit / error
+                    if (json['Note'] || json['Information'] || json['Error Message']) {
+                        console.warn('AlphaVantage limit/error:', json['Note'] || json['Information'] || json['Error Message']);
+                        continue;
+                    }
+
+                    // Find the time series key
+                    const tsKey = Object.keys(json).find(k => k.startsWith('Time Series'));
+                    if (!tsKey || !json[tsKey]) continue;
+
+                    const series = json[tsKey];
+                    const entries = Object.entries(series);
+                    if (entries.length === 0) continue;
+
+                    // Determine cutoff date
+                    const now = new Date();
+                    let cutoffDate = new Date();
+                    const rangeDays = { '1d': 1, '5d': 5, '1mo': 30, '3mo': 90, '6mo': 180, '1y': 365 };
+                    if (range === 'ytd') {
+                        cutoffDate = new Date(now.getFullYear(), 0, 1);
+                    } else {
+                        cutoffDate.setDate(cutoffDate.getDate() - (rangeDays[range] || 30));
+                    }
+                    const cutoffStr = cutoffDate.toISOString().slice(0, 10);
+
+                    const prices = entries
+                        .map(([dateStr, vals]) => ({
+                            date: dateStr.includes(' ') ? dateStr.replace(' ', 'T') : dateStr + 'T00:00:00',
+                            price: parseFloat(vals['4. close']),
+                            open: parseFloat(vals['1. open']),
+                            high: parseFloat(vals['2. high']),
+                            low: parseFloat(vals['3. low']),
+                            volume: parseInt(vals['5. volume']) || 0
+                        }))
+                        .filter(p => !isNaN(p.price) && p.price > 0 && p.date.slice(0, 10) >= cutoffStr)
+                        .sort((a, b) => a.date.localeCompare(b.date));
+
+                    if (prices.length > 0) {
+                        avKeyIndex = (avKeyIndex + attempt) % AV_KEYS.length; // use this key next time
+                        return {
+                            prices,
+                            meta: {
+                                previousClose: prices.length > 1 ? prices[0].price : null
+                            },
+                            source: 'Alpha Vantage'
+                        };
+                    }
+                } catch (e) {
+                    console.warn(`AlphaVantage failed for ${symbol}:`, e.message);
+                }
+            }
+            return null;
+        }
+
+        // ── Multi-source fetch with fallback ──
+        async function fetchStock(symbol, range, interval) {
+            const cacheKey = `${symbol}_${range}_${interval}`;
+            if (stockCache[cacheKey]) return stockCache[cacheKey];
+
+            // Try all sources in parallel, use first successful result by priority
+            const [yahooResult, twelveResult, avResult] = await Promise.allSettled([
+                fetchYahoo(symbol, range, interval),
+                fetchTwelveData(symbol, range),
+                fetchAlphaVantage(symbol, range)
+            ]);
+
+            const yahoo = yahooResult.status === 'fulfilled' ? yahooResult.value : null;
+            const twelve = twelveResult.status === 'fulfilled' ? twelveResult.value : null;
+            const av = avResult.status === 'fulfilled' ? avResult.value : null;
+
+            // Priority: Yahoo (most granular) → TwelveData → Alpha Vantage
+            const data = yahoo || twelve || av;
+
+            if (data) {
+                stockCache[cacheKey] = data;
+                return data;
+            }
+
+            return { prices: [], meta: {}, source: 'none' };
         }
 
         async function fetchOverview() {
@@ -531,7 +711,7 @@
 
             const results = await Promise.allSettled(
                 Object.keys(STOCKS).map(async sym => {
-                    const data = await fetchYahoo(sym, '1d', '5m');
+                    const data = await fetchStock(sym, '1d', '5m');
                     return { symbol: sym, data };
                 })
             );
@@ -539,11 +719,11 @@
             results.forEach(r => {
                 if (r.status !== 'fulfilled') return;
                 const { symbol, data } = r.value;
-                if (!data.prices.length) return;
+                if (!data || !data.prices || !data.prices.length) return;
 
                 overviewCache[symbol] = data;
                 const latest = data.prices[data.prices.length - 1];
-                const prevClose = data.meta.previousClose || data.prices[0].price;
+                const prevClose = (data.meta && data.meta.previousClose) || data.prices[0].price;
                 const change = latest.price - prevClose;
                 const pct = (change / prevClose) * 100;
                 const isUp = change >= 0;
@@ -576,17 +756,19 @@
             document.getElementById('content').innerHTML = `
                 <div class="loading">
                     <div class="spinner"></div>
-                    Loading ${selectedSymbol} data...
+                    Loading ${selectedSymbol} data (trying multiple sources)...
                 </div>`;
 
             try {
-                const data = await fetchYahoo(selectedSymbol, selectedRange, selectedInterval);
+                const data = await fetchStock(selectedSymbol, selectedRange, selectedInterval);
                 lastUpdated = new Date();
+                activeSource = data.source || 'unknown';
 
-                if (!data.prices.length) {
+                if (!data.prices || !data.prices.length) {
                     document.getElementById('content').innerHTML = `
                         <div class="error-msg">
-                            No data available for ${selectedSymbol}. Markets may be closed or the API is temporarily unavailable.
+                            No data available for ${selectedSymbol} from any source (Yahoo Finance, Twelve Data, Alpha Vantage).
+                            All APIs may be rate-limited. Try refreshing in a minute.
                         </div>`;
                     return;
                 }
@@ -634,7 +816,7 @@
             document.getElementById('content').innerHTML = `
                 <div class="data-status">
                     <div>${selectedSymbol} &bull; ${rangeLabels[selectedRange]} &bull; Updated: <strong>${updatedStr}</strong></div>
-                    <div><span class="source-tag">Yahoo Finance</span></div>
+                    <div>Source: <span class="source-tag">${activeSource}</span></div>
                 </div>
 
                 <div class="price-hero">
