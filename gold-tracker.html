@@ -338,7 +338,6 @@
         let silverPrices = [];
         let bitcoinPrices = [];
         let intradaySilver = [];
-        let intradayBitcoin = [];
         let selectedType = 'gold';
         let selectedRange = 30;
         let chart = null;
@@ -485,25 +484,26 @@
             return [];
         }
 
-        // Intraday Bitcoin from CoinGecko (days=1 gives ~5-min intervals)
-        async function fetchIntradayBitcoin() {
+        // CoinGecko granular Bitcoin (days=1→5min, days=2-90→hourly, days=91+→daily)
+        async function fetchCoinGeckoGranular(days, rangeKey) {
             try {
                 const resp = await fetch(
-                    'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1'
+                    'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=' + days
                 );
                 if (!resp.ok) throw new Error('CoinGecko HTTP ' + resp.status);
                 const json = await resp.json();
                 if (json.prices) {
-                    return json.prices.map(([timestamp, price]) => ({
+                    const data = json.prices.map(([timestamp, price]) => ({
                         date: new Date(timestamp).toISOString().replace('Z', '').slice(0, 19),
                         price,
                         source: 'CoinGecko'
                     }));
+                    return { key: rangeKey, data };
                 }
             } catch (e) {
-                console.warn('CoinGecko intraday failed:', e.message);
+                console.warn('CoinGecko granular days=' + days + ' failed:', e.message);
             }
-            return [];
+            return { key: rangeKey, data: [] };
         }
 
         // Intraday silver from metals.live
@@ -542,7 +542,8 @@
                        g1D, g1W, g1M, g3M, g6M, g1Y,
                        s1D, s1W, s1M, s3M, s6M, s1Y,
                        b1D, b1W, b1M, b3M, b6M, b1Y,
-                       idSilver, idBtc] = await Promise.allSettled([
+                       idSilver,
+                       cg1D, cg1W, cg1M, cg3M, cg6M, cg1Y] = await Promise.allSettled([
                     fetchBitcoin(),
                     fetchYahooFinance('GC=F'),
                     fetchYahooFinance('SI=F'),
@@ -570,9 +571,15 @@
                     fetchYahooGranular('BTC-USD', '3mo', '1h',  90),
                     fetchYahooGranular('BTC-USD', '6mo', '1h',  180),
                     fetchYahooGranular('BTC-USD', '1y',  '1h',  365),
-                    // Intraday silver & bitcoin (fallback sources)
+                    // Intraday silver from metals.live (1D fallback)
                     fetchIntradaySilver(),
-                    fetchIntradayBitcoin()
+                    // CoinGecko granular bitcoin (reliable, no CORS proxy needed)
+                    fetchCoinGeckoGranular(1, 1),      // 1D → 5-min intervals
+                    fetchCoinGeckoGranular(7, 7),      // 1W → hourly
+                    fetchCoinGeckoGranular(30, 30),    // 1M → hourly
+                    fetchCoinGeckoGranular(90, 90),    // 3M → hourly
+                    fetchCoinGeckoGranular(180, 180),  // 6M → daily
+                    fetchCoinGeckoGranular(365, 365)   // 1Y → daily
                 ]);
 
                 const val = r => r.status === 'fulfilled' ? r.value : [];
@@ -596,19 +603,30 @@
                         yahooGranularData.silver[r.value.key] = r.value.data;
                     }
                 });
+                // Bitcoin: Yahoo granular first, CoinGecko granular as fallback
                 [b1D, b1W, b1M, b3M, b6M, b1Y].forEach(r => {
                     if (r.status === 'fulfilled' && r.value.data.length > 0) {
                         yahooGranularData.bitcoin[r.value.key] = r.value.data;
                     }
                 });
+                [cg1D, cg1W, cg1M, cg3M, cg6M, cg1Y].forEach(r => {
+                    if (r.status === 'fulfilled' && r.value.data && r.value.data.length > 0) {
+                        // Only fill if Yahoo didn't already provide data for this range
+                        if (!yahooGranularData.bitcoin[r.value.key]) {
+                            yahooGranularData.bitcoin[r.value.key] = r.value.data;
+                        }
+                    }
+                });
+
+                // Silver 1D fallback: metals.live
+                intradaySilver = val(idSilver);
+                if (intradaySilver.length > 0 && !yahooGranularData.silver[1]) {
+                    yahooGranularData.silver[1] = intradaySilver;
+                }
 
                 if (btcData.length > 0) dataSources.push('CoinGecko');
                 if (yahooGoldData.length > 0 || yahooSilverData.length > 0 || yahooBtcData.length > 0) dataSources.push('Yahoo');
                 if (tdGoldData.length > 0 || tdBtcData.length > 0) dataSources.push('TwelveData');
-
-                // Intraday for silver & bitcoin
-                intradaySilver = val(idSilver);
-                intradayBitcoin = val(idBtc);
                 if (intradaySilver.length > 0) {
                     if (!dataSources.includes('metals.live')) dataSources.push('metals.live');
                 }
@@ -651,13 +669,6 @@
                     const ytdCutoff = new Date(new Date().getFullYear(), 0, 1);
                     return granular[365].filter(p => new Date(p.date) >= ytdCutoff);
                 }
-            }
-            // Intraday silver/bitcoin for 1D
-            if (selectedRange === 1 && selectedType === 'silver' && intradaySilver.length > 0) {
-                return intradaySilver;
-            }
-            if (selectedRange === 1 && selectedType === 'bitcoin' && intradayBitcoin.length > 0) {
-                return intradayBitcoin;
             }
             // Fallback to daily data
             const typeMap = { gold: goldPrices, silver: silverPrices, bitcoin: bitcoinPrices };
