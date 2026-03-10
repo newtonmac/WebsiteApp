@@ -843,21 +843,23 @@
             const cached = getCached(cacheKey);
             if (cached) return cached;
 
-            const [yahooResult, twelveResult, avResult] = await Promise.allSettled([
-                fetchYahoo(symbol, range, signal),
-                fetchTwelveData(symbol, range, signal),
-                fetchAlphaVantage(symbol, range, signal)
-            ]);
+            // Waterfall: try each source in order, stop on first success
+            const sources = [
+                () => fetchYahoo(symbol, range, signal),
+                () => fetchTwelveData(symbol, range, signal),
+                () => fetchAlphaVantage(symbol, range, signal)
+            ];
 
-            const yahoo = yahooResult.status === 'fulfilled' ? yahooResult.value : null;
-            const twelve = twelveResult.status === 'fulfilled' ? twelveResult.value : null;
-            const av = avResult.status === 'fulfilled' ? avResult.value : null;
-
-            const data = yahoo || twelve || av;
-
-            if (data) {
-                setCache(cacheKey, data);
-                return data;
+            for (const trySource of sources) {
+                try {
+                    const data = await trySource();
+                    if (data?.prices?.length) {
+                        setCache(cacheKey, data);
+                        return data;
+                    }
+                } catch (e) {
+                    if (e.name === 'AbortError') throw e;
+                }
             }
 
             return { prices: [], meta: {}, source: 'none' };
@@ -1707,88 +1709,96 @@
         let signalRefreshTimer = null;
         const SIGNAL_REFRESH_MS = 20 * 60 * 1000; // 20 minutes
 
+        function renderOverviewCard(symbol, dayData, monthData, news, ctx, grid) {
+            if (!dayData?.prices?.length) return;
+
+            const latest = dayData.prices[dayData.prices.length - 1];
+            const prevClose = dayData.meta?.previousClose || dayData.prices[0].price;
+            const change = latest.price - prevClose;
+            const pct = (change / prevClose) * 100;
+            const isUp = change >= 0;
+            const stock = STOCKS[symbol];
+
+            marketContext.news[symbol] = news;
+
+            const sig = computeSignal(monthData?.prices, ctx, news);
+            const callClass = sig ? sig.call.toLowerCase() : '';
+            const callIcon = sig?.call === 'BUY' ? '&#9650;' : sig?.call === 'SELL' ? '&#9660;' : '&#9644;';
+            const sigHtml = sig
+                ? `<div class="signal-row">
+                    <span class="signal-icon ${callClass}">${callIcon}</span>
+                    <span class="signal-call ${callClass}">${sig.call}</span>
+                    <span class="signal-pct ${callClass}">${sig.confidence}%</span>
+                   </div>
+                   ${sig.reason ? `<div class="signal-reason">${sig.reason}</div>` : ''}
+                   ${sig.detail ? `<div class="signal-detail">${sig.detail}</div>` : ''}`
+                : '';
+
+            // Replace existing card or append new one
+            let card = grid.querySelector(`[data-symbol="${symbol}"]`);
+            if (!card) {
+                card = document.createElement('div');
+                card.className = 'overview-card';
+                card.dataset.symbol = symbol;
+                card.addEventListener('click', () => {
+                    document.querySelectorAll('.stock-tab').forEach(b => b.classList.remove('active'));
+                    const tab = document.querySelector(`.stock-tab[data-symbol="${symbol}"]`);
+                    if (tab) tab.classList.add('active');
+                    selectedSymbol = symbol;
+                    fetchAndRender();
+                });
+                grid.appendChild(card);
+            }
+            card.innerHTML = `
+                <div class="ticker" style="color: ${stock.color};">${symbol}</div>
+                <div class="company">${stock.name}</div>
+                <div class="ov-price">$${latest.price.toFixed(2)}</div>
+                <div class="ov-change ${isUp ? 'up' : 'down'}">
+                    ${isUp ? '&#9650;' : '&#9660;'}
+                    ${change >= 0 ? '+' : ''}${change.toFixed(2)}
+                    (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)
+                </div>
+                ${sigHtml}
+            `;
+        }
+
         async function fetchOverview() {
             if (overviewFetchController) overviewFetchController.abort();
             overviewFetchController = new AbortController();
             const signal = overviewFetchController.signal;
 
             try {
-                // 1. Fetch market context (VIX, SPY, Fear & Greed) — cached for 20 min
-                const ctx = await fetchMarketContext(signal);
-                if (signal.aborted) return;
-                renderMarketContextBar(ctx);
-
-                // 2. Fetch stock data + news in parallel
-                const symbols = Object.keys(STOCKS);
-                const results = await Promise.allSettled(
-                    symbols.map(async sym => {
-                        const [dayData, monthData, news] = await Promise.all([
-                            fetchStock(sym, '1d', signal),
-                            fetchStock(sym, '1mo', signal),
-                            fetchNewsForStock(sym, signal)
-                        ]);
-                        return { symbol: sym, dayData, monthData, news };
-                    })
-                );
-
-                if (signal.aborted) return;
-
                 const grid = document.getElementById('overviewGrid');
                 grid.innerHTML = '';
 
-                results.forEach(r => {
-                    if (r.status !== 'fulfilled') return;
-                    const { symbol, dayData, monthData, news } = r.value;
-                    if (!dayData?.prices?.length) return;
+                const symbols = Object.keys(STOCKS);
 
-                    const latest = dayData.prices[dayData.prices.length - 1];
-                    const prevClose = dayData.meta?.previousClose || dayData.prices[0].price;
-                    const change = latest.price - prevClose;
-                    const pct = (change / prevClose) * 100;
-                    const isUp = change >= 0;
-                    const stock = STOCKS[symbol];
+                // Kick off market context in parallel with stock data
+                const ctxPromise = fetchMarketContext(signal);
 
-                    // Store news in context for this symbol
-                    marketContext.news[symbol] = news;
-
-                    // Enhanced signal with all indicators + market context + news
-                    const sig = computeSignal(monthData?.prices, ctx, news);
-                    const callClass = sig ? sig.call.toLowerCase() : '';
-                    const callIcon = sig?.call === 'BUY' ? '&#9650;' : sig?.call === 'SELL' ? '&#9660;' : '&#9644;';
-                    const sigHtml = sig
-                        ? `<div class="signal-row">
-                            <span class="signal-icon ${callClass}">${callIcon}</span>
-                            <span class="signal-call ${callClass}">
-                                ${sig.call}
-                            </span>
-                            <span class="signal-pct ${callClass}">${sig.confidence}%</span>
-                           </div>
-                           ${sig.reason ? `<div class="signal-reason">${sig.reason}</div>` : ''}
-                           ${sig.detail ? `<div class="signal-detail">${sig.detail}</div>` : ''}`
-                        : '';
-
-                    const card = document.createElement('div');
-                    card.className = 'overview-card';
-                    card.innerHTML = `
-                        <div class="ticker" style="color: ${stock.color};">${symbol}</div>
-                        <div class="company">${stock.name}</div>
-                        <div class="ov-price">$${latest.price.toFixed(2)}</div>
-                        <div class="ov-change ${isUp ? 'up' : 'down'}">
-                            ${isUp ? '&#9650;' : '&#9660;'}
-                            ${change >= 0 ? '+' : ''}${change.toFixed(2)}
-                            (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)
-                        </div>
-                        ${sigHtml}
-                    `;
-                    card.addEventListener('click', () => {
-                        document.querySelectorAll('.stock-tab').forEach(b => b.classList.remove('active'));
-                        const tab = document.querySelector(`.stock-tab[data-symbol="${symbol}"]`);
-                        if (tab) tab.classList.add('active');
-                        selectedSymbol = symbol;
-                        fetchAndRender();
-                    });
-                    grid.appendChild(card);
+                // Fetch each stock's data and render cards progressively as they arrive
+                const stockPromises = symbols.map(async sym => {
+                    const [dayData, monthData, news] = await Promise.all([
+                        fetchStock(sym, '1d', signal),
+                        fetchStock(sym, '1mo', signal),
+                        fetchNewsForStock(sym, signal)
+                    ]);
+                    if (signal.aborted) return;
+                    // Render card immediately with whatever market context is available
+                    renderOverviewCard(sym, dayData, monthData, news, marketContext, grid);
+                    return { symbol: sym, dayData, monthData, news };
                 });
+
+                // Wait for market context, then re-render cards with full context for better signals
+                const [ctx, ...results] = await Promise.all([ctxPromise, ...stockPromises]);
+                if (signal.aborted) return;
+                renderMarketContextBar(ctx);
+
+                // Re-render cards with updated market context for accurate signals
+                for (const r of results) {
+                    if (!r) continue;
+                    renderOverviewCard(r.symbol, r.dayData, r.monthData, r.news, ctx, grid);
+                }
 
                 // Disclaimer
                 let disc = document.getElementById('signalDisclaimer');
@@ -1800,7 +1810,6 @@
                 }
                 disc.textContent = 'Signals use 24 indicators: MACD, RSI, Stochastic, Bollinger, EMA, Ichimoku, ADX, OBV, Williams %R, ATR, VWAP, SMA, momentum, volume, VIX, S&P 500, XLK sector, Fear & Greed, 10Y yield, USD, news sentiment — for fun, not financial advice.';
 
-                // Show next refresh time
                 let refreshNote = document.getElementById('signalRefreshNote');
                 if (!refreshNote) {
                     refreshNote = document.createElement('div');
@@ -2093,9 +2102,8 @@
             });
         }
 
-        // Initial load
-        fetchOverview();
-        fetchAndRender();
+        // Initial load — fetchOverview populates cache, then render detail view
+        fetchOverview().then(() => fetchAndRender());
 
         // Price data refreshes every 60 seconds
         setInterval(fetchAndRender, 60000);
