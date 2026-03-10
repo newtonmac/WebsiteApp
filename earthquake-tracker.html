@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Earthquake Tracker</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f1117;
+            color: #e1e4e8;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1d28, #252836);
+            padding: 14px 20px;
+            border-bottom: 1px solid #2d3040;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            z-index: 1000;
+        }
+
+        .header-left { display: flex; align-items: center; gap: 16px; }
+
+        .back-btn {
+            width: 36px; height: 36px;
+            display: flex; align-items: center; justify-content: center;
+            background: #252836;
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            color: #8b8fa3;
+            text-decoration: none;
+            font-size: 18px;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover { background: #2d3040; color: #e1e4e8; }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #ef4444, #f97316);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header .subtitle { color: #8b8fa3; font-size: 12px; margin-top: 2px; }
+
+        .header-right { display: flex; align-items: center; gap: 10px; }
+
+        .live-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            background: #ef444420;
+            border: 1px solid #ef444440;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #ef4444;
+        }
+
+        .live-dot {
+            width: 7px; height: 7px;
+            background: #ef4444;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            padding: 12px 20px;
+            background: #1a1d28;
+            border-bottom: 1px solid #2d3040;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+
+        .btn-group {
+            display: flex;
+            background: #252836;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #2d3040;
+        }
+
+        .btn-group button {
+            padding: 7px 14px;
+            background: transparent;
+            color: #8b8fa3;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-group button.active {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-group button:hover:not(.active) {
+            color: #e1e4e8;
+            background: #2d3040;
+        }
+
+        .main-content {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+        }
+
+        #map {
+            flex: 1;
+            min-height: 400px;
+        }
+
+        .sidebar {
+            width: 340px;
+            background: #1a1d28;
+            border-left: 1px solid #2d3040;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 14px 16px;
+            border-bottom: 1px solid #2d3040;
+            font-size: 14px;
+            font-weight: 600;
+            color: #8b8fa3;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .quake-count {
+            background: #ef444430;
+            color: #ef4444;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .quake-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #2d304060;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .quake-item:hover { background: #252836; }
+
+        .quake-item-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 4px;
+        }
+
+        .mag-badge {
+            min-width: 42px;
+            text-align: center;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .mag-low { background: #22c55e; }
+        .mag-med { background: #f59e0b; }
+        .mag-high { background: #ef4444; }
+        .mag-major { background: #dc2626; box-shadow: 0 0 12px #ef444460; }
+
+        .quake-title {
+            font-size: 13px;
+            font-weight: 500;
+            color: #e1e4e8;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .quake-meta {
+            display: flex;
+            gap: 12px;
+            font-size: 11px;
+            color: #8b8fa3;
+            margin-left: 52px;
+        }
+
+        .summary-bar {
+            display: flex;
+            gap: 16px;
+            padding: 10px 20px;
+            background: #1a1d28;
+            border-bottom: 1px solid #2d3040;
+            flex-shrink: 0;
+        }
+
+        .summary-stat {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: #8b8fa3;
+        }
+
+        .summary-stat .value {
+            font-weight: 700;
+            color: #e1e4e8;
+        }
+
+        .loading-overlay {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: #1a1d28e0;
+            padding: 20px 32px;
+            border-radius: 12px;
+            border: 1px solid #2d3040;
+            z-index: 1000;
+            font-size: 14px;
+            color: #8b8fa3;
+        }
+
+        @media (max-width: 768px) {
+            .main-content { flex-direction: column; }
+            .sidebar { width: 100%; max-height: 45vh; border-left: none; border-top: 1px solid #2d3040; }
+            #map { min-height: 300px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <a href="index.html" class="back-btn">&#8592;</a>
+            <div>
+                <h1>Earthquake Tracker</h1>
+                <div class="subtitle">USGS Real-Time Seismic Data</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="live-badge">
+                <div class="live-dot"></div>
+                LIVE
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="btn-group" id="timeRange">
+            <button class="active" data-range="hour">Past Hour</button>
+            <button data-range="day">Past Day</button>
+            <button data-range="week">Past 7 Days</button>
+            <button data-range="month">Past 30 Days</button>
+        </div>
+        <div class="btn-group" id="magFilter">
+            <button class="active" data-mag="all">All</button>
+            <button data-mag="1.0">M1.0+</button>
+            <button data-mag="2.5">M2.5+</button>
+            <button data-mag="4.5">M4.5+</button>
+        </div>
+    </div>
+
+    <div class="summary-bar" id="summaryBar">
+        <div class="summary-stat">Total: <span class="value" id="totalCount">-</span></div>
+        <div class="summary-stat">Largest: <span class="value" id="largestMag">-</span></div>
+        <div class="summary-stat">Latest: <span class="value" id="latestTime">-</span></div>
+    </div>
+
+    <div class="main-content">
+        <div id="map"></div>
+        <div class="sidebar">
+            <div class="sidebar-header">
+                Recent Earthquakes
+                <span class="quake-count" id="listCount">0</span>
+            </div>
+            <div id="quakeList"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const FEEDS = {
+            hour:  { all: 'all_hour',  '1.0': '1.0_hour',  '2.5': '2.5_hour',  '4.5': '4.5_hour'  },
+            day:   { all: 'all_day',   '1.0': '1.0_day',   '2.5': '2.5_day',   '4.5': '4.5_day'   },
+            week:  { all: 'all_week',  '1.0': '1.0_week',  '2.5': '2.5_week',  '4.5': '4.5_week'  },
+            month: { all: 'all_month', '1.0': '1.0_month', '2.5': '2.5_month', '4.5': '4.5_month' }
+        };
+
+        let map, quakeLayer;
+        let currentRange = 'hour';
+        let currentMag = 'all';
+
+        function initMap() {
+            map = L.map('map', {
+                center: [20, -10],
+                zoom: 2,
+                zoomControl: true,
+                attributionControl: false
+            });
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                maxZoom: 18
+            }).addTo(map);
+
+            quakeLayer = L.layerGroup().addTo(map);
+        }
+
+        function getMagClass(mag) {
+            if (mag >= 6) return 'mag-major';
+            if (mag >= 4.5) return 'mag-high';
+            if (mag >= 2.5) return 'mag-med';
+            return 'mag-low';
+        }
+
+        function getMagColor(mag) {
+            if (mag >= 6) return '#dc2626';
+            if (mag >= 4.5) return '#ef4444';
+            if (mag >= 2.5) return '#f59e0b';
+            return '#22c55e';
+        }
+
+        function timeAgo(ts) {
+            const diff = Date.now() - ts;
+            const mins = Math.floor(diff / 60000);
+            if (mins < 1) return 'just now';
+            if (mins < 60) return mins + 'm ago';
+            const hrs = Math.floor(mins / 60);
+            if (hrs < 24) return hrs + 'h ago';
+            const days = Math.floor(hrs / 24);
+            return days + 'd ago';
+        }
+
+        function formatTime(ts) {
+            return new Date(ts).toLocaleString(undefined, {
+                month: 'short', day: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+        }
+
+        async function fetchQuakes() {
+            const feedKey = FEEDS[currentRange][currentMag];
+            const url = `https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/${feedKey}.geojson`;
+
+            try {
+                const resp = await fetch(url);
+                const data = await resp.json();
+                renderQuakes(data.features);
+            } catch (err) {
+                console.error('Failed to fetch earthquake data:', err);
+            }
+        }
+
+        function renderQuakes(features) {
+            quakeLayer.clearLayers();
+            const list = document.getElementById('quakeList');
+            list.innerHTML = '';
+
+            // Sort by time descending
+            features.sort((a, b) => b.properties.time - a.properties.time);
+
+            // Update summary
+            document.getElementById('totalCount').textContent = features.length;
+
+            if (features.length > 0) {
+                const largest = features.reduce((max, f) =>
+                    f.properties.mag > max.properties.mag ? f : max, features[0]);
+                document.getElementById('largestMag').textContent = 'M' + (largest.properties.mag || 0).toFixed(1);
+                document.getElementById('latestTime').textContent = timeAgo(features[0].properties.time);
+            } else {
+                document.getElementById('largestMag').textContent = '-';
+                document.getElementById('latestTime').textContent = '-';
+            }
+
+            document.getElementById('listCount').textContent = features.length;
+
+            features.forEach(feature => {
+                const { mag, place, time, url } = feature.properties;
+                const [lng, lat, depth] = feature.geometry.coordinates;
+                const magnitude = mag || 0;
+                const radius = Math.max(4, Math.min(magnitude * 5, 40));
+                const color = getMagColor(magnitude);
+
+                // Map marker
+                const circle = L.circleMarker([lat, lng], {
+                    radius: radius,
+                    fillColor: color,
+                    color: color,
+                    weight: 1,
+                    opacity: 0.8,
+                    fillOpacity: 0.35
+                });
+
+                circle.bindPopup(`
+                    <div style="font-family: -apple-system, sans-serif; min-width: 180px;">
+                        <div style="font-weight:700; font-size:14px; margin-bottom:6px;">M${magnitude.toFixed(1)}</div>
+                        <div style="font-size:12px; margin-bottom:4px;">${place || 'Unknown location'}</div>
+                        <div style="font-size:11px; color:#666;">Depth: ${(depth || 0).toFixed(1)} km</div>
+                        <div style="font-size:11px; color:#666;">${formatTime(time)}</div>
+                        ${url ? `<a href="${url}" target="_blank" rel="noopener" style="font-size:11px; color:#3b82f6; display:block; margin-top:6px;">USGS Details &rarr;</a>` : ''}
+                    </div>
+                `);
+
+                quakeLayer.addLayer(circle);
+
+                // Sidebar item
+                const item = document.createElement('div');
+                item.className = 'quake-item';
+                item.innerHTML = `
+                    <div class="quake-item-header">
+                        <span class="mag-badge ${getMagClass(magnitude)}">${magnitude.toFixed(1)}</span>
+                        <span class="quake-title">${place || 'Unknown location'}</span>
+                    </div>
+                    <div class="quake-meta">
+                        <span>${timeAgo(time)}</span>
+                        <span>Depth: ${(depth || 0).toFixed(1)} km</span>
+                    </div>
+                `;
+
+                item.addEventListener('click', () => {
+                    map.setView([lat, lng], 8);
+                    circle.openPopup();
+                });
+
+                list.appendChild(item);
+            });
+        }
+
+        // Controls
+        document.getElementById('timeRange').addEventListener('click', e => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            document.querySelectorAll('#timeRange button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentRange = btn.dataset.range;
+            fetchQuakes();
+        });
+
+        document.getElementById('magFilter').addEventListener('click', e => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            document.querySelectorAll('#magFilter button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentMag = btn.dataset.mag;
+            fetchQuakes();
+        });
+
+        // Init
+        initMap();
+        fetchQuakes();
+
+        // Auto-refresh every 60 seconds
+        setInterval(fetchQuakes, 60000);
+    </script>
+</body>
+</html>
