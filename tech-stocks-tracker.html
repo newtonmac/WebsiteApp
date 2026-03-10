@@ -1912,15 +1912,19 @@
 
                 if (signal.aborted) return;
 
-                // 4. Retry pass — pick up any stocks that failed (no price or no signal)
-                const MAX_RETRIES = 2;
-                for (let retry = 0; retry < MAX_RETRIES; retry++) {
+                // 4. Retry loop — keep retrying failed stocks until all succeed
+                let retryCount = 0;
+                while (!signal.aborted) {
                     const failedPrice = symbols.filter(s => !stockData[s]?.dayData?.prices?.length);
                     const failedSignal = symbols.filter(s => stockData[s]?.dayData?.prices?.length && !stockData[s]?.monthData?.prices?.length);
                     const needsRetry = [...new Set([...failedPrice, ...failedSignal])];
 
                     if (needsRetry.length === 0) break;
-                    console.log(`[overview] retry ${retry + 1}: rescuing ${needsRetry.join(', ')}`);
+                    retryCount++;
+
+                    // Back off progressively: 2s, 4s, 6s... capped at 10s
+                    const delay = Math.min(retryCount * 2000, 10000);
+                    console.log(`[overview] retry ${retryCount}: rescuing ${needsRetry.join(', ')} (waiting ${delay/1000}s)`);
 
                     // Clear cached failures so fetchStock tries again
                     for (const sym of needsRetry) {
@@ -1928,8 +1932,7 @@
                         if (failedSignal.includes(sym)) stockCache.delete(`${sym}_1mo`);
                     }
 
-                    // Small pause before retrying
-                    await new Promise(r => setTimeout(r, 2000));
+                    await new Promise(r => setTimeout(r, delay));
                     if (signal.aborted) return;
 
                     for (const sym of needsRetry) {
