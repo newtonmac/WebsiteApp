@@ -105,10 +105,10 @@ struct StatsCardView: View {
                 GridItem(.flexible()),
                 GridItem(.flexible())
             ], spacing: 16) {
-                StatItem(label: "High", value: String(format: "$%.2f", high), color: .green)
-                StatItem(label: "Low", value: String(format: "$%.2f", low), color: .red)
-                StatItem(label: "Average", value: String(format: "$%.2f", average), color: .blue)
-                StatItem(label: "Volatility", value: String(format: "%.2f%%", volatility), color: .purple)
+                StatItem(label: "High", value: String(format: "$%.2f", stats.high), color: .green)
+                StatItem(label: "Low", value: String(format: "$%.2f", stats.low), color: .red)
+                StatItem(label: "Average", value: String(format: "$%.2f", stats.average), color: .blue)
+                StatItem(label: "Volatility", value: String(format: "%.2f%%", stats.volatility), color: .purple)
             }
         }
         .padding()
@@ -119,17 +119,24 @@ struct StatsCardView: View {
         )
     }
 
-    private var high: Double { prices.map(\.price).max() ?? 0 }
-    private var low: Double { prices.map(\.price).min() ?? 0 }
-    private var average: Double {
-        guard !prices.isEmpty else { return 0 }
-        return prices.map(\.price).reduce(0, +) / Double(prices.count)
-    }
-    private var volatility: Double {
-        guard prices.count > 1 else { return 0 }
-        let avg = average
-        let variance = prices.map { pow($0.price - avg, 2) }.reduce(0, +) / Double(prices.count - 1)
-        return (sqrt(variance) / avg) * 100
+    private var stats: (high: Double, low: Double, average: Double, volatility: Double) {
+        guard !prices.isEmpty else { return (0, 0, 0, 0) }
+        var high = -Double.infinity
+        var low = Double.infinity
+        var sum = 0.0
+        for p in prices {
+            if p.price > high { high = p.price }
+            if p.price < low { low = p.price }
+            sum += p.price
+        }
+        let avg = sum / Double(prices.count)
+        var volatility = 0.0
+        if prices.count > 1 {
+            var sumSq = 0.0
+            for p in prices { sumSq += (p.price - avg) * (p.price - avg) }
+            volatility = (sqrt(sumSq / Double(prices.count - 1)) / avg) * 100
+        }
+        return (high, low, avg, volatility)
     }
 }
 

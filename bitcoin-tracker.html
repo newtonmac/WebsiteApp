@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gold, Silver &amp; Bitcoin Price Tracker</title>
+    <title>Bitcoin Price Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
     <style>
@@ -25,7 +25,7 @@
         .header h1 {
             font-size: 28px;
             font-weight: 700;
-            background: linear-gradient(90deg, #fbbf24, #f59e0b);
+            background: linear-gradient(90deg, #f97316, #fb923c);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -35,6 +35,8 @@
             margin-top: 4px;
             font-size: 14px;
         }
+
+        .nav-links { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; }
 
         .container {
             max-width: 1200px;
@@ -69,7 +71,7 @@
         }
 
         .btn-group button.active {
-            background: #f59e0b;
+            background: #f97316;
             color: white;
         }
 
@@ -104,7 +106,6 @@
             background: #1a1d28;
             border-radius: 16px;
             border: 1px solid #2d3040;
-            flex-wrap: wrap;
         }
 
         .price-hero .current-price {
@@ -120,14 +121,9 @@
         .price-hero .price-change.up { color: #34d399; }
         .price-hero .price-change.down { color: #f87171; }
 
-        .price-hero .metal-label {
+        .price-hero .asset-label {
             font-size: 16px;
             color: #8b8fa3;
-        }
-
-        .price-hero .metal-icon {
-            font-size: 28px;
-            margin-right: 4px;
         }
 
         .chart-container {
@@ -135,10 +131,6 @@
             border-radius: 16px;
             border: 1px solid #2d3040;
             padding: 24px;
-            margin-bottom: 24px;
-        }
-
-        .chart-container {
             position: relative;
             height: 350px;
             margin-bottom: 24px;
@@ -170,16 +162,11 @@
             margin-bottom: 8px;
         }
 
-        .stat-card .value {
-            font-size: 24px;
-            font-weight: 700;
-        }
-
+        .stat-card .value { font-size: 24px; font-weight: 700; }
         .stat-card .value.green { color: #34d399; }
         .stat-card .value.red { color: #f87171; }
         .stat-card .value.blue { color: #60a5fa; }
         .stat-card .value.purple { color: #a78bfa; }
-        .stat-card .value.amber { color: #fbbf24; }
 
         .recent-table {
             background: #1a1d28;
@@ -188,15 +175,9 @@
             padding: 24px;
         }
 
-        .recent-table h3 {
-            margin-bottom: 16px;
-            font-size: 18px;
-        }
+        .recent-table h3 { margin-bottom: 16px; font-size: 18px; }
 
-        .recent-table table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+        .recent-table table { width: 100%; border-collapse: collapse; }
 
         .recent-table th {
             text-align: left;
@@ -214,9 +195,7 @@
             font-size: 14px;
         }
 
-        .recent-table tr:last-child td {
-            border-bottom: none;
-        }
+        .recent-table tr:last-child td { border-bottom: none; }
 
         .loading {
             text-align: center;
@@ -229,7 +208,7 @@
             width: 40px;
             height: 40px;
             border: 3px solid #2d3040;
-            border-top-color: #f59e0b;
+            border-top-color: #f97316;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
             margin: 0 auto 16px;
@@ -272,15 +251,11 @@
             letter-spacing: 0.5px;
         }
 
-        .data-status .source-freegoldapi { background: #fbbf2420; color: #fbbf24; }
-        .data-status .source-coingecko { background: #8dc63f20; color: #8dc63f; }
         .data-status .source-yahoo { background: #6d28d920; color: #c084fc; }
         .data-status .source-twelvedata { background: #10b98120; color: #34d399; }
-        .data-status .source-metals\.live { background: #e0e0e020; color: #e0e0e0; }
 
         .nav-link {
             display: inline-block;
-            margin-top: 8px;
             padding: 6px 14px;
             background: #252836;
             color: #60a5fa;
@@ -296,23 +271,18 @@
 </head>
 <body>
     <div class="header">
-        <h1>Gold, Silver &amp; Bitcoin Tracker</h1>
-        <p>Live data &bull; CoinGecko, Yahoo, Twelve Data &amp; metals.live &bull; Daily + Intraday</p>
-        <a href="index.html" class="nav-link">&larr; Oil Tracker</a>
-        <a href="currency-tracker.html" class="nav-link">MXN/USD Tracker &rarr;</a>
-        <a href="flight-tracker.html" class="nav-link">Flight Tracker &rarr;</a>
-        <a href="traffic-dashboard.html" class="nav-link">Traffic Dashboard</a>
-        <a href="powerwall-dashboard.html" class="nav-link">Powerwall Dashboard</a>
-        <a href="webcam-dashboard.html" class="nav-link">SD Webcams</a>
+        <h1>Bitcoin Price Tracker</h1>
+        <p>Live data &bull; Yahoo Finance &bull; Updated daily</p>
+        <div class="nav-links">
+            <a href="index.html" class="nav-link">Oil Tracker</a>
+            <a href="gold-tracker.html" class="nav-link">Gold Tracker</a>
+            <a href="silver-tracker.html" class="nav-link">Silver Tracker</a>
+            <a href="flight-tracker.html" class="nav-link">Flight Tracker</a>
+        </div>
     </div>
 
     <div class="container">
         <div class="controls">
-            <div class="btn-group" id="metalType">
-                <button class="active" data-type="gold">Gold</button>
-                <button data-type="silver">Silver</button>
-                <button data-type="bitcoin">Bitcoin</button>
-            </div>
             <div class="btn-group" id="timeRange">
                 <button data-range="1">1D</button>
                 <button data-range="7">1W</button>
@@ -328,98 +298,28 @@
         <div id="content">
             <div class="loading">
                 <div class="spinner"></div>
-                Loading live precious metal prices...
+                Loading live bitcoin prices...
             </div>
         </div>
     </div>
 
     <script>
-        let goldPrices = [];
-        let silverPrices = [];
-        let bitcoinPrices = [];
-        let intradaySilver = [];
-        let intradayBitcoin = [];
-        let selectedType = 'gold';
+        let btcPrices = [];
         let selectedRange = 30;
         let chart = null;
         let lastUpdated = null;
-        let dataSources = [];
-
-        // Controls
-        document.querySelectorAll('#metalType button').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('#metalType button').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                selectedType = btn.dataset.type;
-                render();
-            });
-        });
 
         document.querySelectorAll('#timeRange button').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('#timeRange button').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                const r = btn.dataset.range;
-                selectedRange = r === 'ytd' ? 'ytd' : parseInt(r);
+                selectedRange = btn.dataset.range === 'ytd' ? 'ytd' : parseInt(btn.dataset.range);
                 render();
             });
         });
 
-        document.getElementById('refreshBtn').addEventListener('click', fetchAllPrices);
+        document.getElementById('refreshBtn').addEventListener('click', fetchPrices);
 
-        // Yahoo Finance (via CORS proxy)
-        async function fetchYahooFinance(symbol) {
-            try {
-                const targetUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(symbol) +
-                    '?range=1y&interval=1d';
-                const resp = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl));
-                const json = await resp.json();
-                if (json.chart && json.chart.result && json.chart.result[0]) {
-                    const result = json.chart.result[0];
-                    const timestamps = result.timestamp || [];
-                    const closes = result.indicators.quote[0].close || [];
-                    return timestamps.map((ts, i) => {
-                        const d = new Date(ts * 1000);
-                        const dateStr = d.toISOString().split('T')[0];
-                        return { date: dateStr, price: closes[i], source: 'Yahoo' };
-                    }).filter(p => p.price != null && !isNaN(p.price));
-                }
-            } catch (e) {
-                console.warn('Yahoo Finance fetch failed:', e.message);
-            }
-            return [];
-        }
-
-        // Yahoo Finance intraday/hourly data for all time ranges
-        // Keyed by range: { 1: [...], 7: [...], 30: [...], 90: [...], 180: [...], 365: [...] }
-        let yahooGranularData = {};
-
-        function parseYahooIntraday(json) {
-            if (json.chart && json.chart.result && json.chart.result[0]) {
-                const result = json.chart.result[0];
-                const timestamps = result.timestamp || [];
-                const closes = result.indicators.quote[0].close || [];
-                return timestamps.map((ts, i) => {
-                    const d = new Date(ts * 1000);
-                    const dateStr = d.toISOString().replace('Z', '').slice(0, 19);
-                    return { date: dateStr, price: closes[i], source: 'Yahoo' };
-                }).filter(p => p.price != null && !isNaN(p.price) && p.price > 0);
-            }
-            return [];
-        }
-
-        async function fetchYahooGranular(yahooRange, interval, rangeKey) {
-            try {
-                const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/GC%3DF?range=${yahooRange}&interval=${interval}`;
-                const resp = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl));
-                return { key: rangeKey, data: parseYahooIntraday(await resp.json()) };
-            } catch (e) {
-                console.warn(`Yahoo ${yahooRange}/${interval} fetch failed:`, e.message);
-            }
-            return { key: rangeKey, data: [] };
-        }
-
-        // Twelve Data API
         const TWELVE_DATA_KEY = '52f351e2d67042889eb1c6d16cd9769f';
 
         async function fetchTwelveData(symbol) {
@@ -451,122 +351,76 @@
             return Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date));
         }
 
-        function formatPrice(value) {
-            if (selectedType === 'bitcoin') {
-                return '$' + value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            }
-            return '$' + value.toFixed(2);
-        }
-
-        // FreeGoldAPI - removed (site is down/404)
-
-        // CoinGecko for Bitcoin (free, CORS enabled, no API key)
-        async function fetchBitcoin() {
-            try {
-                console.log('Fetching Bitcoin from CoinGecko...');
-                const resp = await fetch(
-                    'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=365&interval=daily'
-                );
-                if (!resp.ok) throw new Error('CoinGecko HTTP ' + resp.status);
-                const json = await resp.json();
-
-                if (json.prices) {
-                    const results = json.prices.map(([timestamp, price]) => {
-                        const d = new Date(timestamp);
-                        const date = d.toISOString().split('T')[0];
-                        return { date, price, source: 'CoinGecko' };
-                    });
-                    console.log('Bitcoin entries:', results.length);
-                    return results;
-                }
-            } catch (e) {
-                console.warn('CoinGecko fetch failed:', e.message);
+        async function fetchYahooFinance(symbol, range) {
+            const targetUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(symbol) +
+                '?range=' + range + '&interval=1d';
+            const resp = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl));
+            const json = await resp.json();
+            if (json.chart && json.chart.result && json.chart.result[0]) {
+                const result = json.chart.result[0];
+                const timestamps = result.timestamp || [];
+                const closes = result.indicators.quote[0].close || [];
+                return timestamps.map((ts, i) => {
+                    const d = new Date(ts * 1000);
+                    const dateStr = d.toISOString().split('T')[0];
+                    return { date: dateStr, price: closes[i], source: 'Yahoo' };
+                }).filter(p => p.price != null && !isNaN(p.price));
             }
             return [];
         }
 
-        // Intraday Bitcoin from CoinGecko (days=1 gives ~5-min intervals)
-        async function fetchIntradayBitcoin() {
-            try {
-                const resp = await fetch(
-                    'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1'
-                );
-                if (!resp.ok) throw new Error('CoinGecko HTTP ' + resp.status);
-                const json = await resp.json();
-                if (json.prices) {
-                    return json.prices.map(([timestamp, price]) => ({
-                        date: new Date(timestamp).toISOString().replace('Z', '').slice(0, 19),
-                        price,
-                        source: 'CoinGecko'
-                    }));
-                }
-            } catch (e) {
-                console.warn('CoinGecko intraday failed:', e.message);
+        // Yahoo Finance intraday/hourly data for all time ranges
+        // Keyed by range: { 1: [...], 7: [...], 30: [...], 90: [...], 180: [...], 365: [...] }
+        let yahooGranularData = {};
+
+        function parseYahooIntraday(json) {
+            if (json.chart && json.chart.result && json.chart.result[0]) {
+                const result = json.chart.result[0];
+                const timestamps = result.timestamp || [];
+                const closes = result.indicators.quote[0].close || [];
+                return timestamps.map((ts, i) => {
+                    const d = new Date(ts * 1000);
+                    const dateStr = d.toISOString().replace('Z', '').slice(0, 19);
+                    return { date: dateStr, price: closes[i], source: 'Yahoo' };
+                }).filter(p => p.price != null && !isNaN(p.price) && p.price > 0);
             }
             return [];
         }
 
-        // Intraday silver from metals.live
-        async function fetchIntradaySilver() {
+        async function fetchYahooGranular(yahooRange, interval, rangeKey) {
             try {
-                const resp = await fetch('https://api.metals.live/v1/spot/silver');
-                if (!resp.ok) throw new Error('metals.live HTTP ' + resp.status);
-                const data = await resp.json();
-                if (Array.isArray(data)) {
-                    return data
-                        .filter(d => d.timestamp && d.price)
-                        .map(d => ({
-                            date: new Date(d.timestamp * 1000).toISOString().replace('Z', '').slice(0, 19),
-                            price: parseFloat(d.price),
-                            source: 'metals.live'
-                        }))
-                        .sort((a, b) => a.date.localeCompare(b.date));
-                }
+                const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/BTC-USD?range=${yahooRange}&interval=${interval}`;
+                const resp = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl));
+                return { key: rangeKey, data: parseYahooIntraday(await resp.json()) };
             } catch (e) {
-                console.warn('metals.live silver intraday failed:', e.message);
+                console.warn(`Yahoo ${yahooRange}/${interval} fetch failed:`, e.message);
             }
-            return [];
+            return { key: rangeKey, data: [] };
         }
 
-        async function fetchAllPrices() {
+        async function fetchPrices() {
             document.getElementById('content').innerHTML = `
                 <div class="loading">
                     <div class="spinner"></div>
-                    Loading from multiple sources...
+                    Loading bitcoin prices from Yahoo Finance...
                 </div>`;
 
             try {
-                dataSources = [];
-
-                const [btcResult, yahooGold, yahooSilver, yahooBtc, tdGold, tdBtc,
-                       g1D, g1W, g1M, g3M, g6M, g1Y,
-                       idSilver, idBtc] = await Promise.allSettled([
-                    fetchBitcoin(),
-                    fetchYahooFinance('GC=F'),
-                    fetchYahooFinance('SI=F'),
-                    fetchYahooFinance('BTC-USD'),
-                    fetchTwelveData('XAU/USD'),
+                const [yahooResult, tdResult,
+                       g1D, g1W, g1M, g3M, g6M, g1Y] = await Promise.allSettled([
+                    fetchYahooFinance('BTC-USD', '1y'),
                     fetchTwelveData('BTC/USD'),
-                    // Granular Yahoo for gold: range / interval / key
+                    // Granular Yahoo: range / interval / key
                     fetchYahooGranular('1d',  '5m',  1),
                     fetchYahooGranular('5d',  '15m', 7),
                     fetchYahooGranular('1mo', '1h',  30),
                     fetchYahooGranular('3mo', '1h',  90),
                     fetchYahooGranular('6mo', '1h',  180),
-                    fetchYahooGranular('1y',  '1h',  365),
-                    // Intraday silver & bitcoin
-                    fetchIntradaySilver(),
-                    fetchIntradayBitcoin()
+                    fetchYahooGranular('1y',  '1h',  365)
                 ]);
-
                 const val = r => r.status === 'fulfilled' ? r.value : [];
-                const btcData = val(btcResult);
-
-                const yahooGoldData = val(yahooGold);
-                const yahooSilverData = val(yahooSilver);
-                const yahooBtcData = val(yahooBtc);
-                const tdGoldData = val(tdGold);
-                const tdBtcData = val(tdBtc);
+                const yahooData = val(yahooResult);
+                const tdData = val(tdResult);
 
                 // Store granular data keyed by range
                 yahooGranularData = {};
@@ -576,35 +430,21 @@
                     }
                 });
 
-                if (btcData.length > 0) dataSources.push('CoinGecko');
-                if (yahooGoldData.length > 0 || yahooSilverData.length > 0 || yahooBtcData.length > 0) dataSources.push('Yahoo');
-                if (tdGoldData.length > 0 || tdBtcData.length > 0) dataSources.push('TwelveData');
+                const sources = [];
+                if (yahooData.length > 0) sources.push('Yahoo');
+                if (tdData.length > 0) sources.push('TwelveData');
 
-                // Intraday for silver & bitcoin
-                intradaySilver = val(idSilver);
-                intradayBitcoin = val(idBtc);
-                if (intradaySilver.length > 0) {
-                    if (!dataSources.includes('metals.live')) dataSources.push('metals.live');
-                }
-
-                // Merge: Yahoo first (most reliable), then Twelve Data, then CoinGecko
-                goldPrices = mergePrices(yahooGoldData, tdGoldData);
-                silverPrices = mergePrices(yahooSilverData);
-                bitcoinPrices = mergePrices(btcData, yahooBtcData, tdBtcData);
-
+                btcPrices = mergePrices(yahooData, tdData);
+                btcPrices._sources = sources;
                 lastUpdated = new Date();
 
-                if (goldPrices.length === 0 && silverPrices.length === 0 && bitcoinPrices.length === 0) {
-                    const errors = [];
-                    if (btcResult.status === 'rejected') errors.push('Bitcoin: ' + btcResult.reason);
+                if (btcPrices.length === 0) {
                     document.getElementById('content').innerHTML = `
                         <div class="error-msg">
-                            Unable to fetch data from any source. Check your connection and browser console for details.
-                            ${errors.length ? '<br>' + errors.join('<br>') : ''}
+                            Unable to fetch bitcoin prices. Check your connection.
                         </div>`;
                     return;
                 }
-
                 render();
             } catch (err) {
                 document.getElementById('content').innerHTML = `
@@ -615,30 +455,24 @@
         }
 
         function getFilteredPrices() {
-            // Use granular Yahoo data for gold when available
-            if (selectedType === 'gold') {
-                if (selectedRange !== 'ytd' && yahooGranularData[selectedRange]) {
-                    return yahooGranularData[selectedRange];
-                }
-                if (selectedRange === 'ytd' && yahooGranularData[365]) {
-                    const ytdCutoff = new Date(new Date().getFullYear(), 0, 1);
-                    return yahooGranularData[365].filter(p => new Date(p.date) >= ytdCutoff);
-                }
+            // Use granular Yahoo data when available (captures intraday highs/lows)
+            if (selectedRange !== 'ytd' && yahooGranularData[selectedRange]) {
+                return yahooGranularData[selectedRange];
             }
-            // Intraday silver/bitcoin for 1D
-            if (selectedRange === 1 && selectedType === 'silver' && intradaySilver.length > 0) {
-                return intradaySilver;
-            }
-            if (selectedRange === 1 && selectedType === 'bitcoin' && intradayBitcoin.length > 0) {
-                return intradayBitcoin;
+            // YTD: use the 1Y hourly data filtered from Jan 1
+            if (selectedRange === 'ytd' && yahooGranularData[365]) {
+                const ytdCutoff = new Date(new Date().getFullYear(), 0, 1);
+                return yahooGranularData[365].filter(p => new Date(p.date) >= ytdCutoff);
             }
             // Fallback to daily data
-            const typeMap = { gold: goldPrices, silver: silverPrices, bitcoin: bitcoinPrices };
-            const all = typeMap[selectedType] || goldPrices;
             const cutoff = selectedRange === 'ytd'
                 ? new Date(new Date().getFullYear(), 0, 1)
                 : (() => { const d = new Date(); d.setDate(d.getDate() - selectedRange); return d; })();
-            return all.filter(p => new Date(p.date) >= cutoff);
+            return btcPrices.filter(p => new Date(p.date) >= cutoff);
+        }
+
+        function formatPrice(val) {
+            return val >= 1000 ? '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '$' + val.toFixed(2);
         }
 
         function render() {
@@ -657,33 +491,21 @@
             const variance = prices.reduce((s, p) => s + Math.pow(p.price - avg, 2), 0) / (prices.length - 1);
             const volatility = (Math.sqrt(variance) / avg) * 100;
 
-            // Period change (first to last)
-            const first = prices[0];
-            const periodChange = latest.price - first.price;
-            const periodPct = (periodChange / first.price) * 100;
-
-            const typeLabels = { gold: 'Gold (XAU/USD)', silver: 'Silver (XAG/USD)', bitcoin: 'Bitcoin (BTC/USD)' };
-            const typeColors = { gold: '#fbbf24', silver: '#94a3b8', bitcoin: '#f7931a' };
-            const typeLabel = typeLabels[selectedType];
-            const color = typeColors[selectedType];
-
-            const latestDate = latest.date;
             const updatedStr = lastUpdated ? lastUpdated.toLocaleString('en-US', {
                 month: 'short', day: 'numeric', year: 'numeric',
                 hour: 'numeric', minute: '2-digit', hour12: true
             }) : '—';
-            const sourcesTags = dataSources.map(s =>
-                `<span class="source-tag source-${s.toLowerCase()}">${s}</span>`
-            ).join(' ');
 
             document.getElementById('content').innerHTML = `
                 <div class="data-status">
-                    <div>Latest data: <strong>${selectedRange === 1 ? new Date(latestDate).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : latestDate}</strong>${selectedRange === 1 ? ' (intraday)' : ''} &bull; Updated: <strong>${updatedStr}</strong></div>
-                    <div>Sources: ${sourcesTags}</div>
+                    <div>Latest: <strong>${latest.date}</strong> &bull; Updated: <strong>${updatedStr}</strong></div>
+                    <div>Sources: ${(btcPrices._sources || ['Yahoo']).map(s =>
+                        '<span class="source-tag source-' + s.toLowerCase() + '">' + s + '</span>'
+                    ).join(' ')}</div>
                 </div>
                 <div class="price-hero">
                     <div>
-                        <div class="metal-label">${typeLabel}</div>
+                        <div class="asset-label">Bitcoin (BTC-USD)</div>
                         <span class="current-price">${formatPrice(latest.price)}</span>
                     </div>
                     <div class="price-change ${isUp ? 'up' : 'down'}">
@@ -714,17 +536,6 @@
                         <div class="label">Volatility</div>
                         <div class="value purple">${volatility.toFixed(2)}%</div>
                     </div>
-                    <div class="stat-card">
-                        <div class="label">Period Change</div>
-                        <div class="value ${periodChange >= 0 ? 'green' : 'red'}">
-                            ${periodChange >= 0 ? '+' : '-'}${formatPrice(Math.abs(periodChange))}
-                            (${periodPct >= 0 ? '+' : ''}${periodPct.toFixed(2)}%)
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="label">Spread (High-Low)</div>
-                        <div class="value amber">${formatPrice(high - low)}</div>
-                    </div>
                 </div>
 
                 <div class="recent-table">
@@ -732,7 +543,7 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>${selectedRange === 1 ? 'Time' : 'Date'}</th>
+                                <th>Date</th>
                                 <th>Price</th>
                                 <th>Change</th>
                             </tr>
@@ -758,7 +569,7 @@
                                     <td>${dateLabel}</td>
                                     <td><strong>${formatPrice(p.price)}</strong></td>
                                     <td class="price-change ${cls}">
-                                        ${dayChange >= 0 ? '+' : '-'}${formatPrice(Math.abs(dayChange)).replace('$','')}
+                                        ${dayChange >= 0 ? '+' : ''}${dayChange.toFixed(2)}
                                         (${dayPct >= 0 ? '+' : ''}${dayPct.toFixed(2)}%)
                                     </td>
                                 </tr>`;
@@ -768,11 +579,12 @@
                 </div>
             `;
 
-            renderChart(prices, color, selectedRange === 1);
+            renderChart(prices);
         }
 
-        function renderChart(prices, color, intraday) {
+        function renderChart(prices) {
             const ctx = document.getElementById('priceChart').getContext('2d');
+            const color = '#f97316';
 
             if (chart) chart.destroy();
 
@@ -801,10 +613,7 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: {
-                        intersect: false,
-                        mode: 'index'
-                    },
+                    interaction: { intersect: false, mode: 'index' },
                     plugins: {
                         legend: { display: false },
                         tooltip: {
@@ -816,7 +625,7 @@
                             padding: 12,
                             displayColors: false,
                             callbacks: {
-                                label: ctx => formatPrice(ctx.parsed.y)
+                                label: ctx => '$' + ctx.parsed.y.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                             }
                         }
                     },
@@ -824,9 +633,10 @@
                         x: {
                             type: 'time',
                             time: (() => {
-                                // Check if data is intraday (has 'T' in dates)
-                                const hasIntraday = prices.length > 0 && prices[0].date.includes('T');
-                                if (!hasIntraday) {
+                                const useGranular = selectedRange !== 'ytd'
+                                    ? !!yahooGranularData[selectedRange]
+                                    : !!yahooGranularData[365];
+                                if (!useGranular) {
                                     return {
                                         parser: 'yyyy-MM-dd',
                                         tooltipFormat: 'MMM d, yyyy',
@@ -856,20 +666,14 @@
                                     displayFormats: { day: 'MMM d', week: 'MMM d', month: 'MMM yyyy' }
                                 };
                             })(),
-                            grid: {
-                                color: '#2d304040',
-                                drawBorder: false
-                            },
+                            grid: { color: '#2d304040', drawBorder: false },
                             ticks: { color: '#8b8fa3', maxTicksLimit: 8 }
                         },
                         y: {
-                            grid: {
-                                color: '#2d304040',
-                                drawBorder: false
-                            },
+                            grid: { color: '#2d304040', drawBorder: false },
                             ticks: {
                                 color: '#8b8fa3',
-                                callback: v => '$' + v.toLocaleString('en-US')
+                                callback: v => '$' + v.toLocaleString()
                             }
                         }
                     }
@@ -877,8 +681,7 @@
             });
         }
 
-        // Initial load
-        fetchAllPrices();
+        fetchPrices();
     </script>
 </body>
 </html>

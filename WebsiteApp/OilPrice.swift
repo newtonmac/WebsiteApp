@@ -10,10 +10,14 @@ struct OilPrice: Identifiable, Codable {
     let date: String
     let price: Double
 
-    var dateValue: Date {
+    private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.date(from: date) ?? Date()
+        return formatter
+    }()
+
+    var dateValue: Date {
+        Self.dateFormatter.date(from: date) ?? Date()
     }
 }
 

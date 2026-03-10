@@ -224,6 +224,8 @@
         .data-status .source-eia { background: #3b82f620; color: #60a5fa; }
         .data-status .source-fred { background: #f59e0b20; color: #fbbf24; }
         .data-status .source-alphavantage { background: #8b5cf620; color: #a78bfa; }
+        .data-status .source-yahoo { background: #6d28d920; color: #c084fc; }
+        .data-status .source-twelvedata { background: #10b98120; color: #34d399; }
 
         .nav-link {
             display: inline-block;
@@ -244,11 +246,14 @@
 <body>
     <div class="header">
         <h1>Crude Oil Tracker</h1>
-        <p>Live data &bull; EIA, FRED &amp; Alpha Vantage &bull; Updated daily</p>
-        <a href="flight-tracker.html" class="nav-link">Flight Tracker &rarr;</a>
-        <a href="traffic-dashboard.html" class="nav-link">Traffic Dashboard</a>
-        <a href="powerwall-dashboard.html" class="nav-link">Powerwall Dashboard</a>
-        <a href="webcam-dashboard.html" class="nav-link">SD Webcams</a>
+        <p>Live data &bull; EIA, FRED, Alpha Vantage, Yahoo &amp; Twelve Data &bull; Intraday &amp; daily</p>
+        <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+            <a href="gold-tracker.html" class="nav-link">Gold/Silver/BTC &rarr;</a>
+            <a href="flight-tracker.html" class="nav-link">Flight Tracker</a>
+            <a href="traffic-dashboard.html" class="nav-link">Traffic Dashboard</a>
+            <a href="powerwall-dashboard.html" class="nav-link">Powerwall Dashboard</a>
+            <a href="webcam-dashboard.html" class="nav-link">SD Webcams</a>
+        </div>
     </div>
 
     <div class="container">
@@ -263,6 +268,7 @@
                 <button class="refresh-btn" id="refreshBtn">&#8635;</button>
             </div>
             <div class="btn-group" id="timeRange">
+                <button data-range="1">1D</button>
                 <button data-range="7">1W</button>
                 <button class="active" data-range="30">1M</button>
                 <button data-range="90">3M</button>
@@ -317,14 +323,28 @@ function drawChart(canvasId, prices, color) {
         ctx.fillText('$' + val.toFixed(0), padLeft - 8, y + 4);
     }
 
-    // X labels
+    // X labels - detect intraday data by checking if dates contain time component
+    const isIntraday = prices.length > 0 && prices[0].date.includes('T');
     ctx.textAlign = 'center';
     const labelCount = Math.min(5, prices.length);
     for (let i = 0; i < labelCount; i++) {
         const idx = Math.floor(i * (prices.length - 1) / (labelCount - 1));
         const x = padLeft + (idx / (prices.length - 1)) * chartW;
         const d = new Date(prices[idx].date);
-        const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        let label;
+        if (isIntraday && selectedRange === 1) {
+            // 1D: show time only (e.g. "2:30 PM")
+            label = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        } else if (isIntraday && selectedRange === 7) {
+            // 1W: show day + time (e.g. "Mon 2PM")
+            label = d.toLocaleDateString('en-US', { weekday: 'short' }) + ' ' +
+                    d.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
+        } else if (isIntraday) {
+            // 1M+ hourly: show date
+            label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        } else {
+            label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
         ctx.fillText(label, x, H - 8);
     }
 
@@ -511,6 +531,80 @@ async function fetchAlphaVantage(func) {
     return [];
 }
 
+// Yahoo Finance intraday/hourly data for all time ranges
+// Keyed by oil type then range: { wti: { 1: [...], 7: [...], ... }, brent: { ... } }
+let yahooGranularData = { wti: {}, brent: {} };
+
+function parseYahooIntraday(json) {
+    if (json.chart && json.chart.result && json.chart.result[0]) {
+        const result = json.chart.result[0];
+        const timestamps = result.timestamp || [];
+        const closes = result.indicators.quote[0].close || [];
+        return timestamps.map((ts, i) => {
+            const d = new Date(ts * 1000);
+            const dateStr = d.toISOString().replace('Z', '').slice(0, 19);
+            return { date: dateStr, price: closes[i], source: 'Yahoo' };
+        }).filter(p => p.price != null && !isNaN(p.price) && p.price > 0);
+    }
+    return [];
+}
+
+async function fetchYahooGranular(symbol, yahooRange, interval, rangeKey) {
+    try {
+        const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${yahooRange}&interval=${interval}`;
+        const resp = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl));
+        return { key: rangeKey, data: parseYahooIntraday(await resp.json()) };
+    } catch (e) {
+        console.warn(`Yahoo ${symbol} ${yahooRange}/${interval} fetch failed:`, e.message);
+    }
+    return { key: rangeKey, data: [] };
+}
+
+// Twelve Data API
+const TWELVE_DATA_KEY = '52f351e2d67042889eb1c6d16cd9769f';
+
+async function fetchTwelveData(symbol) {
+    try {
+        const resp = await fetch(
+            'https://api.twelvedata.com/time_series?symbol=' + encodeURIComponent(symbol) +
+            '&interval=1day&outputsize=365&apikey=' + TWELVE_DATA_KEY
+        );
+        const json = await resp.json();
+        if (json.values) {
+            return json.values
+                .filter(d => d.close && d.close !== 'null')
+                .map(d => ({ date: d.datetime, price: parseFloat(d.close), source: 'TwelveData' }))
+                .sort((a, b) => a.date.localeCompare(b.date));
+        }
+    } catch (e) {
+        console.warn('Twelve Data fetch failed:', e.message);
+    }
+    return [];
+}
+
+// Yahoo Finance - daily commodity prices (via CORS proxy)
+async function fetchYahooFinance(symbol) {
+    try {
+        const targetUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(symbol) +
+            '?range=1y&interval=1d';
+        const resp = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl));
+        const json = await resp.json();
+        if (json.chart && json.chart.result && json.chart.result[0]) {
+            const result = json.chart.result[0];
+            const timestamps = result.timestamp || [];
+            const closes = result.indicators.quote[0].close || [];
+            return timestamps.map((ts, i) => {
+                const d = new Date(ts * 1000);
+                const dateStr = d.toISOString().split('T')[0];
+                return { date: dateStr, price: closes[i], source: 'Yahoo' };
+            }).filter(p => p.price != null && !isNaN(p.price));
+        }
+    } catch (e) {
+        console.warn('Yahoo Finance fetch failed:', e.message);
+    }
+    return [];
+}
+
 function mergePrices(...priceSets) {
     const dateMap = new Map();
     // First set has highest priority, subsequent sets fill gaps
@@ -533,7 +627,9 @@ async function fetchAllPrices() {
 
         const [
             eiaWti, eiaBrent, fredWti, fredBrent, eiaCanadian, eiaMaya,
-            avWti, avBrent
+            avWti, avBrent, yahooWti, yahooBrent, tdWti, tdBrent,
+            wti1D, wti1W, wti1M, wti3M, wti6M, wti1Y,
+            brent1D, brent1W, brent1M, brent3M, brent6M, brent1Y
         ] = await Promise.allSettled([
             fetchEIASeries('RWTC'),
             fetchEIASeries('RBRTE'),
@@ -543,7 +639,27 @@ async function fetchAllPrices() {
             fetchEIAImportSeries('IMX2810004'),
             // Alpha Vantage (built-in commodity functions)
             fetchAlphaVantage('WTI'),
-            fetchAlphaVantage('BRENT')
+            fetchAlphaVantage('BRENT'),
+            // Yahoo Finance
+            fetchYahooFinance('CL=F'),
+            fetchYahooFinance('BZ=F'),
+            // Twelve Data (CL for WTI crude futures)
+            fetchTwelveData('CL'),
+            fetchTwelveData('CL'),
+            // Granular Yahoo for WTI (CL=F): range / interval / key
+            fetchYahooGranular('CL=F', '1d',  '5m',  1),
+            fetchYahooGranular('CL=F', '5d',  '15m', 7),
+            fetchYahooGranular('CL=F', '1mo', '1h',  30),
+            fetchYahooGranular('CL=F', '3mo', '1h',  90),
+            fetchYahooGranular('CL=F', '6mo', '1h',  180),
+            fetchYahooGranular('CL=F', '1y',  '1h',  365),
+            // Granular Yahoo for Brent (BZ=F)
+            fetchYahooGranular('BZ=F', '1d',  '5m',  1),
+            fetchYahooGranular('BZ=F', '5d',  '15m', 7),
+            fetchYahooGranular('BZ=F', '1mo', '1h',  30),
+            fetchYahooGranular('BZ=F', '3mo', '1h',  90),
+            fetchYahooGranular('BZ=F', '6mo', '1h',  180),
+            fetchYahooGranular('BZ=F', '1y',  '1h',  365)
         ]);
 
         const val = r => r.status === 'fulfilled' ? r.value : [];
@@ -554,14 +670,33 @@ async function fetchAllPrices() {
         const fredBrentData = val(fredBrent);
         const avWtiData = val(avWti);
         const avBrentData = val(avBrent);
+        const yahooWtiData = val(yahooWti);
+        const yahooBrentData = val(yahooBrent);
+        const tdWtiData = val(tdWti);
+        const tdBrentData = val(tdBrent);
 
         if (eiaWtiData.length > 0 || eiaBrentData.length > 0) dataSources.push('EIA');
         if (fredWtiData.length > 0 || fredBrentData.length > 0) dataSources.push('FRED');
         if (avWtiData.length > 0 || avBrentData.length > 0) dataSources.push('AlphaVantage');
+        if (yahooWtiData.length > 0 || yahooBrentData.length > 0) dataSources.push('Yahoo');
+        if (tdWtiData.length > 0 || tdBrentData.length > 0) dataSources.push('TwelveData');
 
-        // Merge all sources: EIA first (most authoritative), then FRED, Alpha Vantage
-        wtiPrices = mergePrices(eiaWtiData, fredWtiData, avWtiData);
-        brentPrices = mergePrices(eiaBrentData, fredBrentData, avBrentData);
+        // Store granular data keyed by oil type and range
+        yahooGranularData = { wti: {}, brent: {} };
+        [wti1D, wti1W, wti1M, wti3M, wti6M, wti1Y].forEach(r => {
+            if (r.status === 'fulfilled' && r.value.data.length > 0) {
+                yahooGranularData.wti[r.value.key] = r.value.data;
+            }
+        });
+        [brent1D, brent1W, brent1M, brent3M, brent6M, brent1Y].forEach(r => {
+            if (r.status === 'fulfilled' && r.value.data.length > 0) {
+                yahooGranularData.brent[r.value.key] = r.value.data;
+            }
+        });
+
+        // Merge all sources: EIA first (most authoritative), then FRED, Alpha Vantage, Yahoo, Twelve Data
+        wtiPrices = mergePrices(eiaWtiData, fredWtiData, avWtiData, yahooWtiData, tdWtiData);
+        brentPrices = mergePrices(eiaBrentData, fredBrentData, avBrentData, yahooBrentData, tdBrentData);
         canadianPrices = val(eiaCanadian);
         mayaPrices = val(eiaMaya);
 
@@ -584,13 +719,22 @@ async function fetchAllPrices() {
 }
 
 function getFiltered() {
+    // Use granular Yahoo data for WTI/Brent when available (captures intraday movement)
+    if ((selectedType === 'wti' || selectedType === 'brent') &&
+        yahooGranularData[selectedType] && yahooGranularData[selectedType][selectedRange]) {
+        return yahooGranularData[selectedType][selectedRange];
+    }
     const typeMap = { wti: wtiPrices, brent: brentPrices, canadian: canadianPrices, maya: mayaPrices };
     const all = typeMap[selectedType] || wtiPrices;
     // Monthly data (canadian/maya) - show more points for a useful chart
     if (selectedType === 'canadian' || selectedType === 'maya') {
-        const rangeToMonths = { 7: 6, 30: 12, 90: 18, 180: 24, 365: 36 };
+        const rangeToMonths = { 1: 3, 7: 6, 30: 12, 90: 18, 180: 24, 365: 36 };
         const months = rangeToMonths[selectedRange] || 12;
         return all.slice(-months);
+    }
+    if (selectedRange === 1) {
+        // For 1D fallback, just show the last day of daily data
+        return all.slice(-1);
     }
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - selectedRange);
@@ -664,8 +808,11 @@ function render() {
                         const dc = nxt ? p.price - nxt.price : 0;
                         const dp = nxt ? (dc / nxt.price) * 100 : 0;
                         const cls = dc >= 0 ? 'up' : 'down';
+                        const dateDisplay = p.date.includes('T')
+                            ? new Date(p.date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
+                            : p.date;
                         return `<tr>
-                            <td>${p.date}</td>
+                            <td>${dateDisplay}</td>
                             <td><strong>$${p.price.toFixed(2)}</strong></td>
                             <td class="${cls}">${dc >= 0 ? '+' : ''}${dc.toFixed(2)} (${dp >= 0 ? '+' : ''}${dp.toFixed(2)}%)</td>
                         </tr>`;

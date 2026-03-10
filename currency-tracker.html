@@ -187,6 +187,12 @@
         .stat-card .value.purple { color: #a78bfa; }
         .stat-card .value.amber { color: #fbbf24; }
 
+        .stat-date {
+            font-size: 11px;
+            color: #8b8fa3;
+            margin-top: 4px;
+        }
+
         .recent-table {
             background: #1a1d28;
             border-radius: 16px;
@@ -280,6 +286,9 @@
 
         .data-status .source-fred { background: #f59e0b20; color: #fbbf24; }
         .data-status .source-frankfurter { background: #10b98120; color: #34d399; }
+        .data-status .source-yahoo { background: #6d28d920; color: #c084fc; }
+        .data-status .source-twelvedata { background: #3b82f620; color: #60a5fa; }
+        .data-status .source-banxico { background: #dc262620; color: #ef4444; }
 
         .nav-link {
             display: inline-block;
@@ -300,7 +309,7 @@
 <body>
     <div class="header">
         <h1>MXN / USD Exchange Rate Tracker</h1>
-        <p>Mexican Peso to US Dollar &bull; FRED &amp; Frankfurter &bull; Updated daily</p>
+        <p>Mexican Peso to US Dollar &bull; FRED, Frankfurter, Yahoo, Twelve Data &amp; Banxico &bull; Updated daily</p>
         <a href="index.html" class="nav-link">&larr; Oil Tracker</a>
         <a href="flight-tracker.html" class="nav-link">Flight Tracker &rarr;</a>
         <a href="traffic-dashboard.html" class="nav-link">Traffic Dashboard</a>
@@ -316,6 +325,7 @@
                 <button data-mode="usd-mxn">USD &rarr; MXN</button>
             </div>
             <div class="btn-group" id="timeRange">
+                <button data-range="1">1D</button>
                 <button data-range="7">1W</button>
                 <button class="active" data-range="30">1M</button>
                 <button data-range="90">3M</button>
@@ -425,6 +435,153 @@
             return [];
         }
 
+        // Yahoo Finance (MXNUSD=X returns MXN per 1 USD, we want USD per 1 MXN)
+        async function fetchYahoo() {
+            try {
+                const targetUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/MXNUSD%3DX?range=1y&interval=1d';
+                const resp = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl));
+                const json = await resp.json();
+                if (json.chart && json.chart.result && json.chart.result[0]) {
+                    const result = json.chart.result[0];
+                    const timestamps = result.timestamp || [];
+                    const closes = result.indicators.quote[0].close || [];
+                    return timestamps.map((ts, i) => {
+                        const d = new Date(ts * 1000);
+                        const dateStr = d.toISOString().split('T')[0];
+                        return { date: dateStr, rate: closes[i], source: 'Yahoo' };
+                    }).filter(p => p.rate != null && !isNaN(p.rate) && p.rate > 0);
+                }
+            } catch (e) {
+                console.warn('Yahoo Finance fetch failed:', e.message);
+            }
+            return [];
+        }
+
+        // Yahoo Finance intraday/hourly data for all time ranges
+        // Keyed by range: { 1: [...], 7: [...], 30: [...], 90: [...], 180: [...], 365: [...] }
+        let yahooGranularData = {};
+
+        function parseYahooIntraday(json, invert = false) {
+            if (json.chart && json.chart.result && json.chart.result[0]) {
+                const result = json.chart.result[0];
+                const timestamps = result.timestamp || [];
+                const closes = result.indicators.quote[0].close || [];
+                return timestamps.map((ts, i) => {
+                    const d = new Date(ts * 1000);
+                    const dateStr = d.toISOString().replace('Z', '').slice(0, 19);
+                    const rate = invert ? 1 / closes[i] : closes[i];
+                    return { date: dateStr, rate, source: 'Yahoo' };
+                }).filter(p => p.rate != null && !isNaN(p.rate) && p.rate > 0 && isFinite(p.rate));
+            }
+            return [];
+        }
+
+        async function fetchYahooGranular(yahooRange, interval, rangeKey) {
+            // Try MXN=X (USD/MXN, inverted) first — better intraday coverage
+            // Then fall back to MXNUSD=X (direct rate)
+            const symbols = [
+                { sym: 'MXN%3DX', invert: true },
+                { sym: 'MXNUSD%3DX', invert: false }
+            ];
+            for (const { sym, invert } of symbols) {
+                try {
+                    const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=${yahooRange}&interval=${interval}`;
+                    const resp = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl));
+                    const data = parseYahooIntraday(await resp.json(), invert);
+                    if (data.length > 0) return { key: rangeKey, data };
+                } catch (e) {
+                    console.warn(`Yahoo ${sym} ${yahooRange}/${interval} fetch failed:`, e.message);
+                }
+            }
+            return { key: rangeKey, data: [] };
+        }
+
+        // Banxico SIE API - SF43718 is the official Peso/Dollar FIX rate
+        // To enable: get a free 64-char token at https://www.banxico.org.mx/SieAPIRest/service/v1/
+        // Then replace the empty string below with your token
+        const BANXICO_TOKEN = '889a6a2e5d57fa9635e403a9aef392c2ba6c12e771bb6c9ecc63bcbf893bd840';
+        const BANXICO_BASE = 'https://www.banxico.org.mx/SieAPIRest/service/v1';
+
+        async function fetchBanxico() {
+            if (!BANXICO_TOKEN) { console.info('Banxico: No token configured. Get one at https://www.banxico.org.mx/SieAPIRest/service/v1/'); return []; }
+            try {
+                const oneYearAgo = new Date();
+                oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+                const startDate = oneYearAgo.toISOString().split('T')[0];
+                const endDate = new Date().toISOString().split('T')[0];
+
+                const apiUrl = `${BANXICO_BASE}/series/SF43718/datos/${startDate}/${endDate}`;
+                const resp = await fetch(apiUrl, { headers: { 'Bmx-Token': BANXICO_TOKEN } });
+                const json = await resp.json();
+
+                if (json.bmx && json.bmx.series && json.bmx.series[0] && json.bmx.series[0].datos) {
+                    return json.bmx.series[0].datos
+                        .filter(d => d.dato && d.dato !== 'N/E')
+                        .map(d => {
+                            // Banxico dates are DD/MM/YYYY format
+                            const parts = d.fecha.split('/');
+                            const dateStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                            const mxnPerUsd = parseFloat(d.dato.replace(',', ''));
+                            return { date: dateStr, rate: 1 / mxnPerUsd, source: 'Banxico' };
+                        })
+                        .filter(d => !isNaN(d.rate) && d.rate > 0)
+                        .sort((a, b) => a.date.localeCompare(b.date));
+                }
+            } catch (e) {
+                console.warn('Banxico fetch failed:', e.message);
+            }
+            return [];
+        }
+
+        // Twelve Data
+        const TWELVE_DATA_KEY = '52f351e2d67042889eb1c6d16cd9769f';
+
+        async function fetchTwelveData() {
+            try {
+                const resp = await fetch(
+                    'https://api.twelvedata.com/time_series?symbol=USD/MXN&interval=1day&outputsize=365&apikey=' + TWELVE_DATA_KEY
+                );
+                const json = await resp.json();
+                if (json.values) {
+                    return json.values
+                        .filter(d => d.close && d.close !== 'null')
+                        .map(d => ({ date: d.datetime, rate: 1 / parseFloat(d.close), source: 'TwelveData' }))
+                        .filter(d => !isNaN(d.rate) && d.rate > 0)
+                        .sort((a, b) => a.date.localeCompare(b.date));
+                }
+            } catch (e) {
+                console.warn('Twelve Data fetch failed:', e.message);
+            }
+            return [];
+        }
+
+        // Twelve Data intraday for forex (USD/MXN inverted to MXN/USD)
+        let twelveDataGranular = {};
+
+        async function fetchTwelveDataGranular(interval, outputsize, rangeKey) {
+            try {
+                const resp = await fetch(
+                    `https://api.twelvedata.com/time_series?symbol=USD/MXN&interval=${interval}&outputsize=${outputsize}&apikey=${TWELVE_DATA_KEY}`
+                );
+                const json = await resp.json();
+                if (json.values) {
+                    const data = json.values
+                        .filter(d => d.close && d.close !== 'null')
+                        .map(d => ({
+                            date: d.datetime.replace(' ', 'T'),
+                            rate: 1 / parseFloat(d.close),
+                            source: 'TwelveData'
+                        }))
+                        .filter(d => !isNaN(d.rate) && d.rate > 0)
+                        .sort((a, b) => a.date.localeCompare(b.date));
+                    return { key: rangeKey, data };
+                }
+            } catch (e) {
+                console.warn(`TwelveData ${interval} fetch failed:`, e.message);
+            }
+            return { key: rangeKey, data: [] };
+        }
+
         function mergePrices(...priceSets) {
             const dateMap = new Map();
             priceSets.forEach(prices => {
@@ -447,20 +604,63 @@
             try {
                 dataSources = [];
 
-                const [fredResult, frankfurterResult] = await Promise.allSettled([
+                // Fetch daily sources + granular Yahoo/TwelveData for each time range
+                const [fredResult, frankfurterResult, yahooResult, tdResult, banxicoResult,
+                       g1D, g1W, g1M, g3M, g6M, g1Y,
+                       td1D, td1W, td1M] = await Promise.allSettled([
                     fetchFRED(),
-                    fetchFrankfurter()
+                    fetchFrankfurter(),
+                    fetchYahoo(),
+                    fetchTwelveData(),
+                    fetchBanxico(),
+                    // Granular Yahoo: range / interval / key
+                    fetchYahooGranular('1d',  '5m',  1),
+                    fetchYahooGranular('5d',  '15m', 7),
+                    fetchYahooGranular('1mo', '1h',  30),
+                    fetchYahooGranular('3mo', '1h',  90),
+                    fetchYahooGranular('6mo', '1h',  180),
+                    fetchYahooGranular('1y',  '1h',  365),
+                    // Twelve Data intraday (forex has good coverage)
+                    fetchTwelveDataGranular('5min', 78, 1),
+                    fetchTwelveDataGranular('15min', 200, 7),
+                    fetchTwelveDataGranular('1h', 500, 30)
                 ]);
 
                 const val = r => r.status === 'fulfilled' ? r.value : [];
 
                 const fredData = val(fredResult);
                 const frankfurterData = val(frankfurterResult);
+                const yahooData = val(yahooResult);
+                const tdData = val(tdResult);
+                const banxicoData = val(banxicoResult);
+
+                // Store granular data keyed by range (Yahoo first, Twelve Data as fallback)
+                yahooGranularData = {};
+                [g1D, g1W, g1M, g3M, g6M, g1Y].forEach(r => {
+                    if (r.status === 'fulfilled' && r.value.data.length > 0) {
+                        yahooGranularData[r.value.key] = r.value.data;
+                    }
+                });
+                // Fill gaps with Twelve Data intraday
+                twelveDataGranular = {};
+                [td1D, td1W, td1M].forEach(r => {
+                    if (r.status === 'fulfilled' && r.value.data.length > 0) {
+                        twelveDataGranular[r.value.key] = r.value.data;
+                        // Use Twelve Data if Yahoo didn't return data for this range
+                        if (!yahooGranularData[r.value.key]) {
+                            yahooGranularData[r.value.key] = r.value.data;
+                        }
+                    }
+                });
 
                 if (fredData.length > 0) dataSources.push('FRED');
+                if (banxicoData.length > 0) dataSources.push('Banxico');
                 if (frankfurterData.length > 0) dataSources.push('Frankfurter');
+                if (yahooData.length > 0) dataSources.push('Yahoo');
+                if (tdData.length > 0) dataSources.push('TwelveData');
 
-                rateData = mergePrices(fredData, frankfurterData);
+                // Priority: FRED > Banxico > Frankfurter > Yahoo > Twelve Data
+                rateData = mergePrices(fredData, banxicoData, frankfurterData, yahooData, tdData);
 
                 lastUpdated = new Date();
 
@@ -482,6 +682,16 @@
         }
 
         function getFilteredRates() {
+            // Use granular Yahoo data when available (captures intraday highs/lows)
+            if (selectedRange !== 'ytd' && yahooGranularData[selectedRange]) {
+                return yahooGranularData[selectedRange];
+            }
+            // YTD: use the 1Y hourly data filtered from Jan 1
+            if (selectedRange === 'ytd' && yahooGranularData[365]) {
+                const ytdCutoff = new Date(new Date().getFullYear(), 0, 1);
+                return yahooGranularData[365].filter(p => new Date(p.date) >= ytdCutoff);
+            }
+            // Fallback to daily data
             const cutoff = selectedRange === 'ytd'
                 ? new Date(new Date().getFullYear(), 0, 1)
                 : (() => { const d = new Date(); d.setDate(d.getDate() - selectedRange); return d; })();
@@ -503,7 +713,7 @@
             const pairLabel = isMxnToUsd ? '1 MXN in USD' : '1 USD in MXN';
             const decimals = isMxnToUsd ? 4 : 2;
 
-            const rangeLabels = { 7: '1W', 30: '1M', 90: '3M', 180: '6M', ytd: 'YTD', 365: '1Y' };
+            const rangeLabels = { 1: '1D', 7: '1W', 30: '1M', 90: '3M', 180: '6M', ytd: 'YTD', 365: '1Y' };
             const rangeLabel = rangeLabels[selectedRange] || selectedRange + 'd';
 
             const latest = rates[rates.length - 1];
@@ -519,9 +729,31 @@
             const displayRates = rates.map(r => getDisplayRate(r.rate));
             const high = Math.max(...displayRates);
             const low = Math.min(...displayRates);
+            const highIdx = displayRates.indexOf(high);
+            const lowIdx = displayRates.indexOf(low);
             const avg = displayRates.reduce((s, r) => s + r, 0) / displayRates.length;
             const variance = displayRates.reduce((s, r) => s + Math.pow(r - avg, 2), 0) / (displayRates.length - 1);
             const volatility = (Math.sqrt(variance) / avg) * 100;
+
+            // Format date/time stamps for stats
+            function formatStatDate(dateStr) {
+                const isIntraday = dateStr.includes('T');
+                const d = new Date(isIntraday ? dateStr + 'Z' : dateStr);
+                if (isIntraday) {
+                    return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+                }
+                return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            }
+            const highDate = formatStatDate(rates[highIdx].date);
+            const lowDate = formatStatDate(rates[lowIdx].date);
+
+            // Find closest point to average and use its date
+            let avgIdx = 0, minDiff = Infinity;
+            displayRates.forEach((r, i) => {
+                const diff = Math.abs(r - avg);
+                if (diff < minDiff) { minDiff = diff; avgIdx = i; }
+            });
+            const avgDate = formatStatDate(rates[avgIdx].date);
 
             const periodChange = pctChange;
 
@@ -565,14 +797,17 @@
                     <div class="stat-card">
                         <div class="label">High</div>
                         <div class="value green">$${high.toFixed(decimals)}</div>
+                        <div class="stat-date">${highDate}</div>
                     </div>
                     <div class="stat-card">
                         <div class="label">Low</div>
                         <div class="value red">$${low.toFixed(decimals)}</div>
+                        <div class="stat-date">${lowDate}</div>
                     </div>
                     <div class="stat-card">
                         <div class="label">Average</div>
                         <div class="value blue">$${avg.toFixed(decimals)}</div>
+                        <div class="stat-date">~${avgDate}</div>
                     </div>
                     <div class="stat-card">
                         <div class="label">Volatility</div>
@@ -606,8 +841,19 @@
                                 const dayChange = nr ? dr - nr : 0;
                                 const dayPct = nr ? (dayChange / nr) * 100 : 0;
                                 const cls = dayChange >= 0 ? 'up' : 'down';
+                                const isIntraday = r.date.includes('T');
+                                let dateLabel;
+                                if (isIntraday && selectedRange === 1) {
+                                    dateLabel = new Date(r.date + 'Z').toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                                } else if (isIntraday) {
+                                    const dt = new Date(r.date + 'Z');
+                                    dateLabel = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
+                                        dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                                } else {
+                                    dateLabel = r.date;
+                                }
                                 return `<tr>
-                                    <td>${r.date}</td>
+                                    <td>${dateLabel}</td>
                                     <td><strong>$${dr.toFixed(decimals)}</strong></td>
                                     <td class="price-change ${cls}">
                                         ${dayChange >= 0 ? '+' : ''}${dayChange.toFixed(decimals)}
@@ -675,15 +921,40 @@
                     scales: {
                         x: {
                             type: 'time',
-                            time: {
-                                parser: 'yyyy-MM-dd',
-                                tooltipFormat: 'MMM d, yyyy',
-                                displayFormats: {
-                                    day: 'MMM d',
-                                    week: 'MMM d',
-                                    month: 'MMM yyyy'
+                            time: (() => {
+                                const useGranular = selectedRange !== 'ytd'
+                                    ? !!yahooGranularData[selectedRange]
+                                    : !!yahooGranularData[365];
+                                if (!useGranular) {
+                                    return {
+                                        parser: 'yyyy-MM-dd',
+                                        tooltipFormat: 'MMM d, yyyy',
+                                        displayFormats: { day: 'MMM d', week: 'MMM d', month: 'MMM yyyy' }
+                                    };
                                 }
-                            },
+                                if (selectedRange === 1) {
+                                    return {
+                                        parser: "yyyy-MM-dd'T'HH:mm:ss",
+                                        tooltipFormat: 'MMM d, yyyy h:mm a',
+                                        unit: 'hour',
+                                        displayFormats: { hour: 'h:mm a', minute: 'h:mm a' }
+                                    };
+                                }
+                                if (selectedRange === 7) {
+                                    return {
+                                        parser: "yyyy-MM-dd'T'HH:mm:ss",
+                                        tooltipFormat: 'MMM d, yyyy h:mm a',
+                                        unit: 'day',
+                                        displayFormats: { day: 'MMM d', hour: 'MMM d ha' }
+                                    };
+                                }
+                                // 1M, 3M, 6M, 1Y, YTD — hourly data, show days/weeks/months
+                                return {
+                                    parser: "yyyy-MM-dd'T'HH:mm:ss",
+                                    tooltipFormat: 'MMM d, yyyy h:mm a',
+                                    displayFormats: { day: 'MMM d', week: 'MMM d', month: 'MMM yyyy' }
+                                };
+                            })(),
                             grid: {
                                 color: '#2d304040',
                                 drawBorder: false
