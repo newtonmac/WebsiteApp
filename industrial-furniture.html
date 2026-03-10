@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Industrial Furniture Configurator</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#111113;
+  --bg2:#1a1a1f;
+  --surface:#222228;
+  --surface2:#2a2a32;
+  --white:#ffffff;
+  --text:#e4e4e7;
+  --text-dim:#71717a;
+  --accent:#f59e0b;
+  --accent-hover:#d97706;
+  --accent-light:rgba(245,158,11,0.12);
+  --border:#333338;
+  --radius:12px;
+  --font:'Inter',system-ui,sans-serif;
+}
+html,body{height:100%;overflow:hidden}
+body{
+  background:var(--bg);
+  font-family:var(--font);
+  color:var(--text);
+  display:flex;
+  flex-direction:column;
+}
+
+/* Header */
+header{
+  background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  padding:0 24px;
+  height:56px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-shrink:0;
+  z-index:100;
+}
+.logo{display:flex;align-items:center;gap:10px;font-weight:600;font-size:0.95rem;color:var(--text);text-decoration:none}
+.logo-icon{
+  width:34px;height:34px;
+  background:var(--accent);
+  border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;
+}
+.back-btn{
+  color:var(--text-dim);
+  text-decoration:none;
+  font-size:0.82rem;
+  display:flex;align-items:center;gap:6px;
+  transition:color 0.2s;
+}
+.back-btn:hover{color:var(--text)}
+
+/* Main layout */
+.app{display:flex;flex:1;overflow:hidden}
+
+/* Sidebar */
+.sidebar{
+  width:340px;
+  background:var(--bg2);
+  border-right:1px solid var(--border);
+  overflow-y:auto;
+  flex-shrink:0;
+  padding:20px;
+}
+.sidebar::-webkit-scrollbar{width:6px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+.section{margin-bottom:24px}
+.section-title{
+  font-size:0.7rem;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  color:var(--text-dim);
+  margin-bottom:12px;
+}
+
+.control-group{margin-bottom:16px}
+.control-label{
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:0.82rem;font-weight:500;color:var(--text);margin-bottom:6px;
+}
+.control-value{
+  font-size:0.75rem;color:var(--accent);font-weight:600;
+  font-variant-numeric:tabular-nums;
+}
+input[type="range"]{
+  -webkit-appearance:none;
+  width:100%;height:6px;
+  background:var(--surface2);
+  border-radius:3px;
+  outline:none;
+  cursor:pointer;
+}
+input[type="range"]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:18px;height:18px;
+  background:var(--accent);
+  border-radius:50%;
+  border:2px solid var(--bg);
+  box-shadow:0 2px 6px rgba(0,0,0,0.3);
+  cursor:grab;
+}
+
+/* Color swatches */
+.swatch-row{display:flex;gap:8px;flex-wrap:wrap}
+.swatch{
+  width:36px;height:36px;
+  border-radius:8px;
+  border:2px solid transparent;
+  cursor:pointer;
+  transition:all 0.2s;
+  position:relative;
+}
+.swatch:hover{transform:scale(1.1)}
+.swatch.active{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-light)}
+.swatch.active::after{
+  content:'\2713';position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:700;color:white;
+  text-shadow:0 1px 2px rgba(0,0,0,0.5);
+}
+
+/* Material buttons */
+.material-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.material-btn{
+  padding:10px 12px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  color:var(--text);
+  font-size:0.78rem;
+  font-weight:500;
+  cursor:pointer;
+  text-align:center;
+  transition:all 0.2s;
+  font-family:var(--font);
+}
+.material-btn:hover{background:var(--surface2);border-color:var(--accent)}
+.material-btn.active{background:var(--accent-light);border-color:var(--accent);color:var(--accent)}
+
+/* Leg style buttons */
+.leg-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.leg-btn{
+  padding:10px 12px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  color:var(--text);
+  font-size:0.78rem;
+  font-weight:500;
+  cursor:pointer;
+  text-align:center;
+  transition:all 0.2s;
+  font-family:var(--font);
+}
+.leg-btn:hover{background:var(--surface2);border-color:var(--accent)}
+.leg-btn.active{background:var(--accent-light);border-color:var(--accent);color:var(--accent)}
+
+/* Feature toggles */
+.toggle-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 0;
+  border-bottom:1px solid var(--border);
+}
+.toggle-row:last-child{border-bottom:none}
+.toggle-label{font-size:0.82rem;font-weight:500}
+.toggle{
+  position:relative;width:44px;height:24px;
+  background:var(--surface2);border-radius:12px;
+  cursor:pointer;transition:background 0.2s;
+}
+.toggle.on{background:var(--accent)}
+.toggle::after{
+  content:'';position:absolute;
+  top:3px;left:3px;
+  width:18px;height:18px;
+  background:white;border-radius:50%;
+  transition:transform 0.2s;
+  box-shadow:0 1px 3px rgba(0,0,0,0.2);
+}
+.toggle.on::after{transform:translateX(20px)}
+
+/* Price display */
+.price-bar{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:16px;
+  text-align:center;
+  margin-top:8px;
+}
+.price-label{font-size:0.7rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px}
+.price-amount{font-size:1.6rem;font-weight:700;color:var(--accent)}
+
+/* 3D Viewport */
+.viewport{
+  flex:1;
+  position:relative;
+  background:radial-gradient(ellipse at center, #1e1e24 0%, #111113 70%);
+}
+.viewport canvas{display:block;width:100%;height:100%}
+.viewport-hint{
+  position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
+  font-size:0.72rem;color:var(--text-dim);
+  background:rgba(0,0,0,0.5);
+  padding:6px 14px;border-radius:20px;
+  pointer-events:none;
+  backdrop-filter:blur(8px);
+}
+
+/* Reset camera button */
+.reset-cam{
+  position:absolute;top:16px;right:16px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  color:var(--text);
+  padding:8px 14px;
+  border-radius:8px;
+  font-size:0.78rem;
+  cursor:pointer;
+  font-family:var(--font);
+  transition:all 0.2s;
+}
+.reset-cam:hover{background:var(--surface2);border-color:var(--accent)}
+
+/* GLB Upload zone */
+.upload-zone{
+  border:2px dashed var(--border);
+  border-radius:var(--radius);
+  padding:20px;
+  text-align:center;
+  cursor:pointer;
+  transition:all 0.2s;
+  position:relative;
+}
+.upload-zone:hover{border-color:var(--accent);background:var(--accent-light)}
+.upload-zone input[type="file"]{
+  position:absolute;inset:0;opacity:0;cursor:pointer;
+}
+.upload-icon{font-size:28px;margin-bottom:8px}
+.upload-text{font-size:0.78rem;color:var(--text-dim)}
+.upload-text strong{color:var(--text);display:block;margin-bottom:4px}
+.loaded-model{
+  display:none;
+  padding:12px;
+  background:var(--surface);
+  border:1px solid var(--accent);
+  border-radius:var(--radius);
+  text-align:center;
+}
+.loaded-model.show{display:block}
+.loaded-name{font-size:0.82rem;font-weight:600;color:var(--accent);margin-bottom:4px}
+.loaded-info{font-size:0.72rem;color:var(--text-dim)}
+.btn-clear-model{
+  margin-top:8px;
+  padding:6px 12px;
+  background:transparent;
+  border:1px solid var(--border);
+  border-radius:6px;
+  color:var(--text-dim);
+  font-size:0.72rem;
+  cursor:pointer;
+  font-family:var(--font);
+  transition:all 0.2s;
+}
+.btn-clear-model:hover{border-color:#ef4444;color:#ef4444}
+
+/* Mode toggle */
+.mode-toggle{
+  display:flex;
+  background:var(--surface);
+  border-radius:8px;
+  padding:3px;
+  margin-bottom:16px;
+}
+.mode-btn{
+  flex:1;
+  padding:8px 12px;
+  background:transparent;
+  border:none;
+  border-radius:6px;
+  color:var(--text-dim);
+  font-size:0.78rem;
+  font-weight:500;
+  cursor:pointer;
+  font-family:var(--font);
+  transition:all 0.2s;
+}
+.mode-btn.active{background:var(--accent);color:var(--bg)}
+
+/* Loading spinner */
+.loading-overlay{
+  position:absolute;inset:0;
+  display:none;
+  align-items:center;justify-content:center;
+  background:rgba(17,17,19,0.8);
+  z-index:50;
+  flex-direction:column;gap:12px;
+}
+.loading-overlay.show{display:flex}
+.spinner{
+  width:40px;height:40px;
+  border:3px solid var(--border);
+  border-top-color:var(--accent);
+  border-radius:50%;
+  animation:spin 0.8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:0.82rem;color:var(--text-dim)}
+
+/* Responsive */
+@media(max-width:768px){
+  .app{flex-direction:column}
+  .sidebar{width:100%;height:45%;border-right:none;border-top:1px solid var(--border);order:2}
+  .viewport{order:1;height:55%}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="#">
+    <div class="logo-icon">&#9881;</div>
+    Industrial Furniture Configurator
+  </a>
+  <a class="back-btn" href="index.html">&larr; Back to Apps</a>
+</header>
+
+<div class="app">
+  <div class="viewport" id="viewport">
+    <div class="loading-overlay" id="loadingOverlay">
+      <div class="spinner"></div>
+      <div class="loading-text" id="loadingText">Loading model...</div>
+    </div>
+    <button class="reset-cam" onclick="resetCamera()">Reset View</button>
+    <div class="viewport-hint">Click &amp; drag to rotate &bull; Scroll to zoom</div>
+  </div>
+
+  <div class="sidebar">
+    <!-- Mode Toggle -->
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="modeConfigurator" onclick="setMode('configurator')">Configurator</button>
+      <button class="mode-btn" id="modeGlb" onclick="setMode('glb')">Load GLB Model</button>
+    </div>
+
+    <!-- GLB Upload Section (hidden by default) -->
+    <div class="section" id="glbSection" style="display:none">
+      <div class="section-title">3D Model Upload</div>
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="glbFileInput" accept=".glb,.gltf,.GLB,.GLTF">
+        <div class="upload-icon">&#128230;</div>
+        <div class="upload-text">
+          <strong>Drop GLB/GLTF file here</strong>
+          or click to browse
+        </div>
+      </div>
+      <div class="loaded-model" id="loadedModel">
+        <div class="loaded-name" id="loadedName"></div>
+        <div class="loaded-info" id="loadedInfo"></div>
+        <button class="btn-clear-model" onclick="clearGlbModel()">Remove Model</button>
+      </div>
+    </div>
+
+    <!-- Configurator sections -->
+    <div id="configuratorSections">
+    <!-- Dimensions -->
+    <div class="section">
+      <div class="section-title">Dimensions</div>
+      <div class="control-group">
+        <div class="control-label">Width <span class="control-value" id="widthVal">60"</span></div>
+        <input type="range" id="widthSlider" min="36" max="96" value="60" step="1">
+      </div>
+      <div class="control-group">
+        <div class="control-label">Depth <span class="control-value" id="depthVal">30"</span></div>
+        <input type="range" id="depthSlider" min="24" max="48" value="30" step="1">
+      </div>
+      <div class="control-group">
+        <div class="control-label">Height <span class="control-value" id="heightVal">34"</span></div>
+        <input type="range" id="heightSlider" min="28" max="44" value="34" step="1">
+      </div>
+      <div class="control-group">
+        <div class="control-label">Top Thickness <span class="control-value" id="thicknessVal">1.5"</span></div>
+        <input type="range" id="thicknessSlider" min="1" max="3" value="1.5" step="0.25">
+      </div>
+    </div>
+
+    <!-- Frame Color -->
+    <div class="section">
+      <div class="section-title">Frame Color</div>
+      <div class="swatch-row" id="frameColors">
+        <div class="swatch active" data-color="#2a2a2a" style="background:#2a2a2a" title="Matte Black"></div>
+        <div class="swatch" data-color="#5c5c5c" style="background:#5c5c5c" title="Gunmetal"></div>
+        <div class="swatch" data-color="#b0b0b0" style="background:#b0b0b0" title="Silver"></div>
+        <div class="swatch" data-color="#1a3a5c" style="background:#1a3a5c" title="Navy Blue"></div>
+        <div class="swatch" data-color="#5c1a1a" style="background:#5c1a1a" title="Dark Red"></div>
+        <div class="swatch" data-color="#3a5c1a" style="background:#3a5c1a" title="Forest Green"></div>
+      </div>
+    </div>
+
+    <!-- Top Material -->
+    <div class="section">
+      <div class="section-title">Top Material</div>
+      <div class="material-grid" id="topMaterials">
+        <button class="material-btn active" data-material="butcher-block">Butcher Block</button>
+        <button class="material-btn" data-material="laminate-black">Black Laminate</button>
+        <button class="material-btn" data-material="stainless">Stainless Steel</button>
+        <button class="material-btn" data-material="esd">ESD Laminate</button>
+        <button class="material-btn" data-material="maple">Solid Maple</button>
+        <button class="material-btn" data-material="phenolic">Phenolic Resin</button>
+      </div>
+    </div>
+
+    <!-- Leg Style -->
+    <div class="section">
+      <div class="section-title">Leg Style</div>
+      <div class="leg-grid" id="legStyles">
+        <button class="leg-btn active" data-legs="standard">Standard</button>
+        <button class="leg-btn" data-legs="c-channel">C-Channel</button>
+        <button class="leg-btn" data-legs="heavy-duty">Heavy Duty</button>
+        <button class="leg-btn" data-legs="adjustable">Adjustable</button>
+      </div>
+    </div>
+
+    <!-- Features -->
+    <div class="section">
+      <div class="section-title">Features</div>
+      <div class="toggle-row">
+        <span class="toggle-label">Lower Shelf</span>
+        <div class="toggle" id="toggleShelf" onclick="toggleFeature('shelf')"></div>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">Back Panel</span>
+        <div class="toggle" id="toggleBackPanel" onclick="toggleFeature('backPanel')"></div>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">Casters (Wheels)</span>
+        <div class="toggle" id="toggleCasters" onclick="toggleFeature('casters')"></div>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">Power Strip</span>
+        <div class="toggle" id="togglePower" onclick="toggleFeature('power')"></div>
+      </div>
+    </div>
+
+    <!-- Price -->
+    <div class="price-bar">
+      <div class="price-label">Estimated Price</div>
+      <div class="price-amount" id="priceDisplay">$1,245</div>
+    </div>
+    </div><!-- end configuratorSections -->
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// Make functions available globally for onclick handlers
+window.resetCamera = resetCamera;
+window.toggleFeature = toggleFeature;
+window.setMode = setMode;
+window.clearGlbModel = clearGlbModel;
+
+// ============ Configuration State ============
+const config = {
+  width: 60, depth: 30, height: 34, thickness: 1.5,
+  frameColor: '#2a2a2a',
+  topMaterial: 'butcher-block',
+  legStyle: 'standard',
+  shelf: false, backPanel: false, casters: false, power: false
+};
+
+// Material definitions
+const materialDefs = {
+  'butcher-block': { color: 0xc4915e, roughness: 0.7, metalness: 0.0 },
+  'laminate-black': { color: 0x1a1a1e, roughness: 0.3, metalness: 0.1 },
+  'stainless': { color: 0xd0d0d0, roughness: 0.2, metalness: 0.9 },
+  'esd': { color: 0x3a4a5a, roughness: 0.4, metalness: 0.05 },
+  'maple': { color: 0xe8c88a, roughness: 0.6, metalness: 0.0 },
+  'phenolic': { color: 0x1c1c20, roughness: 0.35, metalness: 0.05 }
+};
+
+// ============ Three.js Setup ============
+const viewport = document.getElementById('viewport');
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+camera.position.set(5, 4, 6);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+viewport.insertBefore(renderer.domElement, viewport.firstChild);
+
+// Lighting
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+scene.add(ambientLight);
+
+const mainLight = new THREE.DirectionalLight(0xffffff, 0.9);
+mainLight.position.set(5, 8, 4);
+mainLight.castShadow = true;
+mainLight.shadow.mapSize.set(1024, 1024);
+mainLight.shadow.camera.near = 0.5;
+mainLight.shadow.camera.far = 25;
+mainLight.shadow.camera.left = -6;
+mainLight.shadow.camera.right = 6;
+mainLight.shadow.camera.top = 6;
+mainLight.shadow.camera.bottom = -6;
+scene.add(mainLight);
+
+const fillLight = new THREE.DirectionalLight(0xc4d4ff, 0.3);
+fillLight.position.set(-3, 4, -2);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0xffeedd, 0.2);
+rimLight.position.set(0, 2, -5);
+scene.add(rimLight);
+
+// Ground plane
+const groundGeo = new THREE.PlaneGeometry(20, 20);
+const groundMat = new THREE.MeshStandardMaterial({
+  color: 0x18181b, roughness: 0.9, metalness: 0.0
+});
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.01;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// Grid helper
+const grid = new THREE.GridHelper(10, 20, 0x333338, 0x222228);
+grid.position.y = 0;
+scene.add(grid);
+
+// Table group
+const tableGroup = new THREE.Group();
+scene.add(tableGroup);
+
+// ============ OrbitControls ============
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 1.2, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 3;
+controls.maxDistance = 16;
+controls.maxPolarAngle = Math.PI / 2 - 0.05;
+controls.update();
+
+const defaultCamPos = new THREE.Vector3(5, 4, 6);
+const defaultTarget = new THREE.Vector3(0, 1.2, 0);
+
+function resetCamera() {
+  camera.position.copy(defaultCamPos);
+  controls.target.copy(defaultTarget);
+  controls.update();
+}
+
+// ============ GLTFLoader Setup ============
+const gltfLoader = new GLTFLoader();
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/');
+gltfLoader.setDRACOLoader(dracoLoader);
+
+let currentGlbModel = null;
+let currentMode = 'configurator';
+
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('modeConfigurator').classList.toggle('active', mode === 'configurator');
+  document.getElementById('modeGlb').classList.toggle('active', mode === 'glb');
+  document.getElementById('glbSection').style.display = mode === 'glb' ? 'block' : 'none';
+  document.getElementById('configuratorSections').style.display = mode === 'configurator' ? 'block' : 'none';
+
+  if (mode === 'configurator') {
+    clearGlbModel();
+    buildTable();
+  } else {
+    // Clear configurator table
+    while (tableGroup.children.length) tableGroup.remove(tableGroup.children[0]);
+  }
+}
+
+function showLoading(msg) {
+  const overlay = document.getElementById('loadingOverlay');
+  document.getElementById('loadingText').textContent = msg || 'Loading model...';
+  overlay.classList.add('show');
+}
+
+function hideLoading() {
+  document.getElementById('loadingOverlay').classList.remove('show');
+}
+
+function loadGlbFromFile(file) {
+  showLoading('Loading ' + file.name + '...');
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const arrayBuffer = e.target.result;
+    gltfLoader.parse(arrayBuffer, '', function(gltf) {
+      // Remove previous GLB model
+      if (currentGlbModel) {
+        scene.remove(currentGlbModel);
+        currentGlbModel = null;
+      }
+      // Clear configurator table
+      while (tableGroup.children.length) tableGroup.remove(tableGroup.children[0]);
+
+      const model = gltf.scene;
+
+      // Auto-fit model to scene
+      const box = new THREE.Box3().setFromObject(model);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const scale = 3 / maxDim;
+      model.scale.setScalar(scale);
+      model.position.sub(center.multiplyScalar(scale));
+      model.position.y -= box.min.y * scale;
+
+      // Enable shadows
+      model.traverse(function(child) {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+
+      currentGlbModel = model;
+      scene.add(model);
+
+      // Fit camera
+      const newBox = new THREE.Box3().setFromObject(model);
+      const newCenter = newBox.getCenter(new THREE.Vector3());
+      const newSize = newBox.getSize(new THREE.Vector3());
+      const fitDist = Math.max(newSize.x, newSize.y, newSize.z) * 2.5;
+      controls.target.copy(newCenter);
+      camera.position.set(newCenter.x + fitDist * 0.7, newCenter.y + fitDist * 0.5, newCenter.z + fitDist * 0.7);
+      controls.update();
+
+      // Show loaded info
+      document.getElementById('uploadZone').style.display = 'none';
+      const loadedDiv = document.getElementById('loadedModel');
+      loadedDiv.classList.add('show');
+      document.getElementById('loadedName').textContent = file.name;
+
+      let meshCount = 0, vertCount = 0;
+      model.traverse(function(child) {
+        if (child.isMesh) {
+          meshCount++;
+          if (child.geometry) vertCount += child.geometry.attributes.position ? child.geometry.attributes.position.count : 0;
+        }
+      });
+      document.getElementById('loadedInfo').textContent = meshCount + ' meshes | ' + vertCount.toLocaleString() + ' vertices | ' + (file.size / 1024).toFixed(1) + ' KB';
+
+      hideLoading();
+    }, function(error) {
+      console.error('GLB parse error:', error);
+      hideLoading();
+      alert('Error loading model: ' + error.message);
+    });
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function clearGlbModel() {
+  if (currentGlbModel) {
+    scene.remove(currentGlbModel);
+    currentGlbModel = null;
+  }
+  document.getElementById('uploadZone').style.display = '';
+  document.getElementById('loadedModel').classList.remove('show');
+  document.getElementById('glbFileInput').value = '';
+  resetCamera();
+}
+
+// GLB file input handling
+document.getElementById('glbFileInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['glb', 'gltf'].includes(ext)) {
+    alert('Please upload a .GLB or .GLTF file.');
+    return;
+  }
+  loadGlbFromFile(file);
+});
+
+// Drag & drop support
+const uploadZone = document.getElementById('uploadZone');
+uploadZone.addEventListener('dragover', function(e) {
+  e.preventDefault();
+  uploadZone.style.borderColor = 'var(--accent)';
+  uploadZone.style.background = 'var(--accent-light)';
+});
+uploadZone.addEventListener('dragleave', function() {
+  uploadZone.style.borderColor = '';
+  uploadZone.style.background = '';
+});
+uploadZone.addEventListener('drop', function(e) {
+  e.preventDefault();
+  uploadZone.style.borderColor = '';
+  uploadZone.style.background = '';
+  const file = e.dataTransfer.files[0];
+  if (file) loadGlbFromFile(file);
+});
+
+// ============ Build Table ============
+function inchToUnit(inches) { return inches / 24; } // Scale factor
+
+function buildTable() {
+  // Clear previous
+  while (tableGroup.children.length) tableGroup.remove(tableGroup.children[0]);
+
+  const w = inchToUnit(config.width);
+  const d = inchToUnit(config.depth);
+  const h = inchToUnit(config.height);
+  const t = inchToUnit(config.thickness);
+  const legSize = 0.07;
+
+  // Frame material
+  const frameHex = parseInt(config.frameColor.replace('#', ''), 16);
+  const frameMat = new THREE.MeshStandardMaterial({
+    color: frameHex, roughness: 0.5, metalness: 0.7
+  });
+
+  // Top material
+  const topDef = materialDefs[config.topMaterial];
+  const topMat = new THREE.MeshStandardMaterial({
+    color: topDef.color, roughness: topDef.roughness, metalness: topDef.metalness
+  });
+
+  // Tabletop
+  const topGeo = new THREE.BoxGeometry(w, t, d);
+  const top = new THREE.Mesh(topGeo, topMat);
+  top.position.set(0, h, 0);
+  top.castShadow = true;
+  top.receiveShadow = true;
+  tableGroup.add(top);
+
+  // Edge banding on top
+  const edgeMat = new THREE.MeshStandardMaterial({
+    color: frameHex, roughness: 0.4, metalness: 0.6
+  });
+  const edgeThickness = 0.015;
+  // Front edge
+  const frontEdge = new THREE.Mesh(new THREE.BoxGeometry(w, t, edgeThickness), edgeMat);
+  frontEdge.position.set(0, h, d / 2 + edgeThickness / 2);
+  tableGroup.add(frontEdge);
+  // Back edge
+  const backEdge = new THREE.Mesh(new THREE.BoxGeometry(w, t, edgeThickness), edgeMat);
+  backEdge.position.set(0, h, -d / 2 - edgeThickness / 2);
+  tableGroup.add(backEdge);
+
+  // Legs
+  const legH = h - t / 2;
+  const casterOffset = config.casters ? 0.1 : 0;
+  const legYBase = casterOffset;
+
+  function addLeg(x, z) {
+    if (config.legStyle === 'standard' || config.legStyle === 'adjustable') {
+      const geo = new THREE.BoxGeometry(legSize, legH - casterOffset, legSize);
+      const leg = new THREE.Mesh(geo, frameMat);
+      leg.position.set(x, legYBase + (legH - casterOffset) / 2, z);
+      leg.castShadow = true;
+      tableGroup.add(leg);
+      // Foot
+      if (config.legStyle === 'adjustable') {
+        const footGeo = new THREE.CylinderGeometry(legSize * 1.2, legSize * 1.5, 0.06, 16);
+        const foot = new THREE.Mesh(footGeo, frameMat);
+        foot.position.set(x, legYBase + 0.03, z);
+        tableGroup.add(foot);
+      }
+    } else if (config.legStyle === 'c-channel') {
+      const geo = new THREE.BoxGeometry(legSize * 1.5, legH - casterOffset, legSize * 0.6);
+      const leg = new THREE.Mesh(geo, frameMat);
+      leg.position.set(x, legYBase + (legH - casterOffset) / 2, z);
+      leg.castShadow = true;
+      tableGroup.add(leg);
+    } else if (config.legStyle === 'heavy-duty') {
+      const geo = new THREE.CylinderGeometry(legSize * 0.8, legSize * 0.8, legH - casterOffset, 8);
+      const leg = new THREE.Mesh(geo, frameMat);
+      leg.position.set(x, legYBase + (legH - casterOffset) / 2, z);
+      leg.castShadow = true;
+      tableGroup.add(leg);
+      // Gusset
+      const gussetGeo = new THREE.BoxGeometry(legSize * 0.5, 0.15, legSize * 0.5);
+      const gusset = new THREE.Mesh(gussetGeo, frameMat);
+      gusset.position.set(x, legYBase + legH - casterOffset - 0.08, z);
+      tableGroup.add(gusset);
+    }
+  }
+
+  const legInsetX = w / 2 - legSize * 1.2;
+  const legInsetZ = d / 2 - legSize * 1.2;
+  addLeg(-legInsetX, -legInsetZ);
+  addLeg(legInsetX, -legInsetZ);
+  addLeg(-legInsetX, legInsetZ);
+  addLeg(legInsetX, legInsetZ);
+
+  // Cross braces (frame rails)
+  const braceSize = 0.04;
+  // Front rail
+  const frontRail = new THREE.Mesh(new THREE.BoxGeometry(w - legSize * 2.4, braceSize, braceSize), frameMat);
+  frontRail.position.set(0, h - t / 2 - braceSize, legInsetZ);
+  tableGroup.add(frontRail);
+  // Back rail
+  const backRail = new THREE.Mesh(new THREE.BoxGeometry(w - legSize * 2.4, braceSize, braceSize), frameMat);
+  backRail.position.set(0, h - t / 2 - braceSize, -legInsetZ);
+  tableGroup.add(backRail);
+  // Side rails
+  const sideRailL = new THREE.Mesh(new THREE.BoxGeometry(braceSize, braceSize, d - legSize * 2.4), frameMat);
+  sideRailL.position.set(-legInsetX, h - t / 2 - braceSize, 0);
+  tableGroup.add(sideRailL);
+  const sideRailR = new THREE.Mesh(new THREE.BoxGeometry(braceSize, braceSize, d - legSize * 2.4), frameMat);
+  sideRailR.position.set(legInsetX, h - t / 2 - braceSize, 0);
+  tableGroup.add(sideRailR);
+
+  // Lower shelf
+  if (config.shelf) {
+    const shelfY = legYBase + (legH - casterOffset) * 0.2;
+    const shelfGeo = new THREE.BoxGeometry(w - legSize * 3, 0.03, d - legSize * 3);
+    const shelfMesh = new THREE.Mesh(shelfGeo, topMat);
+    shelfMesh.position.set(0, shelfY, 0);
+    shelfMesh.castShadow = true;
+    shelfMesh.receiveShadow = true;
+    tableGroup.add(shelfMesh);
+    // Shelf support rails
+    const supportL = new THREE.Mesh(new THREE.BoxGeometry(braceSize, braceSize, d - legSize * 3), frameMat);
+    supportL.position.set(-legInsetX + legSize, shelfY - 0.02, 0);
+    tableGroup.add(supportL);
+    const supportR = new THREE.Mesh(new THREE.BoxGeometry(braceSize, braceSize, d - legSize * 3), frameMat);
+    supportR.position.set(legInsetX - legSize, shelfY - 0.02, 0);
+    tableGroup.add(supportR);
+  }
+
+  // Back panel
+  if (config.backPanel) {
+    const panelH = (legH - casterOffset) * 0.6;
+    const panelGeo = new THREE.BoxGeometry(w - legSize * 2, panelH, 0.02);
+    const panelMat = new THREE.MeshStandardMaterial({ color: frameHex, roughness: 0.5, metalness: 0.6, transparent: true, opacity: 0.5 });
+    const panel = new THREE.Mesh(panelGeo, panelMat);
+    panel.position.set(0, legYBase + (legH - casterOffset) * 0.5, -legInsetZ);
+    tableGroup.add(panel);
+  }
+
+  // Casters
+  if (config.casters) {
+    const casterMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.6, metalness: 0.3 });
+    function addCaster(x, z) {
+      // Wheel
+      const wheelGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.035, 16);
+      const wheel = new THREE.Mesh(wheelGeo, casterMat);
+      wheel.rotation.z = Math.PI / 2;
+      wheel.position.set(x, 0.05, z);
+      tableGroup.add(wheel);
+      // Mount
+      const mountGeo = new THREE.CylinderGeometry(0.02, 0.03, 0.06, 8);
+      const mount = new THREE.Mesh(mountGeo, frameMat);
+      mount.position.set(x, 0.1, z);
+      tableGroup.add(mount);
+    }
+    addCaster(-legInsetX, -legInsetZ);
+    addCaster(legInsetX, -legInsetZ);
+    addCaster(-legInsetX, legInsetZ);
+    addCaster(legInsetX, legInsetZ);
+  }
+
+  // Power strip
+  if (config.power) {
+    const stripMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.4, metalness: 0.3 });
+    const stripGeo = new THREE.BoxGeometry(0.5, 0.04, 0.08);
+    const strip = new THREE.Mesh(stripGeo, stripMat);
+    strip.position.set(0, h - t / 2 - braceSize - 0.04, -legInsetZ + 0.06);
+    tableGroup.add(strip);
+    // Outlets
+    const outletMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.3, metalness: 0.1 });
+    for (let i = -2; i <= 2; i++) {
+      const outlet = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.025, 0.005), outletMat);
+      outlet.position.set(i * 0.09, h - t / 2 - braceSize - 0.04, -legInsetZ + 0.06 + 0.045);
+      tableGroup.add(outlet);
+    }
+  }
+
+  // Set shadow casting
+  tableGroup.traverse((child) => {
+    if (child.isMesh) {
+      child.castShadow = true;
+      child.receiveShadow = true;
+    }
+  });
+}
+
+// ============ Price Calculator ============
+function calculatePrice() {
+  const area = config.width * config.depth;
+  let base = 400 + area * 0.15;
+
+  // Material premium
+  const materialPrices = {
+    'butcher-block': 0, 'laminate-black': -50, 'stainless': 200,
+    'esd': 150, 'maple': 80, 'phenolic': 180
+  };
+  base += materialPrices[config.topMaterial] || 0;
+
+  // Leg style premium
+  const legPrices = { 'standard': 0, 'c-channel': 60, 'heavy-duty': 120, 'adjustable': 180 };
+  base += legPrices[config.legStyle] || 0;
+
+  // Size premium
+  if (config.width > 72) base += 100;
+  if (config.height > 38) base += 50;
+  if (config.thickness > 2) base += 75;
+
+  // Features
+  if (config.shelf) base += 120;
+  if (config.backPanel) base += 85;
+  if (config.casters) base += 95;
+  if (config.power) base += 65;
+
+  return Math.round(base);
+}
+
+function updatePrice() {
+  const price = calculatePrice();
+  document.getElementById('priceDisplay').textContent = '$' + price.toLocaleString();
+}
+
+// ============ UI Bindings ============
+// Dimension sliders
+['width', 'depth', 'height', 'thickness'].forEach(dim => {
+  const slider = document.getElementById(dim + 'Slider');
+  const valDisplay = document.getElementById(dim + 'Val');
+  slider.addEventListener('input', () => {
+    const v = parseFloat(slider.value);
+    config[dim] = v;
+    valDisplay.textContent = (dim === 'thickness' ? v.toFixed(2) : v) + '"';
+    buildTable();
+    updatePrice();
+  });
+});
+
+// Frame colors
+document.querySelectorAll('#frameColors .swatch').forEach(el => {
+  el.addEventListener('click', () => {
+    document.querySelectorAll('#frameColors .swatch').forEach(s => s.classList.remove('active'));
+    el.classList.add('active');
+    config.frameColor = el.dataset.color;
+    buildTable();
+  });
+});
+
+// Top materials
+document.querySelectorAll('#topMaterials .material-btn').forEach(el => {
+  el.addEventListener('click', () => {
+    document.querySelectorAll('#topMaterials .material-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    config.topMaterial = el.dataset.material;
+    buildTable();
+    updatePrice();
+  });
+});
+
+// Leg styles
+document.querySelectorAll('#legStyles .leg-btn').forEach(el => {
+  el.addEventListener('click', () => {
+    document.querySelectorAll('#legStyles .leg-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    config.legStyle = el.dataset.legs;
+    buildTable();
+    updatePrice();
+  });
+});
+
+// Feature toggles
+function toggleFeature(feature) {
+  config[feature] = !config[feature];
+  const toggleEl = document.getElementById('toggle' + feature.charAt(0).toUpperCase() + feature.slice(1));
+  if (!toggleEl) {
+    // Handle camelCase feature names
+    const nameMap = { shelf: 'Shelf', backPanel: 'BackPanel', casters: 'Casters', power: 'Power' };
+    const el = document.getElementById('toggle' + nameMap[feature]);
+    if (el) el.classList.toggle('on', config[feature]);
+  } else {
+    toggleEl.classList.toggle('on', config[feature]);
+  }
+  buildTable();
+  updatePrice();
+}
+
+// ============ Render Loop ============
+function onResize() {
+  const rect = viewport.getBoundingClientRect();
+  camera.aspect = rect.width / rect.height;
+  camera.updateProjectionMatrix();
+  renderer.setSize(rect.width, rect.height);
+}
+
+window.addEventListener('resize', onResize);
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+// Init
+onResize();
+resetCamera();
+buildTable();
+updatePrice();
+animate();
+</script>
+</body>
+</html>
