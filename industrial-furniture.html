@@ -806,17 +806,18 @@ function getAccessoryFeature(nodeName) {
 function applyAccessoryVisibility() {
   if (!currentModel) return;
 
-  // Classify every named node: base structure (always show), accessory (toggle), or unknown (hide)
+  // Classify every named node: accessory first (more specific), then base structure, then unknown
   allNodes.forEach((obj, name) => {
-    // Base structure - always visible
-    if (nameMatchesAny(name, baseStructureNodes)) {
-      setSubtreeVisibility(obj, true);
-      return;
-    }
-    // Known accessory - show/hide based on config
+    // Check accessories FIRST - they have more specific names like
+    // "SURFACE TOP SHELF" that would otherwise match the base "SURFACE" prefix
     const feature = getAccessoryFeature(name);
     if (feature !== null) {
       setSubtreeVisibility(obj, config[feature]);
+      return;
+    }
+    // Base structure - always visible
+    if (nameMatchesAny(name, baseStructureNodes)) {
+      setSubtreeVisibility(obj, true);
       return;
     }
     // Unknown node - hide (likely an unmapped accessory sub-part)
