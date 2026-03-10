@@ -203,16 +203,6 @@ header{
 }
 .toggle.on::after{transform:translateX(20px)}
 
-/* Price display */
-.price-bar{
-  background:var(--primary-dark);
-  border-radius:var(--radius);
-  padding:16px;
-  text-align:center;
-  margin:16px 20px;
-}
-.price-label{font-size:0.7rem;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px}
-.price-amount{font-size:1.6rem;font-weight:700;color:#fff}
 
 /* 3D Viewport */
 .viewport{
@@ -413,10 +403,10 @@ header{
       <div class="material-grid" id="topMaterials">
         <button class="material-btn active" data-material="formica">Standard Laminate<span class="mat-price">Formica</span></button>
         <button class="material-btn" data-material="phenolic-resin">Phenolic Resin<span class="mat-price">Chemical Resistant</span></button>
-        <button class="material-btn" data-material="stainless-steel">304 Stainless Steel<span class="mat-price">+$$$</span></button>
-        <button class="material-btn" data-material="maple-butcher">Maple Butcher Block<span class="mat-price">+$$</span></button>
-        <button class="material-btn" data-material="esd-static">ESD Static Control<span class="mat-price">+$$</span></button>
-        <button class="material-btn" data-material="cleanroom-laminate">Cleanroom Laminate<span class="mat-price">+$</span></button>
+        <button class="material-btn" data-material="stainless-steel">304 Stainless Steel</button>
+        <button class="material-btn" data-material="maple-butcher">Maple Butcher Block</button>
+        <button class="material-btn" data-material="esd-static">ESD Static Control</button>
+        <button class="material-btn" data-material="cleanroom-laminate">Cleanroom Laminate</button>
       </div>
     </div>
 
@@ -469,11 +459,6 @@ header{
       </div>
     </div>
 
-    <!-- Price -->
-    <div class="price-bar">
-      <div class="price-label">Estimated Price</div>
-      <div class="price-amount" id="priceDisplay">$1,245</div>
-    </div>
   </div>
 </div>
 
@@ -545,15 +530,6 @@ function nameMatchesAny(name, prefixes) {
   return false;
 }
 
-// Base workbench structure nodes (always visible) - frame, legs, surface, glides, hardware
-const baseStructureNodes = [
-  'Kennedy Series', 'CUADRO', 'PIERNA', 'PIERNAS',
-  'SURFACE', 'SOLERA', 'SOLERAP', 'TRAVE', 'ENSAMBLE-GLIDES',
-  'GLIDE', 'Stainless Trim', 'LP',
-  'Brakets', 'hex bolt', 'KENNEDY BENCH Accesories',
-  'Roosevelt', 'Dewey', 'Harding', 'Adams', 'Hydraulic',
-  'FRAME', 'LEG', 'BASE', 'TOP'
-];
 
 // Accessory node name mapping for toggling visibility
 const accessoryNodes = {
@@ -602,11 +578,6 @@ const materialDefs = {
   'cleanroom-laminate':{ roughness: 0.3, metalness: 0.0, clearcoat: 0.2 }
 };
 
-// Material price modifiers
-const materialPriceMultiplier = {
-  'formica': 1.0, 'phenolic-resin': 1.0, 'stainless-steel': 2.0,
-  'maple-butcher': 1.8, 'esd-static': 1.5, 'cleanroom-laminate': 1.2
-};
 
 // ============ Three.js Setup ============
 const viewport = document.getElementById('viewport');
@@ -803,53 +774,19 @@ function getAccessoryFeature(nodeName) {
   return null;
 }
 
-// Walk descendants but STOP descending into subtrees rooted at named nodes in allNodes
-function traverseUnclaimed(obj, callback) {
-  for (const child of obj.children) {
-    // If this child has a name tracked in allNodes, skip it AND its subtree
-    if (child.name && allNodes.has(child.name)) continue;
-    callback(child);
-    traverseUnclaimed(child, callback);
-  }
-}
 
 function applyAccessoryVisibility() {
   if (!currentModel) return;
 
-  // Step 1: Hide EVERYTHING first
-  currentModel.traverse(child => { child.visible = false; });
+  // Step 1: Show everything by default (frame, structural parts, hardware)
+  currentModel.traverse(child => { child.visible = true; });
 
-  // Step 2: Walk named nodes and selectively show what should be visible
+  // Step 2: Hide accessory groups whose toggle is OFF
   allNodes.forEach((obj, name) => {
-    // Check accessories FIRST - more specific names like "SURFACE TOP SHELF"
-    // would otherwise match the base "SURFACE" prefix
     const feature = getAccessoryFeature(name);
-    if (feature !== null) {
-      if (config[feature]) {
-        obj.visible = true;
-        obj.traverse(child => { child.visible = true; });
-      }
-      return;
-    }
-    // Base structure - show this node and only its own unnamed meshes/geometry,
-    // stopping at any named child (which gets its own classification)
-    if (nameMatchesAny(name, baseStructureNodes)) {
-      obj.visible = true;
-      traverseUnclaimed(obj, child => { child.visible = true; });
-      return;
-    }
-    // Unknown nodes stay hidden (from step 1)
-  });
-
-  // Step 3: Ensure parent chain is visible for any visible mesh
-  // (Three.js requires all ancestors to be visible for a mesh to render)
-  currentModel.traverse(child => {
-    if (child.visible && child.isMesh) {
-      let p = child.parent;
-      while (p && p !== scene) {
-        p.visible = true;
-        p = p.parent;
-      }
+    if (feature !== null && !config[feature]) {
+      obj.visible = false;
+      obj.traverse(child => { child.visible = false; });
     }
   });
 }
@@ -913,7 +850,7 @@ function selectSeries(seriesKey) {
 
   // Load the GLB model
   loadSeriesModel(seriesKey);
-  updatePrice();
+
 }
 
 // ============ Dimension Selection ============
@@ -925,7 +862,7 @@ function setDim(dim, val) {
   });
   // Dimensions affect scale of the loaded model
   applyDimensionScale();
-  updatePrice();
+
 }
 
 // Store base effective scale per mesh (called once after model loads, with modelGroup.scale = 1,1,1)
@@ -1015,44 +952,9 @@ function toggleFeature(feature) {
   const toggleEl = document.getElementById('toggle' + feature.charAt(0).toUpperCase() + feature.slice(1));
   if (toggleEl) toggleEl.classList.toggle('on', config[feature]);
   applyAccessoryVisibility();
-  updatePrice();
+
 }
 
-// ============ Price Calculator ============
-function calculatePrice() {
-  const area = config.width * config.depth;
-  let base = 600 + area * 0.2;
-
-  // Series premium
-  const seriesPrices = {
-    kennedy: 200, roosevelt: 0, dewey: 150, harding: 400, hydraulic: 500
-  };
-  base += seriesPrices[config.series] || 0;
-
-  // Material multiplier
-  base *= materialPriceMultiplier[config.topMaterial] || 1;
-
-  // Size premium
-  if (config.width > 72) base += 150;
-  if (config.depth > 36) base += 100;
-
-  // Accessories
-  const accPrices = {
-    topShelf: 185, bottomShelf: 120, cabinet: 350,
-    ledLight: 165, powerStrip: 85, keyboard: 95,
-    monitor: 145, cpuHolder: 65, wireShelf: 110,
-    docHolder: 55, binBoxes: 75
-  };
-  for (const [key, price] of Object.entries(accPrices)) {
-    if (config[key]) base += price;
-  }
-
-  return Math.round(base);
-}
-
-function updatePrice() {
-  document.getElementById('priceDisplay').textContent = '$' + calculatePrice().toLocaleString();
-}
 
 // ============ UI Bindings ============
 // Frame colors
@@ -1082,7 +984,7 @@ document.querySelectorAll('#topMaterials .material-btn').forEach(el => {
     el.classList.add('active');
     config.topMaterial = el.dataset.material;
     applyColors();
-    updatePrice();
+  
   });
 });
 
@@ -1105,7 +1007,6 @@ function animate() {
 // ============ Init ============
 onResize();
 resetCamera();
-updatePrice();
 animate();
 
 // Load default model
