@@ -189,6 +189,31 @@
         }
         .amaps-btn:hover { box-shadow: 0 6px 24px #00000066; }
 
+        .share-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .share-btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 8px;
+            border-radius: 10px;
+            border: 1px solid #2d3040;
+            background: #252836;
+            color: #e1e4e8;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .share-btn:hover { border-color: #4b5068; background: #2d3040; }
+        .share-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+
         /* route cards */
         .route-card {
             background: #252836;
@@ -396,6 +421,20 @@
                 <svg viewBox="0 0 24 24" fill="none"><path d="M21 3L3 10.5l6.5 2L12 21l9-18z" fill="white"/></svg>
                 Start Driving — Apple Maps
             </a>
+            <div class="share-row" id="shareRow" style="display:none;">
+                <a id="shareEmail" class="share-btn" href="#" target="_blank">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4L12 13 2 4"/></svg>
+                    Email
+                </a>
+                <a id="shareText" class="share-btn" href="#" target="_blank">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Text
+                </a>
+                <button id="shareCopy" class="share-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    Copy
+                </button>
+            </div>
         </div>
 
         <div class="elev-chart-wrap" id="elevSection" style="display:none;">
@@ -858,7 +897,53 @@ function updateMapLinks(route) {
     }
     amapsLink.href = appleUrl;
     amapsLink.style.display = 'flex';
+
+    // ── Share links (Email, Text, Copy) ──
+    const gmapsUrl = gmapsLink.href;
+    const originName = document.getElementById('originInput').value.split(',')[0];
+    const destName = document.getElementById('destInput').value.split(',')[0];
+    const subject = encodeURIComponent(`EV Route: ${originName} → ${destName}`);
+    const body = encodeURIComponent(
+        `Here's an EV-optimized route from ${originName} to ${destName}:\n\n` +
+        `Distance: ${route.distMi.toFixed(1)} mi\n` +
+        `Time: ${formatDuration(route.durMin)}\n` +
+        `Elevation gain: +${Math.round(route.gain)}m\n\n` +
+        `Google Maps:\n${gmapsUrl}\n\n` +
+        `Apple Maps:\n${appleUrl}`
+    );
+
+    document.getElementById('shareEmail').href = `mailto:?subject=${subject}&body=${body}`;
+    document.getElementById('shareText').href = `sms:&body=${body}`;
+    document.getElementById('shareRow').style.display = 'flex';
 }
+
+// ─── Copy link to clipboard ───
+document.getElementById('shareCopy').addEventListener('click', async () => {
+    const gmapsUrl = document.getElementById('gmapsLink').href;
+    const originName = document.getElementById('originInput').value.split(',')[0];
+    const destName = document.getElementById('destInput').value.split(',')[0];
+    const route = routesData[selectedRouteIdx];
+    const text =
+        `EV Route: ${originName} → ${destName}\n` +
+        `${route.distMi.toFixed(1)} mi · ${formatDuration(route.durMin)} · +${Math.round(route.gain)}m gain\n\n` +
+        `Google Maps: ${gmapsUrl}\n` +
+        `Apple Maps: ${document.getElementById('amapsLink').href}`;
+
+    try {
+        await navigator.clipboard.writeText(text);
+        const btn = document.getElementById('shareCopy');
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg> Copied!';
+        btn.style.borderColor = '#34d399';
+        setTimeout(() => { btn.innerHTML = orig; btn.style.borderColor = ''; }, 2000);
+    } catch(e) {
+        // Fallback for older browsers
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+        document.body.removeChild(ta);
+    }
+});
 
 // ─── Elevation Chart (Canvas) ───
 function drawElevationChart(route) {
@@ -965,6 +1050,7 @@ function clearRoutes() {
     document.getElementById('mapLegend').style.display = 'none';
     document.getElementById('gmapsLink').style.display = 'none';
     document.getElementById('amapsLink').style.display = 'none';
+    document.getElementById('shareRow').style.display = 'none';
     routesData = [];
 }
 function clearRouteLayers() {
