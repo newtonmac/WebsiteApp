@@ -1885,29 +1885,28 @@
                 // 2. Kick off market context in parallel with stock data
                 const ctxPromise = fetchMarketContext(signal);
 
-                // 3. Phase 1: Fetch 1d + 1mo in parallel per stock, show price as soon as 1d arrives
+                // 3. Fetch stocks in pairs, 1d then 1mo per stock, rendering progressively
                 const stockData = {};
-                await Promise.allSettled(symbols.map(async sym => {
-                    const card = grid.querySelector(`[data-symbol="${sym}"]`);
-                    if (!card) return;
+                for (let i = 0; i < symbols.length; i += 2) {
+                    const batch = symbols.slice(i, i + 2);
+                    await Promise.allSettled(batch.map(async sym => {
+                        const card = grid.querySelector(`[data-symbol="${sym}"]`);
+                        if (!card) return;
 
-                    // Fire both ranges in parallel
-                    const dayPromise = fetchStock(sym, '1d', signal);
-                    const monthPromise = fetchStock(sym, '1mo', signal);
+                        // Fetch 1d first — show price immediately
+                        const dayData = await fetchStock(sym, '1d', signal);
+                        if (signal.aborted) return;
+                        renderCardContent(card, sym, dayData, null, null, marketContext);
 
-                    // Show price as soon as 1d resolves (don't wait for 1mo)
-                    const dayData = await dayPromise;
+                        // Then fetch 1mo for signal/recommendation
+                        const monthData = await fetchStock(sym, '1mo', signal);
+                        if (signal.aborted) return;
+
+                        stockData[sym] = { dayData, monthData };
+                        renderCardContent(card, sym, dayData, monthData, null, marketContext);
+                    }));
                     if (signal.aborted) return;
-                    renderCardContent(card, sym, dayData, null, null, marketContext);
-
-                    const monthData = await monthPromise;
-                    if (signal.aborted) return;
-
-                    stockData[sym] = { dayData, monthData };
-
-                    // Re-render with signals (from 1mo data)
-                    renderCardContent(card, sym, dayData, monthData, null, marketContext);
-                }));
+                }
 
                 if (signal.aborted) return;
 
