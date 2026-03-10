@@ -154,47 +154,65 @@
         .plan-btn:hover { opacity: 0.9; }
         .plan-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-        .gmaps-btn {
+        .nav-btn {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 10px;
             width: 100%;
-            padding: 11px;
-            border-radius: 12px;
+            padding: 14px;
+            border-radius: 14px;
             border: none;
-            background: linear-gradient(135deg, #4285F4, #1a73e8);
             color: #fff;
-            font-size: 14px;
-            font-weight: 600;
+            font-size: 15px;
+            font-weight: 700;
             cursor: pointer;
             text-decoration: none;
-            transition: opacity 0.2s;
+            transition: transform 0.15s, box-shadow 0.15s;
             margin-top: 10px;
+            letter-spacing: 0.2px;
         }
-        .gmaps-btn:hover { opacity: 0.9; }
-        .gmaps-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+        .nav-btn:hover { transform: translateY(-2px); }
+        .nav-btn:active { transform: translateY(0); }
+        .nav-btn svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+        .gmaps-btn {
+            background: linear-gradient(135deg, #4285F4, #1a73e8);
+            box-shadow: 0 4px 16px #4285F444;
+        }
+        .gmaps-btn:hover { box-shadow: 0 6px 24px #4285F466; }
 
         .amaps-btn {
+            background: linear-gradient(135deg, #555, #333);
+            box-shadow: 0 4px 16px #00000044;
+            margin-top: 8px;
+        }
+        .amaps-btn:hover { box-shadow: 0 6px 24px #00000066; }
+
+        .share-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .share-btn {
+            flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            width: 100%;
-            padding: 11px;
-            border-radius: 12px;
-            border: none;
-            background: linear-gradient(135deg, #555, #333);
-            color: #fff;
-            font-size: 14px;
+            gap: 6px;
+            padding: 10px 8px;
+            border-radius: 10px;
+            border: 1px solid #2d3040;
+            background: #252836;
+            color: #e1e4e8;
+            font-size: 13px;
             font-weight: 600;
             cursor: pointer;
             text-decoration: none;
-            transition: opacity 0.2s;
-            margin-top: 8px;
+            transition: border-color 0.2s, background 0.2s;
         }
-        .amaps-btn:hover { opacity: 0.9; }
-        .amaps-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+        .share-btn:hover { border-color: #4b5068; background: #2d3040; }
+        .share-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
 
         /* route cards */
         .route-card {
@@ -395,14 +413,28 @@
         <div class="sidebar-section" id="routeResults" style="display:none;">
             <h2>Routes Found</h2>
             <div id="routeCards"></div>
-            <a id="gmapsLink" class="gmaps-btn" href="#" target="_blank" rel="noopener" style="display:none;">
-                <svg viewBox="0 0 24 24" fill="none"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z" fill="white"/></svg>
-                Open in Google Maps
+            <a id="gmapsLink" class="nav-btn gmaps-btn" href="#" target="_blank" rel="noopener" style="display:none;">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M21 3L3 10.5l6.5 2L12 21l9-18z" fill="white"/></svg>
+                Start Driving — Google Maps
             </a>
-            <a id="amapsLink" class="amaps-btn" href="#" target="_blank" rel="noopener" style="display:none;">
-                <svg viewBox="0 0 24 24" fill="none"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z" fill="white"/></svg>
-                Open in Apple Maps
+            <a id="amapsLink" class="nav-btn amaps-btn" href="#" target="_blank" rel="noopener" style="display:none;">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M21 3L3 10.5l6.5 2L12 21l9-18z" fill="white"/></svg>
+                Start Driving — Apple Maps
             </a>
+            <div class="share-row" id="shareRow" style="display:none;">
+                <a id="shareEmail" class="share-btn" href="#" target="_blank">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4L12 13 2 4"/></svg>
+                    Email
+                </a>
+                <a id="shareText" class="share-btn" href="#" target="_blank">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Text
+                </a>
+                <button id="shareCopy" class="share-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    Copy
+                </button>
+            </div>
         </div>
 
         <div class="elev-chart-wrap" id="elevSection" style="display:none;">
@@ -848,7 +880,7 @@ function updateMapLinks(route) {
     if (waypoints.length) {
         gWaypoints = `&waypoints=${waypoints.map(w => `${w.lat},${w.lng}`).join('|')}`;
     }
-    gmapsLink.href = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}${gWaypoints}&travelmode=driving`;
+    gmapsLink.href = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}${gWaypoints}&travelmode=driving&dir_action=navigate`;
     gmapsLink.style.display = 'flex';
 
     // ── Apple Maps URL ──
@@ -859,13 +891,59 @@ function updateMapLinks(route) {
         // Apple Maps route: saddr → waypoint1 → waypoint2 → ... → daddr
         // Format: https://maps.apple.com/?saddr=lat,lng&daddr=wp1+to:wp2+to:dest&dirflg=d
         const wpChain = waypoints.map(w => `${w.lat},${w.lng}`).concat([dest]).join('+to:');
-        appleUrl = `https://maps.apple.com/?saddr=${origin}&daddr=${wpChain}&dirflg=d`;
+        appleUrl = `https://maps.apple.com/?saddr=${origin}&daddr=${wpChain}&dirflg=d&t=m`;
     } else {
-        appleUrl = `https://maps.apple.com/?saddr=${origin}&daddr=${dest}&dirflg=d`;
+        appleUrl = `https://maps.apple.com/?saddr=${origin}&daddr=${dest}&dirflg=d&t=m`;
     }
     amapsLink.href = appleUrl;
     amapsLink.style.display = 'flex';
+
+    // ── Share links (Email, Text, Copy) ──
+    const gmapsUrl = gmapsLink.href;
+    const originName = document.getElementById('originInput').value.split(',')[0];
+    const destName = document.getElementById('destInput').value.split(',')[0];
+    const subject = encodeURIComponent(`EV Route: ${originName} → ${destName}`);
+    const body = encodeURIComponent(
+        `Here's an EV-optimized route from ${originName} to ${destName}:\n\n` +
+        `Distance: ${route.distMi.toFixed(1)} mi\n` +
+        `Time: ${formatDuration(route.durMin)}\n` +
+        `Elevation gain: +${Math.round(route.gain)}m\n\n` +
+        `Google Maps:\n${gmapsUrl}\n\n` +
+        `Apple Maps:\n${appleUrl}`
+    );
+
+    document.getElementById('shareEmail').href = `mailto:?subject=${subject}&body=${body}`;
+    document.getElementById('shareText').href = `sms:&body=${body}`;
+    document.getElementById('shareRow').style.display = 'flex';
 }
+
+// ─── Copy link to clipboard ───
+document.getElementById('shareCopy').addEventListener('click', async () => {
+    const gmapsUrl = document.getElementById('gmapsLink').href;
+    const originName = document.getElementById('originInput').value.split(',')[0];
+    const destName = document.getElementById('destInput').value.split(',')[0];
+    const route = routesData[selectedRouteIdx];
+    const text =
+        `EV Route: ${originName} → ${destName}\n` +
+        `${route.distMi.toFixed(1)} mi · ${formatDuration(route.durMin)} · +${Math.round(route.gain)}m gain\n\n` +
+        `Google Maps: ${gmapsUrl}\n` +
+        `Apple Maps: ${document.getElementById('amapsLink').href}`;
+
+    try {
+        await navigator.clipboard.writeText(text);
+        const btn = document.getElementById('shareCopy');
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg> Copied!';
+        btn.style.borderColor = '#34d399';
+        setTimeout(() => { btn.innerHTML = orig; btn.style.borderColor = ''; }, 2000);
+    } catch(e) {
+        // Fallback for older browsers
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+        document.body.removeChild(ta);
+    }
+});
 
 // ─── Elevation Chart (Canvas) ───
 function drawElevationChart(route) {
@@ -972,6 +1050,7 @@ function clearRoutes() {
     document.getElementById('mapLegend').style.display = 'none';
     document.getElementById('gmapsLink').style.display = 'none';
     document.getElementById('amapsLink').style.display = 'none';
+    document.getElementById('shareRow').style.display = 'none';
     routesData = [];
 }
 function clearRouteLayers() {
