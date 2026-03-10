@@ -124,20 +124,50 @@
             background: #34d39922;
         }
 
-        .swap-btn {
-            display: block;
-            margin: -4px auto 8px;
-            background: none;
-            border: 1px solid #2d3040;
-            color: #8b8fa3;
+        /* stop row */
+        .stop-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+        .stop-row .input-group { flex: 1; margin-bottom: 0; }
+        .remove-stop-btn {
             width: 32px;
-            height: 32px;
-            border-radius: 50%;
+            height: 38px;
+            border-radius: 8px;
+            border: 1px solid #2d3040;
+            background: #252836;
+            color: #ef4444;
+            font-size: 18px;
             cursor: pointer;
-            font-size: 16px;
+            transition: all 0.2s;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .remove-stop-btn:hover { border-color: #ef4444; background: #ef444422; }
+
+        .add-stop-btn {
+            display: block;
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 12px;
+            border-radius: 10px;
+            border: 1px dashed #2d3040;
+            background: transparent;
+            color: #60a5fa;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
             transition: all 0.2s;
         }
-        .swap-btn:hover { border-color: #34d399; color: #34d399; }
+        .add-stop-btn:hover { border-color: #60a5fa; background: #60a5fa11; }
+
+        .swap-btn {
+            display: none;
+        }
 
         .plan-btn {
             width: 100%;
@@ -282,6 +312,46 @@
             transition: width 0.4s;
         }
 
+        /* EV efficiency explanation */
+        .ev-explain {
+            background: #252836;
+            border: 1px solid #2d3040;
+            border-radius: 12px;
+            padding: 14px 16px;
+            margin-top: 12px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #c0c4d0;
+        }
+        .ev-explain h3 {
+            font-size: 13px;
+            font-weight: 700;
+            color: #34d399;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .ev-explain .ev-stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px solid #2d304066;
+        }
+        .ev-explain .ev-stat-row:last-child { border-bottom: none; }
+        .ev-explain .ev-label { color: #8b8fa3; }
+        .ev-explain .ev-value { font-weight: 600; color: #e1e4e8; }
+        .ev-explain .ev-value.good { color: #34d399; }
+        .ev-explain .ev-value.warn { color: #fbbf24; }
+        .ev-explain .ev-tip {
+            margin-top: 10px;
+            padding: 8px 12px;
+            background: #34d39911;
+            border-left: 3px solid #34d399;
+            border-radius: 0 8px 8px 0;
+            font-size: 12px;
+            color: #a0a8b8;
+        }
+
         /* elevation chart */
         .elev-chart-wrap {
             padding: 14px 20px;
@@ -401,7 +471,8 @@
                 <input type="text" id="originInput" placeholder="Enter starting address..." autocomplete="off" />
                 <div class="autocomplete-list" id="originAC"></div>
             </div>
-            <button class="swap-btn" id="swapBtn" title="Swap origin &amp; destination">&#8645;</button>
+            <div id="stopsContainer"></div>
+            <button class="add-stop-btn" id="addStopBtn" type="button">+ Add Stop</button>
             <div class="input-group" id="destGroup">
                 <label>Destination</label>
                 <input type="text" id="destInput" placeholder="Enter destination address..." autocomplete="off" />
@@ -421,6 +492,7 @@
                 <svg viewBox="0 0 24 24" fill="none"><path d="M21 3L3 10.5l6.5 2L12 21l9-18z" fill="white"/></svg>
                 Start Driving — Apple Maps
             </a>
+            <div id="evExplain" class="ev-explain" style="display:none;"></div>
             <div class="share-row" id="shareRow" style="display:none;">
                 <a id="shareEmail" class="share-btn" href="#" target="_blank">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4L12 13 2 4"/></svg>
@@ -447,6 +519,7 @@
         <div class="empty-state" id="emptyState">
             <div class="icon">&#9889;</div>
             <p>Enter an origin and destination to find<br>the most battery-efficient route for your EV.<br><br>
+            Add stops to plan multi-leg trips.<br>
             Routes are scored by <strong>elevation gain</strong><br>balanced with <strong>trip time</strong>.</p>
         </div>
     </div>
@@ -458,6 +531,11 @@
             <div class="leg-row"><div class="leg-swatch" style="background:#34d399;"></div> EV Best Route</div>
             <div class="leg-row"><div class="leg-swatch" style="background:#60a5fa;"></div> Fastest Route</div>
             <div class="leg-row"><div class="leg-swatch" style="background:#6b7280;"></div> Alternative</div>
+            <div style="border-top:1px solid #2d3040; margin:6px 0 4px; padding-top:6px; font-size:11px; color:#8b8fa3;">Elevation Gradient</div>
+            <div class="leg-row"><div class="leg-swatch" style="background:#22c55e;"></div> Downhill (regen)</div>
+            <div class="leg-row"><div class="leg-swatch" style="background:#a3e635;"></div> Flat</div>
+            <div class="leg-row"><div class="leg-swatch" style="background:#fbbf24;"></div> Slight uphill</div>
+            <div class="leg-row"><div class="leg-swatch" style="background:#ef4444;"></div> Steep uphill</div>
         </div>
         <div class="loading-overlay hidden" id="loadingOverlay">
             <div class="spinner"></div>
@@ -495,11 +573,16 @@ let routeLayers = [];
 let routesData = [];
 let selectedRouteIdx = 0;
 
+// Multi-stop state: array of { coord, marker, inputEl, acEl }
+let stops = [];
+let stopIdCounter = 0;
+
 const originInput = document.getElementById('originInput');
 const destInput = document.getElementById('destInput');
 const originAC = document.getElementById('originAC');
 const destAC = document.getElementById('destAC');
 const planBtn = document.getElementById('planBtn');
+const stopsContainer = document.getElementById('stopsContainer');
 
 // ─── Geocoding (Nominatim) ───
 let acTimeout = null;
@@ -556,43 +639,114 @@ function setDest(coord) {
 function fitMarkers() {
     const pts = [];
     if (originCoord) pts.push(originCoord);
+    stops.forEach(s => { if (s.coord) pts.push(s.coord); });
     if (destCoord) pts.push(destCoord);
-    if (pts.length === 2) map.fitBounds(L.latLngBounds(pts).pad(0.3));
+    if (pts.length >= 2) map.fitBounds(L.latLngBounds(pts).pad(0.3));
     else if (pts.length === 1) map.setView(pts[0], 13);
 }
 
 setupAutocomplete(originInput, originAC, setOrigin);
 setupAutocomplete(destInput, destAC, setDest);
 
-function updatePlanBtn() {
-    planBtn.disabled = !(originCoord && destCoord);
+// ─── Multi-stop management ───
+const stopColors = ['#a78bfa', '#f472b6', '#fbbf24', '#fb923c', '#38bdf8', '#c084fc', '#4ade80', '#f87171'];
+
+function addStop() {
+    const id = stopIdCounter++;
+    const colorIdx = stops.length % stopColors.length;
+    const color = stopColors[colorIdx];
+    const label = String.fromCharCode(66 + stops.length); // B, C, D, ...
+
+    const row = document.createElement('div');
+    row.className = 'stop-row';
+    row.dataset.stopId = id;
+    row.innerHTML = `
+        <div class="input-group" id="stopGroup_${id}">
+            <label>Stop ${label}</label>
+            <input type="text" id="stopInput_${id}" placeholder="Enter stop address..." autocomplete="off" />
+            <div class="autocomplete-list" id="stopAC_${id}"></div>
+        </div>
+        <button class="remove-stop-btn" title="Remove stop" data-stop-id="${id}">&times;</button>
+    `;
+    stopsContainer.appendChild(row);
+
+    const inputEl = document.getElementById(`stopInput_${id}`);
+    const acEl = document.getElementById(`stopAC_${id}`);
+
+    const stopObj = { id, coord: null, marker: null, inputEl, acEl, color };
+    stops.push(stopObj);
+
+    setupAutocomplete(inputEl, acEl, (coord) => {
+        stopObj.coord = coord;
+        if (stopObj.marker) map.removeLayer(stopObj.marker);
+        stopObj.marker = L.circleMarker(coord, {
+            radius: 7, color: color, fillColor: color, fillOpacity: 1, weight: 2
+        }).bindTooltip(`Stop ${label}`, { permanent: false }).addTo(map);
+        fitMarkers();
+        updatePlanBtn();
+    });
+
+    row.querySelector('.remove-stop-btn').addEventListener('click', () => removeStop(id));
+    renumberStops();
+    updatePlanBtn();
 }
 
-// ─── Swap ───
-document.getElementById('swapBtn').addEventListener('click', () => {
-    const tmpVal = originInput.value; originInput.value = destInput.value; destInput.value = tmpVal;
-    const tmpC = originCoord; originCoord = destCoord; destCoord = tmpC;
-    if (originMarker) map.removeLayer(originMarker);
-    if (destMarker) map.removeLayer(destMarker);
-    originMarker = destMarker = null;
-    if (originCoord) setOrigin(originCoord);
-    if (destCoord) setDest(destCoord);
+function removeStop(id) {
+    const idx = stops.findIndex(s => s.id === id);
+    if (idx === -1) return;
+    const stop = stops[idx];
+    if (stop.marker) map.removeLayer(stop.marker);
+    stops.splice(idx, 1);
+    const row = stopsContainer.querySelector(`[data-stop-id="${id}"]`);
+    if (row) row.remove();
+    renumberStops();
+    fitMarkers();
     updatePlanBtn();
-});
+}
+
+function renumberStops() {
+    stops.forEach((s, i) => {
+        const label = String.fromCharCode(66 + i); // B, C, D, ...
+        const group = document.getElementById(`stopGroup_${s.id}`);
+        if (group) group.querySelector('label').textContent = `Stop ${label}`;
+        s.color = stopColors[i % stopColors.length];
+        if (s.marker && s.coord) {
+            map.removeLayer(s.marker);
+            s.marker = L.circleMarker(s.coord, {
+                radius: 7, color: s.color, fillColor: s.color, fillOpacity: 1, weight: 2
+            }).bindTooltip(`Stop ${label}`, { permanent: false }).addTo(map);
+        }
+    });
+}
+
+document.getElementById('addStopBtn').addEventListener('click', addStop);
+
+function updatePlanBtn() {
+    const allStopsSet = stops.every(s => s.coord !== null);
+    planBtn.disabled = !(originCoord && destCoord && allStopsSet);
+}
 
 // ─── Route Planning ───
 planBtn.addEventListener('click', planRoutes);
 
 async function planRoutes() {
     if (!originCoord || !destCoord) return;
+    if (!stops.every(s => s.coord !== null)) return;
 
     showLoading('Fetching routes...');
     clearRoutes();
     document.getElementById('emptyState').style.display = 'none';
 
     try {
+        // Build coordinate chain: origin → stops → destination
+        const allPoints = [originCoord, ...stops.map(s => s.coord), destCoord];
+        const coordStr = allPoints.map(c => `${c[1]},${c[0]}`).join(';');
+
         // 1) Get alternative routes from OSRM
-        const routeUrl = `https://router.project-osrm.org/route/v1/driving/${originCoord[1]},${originCoord[0]};${destCoord[1]},${destCoord[0]}?overview=full&geometries=geojson&alternatives=3&steps=true`;
+        // Note: OSRM only returns alternatives when there are exactly 2 waypoints
+        const hasStops = stops.length > 0;
+        const altParam = hasStops ? '' : '&alternatives=3';
+        const routeUrl = `https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson${altParam}&steps=true`;
         const routeResp = await fetch(routeUrl);
         const routeData = await routeResp.json();
 
@@ -817,6 +971,8 @@ function displayRoutes(routes) {
     document.getElementById('mapLegend').style.display = 'block';
 }
 
+let elevColorLayers = [];
+
 function selectRoute(idx) {
     selectedRouteIdx = idx;
 
@@ -835,12 +991,109 @@ function selectRoute(idx) {
         if (isSelected) rl.layer.bringToFront();
     });
 
+    // Draw elevation-colored overlay on selected route
+    drawElevColorOverlay(routesData[idx]);
+
     // Draw elevation chart
     drawElevationChart(routesData[idx]);
     document.getElementById('elevSection').style.display = 'block';
 
+    // Show EV efficiency explanation
+    showEvExplanation(routesData[idx], routesData);
+
     // Build map app links with waypoints to follow this route
     updateMapLinks(routesData[idx]);
+}
+
+// ─── Elevation-colored route overlay ───
+// Colors route segments by gradient: green=downhill, yellow=flat, red=uphill
+function drawElevColorOverlay(route) {
+    // Remove previous overlay
+    elevColorLayers.forEach(l => map.removeLayer(l));
+    elevColorLayers = [];
+
+    const sampled = route.sampled;
+    const elev = route.elevations;
+    if (sampled.length < 2 || elev.length < 2) return;
+
+    for (let i = 0; i < sampled.length - 1; i++) {
+        const from = [sampled[i][1], sampled[i][0]];
+        const to = [sampled[i+1][1], sampled[i+1][0]];
+        const diff = elev[i+1] - elev[i];
+
+        // Calculate color based on gradient
+        let color;
+        if (diff > 5) color = '#ef4444';       // steep uphill — red (bad for EV)
+        else if (diff > 2) color = '#f97316';   // moderate uphill — orange
+        else if (diff > 0) color = '#fbbf24';   // slight uphill — yellow
+        else if (diff > -2) color = '#a3e635';   // flat/slight downhill — lime
+        else color = '#22c55e';                  // downhill — green (regen braking)
+
+        const seg = L.polyline([from, to], {
+            color: color,
+            weight: 7,
+            opacity: 0.85
+        }).addTo(map);
+        elevColorLayers.push(seg);
+    }
+
+    // Bring overlay to front
+    elevColorLayers.forEach(l => l.bringToFront());
+}
+
+// ─── EV Efficiency Explanation ───
+function showEvExplanation(route, allRoutes) {
+    const el = document.getElementById('evExplain');
+    el.style.display = 'block';
+
+    const isBest = allRoutes.indexOf(route) === 0;
+    const bestRoute = allRoutes[0];
+
+    // Calculate estimated energy
+    // Rough EV energy model: ~0.3 kWh/mi base + ~0.01 kWh per meter of elevation gain
+    const baseConsumption = route.distMi * 0.3;
+    const elevCost = route.gain * 0.01;
+    const regenRecovery = route.loss * 0.005; // ~50% regen efficiency
+    const estEnergy = baseConsumption + elevCost - regenRecovery;
+    const estRange = route.distMi / estEnergy * 100; // est. efficiency as mi/kWh scaled
+
+    // Compare vs worst route
+    const worstGain = Math.max(...allRoutes.map(r => r.gain));
+    const savedElev = worstGain - route.gain;
+    const savedEnergy = savedElev * 0.01;
+
+    // Net elevation (start vs end)
+    const netElev = route.elevations.length ? route.elevations[route.elevations.length - 1] - route.elevations[0] : 0;
+
+    let explanation = `<h3>Why this route?</h3>`;
+    explanation += `<div class="ev-stat-row"><span class="ev-label">Elevation gain</span><span class="ev-value ${isBest ? 'good' : ''}">${Math.round(route.gain)}m (+${Math.round(route.gain * 3.281)}ft)</span></div>`;
+    explanation += `<div class="ev-stat-row"><span class="ev-label">Elevation loss (regen)</span><span class="ev-value good">-${Math.round(route.loss)}m (-${Math.round(route.loss * 3.281)}ft)</span></div>`;
+    explanation += `<div class="ev-stat-row"><span class="ev-label">Net elevation change</span><span class="ev-value">${netElev >= 0 ? '+' : ''}${Math.round(netElev)}m</span></div>`;
+    explanation += `<div class="ev-stat-row"><span class="ev-label">Est. energy use</span><span class="ev-value">${estEnergy.toFixed(1)} kWh</span></div>`;
+    explanation += `<div class="ev-stat-row"><span class="ev-label">Est. efficiency</span><span class="ev-value">${(route.distMi / estEnergy).toFixed(1)} mi/kWh</span></div>`;
+
+    if (allRoutes.length > 1 && savedElev > 5) {
+        explanation += `<div class="ev-stat-row"><span class="ev-label">Elev saved vs worst</span><span class="ev-value good">-${Math.round(savedElev)}m (≈${savedEnergy.toFixed(1)} kWh)</span></div>`;
+    }
+
+    explanation += `<div class="ev-tip">`;
+    if (isBest) {
+        explanation += `This route minimizes climbing while keeping travel time reasonable. `;
+        explanation += `Less uphill = less energy spent fighting gravity. `;
+        if (route.loss > route.gain * 0.5) {
+            explanation += `Significant downhill sections allow regenerative braking to recover energy.`;
+        }
+    } else {
+        const extraGain = route.gain - bestRoute.gain;
+        explanation += `This route has ${Math.round(extraGain)}m more climbing than the EV Best route, `;
+        explanation += `which costs roughly ${(extraGain * 0.01).toFixed(1)} kWh more energy. `;
+        if (route.durMin < bestRoute.durMin) {
+            explanation += `However, it's ${Math.round(bestRoute.durMin - route.durMin)} min faster.`;
+        }
+    }
+    explanation += `</div>`;
+
+    el.innerHTML = explanation;
 }
 
 // ─── Sample waypoints from route for map app links ───
@@ -873,30 +1126,42 @@ function updateMapLinks(route) {
 
     const origin = `${originCoord[0]},${originCoord[1]}`;
     const dest = `${destCoord[0]},${destCoord[1]}`;
-    const waypoints = sampleRouteWaypoints(route, 8);
+
+    // Build waypoints: user-defined stops + sampled route waypoints
+    const userStops = stops.filter(s => s.coord).map(s => `${s.coord[0]},${s.coord[1]}`);
+    const routeWps = sampleRouteWaypoints(route, Math.max(2, 8 - userStops.length));
+    const allWaypoints = [...userStops, ...routeWps.map(w => `${w.lat},${w.lng}`)];
 
     // ── Google Maps URL ──
     let gWaypoints = '';
-    if (waypoints.length) {
-        gWaypoints = `&waypoints=${waypoints.map(w => `${w.lat},${w.lng}`).join('|')}`;
+    if (allWaypoints.length) {
+        gWaypoints = `&waypoints=${allWaypoints.join('|')}`;
     }
     gmapsLink.href = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}${gWaypoints}&travelmode=driving&dir_action=navigate`;
     gmapsLink.style.display = 'flex';
 
     // ── Apple Maps URL ──
-    // Use simple origin→destination without waypoints so Apple Maps shows the "Go" button
-    // (Adding intermediate stops via +to: causes Apple Maps to show "Steps" instead of "Go")
-    const appleUrl = `https://maps.apple.com/?saddr=${origin}&daddr=${dest}&dirflg=d&t=m`;
-    amapsLink.href = appleUrl;
+    if (userStops.length) {
+        // With user stops, build the chained daddr format
+        const wpChain = [...userStops, dest].join('+to:');
+        const appleUrl = `https://maps.apple.com/?saddr=${origin}&daddr=${wpChain}&dirflg=d&t=m`;
+        amapsLink.href = appleUrl;
+    } else {
+        // Simple origin→destination so Apple Maps shows the "Go" button
+        amapsLink.href = `https://maps.apple.com/?saddr=${origin}&daddr=${dest}&dirflg=d&t=m`;
+    }
     amapsLink.style.display = 'flex';
 
     // ── Share links (Email, Text, Copy) ──
     const gmapsUrl = gmapsLink.href;
+    const appleUrl = amapsLink.href;
     const originName = document.getElementById('originInput').value.split(',')[0];
     const destName = document.getElementById('destInput').value.split(',')[0];
-    const subject = encodeURIComponent(`EV Route: ${originName} → ${destName}`);
+    const stopNames = stops.filter(s => s.inputEl.value).map(s => s.inputEl.value.split(',')[0]);
+    const routeDesc = [originName, ...stopNames, destName].join(' → ');
+    const subject = encodeURIComponent(`EV Route: ${routeDesc}`);
     const body = encodeURIComponent(
-        `Here's an EV-optimized route from ${originName} to ${destName}:\n\n` +
+        `Here's an EV-optimized route: ${routeDesc}\n\n` +
         `Distance: ${route.distMi.toFixed(1)} mi\n` +
         `Time: ${formatDuration(route.durMin)}\n` +
         `Elevation gain: +${Math.round(route.gain)}m\n\n` +
@@ -914,9 +1179,11 @@ document.getElementById('shareCopy').addEventListener('click', async () => {
     const gmapsUrl = document.getElementById('gmapsLink').href;
     const originName = document.getElementById('originInput').value.split(',')[0];
     const destName = document.getElementById('destInput').value.split(',')[0];
+    const stopNames = stops.filter(s => s.inputEl.value).map(s => s.inputEl.value.split(',')[0]);
+    const routeDesc = [originName, ...stopNames, destName].join(' → ');
     const route = routesData[selectedRouteIdx];
     const text =
-        `EV Route: ${originName} → ${destName}\n` +
+        `EV Route: ${routeDesc}\n` +
         `${route.distMi.toFixed(1)} mi · ${formatDuration(route.durMin)} · +${Math.round(route.gain)}m gain\n\n` +
         `Google Maps: ${gmapsUrl}\n` +
         `Apple Maps: ${document.getElementById('amapsLink').href}`;
@@ -1037,8 +1304,11 @@ function formatDuration(min) {
 
 function clearRoutes() {
     clearRouteLayers();
+    elevColorLayers.forEach(l => map.removeLayer(l));
+    elevColorLayers = [];
     document.getElementById('routeResults').style.display = 'none';
     document.getElementById('elevSection').style.display = 'none';
+    document.getElementById('evExplain').style.display = 'none';
     document.getElementById('mapLegend').style.display = 'none';
     document.getElementById('gmapsLink').style.display = 'none';
     document.getElementById('amapsLink').style.display = 'none';
