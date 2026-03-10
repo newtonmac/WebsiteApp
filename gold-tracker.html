@@ -276,6 +276,7 @@
         .data-status .source-coingecko { background: #8dc63f20; color: #8dc63f; }
         .data-status .source-yahoo { background: #6d28d920; color: #c084fc; }
         .data-status .source-twelvedata { background: #10b98120; color: #34d399; }
+        .data-status .source-metals\.live { background: #e0e0e020; color: #e0e0e0; }
 
         .nav-link {
             display: inline-block;
@@ -296,7 +297,7 @@
 <body>
     <div class="header">
         <h1>Gold, Silver &amp; Bitcoin Tracker</h1>
-        <p>Live data &bull; CoinGecko, Yahoo &amp; Twelve Data &bull; Updated daily</p>
+        <p>Live data &bull; CoinGecko, Yahoo, Twelve Data &amp; metals.live &bull; Daily + Intraday</p>
         <a href="index.html" class="nav-link">&larr; Oil Tracker</a>
         <a href="currency-tracker.html" class="nav-link">MXN/USD Tracker &rarr;</a>
         <a href="flight-tracker.html" class="nav-link">Flight Tracker &rarr;</a>
@@ -336,6 +337,8 @@
         let goldPrices = [];
         let silverPrices = [];
         let bitcoinPrices = [];
+        let intradaySilver = [];
+        let intradayBitcoin = [];
         let selectedType = 'gold';
         let selectedRange = 30;
         let chart = null;
@@ -356,7 +359,8 @@
             btn.addEventListener('click', () => {
                 document.querySelectorAll('#timeRange button').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                selectedRange = btn.dataset.range === 'ytd' ? 'ytd' : parseInt(btn.dataset.range);
+                const r = btn.dataset.range;
+                selectedRange = r === 'ytd' ? 'ytd' : parseInt(r);
                 render();
             });
         });
@@ -481,6 +485,49 @@
             return [];
         }
 
+        // Intraday Bitcoin from CoinGecko (days=1 gives ~5-min intervals)
+        async function fetchIntradayBitcoin() {
+            try {
+                const resp = await fetch(
+                    'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1'
+                );
+                if (!resp.ok) throw new Error('CoinGecko HTTP ' + resp.status);
+                const json = await resp.json();
+                if (json.prices) {
+                    return json.prices.map(([timestamp, price]) => ({
+                        date: new Date(timestamp).toISOString().replace('Z', '').slice(0, 19),
+                        price,
+                        source: 'CoinGecko'
+                    }));
+                }
+            } catch (e) {
+                console.warn('CoinGecko intraday failed:', e.message);
+            }
+            return [];
+        }
+
+        // Intraday silver from metals.live
+        async function fetchIntradaySilver() {
+            try {
+                const resp = await fetch('https://api.metals.live/v1/spot/silver');
+                if (!resp.ok) throw new Error('metals.live HTTP ' + resp.status);
+                const data = await resp.json();
+                if (Array.isArray(data)) {
+                    return data
+                        .filter(d => d.timestamp && d.price)
+                        .map(d => ({
+                            date: new Date(d.timestamp * 1000).toISOString().replace('Z', '').slice(0, 19),
+                            price: parseFloat(d.price),
+                            source: 'metals.live'
+                        }))
+                        .sort((a, b) => a.date.localeCompare(b.date));
+                }
+            } catch (e) {
+                console.warn('metals.live silver intraday failed:', e.message);
+            }
+            return [];
+        }
+
         async function fetchAllPrices() {
             document.getElementById('content').innerHTML = `
                 <div class="loading">
@@ -494,7 +541,8 @@
                 const [btcResult, yahooGold, yahooSilver, yahooBtc, tdGold, tdBtc,
                        g1D, g1W, g1M, g3M, g6M, g1Y,
                        s1D, s1W, s1M, s3M, s6M, s1Y,
-                       b1D, b1W, b1M, b3M, b6M, b1Y] = await Promise.allSettled([
+                       b1D, b1W, b1M, b3M, b6M, b1Y,
+                       idSilver, idBtc] = await Promise.allSettled([
                     fetchBitcoin(),
                     fetchYahooFinance('GC=F'),
                     fetchYahooFinance('SI=F'),
@@ -521,7 +569,10 @@
                     fetchYahooGranular('BTC-USD', '1mo', '1h',  30),
                     fetchYahooGranular('BTC-USD', '3mo', '1h',  90),
                     fetchYahooGranular('BTC-USD', '6mo', '1h',  180),
-                    fetchYahooGranular('BTC-USD', '1y',  '1h',  365)
+                    fetchYahooGranular('BTC-USD', '1y',  '1h',  365),
+                    // Intraday silver & bitcoin (fallback sources)
+                    fetchIntradaySilver(),
+                    fetchIntradayBitcoin()
                 ]);
 
                 const val = r => r.status === 'fulfilled' ? r.value : [];
@@ -554,6 +605,13 @@
                 if (btcData.length > 0) dataSources.push('CoinGecko');
                 if (yahooGoldData.length > 0 || yahooSilverData.length > 0 || yahooBtcData.length > 0) dataSources.push('Yahoo');
                 if (tdGoldData.length > 0 || tdBtcData.length > 0) dataSources.push('TwelveData');
+
+                // Intraday for silver & bitcoin
+                intradaySilver = val(idSilver);
+                intradayBitcoin = val(idBtc);
+                if (intradaySilver.length > 0) {
+                    if (!dataSources.includes('metals.live')) dataSources.push('metals.live');
+                }
 
                 // Merge: Yahoo first (most reliable), then Twelve Data, then CoinGecko
                 goldPrices = mergePrices(yahooGoldData, tdGoldData);
@@ -593,6 +651,13 @@
                     const ytdCutoff = new Date(new Date().getFullYear(), 0, 1);
                     return granular[365].filter(p => new Date(p.date) >= ytdCutoff);
                 }
+            }
+            // Intraday silver/bitcoin for 1D
+            if (selectedRange === 1 && selectedType === 'silver' && intradaySilver.length > 0) {
+                return intradaySilver;
+            }
+            if (selectedRange === 1 && selectedType === 'bitcoin' && intradayBitcoin.length > 0) {
+                return intradayBitcoin;
             }
             // Fallback to daily data
             const typeMap = { gold: goldPrices, silver: silverPrices, bitcoin: bitcoinPrices };
@@ -640,7 +705,7 @@
 
             document.getElementById('content').innerHTML = `
                 <div class="data-status">
-                    <div>Latest data: <strong>${latestDate}</strong> &bull; Updated: <strong>${updatedStr}</strong></div>
+                    <div>Latest data: <strong>${selectedRange === 1 ? new Date(latestDate).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : latestDate}</strong>${selectedRange === 1 ? ' (intraday)' : ''} &bull; Updated: <strong>${updatedStr}</strong></div>
                     <div>Sources: ${sourcesTags}</div>
                 </div>
                 <div class="price-hero">
@@ -694,7 +759,7 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>Date</th>
+                                <th>${selectedRange === 1 ? 'Time' : 'Date'}</th>
                                 <th>Price</th>
                                 <th>Change</th>
                             </tr>
@@ -730,10 +795,10 @@
                 </div>
             `;
 
-            renderChart(prices, color);
+            renderChart(prices, color, selectedRange === 1);
         }
 
-        function renderChart(prices, color) {
+        function renderChart(prices, color, intraday) {
             const ctx = document.getElementById('priceChart').getContext('2d');
 
             if (chart) chart.destroy();
@@ -786,11 +851,9 @@
                         x: {
                             type: 'time',
                             time: (() => {
-                                const granular = yahooGranularData[selectedType] || {};
-                                const useGranular = selectedRange !== 'ytd'
-                                    ? !!granular[selectedRange]
-                                    : !!granular[365];
-                                if (!useGranular) {
+                                // Check if data is intraday (has 'T' in dates)
+                                const hasIntraday = prices.length > 0 && prices[0].date.includes('T');
+                                if (!hasIntraday) {
                                     return {
                                         parser: 'yyyy-MM-dd',
                                         tooltipFormat: 'MMM d, yyyy',
