@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tech Stocks Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f1117;
+            color: #e1e4e8;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1d28, #252836);
+            padding: 24px 32px;
+            border-bottom: 1px solid #2d3040;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .back-btn {
+            width: 36px; height: 36px;
+            display: flex; align-items: center; justify-content: center;
+            background: #252836;
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            color: #8b8fa3;
+            text-decoration: none;
+            font-size: 18px;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .back-btn:hover { background: #2d3040; color: #e1e4e8; }
+
+        .header-text h1 {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-text p {
+            color: #8b8fa3;
+            margin-top: 4px;
+            font-size: 14px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+            align-items: center;
+        }
+
+        .btn-group {
+            display: flex;
+            background: #1a1d28;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #2d3040;
+        }
+
+        .btn-group button {
+            padding: 10px 16px;
+            background: transparent;
+            color: #8b8fa3;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-group button.active {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-group button:hover:not(.active) {
+            color: #e1e4e8;
+            background: #252836;
+        }
+
+        .refresh-btn {
+            padding: 10px 20px;
+            background: #1a1d28;
+            color: #8b8fa3;
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            margin-left: auto;
+        }
+
+        .refresh-btn:hover {
+            background: #252836;
+            color: #e1e4e8;
+        }
+
+        .stock-tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .stock-tab {
+            padding: 8px 16px;
+            background: #1a1d28;
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            color: #8b8fa3;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .stock-tab:hover { background: #252836; color: #e1e4e8; }
+
+        .stock-tab.active {
+            background: var(--tab-color, #3b82f6);
+            border-color: var(--tab-color, #3b82f6);
+            color: white;
+        }
+
+        .price-hero {
+            display: flex;
+            align-items: baseline;
+            gap: 16px;
+            margin-bottom: 24px;
+            padding: 24px;
+            background: #1a1d28;
+            border-radius: 16px;
+            border: 1px solid #2d3040;
+            flex-wrap: wrap;
+        }
+
+        .price-hero .stock-label {
+            font-size: 16px;
+            color: #8b8fa3;
+        }
+
+        .price-hero .current-price {
+            font-size: 48px;
+            font-weight: 700;
+        }
+
+        .price-hero .price-change {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .price-hero .price-change.up { color: #34d399; }
+        .price-hero .price-change.down { color: #f87171; }
+
+        .chart-container {
+            background: #1a1d28;
+            border-radius: 16px;
+            border: 1px solid #2d3040;
+            padding: 24px;
+            position: relative;
+            height: 350px;
+            margin-bottom: 24px;
+        }
+
+        .chart-container canvas {
+            max-height: 400px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: #1a1d28;
+            border-radius: 16px;
+            border: 1px solid #2d3040;
+            padding: 20px;
+        }
+
+        .stat-card .label {
+            font-size: 13px;
+            color: #8b8fa3;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .stat-card .value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .stat-card .value.green { color: #34d399; }
+        .stat-card .value.red { color: #f87171; }
+        .stat-card .value.blue { color: #60a5fa; }
+        .stat-card .value.purple { color: #a78bfa; }
+        .stat-card .value.amber { color: #fbbf24; }
+
+        .recent-table {
+            background: #1a1d28;
+            border-radius: 16px;
+            border: 1px solid #2d3040;
+            padding: 24px;
+        }
+
+        .recent-table h3 {
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+
+        .recent-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .recent-table th {
+            text-align: left;
+            padding: 10px 12px;
+            color: #8b8fa3;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #2d3040;
+        }
+
+        .recent-table td {
+            padding: 12px;
+            border-bottom: 1px solid #1e2130;
+            font-size: 14px;
+        }
+
+        .recent-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .data-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 12px 20px;
+            background: #1a1d28;
+            border-radius: 12px;
+            border: 1px solid #2d3040;
+            margin-bottom: 24px;
+            font-size: 13px;
+            color: #8b8fa3;
+        }
+
+        .data-status .source-tag {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: #6d28d920;
+            color: #c084fc;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: #8b8fa3;
+            font-size: 16px;
+        }
+
+        .loading .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #2d3040;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .error-msg {
+            background: #1a1d28;
+            border: 1px solid #f8717133;
+            color: #f87171;
+            padding: 12px 20px;
+            border-radius: 10px;
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+
+        /* Overview cards grid */
+        .overview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .overview-card {
+            background: #1a1d28;
+            border-radius: 16px;
+            border: 1px solid #2d3040;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .overview-card:hover {
+            border-color: #3b82f6;
+            transform: translateY(-2px);
+        }
+
+        .overview-card .ticker {
+            font-size: 14px;
+            font-weight: 700;
+            color: #8b8fa3;
+            margin-bottom: 4px;
+        }
+
+        .overview-card .company {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 10px;
+        }
+
+        .overview-card .ov-price {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .overview-card .ov-change {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .overview-card .ov-change.up { color: #34d399; }
+        .overview-card .ov-change.down { color: #f87171; }
+
+        @media (max-width: 600px) {
+            .header { padding: 16px; }
+            .header-text h1 { font-size: 22px; }
+            .container { padding: 16px; }
+            .controls { gap: 8px; }
+            .btn-group button { padding: 8px 12px; font-size: 12px; }
+            .price-hero .current-price { font-size: 36px; }
+            .overview-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .overview-card { padding: 14px; }
+            .overview-card .ov-price { font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="index.html" class="back-btn">&#8592;</a>
+        <div class="header-text">
+            <h1>Tech Stocks Tracker</h1>
+            <p>Live data &bull; Intraday &amp; historical &bull; Major tech companies</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="controls">
+            <div class="stock-tabs" id="stockTabs">
+                <button class="stock-tab active" data-symbol="NVDA" style="--tab-color: #76b900;">NVDA</button>
+                <button class="stock-tab" data-symbol="MSFT" style="--tab-color: #00a4ef;">MSFT</button>
+                <button class="stock-tab" data-symbol="AAPL" style="--tab-color: #a2aaad;">AAPL</button>
+                <button class="stock-tab" data-symbol="GOOGL" style="--tab-color: #4285f4;">GOOGL</button>
+                <button class="stock-tab" data-symbol="AMZN" style="--tab-color: #ff9900;">AMZN</button>
+                <button class="stock-tab" data-symbol="META" style="--tab-color: #0668e1;">META</button>
+                <button class="stock-tab" data-symbol="TSLA" style="--tab-color: #cc0000;">TSLA</button>
+                <button class="stock-tab" data-symbol="AVGO" style="--tab-color: #cc092f;">AVGO</button>
+                <button class="stock-tab" data-symbol="TSM" style="--tab-color: #e30613;">TSM</button>
+                <button class="stock-tab" data-symbol="AMD" style="--tab-color: #ed1c24;">AMD</button>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="btn-group" id="timeRange">
+                <button class="active" data-range="1d" data-interval="5m">1D</button>
+                <button data-range="5d" data-interval="15m">5D</button>
+                <button data-range="1mo" data-interval="1h">1M</button>
+                <button data-range="3mo" data-interval="1d">3M</button>
+                <button data-range="6mo" data-interval="1d">6M</button>
+                <button data-range="ytd" data-interval="1d">YTD</button>
+                <button data-range="1y" data-interval="1d">1Y</button>
+            </div>
+            <button class="refresh-btn" id="refreshBtn">&#x21bb; Refresh</button>
+        </div>
+
+        <!-- Overview cards for all stocks -->
+        <div class="overview-grid" id="overviewGrid"></div>
+
+        <div id="content">
+            <div class="loading">
+                <div class="spinner"></div>
+                Loading tech stock data...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const STOCKS = {
+            NVDA:  { name: 'NVIDIA Corp.',     color: '#76b900' },
+            MSFT:  { name: 'Microsoft Corp.',  color: '#00a4ef' },
+            AAPL:  { name: 'Apple Inc.',       color: '#a2aaad' },
+            GOOGL: { name: 'Alphabet Inc.',    color: '#4285f4' },
+            AMZN:  { name: 'Amazon.com Inc.',  color: '#ff9900' },
+            META:  { name: 'Meta Platforms',   color: '#0668e1' },
+            TSLA:  { name: 'Tesla Inc.',       color: '#cc0000' },
+            AVGO:  { name: 'Broadcom Inc.',    color: '#cc092f' },
+            TSM:   { name: 'Taiwan Semi.',     color: '#e30613' },
+            AMD:   { name: 'AMD Inc.',         color: '#ed1c24' }
+        };
+
+        const CORS_PROXIES = [
+            url => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
+            url => 'https://corsproxy.io/?' + encodeURIComponent(url)
+        ];
+
+        let selectedSymbol = 'NVDA';
+        let selectedRange = '1d';
+        let selectedInterval = '5m';
+        let chart = null;
+        let stockCache = {};
+        let overviewCache = {};
+        let lastUpdated = null;
+
+        // Stock tab clicks
+        document.getElementById('stockTabs').addEventListener('click', e => {
+            const btn = e.target.closest('.stock-tab');
+            if (!btn) return;
+            document.querySelectorAll('.stock-tab').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            selectedSymbol = btn.dataset.symbol;
+            fetchAndRender();
+        });
+
+        // Time range clicks
+        document.getElementById('timeRange').addEventListener('click', e => {
+            const btn = e.target.closest('button');
+            if (!btn || !btn.dataset.range) return;
+            document.querySelectorAll('#timeRange button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            selectedRange = btn.dataset.range;
+            selectedInterval = btn.dataset.interval;
+            fetchAndRender();
+        });
+
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            stockCache = {};
+            overviewCache = {};
+            fetchAndRender();
+            fetchOverview();
+        });
+
+        async function fetchYahoo(symbol, range, interval) {
+            const cacheKey = `${symbol}_${range}_${interval}`;
+            if (stockCache[cacheKey]) return stockCache[cacheKey];
+
+            const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`;
+
+            for (const proxyFn of CORS_PROXIES) {
+                try {
+                    const resp = await fetch(proxyFn(targetUrl));
+                    const json = await resp.json();
+                    if (json.chart && json.chart.result && json.chart.result[0]) {
+                        const result = json.chart.result[0];
+                        const meta = result.meta || {};
+                        const timestamps = result.timestamp || [];
+                        const quote = result.indicators.quote[0] || {};
+                        const closes = quote.close || [];
+                        const opens = quote.open || [];
+                        const highs = quote.high || [];
+                        const lows = quote.low || [];
+                        const volumes = quote.volume || [];
+
+                        const prices = timestamps.map((ts, i) => ({
+                            date: new Date(ts * 1000).toISOString().replace('Z', '').slice(0, 19),
+                            price: closes[i],
+                            open: opens[i],
+                            high: highs[i],
+                            low: lows[i],
+                            volume: volumes[i]
+                        })).filter(p => p.price != null && !isNaN(p.price) && p.price > 0);
+
+                        const data = {
+                            prices,
+                            meta: {
+                                previousClose: meta.chartPreviousClose || meta.previousClose,
+                                regularMarketPrice: meta.regularMarketPrice,
+                                currency: meta.currency || 'USD'
+                            }
+                        };
+
+                        stockCache[cacheKey] = data;
+                        return data;
+                    }
+                } catch (e) {
+                    console.warn(`Proxy failed for ${symbol}:`, e.message);
+                }
+            }
+            return { prices: [], meta: {} };
+        }
+
+        async function fetchOverview() {
+            const grid = document.getElementById('overviewGrid');
+            grid.innerHTML = '';
+
+            const results = await Promise.allSettled(
+                Object.keys(STOCKS).map(async sym => {
+                    const data = await fetchYahoo(sym, '1d', '5m');
+                    return { symbol: sym, data };
+                })
+            );
+
+            results.forEach(r => {
+                if (r.status !== 'fulfilled') return;
+                const { symbol, data } = r.value;
+                if (!data.prices.length) return;
+
+                overviewCache[symbol] = data;
+                const latest = data.prices[data.prices.length - 1];
+                const prevClose = data.meta.previousClose || data.prices[0].price;
+                const change = latest.price - prevClose;
+                const pct = (change / prevClose) * 100;
+                const isUp = change >= 0;
+                const stock = STOCKS[symbol];
+
+                const card = document.createElement('div');
+                card.className = 'overview-card';
+                card.innerHTML = `
+                    <div class="ticker" style="color: ${stock.color};">${symbol}</div>
+                    <div class="company">${stock.name}</div>
+                    <div class="ov-price">$${latest.price.toFixed(2)}</div>
+                    <div class="ov-change ${isUp ? 'up' : 'down'}">
+                        ${isUp ? '&#9650;' : '&#9660;'}
+                        ${change >= 0 ? '+' : ''}${change.toFixed(2)}
+                        (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)
+                    </div>
+                `;
+                card.addEventListener('click', () => {
+                    document.querySelectorAll('.stock-tab').forEach(b => b.classList.remove('active'));
+                    const tab = document.querySelector(`.stock-tab[data-symbol="${symbol}"]`);
+                    if (tab) tab.classList.add('active');
+                    selectedSymbol = symbol;
+                    fetchAndRender();
+                });
+                grid.appendChild(card);
+            });
+        }
+
+        async function fetchAndRender() {
+            document.getElementById('content').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading ${selectedSymbol} data...
+                </div>`;
+
+            try {
+                const data = await fetchYahoo(selectedSymbol, selectedRange, selectedInterval);
+                lastUpdated = new Date();
+
+                if (!data.prices.length) {
+                    document.getElementById('content').innerHTML = `
+                        <div class="error-msg">
+                            No data available for ${selectedSymbol}. Markets may be closed or the API is temporarily unavailable.
+                        </div>`;
+                    return;
+                }
+
+                render(data);
+            } catch (err) {
+                document.getElementById('content').innerHTML = `
+                    <div class="error-msg">Error fetching data: ${err.message}</div>`;
+            }
+        }
+
+        function formatPrice(val) {
+            return '$' + val.toFixed(2);
+        }
+
+        function render(data) {
+            const { prices, meta } = data;
+            const stock = STOCKS[selectedSymbol];
+            const latest = prices[prices.length - 1];
+            const prevClose = meta.previousClose || prices[0].price;
+            const first = prices[0];
+
+            // For intraday (1D), change is vs previous close; otherwise vs first price in range
+            const isIntraday = selectedRange === '1d';
+            const refPrice = isIntraday ? prevClose : first.price;
+            const change = latest.price - refPrice;
+            const pctChange = (change / refPrice) * 100;
+            const isUp = change >= 0;
+
+            const allPrices = prices.map(p => p.price);
+            const high = Math.max(...allPrices);
+            const low = Math.min(...allPrices);
+            const avg = allPrices.reduce((s, v) => s + v, 0) / allPrices.length;
+            const totalVolume = prices.reduce((s, p) => s + (p.volume || 0), 0);
+            const variance = allPrices.reduce((s, v) => s + Math.pow(v - avg, 2), 0) / (allPrices.length - 1);
+            const volatility = (Math.sqrt(variance) / avg) * 100;
+
+            const updatedStr = lastUpdated ? lastUpdated.toLocaleString('en-US', {
+                month: 'short', day: 'numeric', year: 'numeric',
+                hour: 'numeric', minute: '2-digit', hour12: true
+            }) : '-';
+
+            const rangeLabels = { '1d': '1 Day', '5d': '5 Days', '1mo': '1 Month', '3mo': '3 Months', '6mo': '6 Months', 'ytd': 'Year to Date', '1y': '1 Year' };
+
+            document.getElementById('content').innerHTML = `
+                <div class="data-status">
+                    <div>${selectedSymbol} &bull; ${rangeLabels[selectedRange]} &bull; Updated: <strong>${updatedStr}</strong></div>
+                    <div><span class="source-tag">Yahoo Finance</span></div>
+                </div>
+
+                <div class="price-hero">
+                    <div>
+                        <div class="stock-label" style="color: ${stock.color};">${selectedSymbol} &mdash; ${stock.name}</div>
+                        <span class="current-price">${formatPrice(latest.price)}</span>
+                    </div>
+                    <div class="price-change ${isUp ? 'up' : 'down'}">
+                        ${isUp ? '&#9650;' : '&#9660;'}
+                        ${change >= 0 ? '+' : ''}${change.toFixed(2)}
+                        (${pctChange >= 0 ? '+' : ''}${pctChange.toFixed(2)}%)
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="priceChart"></canvas>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="label">High</div>
+                        <div class="value green">${formatPrice(high)}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Low</div>
+                        <div class="value red">${formatPrice(low)}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Average</div>
+                        <div class="value blue">${formatPrice(avg)}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Volatility</div>
+                        <div class="value purple">${volatility.toFixed(2)}%</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Period Change</div>
+                        <div class="value ${change >= 0 ? 'green' : 'red'}">
+                            ${change >= 0 ? '+' : ''}${change.toFixed(2)}
+                            (${pctChange >= 0 ? '+' : ''}${pctChange.toFixed(2)}%)
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Volume</div>
+                        <div class="value amber">${formatVolume(totalVolume)}</div>
+                    </div>
+                </div>
+
+                <div class="recent-table">
+                    <h3>Recent Prices</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>${isIntraday ? 'Time' : 'Date'}</th>
+                                <th>Price</th>
+                                <th>Change</th>
+                                <th>Volume</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${prices.slice(-20).reverse().map((p, i, arr) => {
+                                const next = i < arr.length - 1 ? arr[i + 1] : null;
+                                const dc = next ? p.price - next.price : 0;
+                                const dpct = next ? (dc / next.price) * 100 : 0;
+                                const cls = dc >= 0 ? 'up' : 'down';
+                                const dt = new Date(p.date);
+                                let dateLabel;
+                                if (isIntraday) {
+                                    dateLabel = dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                                } else if (selectedRange === '5d') {
+                                    dateLabel = dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + ' ' +
+                                        dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                                } else {
+                                    dateLabel = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                                }
+                                return `<tr>
+                                    <td>${dateLabel}</td>
+                                    <td><strong>${formatPrice(p.price)}</strong></td>
+                                    <td class="price-change ${cls}">
+                                        ${dc >= 0 ? '+' : ''}${dc.toFixed(2)}
+                                        (${dpct >= 0 ? '+' : ''}${dpct.toFixed(2)}%)
+                                    </td>
+                                    <td>${p.volume ? formatVolume(p.volume) : '-'}</td>
+                                </tr>`;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            renderChart(prices, stock.color);
+        }
+
+        function formatVolume(vol) {
+            if (vol >= 1e9) return (vol / 1e9).toFixed(2) + 'B';
+            if (vol >= 1e6) return (vol / 1e6).toFixed(2) + 'M';
+            if (vol >= 1e3) return (vol / 1e3).toFixed(1) + 'K';
+            return vol.toLocaleString();
+        }
+
+        function renderChart(prices, color) {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+
+            if (chart) chart.destroy();
+
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, color + '40');
+            gradient.addColorStop(1, color + '05');
+
+            const isIntraday = selectedRange === '1d' || selectedRange === '5d';
+            const timeConfig = (() => {
+                if (selectedRange === '1d') {
+                    return {
+                        parser: "yyyy-MM-dd'T'HH:mm:ss",
+                        tooltipFormat: 'h:mm a',
+                        unit: 'hour',
+                        displayFormats: { hour: 'h:mm a', minute: 'h:mm a' }
+                    };
+                }
+                if (selectedRange === '5d') {
+                    return {
+                        parser: "yyyy-MM-dd'T'HH:mm:ss",
+                        tooltipFormat: 'MMM d, h:mm a',
+                        unit: 'day',
+                        displayFormats: { day: 'MMM d', hour: 'MMM d ha' }
+                    };
+                }
+                if (selectedRange === '1mo') {
+                    return {
+                        parser: "yyyy-MM-dd'T'HH:mm:ss",
+                        tooltipFormat: 'MMM d, yyyy h:mm a',
+                        displayFormats: { day: 'MMM d', week: 'MMM d', month: 'MMM yyyy' }
+                    };
+                }
+                return {
+                    parser: "yyyy-MM-dd'T'HH:mm:ss",
+                    tooltipFormat: 'MMM d, yyyy',
+                    displayFormats: { day: 'MMM d', week: 'MMM d', month: 'MMM yyyy' }
+                };
+            })();
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: prices.map(p => p.date),
+                    datasets: [{
+                        label: 'Price (USD)',
+                        data: prices.map(p => p.price),
+                        borderColor: color,
+                        backgroundColor: gradient,
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 0,
+                        pointHitRadius: 10,
+                        pointHoverRadius: 5,
+                        pointHoverBackgroundColor: color
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#252836',
+                            titleColor: '#e1e4e8',
+                            bodyColor: '#e1e4e8',
+                            borderColor: '#2d3040',
+                            borderWidth: 1,
+                            padding: 12,
+                            displayColors: false,
+                            callbacks: {
+                                label: ctx => formatPrice(ctx.parsed.y)
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: timeConfig,
+                            grid: {
+                                color: '#2d304040',
+                                drawBorder: false
+                            },
+                            ticks: { color: '#8b8fa3', maxTicksLimit: 8 }
+                        },
+                        y: {
+                            grid: {
+                                color: '#2d304040',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#8b8fa3',
+                                callback: v => '$' + v.toLocaleString('en-US')
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Initial load
+        fetchOverview();
+        fetchAndRender();
+
+        // Auto-refresh every 60 seconds
+        setInterval(() => {
+            stockCache = {};
+            overviewCache = {};
+            fetchOverview();
+            fetchAndRender();
+        }, 60000);
+    </script>
+</body>
+</html>
