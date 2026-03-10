@@ -669,6 +669,7 @@ gltfLoader.setDRACOLoader(dracoLoader);
 
 let currentModel = null;
 let allNodes = new Map(); // name -> Object3D
+const meshRefData = new Map(); // uuid -> { baseEffScaleX/Y/Z, localSizeX/Y/Z }
 
 function showLoading(msg) {
   document.getElementById('loadingText').textContent = msg || 'Loading 3D Model...';
@@ -729,9 +730,14 @@ function loadSeriesModel(seriesKey) {
       currentModel = model;
       modelGroup.add(model);
 
+      // Store base mesh data for dimension scaling (before any non-uniform scale)
+      modelGroup.scale.set(1, 1, 1);
+      storeBaseMeshData();
+
       // Apply current configuration
       applyAccessoryVisibility();
       applyColors();
+      applyDimensionScale();
 
       // Fit camera
       const finalBox = new THREE.Box3().setFromObject(model);
@@ -857,12 +863,85 @@ function setDim(dim, val) {
   updatePrice();
 }
 
+// Store base effective scale per mesh (called once after model loads, with modelGroup.scale = 1,1,1)
+function storeBaseMeshData() {
+  meshRefData.clear();
+  if (!currentModel) return;
+
+  currentModel.traverse(child => {
+    if (!child.isMesh || !child.geometry) return;
+    child.scale.set(1, 1, 1);
+    child.updateWorldMatrix(true, false);
+
+    const m = child.matrixWorld.elements;
+    if (!child.geometry.boundingBox) child.geometry.computeBoundingBox();
+    const bb = child.geometry.boundingBox;
+    const ls = new THREE.Vector3();
+    bb.getSize(ls);
+
+    meshRefData.set(child.uuid, {
+      bx: Math.sqrt(m[0]*m[0] + m[1]*m[1] + m[2]*m[2]),
+      by: Math.sqrt(m[4]*m[4] + m[5]*m[5] + m[6]*m[6]),
+      bz: Math.sqrt(m[8]*m[8] + m[9]*m[9] + m[10]*m[10]),
+      sx: ls.x, sy: ls.y, sz: ls.z
+    });
+  });
+}
+
 function applyDimensionScale() {
-  // BenchDepot-style: the GLB models are pre-built at correct proportions.
-  // Dimension selection is for ordering/configuration spec, not 3D distortion.
-  // We keep the model at its natural proportions and just update the config summary.
-  // The model group stays at uniform scale 1,1,1.
-  modelGroup.scale.set(1, 1, 1);
+  if (!currentModel) return;
+
+  // Scale ratios relative to base model dimensions (60x30x34)
+  const sx = config.width / 60;
+  const sy = config.height / 34;
+  const sz = config.depth / 30;
+
+  // Apply non-uniform scale at modelGroup (no rotation here, clean world-axis scale)
+  modelGroup.scale.set(sx, sy, sz);
+
+  // Compensate tube cross-sections and surface thickness
+  // so only lengths change while profiles stay constant (e.g. 2"x1" tubing)
+  currentModel.traverse(child => {
+    if (!child.isMesh) return;
+    const ref = meshRefData.get(child.uuid);
+    if (!ref) return;
+
+    // Reset mesh scale so world matrix reflects only parent transforms
+    child.scale.set(1, 1, 1);
+    child.updateWorldMatrix(true, false);
+
+    // Measure current effective scale per local axis from world matrix columns
+    const m = child.matrixWorld.elements;
+    const cx = Math.sqrt(m[0]*m[0] + m[1]*m[1] + m[2]*m[2]);
+    const cy = Math.sqrt(m[4]*m[4] + m[5]*m[5] + m[6]*m[6]);
+    const cz = Math.sqrt(m[8]*m[8] + m[9]*m[9] + m[10]*m[10]);
+
+    // Sort local axes by geometry size to classify shape
+    const dims = [
+      { a: 'x', size: ref.sx, base: ref.bx, cur: cx },
+      { a: 'y', size: ref.sy, base: ref.by, cur: cy },
+      { a: 'z', size: ref.sz, base: ref.bz, cur: cz }
+    ].sort((a, b) => b.size - a.size);
+
+    const r01 = dims[0].size / Math.max(dims[1].size, 0.0001);
+    const r12 = dims[1].size / Math.max(dims[2].size, 0.0001);
+
+    const comp = { x: 1, y: 1, z: 1 };
+
+    if (r01 > 3 && r12 < 3) {
+      // TUBE: one long axis, two short cross-section axes
+      // Restore cross-section to base scale (keeps 2"x1" profile)
+      comp[dims[1].a] = dims[1].base / dims[1].cur;
+      comp[dims[2].a] = dims[2].base / dims[2].cur;
+    } else if (r01 < 3 && r12 > 5) {
+      // FLAT SURFACE: two large axes, one thin axis
+      // Restore thickness to base scale
+      comp[dims[2].a] = dims[2].base / dims[2].cur;
+    }
+    // else: roughly cubic (bolts, knobs, etc.) - scale naturally
+
+    child.scale.set(comp.x, comp.y, comp.z);
+  });
 }
 
 // ============ Feature Toggles ============
