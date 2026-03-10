@@ -98,26 +98,6 @@ header{
   margin-bottom:12px;
 }
 
-/* Series selector */
-.series-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.series-btn{
-  padding:12px 10px;
-  background:var(--bg2);
-  border:2px solid var(--border-light);
-  border-radius:var(--radius);
-  color:var(--text);
-  font-size:0.75rem;
-  font-weight:600;
-  cursor:pointer;
-  text-align:center;
-  transition:all 0.2s;
-  font-family:var(--font);
-}
-.series-btn .series-cap{
-  display:block;font-size:0.65rem;font-weight:400;color:var(--text-dim);margin-top:2px;
-}
-.series-btn:hover{border-color:var(--primary);background:rgba(25,118,210,0.04)}
-.series-btn.active{border-color:var(--primary);background:rgba(25,118,210,0.08);color:var(--primary)}
 
 /* Dimension presets */
 .dim-row{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
@@ -178,31 +158,6 @@ header{
 .material-btn:hover{border-color:var(--primary);background:rgba(25,118,210,0.04)}
 .material-btn.active{background:rgba(25,118,210,0.08);border-color:var(--primary);color:var(--primary)}
 
-/* Feature toggles */
-.toggle-row{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:10px 0;
-  border-bottom:1px solid var(--border-light);
-}
-.toggle-row:last-child{border-bottom:none}
-.toggle-label{font-size:0.82rem;font-weight:500;color:var(--text)}
-.toggle-label span{display:block;font-size:0.68rem;color:var(--text-dim);font-weight:400}
-.toggle{
-  position:relative;width:44px;height:24px;
-  background:var(--surface2);border-radius:12px;
-  cursor:pointer;transition:background 0.2s;
-}
-.toggle.on{background:var(--primary)}
-.toggle::after{
-  content:'';position:absolute;
-  top:3px;left:3px;
-  width:18px;height:18px;
-  background:white;border-radius:50%;
-  transition:transform 0.2s;
-  box-shadow:0 1px 3px rgba(0,0,0,0.2);
-}
-.toggle.on::after{transform:translateX(20px)}
-
 
 /* 3D Viewport */
 .viewport{
@@ -237,17 +192,6 @@ header{
 }
 .reset-cam:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
 
-/* Series info badge */
-.series-info{
-  display:flex;align-items:center;gap:8px;
-  background:var(--surface);
-  border-radius:8px;
-  padding:10px 12px;
-  margin-top:10px;
-}
-.series-info-icon{font-size:20px}
-.series-info-text{font-size:0.72rem;color:var(--text-dim);line-height:1.4}
-.series-info-text strong{color:var(--text);display:block}
 
 /* Loading spinner */
 .loading-overlay{
@@ -317,34 +261,6 @@ header{
       <p>Select a series, customize dimensions, materials &amp; accessories</p>
     </div>
 
-    <!-- Series Selection -->
-    <div class="section">
-      <div class="section-title">Workbench Series</div>
-      <div class="series-grid" id="seriesGrid">
-        <button class="series-btn active" data-series="kennedy" onclick="selectSeries('kennedy')">
-          Kennedy<span class="series-cap">6,600 lb Capacity</span>
-        </button>
-        <button class="series-btn" data-series="roosevelt" onclick="selectSeries('roosevelt')">
-          Roosevelt<span class="series-cap">1,500 lb Capacity</span>
-        </button>
-        <button class="series-btn" data-series="dewey" onclick="selectSeries('dewey')">
-          Dewey<span class="series-cap">5,000 lb Capacity</span>
-        </button>
-        <button class="series-btn" data-series="harding" onclick="selectSeries('harding')">
-          Harding<span class="series-cap">20,000 lb Capacity</span>
-        </button>
-        <button class="series-btn" data-series="hydraulic" onclick="selectSeries('hydraulic')">
-          Hydraulic<span class="series-cap">1,000 lb Capacity</span>
-        </button>
-      </div>
-      <div class="series-info" id="seriesInfo">
-        <div class="series-info-icon">&#128736;</div>
-        <div class="series-info-text">
-          <strong id="seriesInfoName">Kennedy Series</strong>
-          <span id="seriesInfoDesc">Heavy-duty industrial workbench with 14-gauge steel tubing frame</span>
-        </div>
-      </div>
-    </div>
 
     <!-- Dimensions -->
     <div class="section">
@@ -410,54 +326,6 @@ header{
       </div>
     </div>
 
-    <!-- Accessories -->
-    <div class="section">
-      <div class="section-title">Accessories</div>
-      <div class="toggle-row">
-        <div class="toggle-label">Upper Shelf<span>Riser shelf above work surface</span></div>
-        <div class="toggle" id="toggleTopShelf" onclick="toggleFeature('topShelf')"></div>
-      </div>
-      <div class="toggle-row">
-        <div class="toggle-label">Lower Shelf<span>Bottom storage shelf</span></div>
-        <div class="toggle" id="toggleBottomShelf" onclick="toggleFeature('bottomShelf')"></div>
-      </div>
-      <div class="toggle-row">
-        <div class="toggle-label">Cabinet<span>Locking under-cabinet storage</span></div>
-        <div class="toggle" id="toggleCabinet" onclick="toggleFeature('cabinet')"></div>
-      </div>
-      <div class="toggle-row">
-        <div class="toggle-label">LED Light Bar<span>Task lighting with switch</span></div>
-        <div class="toggle" id="toggleLedLight" onclick="toggleFeature('ledLight')"></div>
-      </div>
-      <div class="toggle-row">
-        <div class="toggle-label">Power Strip<span>48" power strip with outlets</span></div>
-        <div class="toggle" id="togglePowerStrip" onclick="toggleFeature('powerStrip')"></div>
-      </div>
-      <div class="toggle-row">
-        <div class="toggle-label">Keyboard Tray<span>Sliding keyboard platform</span></div>
-        <div class="toggle" id="toggleKeyboard" onclick="toggleFeature('keyboard')"></div>
-      </div>
-      <div class="toggle-row">
-        <div class="toggle-label">Monitor Arm<span>Articulating monitor holder</span></div>
-        <div class="toggle" id="toggleMonitor" onclick="toggleFeature('monitor')"></div>
-      </div>
-      <div class="toggle-row">
-        <div class="toggle-label">CPU Holder<span>Under-desk CPU mount</span></div>
-        <div class="toggle" id="toggleCpuHolder" onclick="toggleFeature('cpuHolder')"></div>
-      </div>
-      <div class="toggle-row">
-        <div class="toggle-label">Wire Shelf<span>Wire mesh bottom shelf</span></div>
-        <div class="toggle" id="toggleWireShelf" onclick="toggleFeature('wireShelf')"></div>
-      </div>
-      <div class="toggle-row">
-        <div class="toggle-label">Document Holder<span>Angled document rest</span></div>
-        <div class="toggle" id="toggleDocHolder" onclick="toggleFeature('docHolder')"></div>
-      </div>
-      <div class="toggle-row">
-        <div class="toggle-label">Bin Boxes<span>Parts bin rack</span></div>
-        <div class="toggle" id="toggleBinBoxes" onclick="toggleFeature('binBoxes')"></div>
-      </div>
-    </div>
 
   </div>
 </div>
@@ -478,8 +346,6 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 // Expose for onclick
 window.resetCamera = resetCamera;
-window.toggleFeature = toggleFeature;
-window.selectSeries = selectSeries;
 window.setDim = setDim;
 
 // ============ Series & Model Config ============
@@ -488,85 +354,16 @@ const seriesData = {
     name: 'Kennedy Series',
     desc: 'Heavy-duty industrial workbench with 14-gauge steel tubing frame, 6,600 lb capacity',
     model: 'models/KSeries.glb',
-    accessories: 'models/KennedyAccessories6.glb',
     capacity: '6,600 lb'
-  },
-  roosevelt: {
-    name: 'Roosevelt Series',
-    desc: 'Standard duty workbench with round tubular steel frame, 1,500 lb capacity',
-    model: 'models/RooseveltAccessories.glb',
-    capacity: '1,500 lb'
-  },
-  dewey: {
-    name: 'Dewey Series',
-    desc: 'Heavy-duty workbench with reinforced tubing and full accessory support, 5,000 lb capacity',
-    model: 'models/DeweyAccessories2.glb',
-    capacity: '5,000 lb'
-  },
-  harding: {
-    name: 'Harding Series',
-    desc: 'Extra heavy-duty workbench for extreme loads, 20,000 lb capacity',
-    model: 'models/HardingAccessories.glb',
-    capacity: '20,000 lb'
-  },
-  hydraulic: {
-    name: 'Hydraulic Series',
-    desc: 'Height-adjustable electric hydraulic workbench, 1,000 lb capacity',
-    model: 'models/AdamsAccessories.glb',
-    capacity: '1,000 lb'
   }
 };
-
-// Prefix matching - handles numeric suffixes (SOLERA001), dots, spaces, underscores
-function nameMatches(name, prefix) {
-  if (name === prefix) return true;
-  if (!name.startsWith(prefix)) return false;
-  const ch = name.charAt(prefix.length);
-  return ch === '.' || ch === ' ' || ch === '_' || ch === '-' || (ch >= '0' && ch <= '9');
-}
-function nameMatchesAny(name, prefixes) {
-  for (let i = 0; i < prefixes.length; i++) {
-    if (nameMatches(name, prefixes[i])) return true;
-  }
-  return false;
-}
-
-
-// Accessory node name mapping for toggling visibility
-const accessoryNodes = {
-  topShelf: ['TS', 'SURFACE TOP SHELF', 'UPRIGHT', 'UP'],
-  bottomShelf: ['SURFACE BOTTOM_SHELF', 'SHELF BRACKET'],
-  cabinet: ['CABINET', 'UNDERCA', 'D6+C', 'LOCK_largo', '6INDRAWER', 'DRAWER',
-            'COMFF', 'DF4', 'FSDC', 'FTDC', 'F4F4DC', 'F66DC', 'F412DC',
-            'F444DC', 'F446DC', 'F466DC', 'F612DC', 'F666DC'],
-  ledLight: ['LED LGTH', 'LFA+LEDO', 'INOTL', '90 DEGREE LF', 'LC5FT', 'ENSAMBLE LC'],
-  powerStrip: ['POWER STRIP', 'PLUG STP', 'outletm', 'USB'],
-  keyboard: ['KEYBOARD', 'MKBT'],
-  monitor: ['MHLV', 'MHL SUPPORT', 'mhlvc', 'AL'],
-  cpuHolder: ['CPU HOLDER', 'BN-FC'],
-  wireShelf: ['WIRESLF', 'WS'],
-  docHolder: ['DOCUMENTH', 'DH'],
-  binBoxes: ['BIN BOX', 'X8BB'],
-  cs60: ['CS'],
-  articulatingShelf: ['Articulating Shelf', 'ARTS', 'U48']
-};
-
-// Node groups for frame vs surface coloring
-const frameNodeHints = ['PIERNA', 'CUADRO', 'TRAVE', 'SOLERA', 'ENSAMBLE-GLIDES', 'Kennedy Series', 'PIERNAS', 'LP', 'UPRIGHT', 'SHELF BRACKET', 'CABINET BRACKET', 'CABINET SUPPORT'];
-const surfaceNodeHints = ['SURFACE', 'TS1260', 'SURFACE TOP', 'SURFACE BOTTOM'];
 
 // ============ Configuration State ============
 const config = {
-  series: 'kennedy',
   width: 60, depth: 30, height: 34,
   frameColor: '#4489b7',
   topColor: '#FFFFFF',
-  topMaterial: 'formica',
-  topShelf: false, bottomShelf: false, cabinet: false,
-  ledLight: false, powerStrip: false, keyboard: false,
-  monitor: false, cpuHolder: false, wireShelf: false,
-  docHolder: false, binBoxes: false,
-  articulatingShelf: false, cs60: false
+  topMaterial: 'formica'
 };
 
 // Material PBR definitions
@@ -667,8 +464,6 @@ dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/
 gltfLoader.setDRACOLoader(dracoLoader);
 
 let currentModel = null;
-let allNodes = new Map(); // name -> Object3D (accessory nodes only)
-let accessoriesModel = null; // separate accessories scene
 const meshRefData = new Map(); // uuid -> { baseEffScaleX/Y/Z, localSizeX/Y/Z }
 
 function showLoading(msg) {
@@ -710,8 +505,7 @@ function setupModel(model) {
 }
 
 function fitCamera() {
-  const target = accessoriesModel || currentModel;
-  if (!target) return;
+  if (!currentModel) return;
   const finalBox = new THREE.Box3().setFromObject(modelGroup);
   const finalCenter = finalBox.getCenter(new THREE.Vector3());
   const finalSize = finalBox.getSize(new THREE.Vector3());
@@ -733,11 +527,8 @@ function loadSeriesModel(seriesKey) {
 
   // Clear existing
   while (modelGroup.children.length) modelGroup.remove(modelGroup.children[0]);
-  allNodes.clear();
   currentModel = null;
-  accessoriesModel = null;
 
-  // Load base model
   gltfLoader.load(
     data.model,
     function(gltf) {
@@ -746,22 +537,12 @@ function loadSeriesModel(seriesKey) {
       currentModel = model;
       modelGroup.add(model);
 
-      // If this series has a separate accessories file, load it
-      if (data.accessories) {
-        loadAccessoriesModel(data);
-      } else {
-        // Single-file model: index all named nodes as potential accessories
-        model.traverse(function(child) {
-          if (child.name) allNodes.set(child.name, child);
-        });
-        modelGroup.scale.set(1, 1, 1);
-        storeBaseMeshData();
-        applyAccessoryVisibility();
-        applyColors();
-        applyDimensionScale();
-        fitCamera();
-        hideLoading();
-      }
+      modelGroup.scale.set(1, 1, 1);
+      storeBaseMeshData();
+      applyColors();
+      applyDimensionScale();
+      fitCamera();
+      hideLoading();
     },
     function(progress) {
       if (progress.total > 0) {
@@ -771,143 +552,35 @@ function loadSeriesModel(seriesKey) {
       }
     },
     function(error) {
-      console.error('Base model load error:', error);
+      console.error('Model load error:', error);
       hideLoading();
     }
   );
 }
 
-function loadAccessoriesModel(data) {
-  gltfLoader.load(
-    data.accessories,
-    function(gltf) {
-      const accModel = gltf.scene;
-
-      // Match scale & position to the base model
-      accModel.scale.copy(currentModel.scale);
-      accModel.position.copy(currentModel.position);
-
-      // Index all named nodes from accessories model
-      accModel.traverse(function(child) {
-        if (child.name) allNodes.set(child.name, child);
-        if (child.isMesh) {
-          child.castShadow = true;
-          child.receiveShadow = true;
-        }
-      });
-
-      // Start with all accessories hidden
-      accModel.traverse(child => { child.visible = false; });
-
-      accessoriesModel = accModel;
-      modelGroup.add(accModel);
-
-      modelGroup.scale.set(1, 1, 1);
-      storeBaseMeshData();
-      applyAccessoryVisibility();
-      applyColors();
-      applyDimensionScale();
-      fitCamera();
-      hideLoading();
-    },
-    null,
-    function(error) {
-      console.error('Accessories model load error:', error);
-      // Still finalize with base model only
-      modelGroup.scale.set(1, 1, 1);
-      storeBaseMeshData();
-      applyColors();
-      applyDimensionScale();
-      fitCamera();
-      hideLoading();
-    }
-  );
-}
-
-// ============ Accessory Visibility ============
-function getAccessoryFeature(nodeName) {
-  for (const [feature, prefixes] of Object.entries(accessoryNodes)) {
-    if (nameMatchesAny(nodeName, prefixes)) return feature;
-  }
-  return null;
-}
-
-
-function applyAccessoryVisibility() {
-  if (!currentModel) return;
-
-  // Base model is always fully visible
-  currentModel.traverse(child => { child.visible = true; });
-
-  if (accessoriesModel) {
-    // Dual-model: accessories are in a separate scene
-    // Hide everything in accessories first, then show only toggled-on features
-    accessoriesModel.traverse(child => { child.visible = false; });
-
-    allNodes.forEach((obj, name) => {
-      const feature = getAccessoryFeature(name);
-      if (feature !== null && config[feature]) {
-        obj.visible = true;
-        obj.traverse(child => { child.visible = true; });
-      }
-    });
-
-    // Ensure parent chain is visible for any visible accessory mesh
-    accessoriesModel.traverse(child => {
-      if (child.visible && child.isMesh) {
-        let p = child.parent;
-        while (p && p !== scene) {
-          p.visible = true;
-          p = p.parent;
-        }
-      }
-    });
-  } else {
-    // Single-file model: hide accessory nodes that are toggled off
-    allNodes.forEach((obj, name) => {
-      const feature = getAccessoryFeature(name);
-      if (feature !== null && !config[feature]) {
-        obj.visible = false;
-        obj.traverse(child => { child.visible = false; });
-      }
-    });
-  }
-}
-
-function setSubtreeVisibility(obj, visible) {
-  obj.visible = visible;
-  obj.traverse(child => { child.visible = visible; });
-}
 
 // ============ Color Application ============
-function applyColorsToModel(model) {
-  if (!model) return;
+function applyColors() {
+  if (!currentModel) return;
 
   const frameColorHex = new THREE.Color(config.frameColor);
   const topColorHex = new THREE.Color(config.topColor);
   const matDef = materialDefs[config.topMaterial];
 
-  model.traverse(child => {
+  currentModel.traverse(child => {
     if (!child.isMesh || !child.material) return;
 
-    const name = child.name || '';
-    const parentName = child.parent ? (child.parent.name || '') : '';
+    const name = (child.name || '').toUpperCase();
 
-    const isFrame = frameNodeHints.some(hint =>
-      name.includes(hint) || parentName.includes(hint)
-    );
-
-    const isSurface = surfaceNodeHints.some(hint =>
-      name.includes(hint) || parentName.includes(hint)
-    );
-
-    if (isSurface && child.material) {
+    // Apply surface material to nodes containing SURFACE in name
+    if (name.includes('SURFACE') || name.includes('TOP')) {
       const mat = child.material.clone();
       mat.color.copy(topColorHex);
       mat.roughness = matDef.roughness;
       mat.metalness = matDef.metalness;
       child.material = mat;
-    } else if (isFrame && child.material) {
+    } else {
+      // Everything else gets frame color
       const mat = child.material.clone();
       mat.color.copy(frameColorHex);
       child.material = mat;
@@ -915,28 +588,6 @@ function applyColorsToModel(model) {
   });
 }
 
-function applyColors() {
-  applyColorsToModel(currentModel);
-  applyColorsToModel(accessoriesModel);
-}
-
-// ============ Series Selection ============
-function selectSeries(seriesKey) {
-  config.series = seriesKey;
-
-  // Update UI
-  document.querySelectorAll('.series-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.series === seriesKey);
-  });
-
-  const data = seriesData[seriesKey];
-  document.getElementById('seriesInfoName').textContent = data.name;
-  document.getElementById('seriesInfoDesc').textContent = data.desc;
-
-  // Load the GLB model
-  loadSeriesModel(seriesKey);
-
-}
 
 // ============ Dimension Selection ============
 function setDim(dim, val) {
@@ -976,7 +627,6 @@ function storeMeshDataForModel(model) {
 function storeBaseMeshData() {
   meshRefData.clear();
   storeMeshDataForModel(currentModel);
-  storeMeshDataForModel(accessoriesModel);
 }
 
 function applyDimensionScale() {
@@ -1029,18 +679,9 @@ function applyDimensionScale() {
     });
   }
   compensateMeshes(currentModel);
-  compensateMeshes(accessoriesModel);
 }
 
 // ============ Feature Toggles ============
-function toggleFeature(feature) {
-  config[feature] = !config[feature];
-  const toggleEl = document.getElementById('toggle' + feature.charAt(0).toUpperCase() + feature.slice(1));
-  if (toggleEl) toggleEl.classList.toggle('on', config[feature]);
-  applyAccessoryVisibility();
-
-}
-
 
 // ============ UI Bindings ============
 // Frame colors
