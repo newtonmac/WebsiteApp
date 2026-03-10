@@ -165,6 +165,105 @@
         }
         .add-stop-btn:hover { border-color: #60a5fa; background: #60a5fa11; }
 
+        /* EV model selector */
+        .ev-select-group {
+            margin-bottom: 14px;
+        }
+        .ev-select-group label {
+            display: block;
+            font-size: 12px;
+            color: #8b8fa3;
+            margin-bottom: 4px;
+        }
+        .ev-select-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid #2d3040;
+            background: #252836;
+            color: #e1e4e8;
+            font-size: 14px;
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.2s;
+            -webkit-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238b8fa3'%3E%3Cpath d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 32px;
+        }
+        .ev-select-group select:focus { border-color: #34d399; }
+        .ev-select-group select optgroup { background: #252836; color: #8b8fa3; }
+        .ev-select-group select option { background: #252836; color: #e1e4e8; padding: 6px; }
+        .ev-car-specs {
+            display: flex;
+            gap: 8px;
+            margin-top: 6px;
+            flex-wrap: wrap;
+        }
+        .ev-car-spec {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            background: #2d3040;
+            color: #a0a8b8;
+        }
+        .ev-car-spec strong { color: #e1e4e8; }
+
+        /* battery bar */
+        .battery-bar-wrap {
+            margin-top: 10px;
+            padding: 10px 0 0;
+            border-top: 1px solid #2d304066;
+        }
+        .battery-bar-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-bottom: 6px;
+        }
+        .battery-bar-label .bl-car { color: #8b8fa3; }
+        .battery-bar-label .bl-pct { font-weight: 700; }
+        .battery-bar {
+            height: 18px;
+            border-radius: 9px;
+            background: #2d3040;
+            overflow: hidden;
+            position: relative;
+        }
+        .battery-bar-fill {
+            height: 100%;
+            border-radius: 9px;
+            transition: width 0.4s;
+            position: relative;
+        }
+        .battery-bar-used {
+            position: absolute;
+            right: 0;
+            top: 0;
+            height: 100%;
+            background: repeating-linear-gradient(
+                -45deg,
+                transparent,
+                transparent 3px,
+                #ffffff11 3px,
+                #ffffff11 6px
+            );
+            border-radius: 0 9px 9px 0;
+        }
+        .battery-bar-text {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 700;
+            color: #fff;
+            text-shadow: 0 1px 2px #0008;
+        }
+
         .swap-btn {
             display: none;
         }
@@ -478,6 +577,50 @@
                 <input type="text" id="destInput" placeholder="Enter destination address..." autocomplete="off" />
                 <div class="autocomplete-list" id="destAC"></div>
             </div>
+            <div class="ev-select-group">
+                <label>Your EV</label>
+                <select id="evModelSelect">
+                    <optgroup label="Tesla">
+                        <option value="model3_lr">Tesla Model 3 Long Range</option>
+                        <option value="model3_sr">Tesla Model 3 Standard Range</option>
+                        <option value="modelY_lr" selected>Tesla Model Y Long Range</option>
+                        <option value="modelY_sr">Tesla Model Y Standard Range</option>
+                        <option value="modelS_lr">Tesla Model S Long Range</option>
+                        <option value="modelX_lr">Tesla Model X Long Range</option>
+                        <option value="cybertruck_awd">Tesla Cybertruck AWD</option>
+                    </optgroup>
+                    <optgroup label="Rivian">
+                        <option value="r1t_lg">Rivian R1T Large Pack</option>
+                        <option value="r1t_max">Rivian R1T Max Pack</option>
+                        <option value="r1s_lg">Rivian R1S Large Pack</option>
+                    </optgroup>
+                    <optgroup label="Volkswagen">
+                        <option value="id4_pro">VW ID.4 Pro S</option>
+                        <option value="id4_std">VW ID.4 Standard</option>
+                    </optgroup>
+                    <optgroup label="Ford">
+                        <option value="mache_ext">Mustang Mach-E Extended</option>
+                        <option value="f150_ext">F-150 Lightning Extended</option>
+                        <option value="f150_std">F-150 Lightning Standard</option>
+                    </optgroup>
+                    <optgroup label="Hyundai / Kia">
+                        <option value="ioniq5_lr">Hyundai Ioniq 5 Long Range</option>
+                        <option value="ioniq6_lr">Hyundai Ioniq 6 Long Range</option>
+                        <option value="ev6_lr">Kia EV6 Long Range</option>
+                    </optgroup>
+                    <optgroup label="BMW / Mercedes">
+                        <option value="ix_50">BMW iX xDrive50</option>
+                        <option value="eqs_450">Mercedes EQS 450+</option>
+                    </optgroup>
+                    <optgroup label="Other">
+                        <option value="bolt_ev">Chevrolet Bolt EV</option>
+                        <option value="leaf_plus">Nissan Leaf Plus</option>
+                        <option value="polestar2_lr">Polestar 2 Long Range</option>
+                        <option value="lucid_air">Lucid Air Grand Touring</option>
+                    </optgroup>
+                </select>
+                <div class="ev-car-specs" id="evCarSpecs"></div>
+            </div>
             <button class="plan-btn" id="planBtn" disabled>Plan EV-Efficient Route</button>
         </div>
 
@@ -563,6 +706,147 @@ cartoLayer.on('tileerror', function() {
     osmLayer.addTo(map);
 });
 cartoLayer.addTo(map);
+
+// ─── EV Model Database ───
+// batteryKwh: usable battery capacity
+// effKwhMi: EPA-rated consumption in kWh per mile (highway mix)
+// weightKg: curb weight (affects hill climbing energy)
+// regenEff: regenerative braking efficiency (0-1)
+// epaMiles: EPA estimated range
+const evModels = {
+    // Tesla
+    model3_lr:    { name: 'Tesla Model 3 Long Range',     batteryKwh: 75,  effKwhMi: 0.26, weightKg: 1830, regenEff: 0.65, epaMiles: 358 },
+    model3_sr:    { name: 'Tesla Model 3 Standard Range',  batteryKwh: 57,  effKwhMi: 0.25, weightKg: 1760, regenEff: 0.65, epaMiles: 272 },
+    modelY_lr:    { name: 'Tesla Model Y Long Range',      batteryKwh: 75,  effKwhMi: 0.28, weightKg: 1979, regenEff: 0.65, epaMiles: 318 },
+    modelY_sr:    { name: 'Tesla Model Y Standard Range',  batteryKwh: 57,  effKwhMi: 0.27, weightKg: 1909, regenEff: 0.65, epaMiles: 260 },
+    modelS_lr:    { name: 'Tesla Model S Long Range',      batteryKwh: 100, effKwhMi: 0.30, weightKg: 2162, regenEff: 0.65, epaMiles: 405 },
+    modelX_lr:    { name: 'Tesla Model X Long Range',      batteryKwh: 100, effKwhMi: 0.34, weightKg: 2352, regenEff: 0.60, epaMiles: 348 },
+    cybertruck_awd:{ name: 'Tesla Cybertruck AWD',         batteryKwh: 123, effKwhMi: 0.41, weightKg: 3104, regenEff: 0.55, epaMiles: 318 },
+    // Rivian
+    r1t_lg:       { name: 'Rivian R1T Large Pack',         batteryKwh: 135, effKwhMi: 0.48, weightKg: 3180, regenEff: 0.55, epaMiles: 328 },
+    r1t_max:      { name: 'Rivian R1T Max Pack',           batteryKwh: 180, effKwhMi: 0.48, weightKg: 3400, regenEff: 0.55, epaMiles: 410 },
+    r1s_lg:       { name: 'Rivian R1S Large Pack',         batteryKwh: 135, effKwhMi: 0.47, weightKg: 3200, regenEff: 0.55, epaMiles: 321 },
+    // Volkswagen
+    id4_pro:      { name: 'VW ID.4 Pro S',                 batteryKwh: 82,  effKwhMi: 0.32, weightKg: 2124, regenEff: 0.55, epaMiles: 275 },
+    id4_std:      { name: 'VW ID.4 Standard',              batteryKwh: 62,  effKwhMi: 0.30, weightKg: 1984, regenEff: 0.55, epaMiles: 209 },
+    // Ford
+    mache_ext:    { name: 'Mustang Mach-E Extended',       batteryKwh: 91,  effKwhMi: 0.33, weightKg: 2100, regenEff: 0.55, epaMiles: 312 },
+    f150_ext:     { name: 'F-150 Lightning Extended',      batteryKwh: 131, effKwhMi: 0.50, weightKg: 2950, regenEff: 0.50, epaMiles: 320 },
+    f150_std:     { name: 'F-150 Lightning Standard',      batteryKwh: 98,  effKwhMi: 0.49, weightKg: 2800, regenEff: 0.50, epaMiles: 240 },
+    // Hyundai / Kia
+    ioniq5_lr:    { name: 'Hyundai Ioniq 5 Long Range',    batteryKwh: 77,  effKwhMi: 0.30, weightKg: 2000, regenEff: 0.60, epaMiles: 303 },
+    ioniq6_lr:    { name: 'Hyundai Ioniq 6 Long Range',    batteryKwh: 77,  effKwhMi: 0.26, weightKg: 1950, regenEff: 0.60, epaMiles: 361 },
+    ev6_lr:       { name: 'Kia EV6 Long Range',            batteryKwh: 77,  effKwhMi: 0.30, weightKg: 2055, regenEff: 0.60, epaMiles: 310 },
+    // BMW / Mercedes
+    ix_50:        { name: 'BMW iX xDrive50',               batteryKwh: 105, effKwhMi: 0.33, weightKg: 2510, regenEff: 0.55, epaMiles: 324 },
+    eqs_450:      { name: 'Mercedes EQS 450+',             batteryKwh: 108, effKwhMi: 0.30, weightKg: 2480, regenEff: 0.60, epaMiles: 350 },
+    // Other
+    bolt_ev:      { name: 'Chevrolet Bolt EV',             batteryKwh: 65,  effKwhMi: 0.28, weightKg: 1616, regenEff: 0.55, epaMiles: 259 },
+    leaf_plus:    { name: 'Nissan Leaf Plus',               batteryKwh: 60,  effKwhMi: 0.30, weightKg: 1670, regenEff: 0.50, epaMiles: 212 },
+    polestar2_lr: { name: 'Polestar 2 Long Range',         batteryKwh: 78,  effKwhMi: 0.29, weightKg: 2040, regenEff: 0.60, epaMiles: 295 },
+    lucid_air:    { name: 'Lucid Air Grand Touring',       batteryKwh: 112, effKwhMi: 0.26, weightKg: 2360, regenEff: 0.65, epaMiles: 516 },
+};
+
+function getSelectedEV() {
+    return evModels[document.getElementById('evModelSelect').value];
+}
+
+// Show car specs when selection changes
+function updateEvSpecs() {
+    const ev = getSelectedEV();
+    const specsEl = document.getElementById('evCarSpecs');
+    specsEl.innerHTML = `
+        <span class="ev-car-spec"><strong>${ev.batteryKwh}</strong> kWh</span>
+        <span class="ev-car-spec"><strong>${ev.epaMiles}</strong> mi range</span>
+        <span class="ev-car-spec"><strong>${(ev.effKwhMi * 1000).toFixed(0)}</strong> Wh/mi</span>
+    `;
+    // Re-run explanation if routes exist
+    if (routesData.length && routesData[selectedRouteIdx]) {
+        showEvExplanation(routesData[selectedRouteIdx], routesData);
+    }
+}
+document.getElementById('evModelSelect').addEventListener('change', updateEvSpecs);
+
+// ─── EV Energy Estimation ───
+// Uses vehicle-specific data + grade-aware efficiency model.
+//
+// KEY INSIGHT: Same elevation over a short distance (steep grade) uses MORE
+// energy than the same elevation spread over a long distance (gentle grade).
+// Steep grades force the motor into high-torque/low-speed operation, where
+// motor efficiency drops. Electrical losses (I²R) increase with the square
+// of current. A 15% grade might lose ~20-30% more energy than a 3% grade
+// for the same elevation gain.
+//
+// Similarly, steep descents recover LESS via regen because the motor/battery
+// can't absorb high power as efficiently, and mechanical brakes kick in.
+
+function estimateTripEnergy(route, ev) {
+    // Base flat-road consumption
+    const baseEnergy = route.distMi * ev.effKwhMi;
+
+    // Calculate segment-by-segment elevation energy with grade penalty
+    let elevEnergy = 0;
+    let regenEnergy = 0;
+    let avgGradePct = 0;
+
+    const elev = route.elevations;
+    const sampled = route.sampled;
+    const distMi = route.distMi;
+
+    if (elev.length >= 2 && sampled.length >= 2) {
+        // Estimate distance per sample segment
+        const segDistM = (distMi * 1609.34) / (sampled.length - 1);
+        let totalUpSegments = 0;
+        let totalDownSegments = 0;
+
+        for (let i = 1; i < elev.length; i++) {
+            const rise = elev[i] - elev[i-1]; // meters
+            const run = segDistM; // meters
+            const gradePct = Math.abs(rise / run) * 100;
+
+            if (rise > 0) {
+                // Climbing: steeper = less efficient motor operation
+                // Motor efficiency degrades at high torque: ~85% at 3%, ~75% at 10%, ~65% at 15%+
+                const motorEff = Math.max(0.60, 0.88 - gradePct * 0.015);
+                const segEnergy = (ev.weightKg * 9.81 * rise) / (3600000 * motorEff);
+                elevEnergy += segEnergy;
+                totalUpSegments++;
+            } else if (rise < 0) {
+                // Descending: steeper = less regen recovery (battery charge rate limits,
+                // friction brakes engage on steep grades)
+                const absRise = Math.abs(rise);
+                const regenPenalty = Math.max(0.3, ev.regenEff - gradePct * 0.02);
+                const segRegen = (ev.weightKg * 9.81 * absRise) / 3600000 * regenPenalty;
+                regenEnergy += segRegen;
+                totalDownSegments++;
+            }
+        }
+
+        // Average grade for display
+        if (route.gain > 0) {
+            const totalUpRunM = totalUpSegments * segDistM;
+            avgGradePct = totalUpRunM > 0 ? (route.gain / totalUpRunM) * 100 : 0;
+        }
+    } else {
+        // Fallback: simple calculation
+        elevEnergy = (ev.weightKg * 9.81 * route.gain) / (3600000 * 0.85);
+        regenEnergy = (ev.weightKg * 9.81 * route.loss) / 3600000 * ev.regenEff;
+    }
+
+    const totalEnergy = baseEnergy + elevEnergy - regenEnergy;
+    const batteryPct = (totalEnergy / ev.batteryKwh) * 100;
+
+    return {
+        baseEnergy,
+        elevEnergy,
+        regenEnergy,
+        totalEnergy: Math.max(0, totalEnergy),
+        batteryPct: Math.min(100, Math.max(0, batteryPct)),
+        remainingPct: Math.max(0, 100 - batteryPct),
+        efficiency: route.distMi / Math.max(0.1, totalEnergy), // mi/kWh
+        avgGradePct
+    };
+}
 
 // ─── State ───
 let originCoord = null;   // [lat, lng]
@@ -1046,54 +1330,74 @@ function showEvExplanation(route, allRoutes) {
     const el = document.getElementById('evExplain');
     el.style.display = 'block';
 
+    const ev = getSelectedEV();
+    const trip = estimateTripEnergy(route, ev);
     const isBest = allRoutes.indexOf(route) === 0;
     const bestRoute = allRoutes[0];
-
-    // Calculate estimated energy
-    // Rough EV energy model: ~0.3 kWh/mi base + ~0.01 kWh per meter of elevation gain
-    const baseConsumption = route.distMi * 0.3;
-    const elevCost = route.gain * 0.01;
-    const regenRecovery = route.loss * 0.005; // ~50% regen efficiency
-    const estEnergy = baseConsumption + elevCost - regenRecovery;
-    const estRange = route.distMi / estEnergy * 100; // est. efficiency as mi/kWh scaled
-
-    // Compare vs worst route
-    const worstGain = Math.max(...allRoutes.map(r => r.gain));
-    const savedElev = worstGain - route.gain;
-    const savedEnergy = savedElev * 0.01;
+    const bestTrip = estimateTripEnergy(bestRoute, ev);
 
     // Net elevation (start vs end)
     const netElev = route.elevations.length ? route.elevations[route.elevations.length - 1] - route.elevations[0] : 0;
 
-    let explanation = `<h3>Why this route?</h3>`;
-    explanation += `<div class="ev-stat-row"><span class="ev-label">Elevation gain</span><span class="ev-value ${isBest ? 'good' : ''}">${Math.round(route.gain)}m (+${Math.round(route.gain * 3.281)}ft)</span></div>`;
-    explanation += `<div class="ev-stat-row"><span class="ev-label">Elevation loss (regen)</span><span class="ev-value good">-${Math.round(route.loss)}m (-${Math.round(route.loss * 3.281)}ft)</span></div>`;
-    explanation += `<div class="ev-stat-row"><span class="ev-label">Net elevation change</span><span class="ev-value">${netElev >= 0 ? '+' : ''}${Math.round(netElev)}m</span></div>`;
-    explanation += `<div class="ev-stat-row"><span class="ev-label">Est. energy use</span><span class="ev-value">${estEnergy.toFixed(1)} kWh</span></div>`;
-    explanation += `<div class="ev-stat-row"><span class="ev-label">Est. efficiency</span><span class="ev-value">${(route.distMi / estEnergy).toFixed(1)} mi/kWh</span></div>`;
+    // Battery bar color
+    const barColor = trip.remainingPct > 30 ? '#34d399' : (trip.remainingPct > 15 ? '#fbbf24' : '#ef4444');
+    const pctClass = trip.remainingPct > 30 ? 'good' : (trip.remainingPct > 15 ? 'warn' : 'warn');
 
-    if (allRoutes.length > 1 && savedElev > 5) {
-        explanation += `<div class="ev-stat-row"><span class="ev-label">Elev saved vs worst</span><span class="ev-value good">-${Math.round(savedElev)}m (≈${savedEnergy.toFixed(1)} kWh)</span></div>`;
+    let html = `<h3>${ev.name}</h3>`;
+
+    // Battery visualization
+    html += `<div class="battery-bar-wrap">`;
+    html += `<div class="battery-bar-label"><span class="bl-car">${ev.batteryKwh} kWh battery</span><span class="bl-pct ${pctClass}">${Math.round(trip.remainingPct)}% remaining</span></div>`;
+    html += `<div class="battery-bar">`;
+    html += `<div class="battery-bar-fill" style="width:100%; background:${barColor};">`;
+    html += `<div class="battery-bar-used" style="width:${Math.min(100, trip.batteryPct)}%;"></div>`;
+    html += `</div>`;
+    html += `<div class="battery-bar-text">${trip.totalEnergy.toFixed(1)} kWh used of ${ev.batteryKwh} kWh</div>`;
+    html += `</div></div>`;
+
+    // Energy breakdown
+    html += `<div style="margin-top:12px;">`;
+    html += `<div class="ev-stat-row"><span class="ev-label">Base driving</span><span class="ev-value">${trip.baseEnergy.toFixed(1)} kWh</span></div>`;
+    const gradeLabel = trip.avgGradePct > 0 ? ` ~${trip.avgGradePct.toFixed(1)}% avg grade` : '';
+    html += `<div class="ev-stat-row"><span class="ev-label">Climbing (+${Math.round(route.gain)}m / +${Math.round(route.gain * 3.281)}ft${gradeLabel})</span><span class="ev-value warn">+${trip.elevEnergy.toFixed(1)} kWh</span></div>`;
+    html += `<div class="ev-stat-row"><span class="ev-label">Regen braking (-${Math.round(route.loss)}m)</span><span class="ev-value good">-${trip.regenEnergy.toFixed(1)} kWh</span></div>`;
+    html += `<div class="ev-stat-row" style="border-top:1px solid #2d3040; padding-top:6px;"><span class="ev-label"><strong>Total energy</strong></span><span class="ev-value"><strong>${trip.totalEnergy.toFixed(1)} kWh</strong> (${Math.round(trip.batteryPct)}% of battery)</span></div>`;
+    html += `<div class="ev-stat-row"><span class="ev-label">Trip efficiency</span><span class="ev-value">${trip.efficiency.toFixed(1)} mi/kWh</span></div>`;
+    html += `<div class="ev-stat-row"><span class="ev-label">Net elevation</span><span class="ev-value">${netElev >= 0 ? '+' : ''}${Math.round(netElev)}m (${netElev >= 0 ? '+' : ''}${Math.round(netElev * 3.281)}ft)</span></div>`;
+    html += `</div>`;
+
+    // Compare with best route if not already best
+    if (!isBest && allRoutes.length > 1) {
+        const savedEnergy = trip.totalEnergy - bestTrip.totalEnergy;
+        const savedPct = trip.batteryPct - bestTrip.batteryPct;
+        if (savedEnergy > 0.1) {
+            html += `<div class="ev-stat-row" style="margin-top:8px;"><span class="ev-label">Extra vs EV Best</span><span class="ev-value warn">+${savedEnergy.toFixed(1)} kWh (+${savedPct.toFixed(1)}% battery)</span></div>`;
+        }
     }
 
-    explanation += `<div class="ev-tip">`;
-    if (isBest) {
-        explanation += `This route minimizes climbing while keeping travel time reasonable. `;
-        explanation += `Less uphill = less energy spent fighting gravity. `;
-        if (route.loss > route.gain * 0.5) {
-            explanation += `Significant downhill sections allow regenerative braking to recover energy.`;
+    // Tip
+    html += `<div class="ev-tip">`;
+    if (trip.batteryPct > 90) {
+        html += `This trip uses most of your ${ev.name}'s battery. Consider charging stops along the way.`;
+    } else if (trip.batteryPct > 70) {
+        html += `This trip uses a significant portion of your battery. Start with a full charge.`;
+    } else if (isBest) {
+        html += `This route minimizes climbing to save battery. `;
+        if (trip.regenEnergy > 0.5) {
+            html += `Regen braking recovers ${trip.regenEnergy.toFixed(1)} kWh on downhill sections. `;
         }
+        html += `Your ${ev.name} should handle this trip comfortably.`;
     } else {
         const extraGain = route.gain - bestRoute.gain;
-        explanation += `This route has ${Math.round(extraGain)}m more climbing than the EV Best route, `;
-        explanation += `which costs roughly ${(extraGain * 0.01).toFixed(1)} kWh more energy. `;
+        const extraEnergy = trip.totalEnergy - bestTrip.totalEnergy;
+        html += `This route has ${Math.round(extraGain)}m more climbing, costing ~${extraEnergy.toFixed(1)} kWh more. `;
         if (route.durMin < bestRoute.durMin) {
-            explanation += `However, it's ${Math.round(bestRoute.durMin - route.durMin)} min faster.`;
+            html += `However, it's ${Math.round(bestRoute.durMin - route.durMin)} min faster.`;
         }
     }
-    explanation += `</div>`;
+    html += `</div>`;
 
-    el.innerHTML = explanation;
+    el.innerHTML = html;
 }
 
 // ─── Sample waypoints from route for map app links ───
@@ -1337,6 +1641,9 @@ window.addEventListener('resize', () => {
         drawElevationChart(routesData[selectedRouteIdx]);
     }
 });
+
+// Initialize EV specs display
+updateEvSpecs();
 </script>
 
 </body>
