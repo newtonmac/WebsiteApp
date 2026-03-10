@@ -332,6 +332,31 @@
             transform: translateY(-2px);
         }
 
+        .overview-card.skeleton .ov-price,
+        .overview-card.skeleton .ov-change,
+        .overview-card.skeleton .signal-row,
+        .overview-card.skeleton .signal-reason,
+        .overview-card.skeleton .signal-detail {
+            display: none;
+        }
+
+        .skeleton-bar {
+            height: 14px;
+            background: linear-gradient(90deg, #252836 25%, #2d3040 50%, #252836 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 6px;
+            margin-top: 8px;
+        }
+
+        .skeleton-bar.wide { width: 80%; height: 28px; margin-bottom: 4px; }
+        .skeleton-bar.medium { width: 60%; }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
         .overview-card .ticker {
             font-size: 14px;
             font-weight: 700;
@@ -1709,8 +1734,46 @@
         let signalRefreshTimer = null;
         const SIGNAL_REFRESH_MS = 20 * 60 * 1000; // 20 minutes
 
-        function renderOverviewCard(symbol, dayData, monthData, news, ctx, grid) {
-            if (!dayData?.prices?.length) return;
+        function renderSkeletonCards(grid) {
+            grid.innerHTML = '';
+            for (const [symbol, stock] of Object.entries(STOCKS)) {
+                const card = document.createElement('div');
+                card.className = 'overview-card skeleton';
+                card.dataset.symbol = symbol;
+                card.innerHTML = `
+                    <div class="ticker" style="color: ${stock.color};">${symbol}</div>
+                    <div class="company">${stock.name}</div>
+                    <div class="skeleton-bar wide"></div>
+                    <div class="skeleton-bar medium"></div>
+                `;
+                card.addEventListener('click', () => {
+                    document.querySelectorAll('.stock-tab').forEach(b => b.classList.remove('active'));
+                    const tab = document.querySelector(`.stock-tab[data-symbol="${symbol}"]`);
+                    if (tab) tab.classList.add('active');
+                    selectedSymbol = symbol;
+                    fetchAndRender();
+                });
+                grid.appendChild(card);
+            }
+        }
+
+        function populateCard(symbol, dayData, monthData, news, ctx) {
+            const grid = document.getElementById('overviewGrid');
+            const card = grid.querySelector(`[data-symbol="${symbol}"]`);
+            if (!card) return;
+
+            if (!dayData?.prices?.length) {
+                card.classList.remove('skeleton');
+                card.querySelector('.skeleton-bar.wide')?.remove();
+                card.querySelector('.skeleton-bar.medium')?.remove();
+                const priceEl = document.createElement('div');
+                priceEl.className = 'ov-price';
+                priceEl.style.color = '#8b8fa3';
+                priceEl.style.fontSize = '14px';
+                priceEl.textContent = 'No data';
+                card.appendChild(priceEl);
+                return;
+            }
 
             const latest = dayData.prices[dayData.prices.length - 1];
             const prevClose = dayData.meta?.previousClose || dayData.prices[0].price;
@@ -1734,21 +1797,7 @@
                    ${sig.detail ? `<div class="signal-detail">${sig.detail}</div>` : ''}`
                 : '';
 
-            // Replace existing card or append new one
-            let card = grid.querySelector(`[data-symbol="${symbol}"]`);
-            if (!card) {
-                card = document.createElement('div');
-                card.className = 'overview-card';
-                card.dataset.symbol = symbol;
-                card.addEventListener('click', () => {
-                    document.querySelectorAll('.stock-tab').forEach(b => b.classList.remove('active'));
-                    const tab = document.querySelector(`.stock-tab[data-symbol="${symbol}"]`);
-                    if (tab) tab.classList.add('active');
-                    selectedSymbol = symbol;
-                    fetchAndRender();
-                });
-                grid.appendChild(card);
-            }
+            card.classList.remove('skeleton');
             card.innerHTML = `
                 <div class="ticker" style="color: ${stock.color};">${symbol}</div>
                 <div class="company">${stock.name}</div>
@@ -1769,35 +1818,48 @@
 
             try {
                 const grid = document.getElementById('overviewGrid');
-                grid.innerHTML = '';
+
+                // 1. Render all skeleton cards instantly
+                renderSkeletonCards(grid);
 
                 const symbols = Object.keys(STOCKS);
 
-                // Kick off market context in parallel with stock data
+                // 2. Kick off market context in parallel with stock data
                 const ctxPromise = fetchMarketContext(signal);
 
-                // Fetch each stock's data and render cards progressively as they arrive
+                // 3. Fetch each stock independently — populate card as soon as its data arrives
+                const stockResults = [];
                 const stockPromises = symbols.map(async sym => {
-                    const [dayData, monthData, news] = await Promise.all([
-                        fetchStock(sym, '1d', signal),
+                    // Fetch 1d price first (fastest to show), then 1mo + news in parallel
+                    const dayData = await fetchStock(sym, '1d', signal);
+                    if (signal.aborted) return null;
+
+                    // Show price immediately while signals load
+                    populateCard(sym, dayData, null, null, marketContext);
+
+                    // Fetch monthly data + news for signals
+                    const [monthData, news] = await Promise.all([
                         fetchStock(sym, '1mo', signal),
                         fetchNewsForStock(sym, signal)
                     ]);
-                    if (signal.aborted) return;
-                    // Render card immediately with whatever market context is available
-                    renderOverviewCard(sym, dayData, monthData, news, marketContext, grid);
-                    return { symbol: sym, dayData, monthData, news };
+                    if (signal.aborted) return null;
+
+                    const result = { symbol: sym, dayData, monthData, news };
+                    stockResults.push(result);
+
+                    // Re-populate with signal data
+                    populateCard(sym, dayData, monthData, news, marketContext);
+                    return result;
                 });
 
-                // Wait for market context, then re-render cards with full context for better signals
-                const [ctx, ...results] = await Promise.all([ctxPromise, ...stockPromises]);
+                // Wait for everything
+                const [ctx] = await Promise.all([ctxPromise, ...stockPromises]);
                 if (signal.aborted) return;
                 renderMarketContextBar(ctx);
 
-                // Re-render cards with updated market context for accurate signals
-                for (const r of results) {
-                    if (!r) continue;
-                    renderOverviewCard(r.symbol, r.dayData, r.monthData, r.news, ctx, grid);
+                // Final pass: re-render with full market context for accurate signals
+                for (const r of stockResults) {
+                    populateCard(r.symbol, r.dayData, r.monthData, r.news, ctx);
                 }
 
                 // Disclaimer
