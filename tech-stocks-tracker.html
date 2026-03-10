@@ -1762,16 +1762,17 @@
             const card = grid.querySelector(`[data-symbol="${symbol}"]`);
             if (!card) return;
 
+            const stock = STOCKS[symbol];
+
             if (!dayData?.prices?.length) {
+                // Only update if still a skeleton (avoid duplicate "No data")
+                if (!card.classList.contains('skeleton')) return;
                 card.classList.remove('skeleton');
-                card.querySelector('.skeleton-bar.wide')?.remove();
-                card.querySelector('.skeleton-bar.medium')?.remove();
-                const priceEl = document.createElement('div');
-                priceEl.className = 'ov-price';
-                priceEl.style.color = '#8b8fa3';
-                priceEl.style.fontSize = '14px';
-                priceEl.textContent = 'No data';
-                card.appendChild(priceEl);
+                card.innerHTML = `
+                    <div class="ticker" style="color: ${stock.color};">${symbol}</div>
+                    <div class="company">${stock.name}</div>
+                    <div class="ov-price" style="color:#8b8fa3;font-size:14px;">No data</div>
+                `;
                 return;
             }
 
@@ -1780,7 +1781,6 @@
             const change = latest.price - prevClose;
             const pct = (change / prevClose) * 100;
             const isUp = change >= 0;
-            const stock = STOCKS[symbol];
 
             marketContext.news[symbol] = news;
 
@@ -2164,8 +2164,9 @@
             });
         }
 
-        // Initial load — fetchOverview populates cache, then render detail view
-        fetchOverview().then(() => fetchAndRender());
+        // Initial load — both run in parallel
+        fetchOverview();
+        fetchAndRender();
 
         // Price data refreshes every 60 seconds
         setInterval(fetchAndRender, 60000);
