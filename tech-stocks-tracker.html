@@ -362,37 +362,37 @@
         .signal-row {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
             margin-top: 10px;
             padding-top: 10px;
             border-top: 1px solid #2d3040;
         }
 
-        .signal-arrow {
-            font-size: 18px;
-            line-height: 1;
+        .signal-call {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 13px;
+            font-weight: 700;
         }
 
-        .signal-arrow.bullish { color: #34d399; }
-        .signal-arrow.bearish { color: #f87171; }
-        .signal-arrow.neutral { color: #8b8fa3; }
+        .signal-call.up { color: #34d399; }
+        .signal-call.down { color: #f87171; }
 
-        .signal-label {
+        .signal-call .arrow {
+            font-size: 16px;
+        }
+
+        .signal-pct {
             font-size: 11px;
             font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-        }
-
-        .signal-label.bullish { color: #34d399; }
-        .signal-label.bearish { color: #f87171; }
-        .signal-label.neutral { color: #8b8fa3; }
-
-        .signal-conf {
-            font-size: 10px;
-            color: #6b7280;
             margin-left: auto;
+            padding: 2px 8px;
+            border-radius: 6px;
         }
+
+        .signal-pct.up { background: #34d39915; color: #34d399; }
+        .signal-pct.down { background: #f8717115; color: #f87171; }
 
         .signal-disclaimer {
             font-size: 10px;
@@ -789,8 +789,8 @@
             return { prices: [], meta: {}, source: 'none' };
         }
 
-        // ── Technical Signal Analysis ──
-        // Uses SMA crossover, RSI, momentum, and volume trend
+        // ── Tomorrow's Call: UP or DOWN ──
+        // Analyzes last month of daily data and commits to a prediction
         function computeSignal(dailyPrices) {
             if (!dailyPrices || dailyPrices.length < 20) return null;
 
@@ -798,16 +798,16 @@
             const volumes = dailyPrices.map(p => p.volume || 0);
             const n = closes.length;
 
-            // SMA-5 vs SMA-20 crossover
+            // 1. SMA-5 vs SMA-20 trend direction
             const sma5 = closes.slice(-5).reduce((s, v) => s + v, 0) / 5;
             const sma20 = closes.slice(-20).reduce((s, v) => s + v, 0) / 20;
-            const smaPrevSlice = closes.slice(-6, -1);
-            const sma5Prev = smaPrevSlice.reduce((s, v) => s + v, 0) / 5;
-            const smaSignal = sma5 > sma20 ? 1 : sma5 < sma20 ? -1 : 0;
-            const smaCrossing = (sma5 > sma20 && sma5Prev <= sma20) ? 1
+            const sma5Prev = closes.slice(-6, -1).reduce((s, v) => s + v, 0) / 5;
+            const smaScore = sma5 > sma20 ? 1 : -1;
+            // Fresh crossover is a strong signal
+            const crossover = (sma5 > sma20 && sma5Prev <= sma20) ? 1
                 : (sma5 < sma20 && sma5Prev >= sma20) ? -1 : 0;
 
-            // RSI (14-period)
+            // 2. RSI (14-period) — mean reversion + trend
             let gains = 0, losses = 0;
             const rsiPeriod = Math.min(14, n - 1);
             for (let i = n - rsiPeriod; i < n; i++) {
@@ -815,64 +815,61 @@
                 if (diff > 0) gains += diff;
                 else losses -= diff;
             }
-            const avgGain = gains / rsiPeriod;
-            const avgLoss = losses / rsiPeriod;
-            const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+            const rs = losses === 0 ? 100 : (gains / rsiPeriod) / (losses / rsiPeriod);
             const rsi = 100 - (100 / (1 + rs));
-            const rsiSignal = rsi > 55 ? 1 : rsi < 45 ? -1 : 0;
+            // Overbought (>70) → likely down; oversold (<30) → likely up; mid → trend-follow
+            let rsiScore;
+            if (rsi > 70) rsiScore = -1;
+            else if (rsi > 60) rsiScore = 0.5;
+            else if (rsi < 30) rsiScore = 1;
+            else if (rsi < 40) rsiScore = -0.5;
+            else rsiScore = rsi > 50 ? 0.3 : -0.3;
 
-            // 5-day momentum
-            const momentum5 = (closes[n - 1] - closes[n - 6]) / closes[n - 6] * 100;
-            const momSignal = momentum5 > 1 ? 1 : momentum5 < -1 ? -1 : 0;
+            // 3. 5-day momentum
+            const mom5 = (closes[n - 1] - closes[Math.max(0, n - 6)]) / closes[Math.max(0, n - 6)] * 100;
+            const momScore = mom5 > 2 ? 1 : mom5 > 0.5 ? 0.5 : mom5 < -2 ? -1 : mom5 < -0.5 ? -0.5 : 0;
 
-            // 3-day price direction (consecutive up/down days)
+            // 4. Last 3 days streak
             let streak = 0;
             for (let i = n - 1; i >= Math.max(1, n - 3); i--) {
                 const dir = closes[i] > closes[i - 1] ? 1 : closes[i] < closes[i - 1] ? -1 : 0;
                 if (i === n - 1) streak = dir;
-                else if (dir === streak) continue;
-                else { streak = 0; break; }
+                else if (dir !== streak) { streak = 0; break; }
             }
 
-            // Volume trend (avg last 5 vs avg last 20)
+            // 5. Volume confirmation
             const vol5 = volumes.slice(-5).reduce((s, v) => s + v, 0) / 5;
             const vol20 = volumes.slice(-20).reduce((s, v) => s + v, 0) / 20;
-            const volRising = vol5 > vol20 * 1.1;
+            const volConfirm = vol5 > vol20 * 1.15;
 
-            // Weighted composite score: SMA(30%) + RSI(25%) + Momentum(25%) + Streak(10%) + SMA Cross(10%)
-            const score = (smaSignal * 0.30)
-                + (rsiSignal * 0.25)
-                + (momSignal * 0.25)
+            // 6. Price vs SMA-20 (support/resistance)
+            const priceVsSma = (closes[n - 1] - sma20) / sma20;
+            const supportScore = priceVsSma > 0.02 ? 0.5 : priceVsSma < -0.02 ? -0.5 : 0;
+
+            // Weighted composite — forced to pick a side
+            let raw = (smaScore * 0.20)
+                + (rsiScore * 0.20)
+                + (momScore * 0.25)
                 + (streak * 0.10)
-                + (smaCrossing * 0.10);
+                + (crossover * 0.10)
+                + (supportScore * 0.15);
 
-            // Boost confidence if volume confirms direction
-            const volBoost = volRising && Math.sign(score) === Math.sign(momentum5) ? 0.1 : 0;
-            const finalScore = Math.max(-1, Math.min(1, score + volBoost * Math.sign(score)));
+            // Volume boost when it confirms the direction
+            if (volConfirm && Math.sign(raw) === Math.sign(mom5)) {
+                raw += 0.08 * Math.sign(raw);
+            }
 
-            const absScore = Math.abs(finalScore);
-            let confidence;
-            if (absScore >= 0.6) confidence = 'Strong';
-            else if (absScore >= 0.3) confidence = 'Moderate';
-            else confidence = 'Weak';
+            // Force a call — no neutral. If score is near zero, lean toward momentum
+            if (Math.abs(raw) < 0.05) {
+                raw = mom5 >= 0 ? 0.1 : -0.1;
+            }
 
-            let direction, label;
-            if (finalScore > 0.15) { direction = 'bullish'; label = 'Bullish'; }
-            else if (finalScore < -0.15) { direction = 'bearish'; label = 'Bearish'; }
-            else { direction = 'neutral'; label = 'Neutral'; }
+            const call = raw > 0 ? 'UP' : 'DOWN';
+            const clampedAbs = Math.min(Math.abs(raw), 1);
+            // Map score to confidence: 50% (coin flip) to 85% (very strong)
+            const confidence = Math.round(50 + clampedAbs * 35);
 
-            return {
-                direction,
-                label,
-                confidence,
-                score: finalScore,
-                details: {
-                    sma: smaSignal > 0 ? 'SMA5>20' : smaSignal < 0 ? 'SMA5<20' : 'SMA flat',
-                    rsi: rsi.toFixed(0),
-                    momentum: momentum5.toFixed(1) + '%',
-                    streak
-                }
-            };
+            return { call, confidence, rsi: rsi.toFixed(0), mom: mom5.toFixed(1) };
         }
 
         async function fetchOverview() {
@@ -909,16 +906,17 @@
                     const isUp = change >= 0;
                     const stock = STOCKS[symbol];
 
-                    // Compute technical signal from monthly data
+                    // Tomorrow's call
                     const sig = computeSignal(monthData?.prices);
-                    const sigArrow = sig
-                        ? (sig.direction === 'bullish' ? '&#9650;' : sig.direction === 'bearish' ? '&#9660;' : '&#9654;')
-                        : '';
+                    const isCallUp = sig?.call === 'UP';
+                    const callClass = isCallUp ? 'up' : 'down';
                     const sigHtml = sig
                         ? `<div class="signal-row">
-                            <span class="signal-arrow ${sig.direction}">${sigArrow}</span>
-                            <span class="signal-label ${sig.direction}">${sig.label}</span>
-                            <span class="signal-conf">${sig.confidence} &bull; RSI ${sig.details.rsi}</span>
+                            <span class="signal-call ${callClass}">
+                                <span class="arrow">${isCallUp ? '&#9650;' : '&#9660;'}</span>
+                                Tomorrow: ${sig.call}
+                            </span>
+                            <span class="signal-pct ${callClass}">${sig.confidence}%</span>
                            </div>`
                         : '';
 
@@ -953,7 +951,7 @@
                     disc.className = 'signal-disclaimer';
                     grid.parentNode.insertBefore(disc, grid.nextSibling);
                 }
-                disc.textContent = 'Signals are technical indicators (SMA, RSI, momentum) — not financial advice.';
+                disc.textContent = 'Tomorrow calls based on SMA, RSI & momentum analysis — for fun, not financial advice.';
             } catch (e) {
                 if (e.name === 'AbortError') return;
                 console.warn('Overview fetch failed:', e.message);
