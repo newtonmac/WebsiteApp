@@ -86,8 +86,13 @@ struct OilPriceChartView: View {
     }
 
     private var priceRange: ClosedRange<Double> {
-        let minPrice = prices.map(\.price).min() ?? 0
-        let maxPrice = prices.map(\.price).max() ?? 100
+        guard let first = prices.first else { return 0...100 }
+        var minPrice = first.price
+        var maxPrice = first.price
+        for p in prices {
+            if p.price < minPrice { minPrice = p.price }
+            if p.price > maxPrice { maxPrice = p.price }
+        }
         let padding = (maxPrice - minPrice) * 0.1
         return (minPrice - padding)...(maxPrice + padding)
     }

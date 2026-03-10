@@ -69,27 +69,30 @@ class OilPriceService: ObservableObject {
         }
     }
 
+    private static let sampleDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+
     static func generateSampleData(basePrice: Double) -> [OilPrice] {
         let calendar = Calendar.current
         let today = Date()
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-
         var prices: [OilPrice] = []
+        prices.reserveCapacity(260) // ~365 days minus weekends
         var currentPrice = basePrice
 
         for i in (0..<365).reversed() {
             guard let date = calendar.date(byAdding: .day, value: -i, to: today) else { continue }
             let weekday = calendar.component(.weekday, from: date)
-            if weekday == 1 || weekday == 7 { continue } // Skip weekends
+            if weekday == 1 || weekday == 7 { continue }
 
-            // Simulate realistic price movement
             let change = Double.random(in: -2.5...2.5)
             currentPrice += change
-            currentPrice = max(55, min(95, currentPrice)) // Keep in realistic range
+            currentPrice = max(55, min(95, currentPrice))
 
             prices.append(OilPrice(
-                date: formatter.string(from: date),
+                date: sampleDateFormatter.string(from: date),
                 price: (currentPrice * 100).rounded() / 100
             ))
         }
