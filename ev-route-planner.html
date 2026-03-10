@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EV Route Planner — Least Elevation Gain</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -388,10 +388,21 @@
 // ─── Map Setup ───
 const map = L.map('map', { zoomControl: false }).setView([32.72, -117.16], 11);
 L.control.zoom({ position: 'topright' }).addTo(map);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+
+// Try CARTO dark tiles, fallback to OSM
+const cartoLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
     attribution: '&copy; OpenStreetMap &copy; CARTO',
     maxZoom: 19
-}).addTo(map);
+});
+const osmLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap',
+    maxZoom: 19
+});
+cartoLayer.on('tileerror', function() {
+    map.removeLayer(cartoLayer);
+    osmLayer.addTo(map);
+});
+cartoLayer.addTo(map);
 
 // ─── State ───
 let originCoord = null;   // [lat, lng]
@@ -565,39 +576,53 @@ function samplePoints(coords, maxPoints) {
     return result;
 }
 
-// ─── Fetch elevations from Open-Elevation API ───
+// ─── Fetch elevations — tries Open-Meteo first (most reliable), then Open-Elevation ───
 async function fetchElevations(coords) {
-    // coords are [lng, lat] — API wants {latitude, longitude}
-    // Batch into chunks of 80 to respect API limits
+    // coords are [lng, lat]
+    // Open-Meteo accepts up to ~100 coords per request via query params
     const chunkSize = 80;
     const allElevations = [];
 
     for (let i = 0; i < coords.length; i += chunkSize) {
         const chunk = coords.slice(i, i + chunkSize);
-        const locations = chunk.map(c => ({ latitude: c[1], longitude: c[0] }));
+        let got = false;
 
+        // Try Open-Meteo first (GET, very reliable)
         try {
-            const resp = await fetch('https://api.open-elevation.com/api/v1/lookup', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ locations })
-            });
-            const data = await resp.json();
-            data.results.forEach(r => allElevations.push(r.elevation));
-        } catch(e) {
-            // Fallback: use open-meteo elevation API
             const lats = chunk.map(c => c[1]).join(',');
             const lngs = chunk.map(c => c[0]).join(',');
-            try {
-                const resp2 = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`);
-                const data2 = await resp2.json();
-                if (data2.elevation) {
-                    data2.elevation.forEach(e => allElevations.push(e));
+            const resp = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`);
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data.elevation && data.elevation.length === chunk.length) {
+                    data.elevation.forEach(e => allElevations.push(e));
+                    got = true;
                 }
-            } catch(e2) {
-                // Last resort: fill with 0s
-                chunk.forEach(() => allElevations.push(0));
             }
+        } catch(e) { /* fall through */ }
+
+        // Fallback: Open-Elevation (POST, sometimes down)
+        if (!got) {
+            try {
+                const locations = chunk.map(c => ({ latitude: c[1], longitude: c[0] }));
+                const resp = await fetch('https://api.open-elevation.com/api/v1/lookup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ locations })
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.results) {
+                        data.results.forEach(r => allElevations.push(r.elevation));
+                        got = true;
+                    }
+                }
+            } catch(e2) { /* fall through */ }
+        }
+
+        // Last resort: fill with 0
+        if (!got) {
+            chunk.forEach(() => allElevations.push(0));
         }
     }
     return allElevations;
