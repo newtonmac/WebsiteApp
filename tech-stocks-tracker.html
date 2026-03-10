@@ -587,6 +587,12 @@
             url => 'https://corsproxy.io/?' + encodeURIComponent(url)
         ];
 
+        // Track which proxy index last succeeded — try it first next time
+        let preferredProxyIndex = 0;
+        // Track which source last succeeded — reorder waterfall accordingly
+        // 0=yahoo, 1=twelve, 2=alphavantage
+        let preferredSourceIndex = 0;
+
         const TWELVE_DATA_MAP = {
             '1d':  { interval: '5min',  outputsize: 78 },
             '5d':  { interval: '15min', outputsize: 130 },
@@ -736,15 +742,19 @@
             const interval = YAHOO_INTERVAL_MAP[range] || '1d';
             const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`;
 
-            for (const proxyFn of CORS_PROXIES) {
+            // Try preferred proxy first, then the other
+            for (let attempt = 0; attempt < CORS_PROXIES.length; attempt++) {
+                const idx = (preferredProxyIndex + attempt) % CORS_PROXIES.length;
                 try {
-                    const resp = await fetchWithTimeout(proxyFn(targetUrl), signal);
+                    const resp = await fetchWithTimeout(CORS_PROXIES[idx](targetUrl), signal);
                     if (!resp.ok) continue;
                     const data = parseYahooResponse(await resp.json());
-                    if (data) return data;
+                    if (data) {
+                        preferredProxyIndex = idx;
+                        return data;
+                    }
                 } catch (e) {
                     if (e.name === 'AbortError') throw e;
-                    console.warn(`Yahoo proxy failed for ${symbol}:`, e.message);
                 }
             }
             return null;
@@ -868,17 +878,19 @@
             const cached = getCached(cacheKey);
             if (cached) return cached;
 
-            // Waterfall: try each source in order, stop on first success
+            // Waterfall: try preferred source first, then fallbacks
             const sources = [
                 () => fetchYahoo(symbol, range, signal),
                 () => fetchTwelveData(symbol, range, signal),
                 () => fetchAlphaVantage(symbol, range, signal)
             ];
 
-            for (const trySource of sources) {
+            for (let attempt = 0; attempt < sources.length; attempt++) {
+                const idx = (preferredSourceIndex + attempt) % sources.length;
                 try {
-                    const data = await trySource();
+                    const data = await sources[idx]();
                     if (data?.prices?.length) {
+                        preferredSourceIndex = idx;
                         setCache(cacheKey, data);
                         return data;
                     }
@@ -1157,37 +1169,37 @@
         }
 
         async function fetchFearGreedIndex(signal) {
+            // Try alternative.me first (no CORS issues)
             try {
                 const url = 'https://api.alternative.me/fng/?limit=1';
                 const resp = await fetchWithTimeout(url, signal);
-                if (!resp.ok) return null;
-                const json = await resp.json();
-                if (json.data?.[0]) {
-                    return {
-                        value: parseInt(json.data[0].value),
-                        label: json.data[0].value_classification
-                    };
+                if (resp.ok) {
+                    const json = await resp.json();
+                    if (json.data?.[0]) {
+                        return {
+                            value: parseInt(json.data[0].value),
+                            label: json.data[0].value_classification
+                        };
+                    }
                 }
             } catch (e) {
                 if (e.name === 'AbortError') throw e;
-                // Try CNN F&G via proxy
-                try {
-                    const cnnUrl = 'https://production.dataviz.cnn.io/index/fearandgreed/graphdata';
-                    for (const proxyFn of CORS_PROXIES) {
-                        try {
-                            const resp2 = await fetchWithTimeout(proxyFn(cnnUrl), signal);
-                            if (!resp2.ok) continue;
-                            const json2 = await resp2.json();
-                            if (json2.fear_and_greed?.score != null) {
-                                const score = Math.round(json2.fear_and_greed.score);
-                                const label = score <= 25 ? 'Extreme Fear' : score <= 45 ? 'Fear'
-                                    : score <= 55 ? 'Neutral' : score <= 75 ? 'Greed' : 'Extreme Greed';
-                                return { value: score, label };
-                            }
-                        } catch { continue; }
+            }
+            // CNN fallback — single proxy attempt
+            try {
+                const cnnUrl = 'https://production.dataviz.cnn.io/index/fearandgreed/graphdata';
+                const resp = await fetchWithTimeout(CORS_PROXIES[preferredProxyIndex](cnnUrl), signal);
+                if (resp.ok) {
+                    const json = await resp.json();
+                    if (json.fear_and_greed?.score != null) {
+                        const score = Math.round(json.fear_and_greed.score);
+                        const label = score <= 25 ? 'Extreme Fear' : score <= 45 ? 'Fear'
+                            : score <= 55 ? 'Neutral' : score <= 75 ? 'Greed' : 'Extreme Greed';
+                        return { value: score, label };
                     }
-                } catch {}
-                console.warn('Fear & Greed fetch failed:', e.message);
+                }
+            } catch (e) {
+                if (e.name === 'AbortError') throw e;
             }
             return null;
         }
@@ -1244,20 +1256,13 @@
 
         async function fetchNewsForStock(symbol, signal) {
             try {
-                // Use Google News RSS via proxy
+                // Use preferred proxy only — news is low priority, not worth slow fallback
                 const query = encodeURIComponent(`${symbol} stock`);
                 const rssUrl = `https://news.google.com/rss/search?q=${query}&hl=en-US&gl=US&ceid=US:en`;
-                for (const proxyFn of CORS_PROXIES) {
-                    try {
-                        const resp = await fetchWithTimeout(proxyFn(rssUrl), signal);
-                        if (!resp.ok) continue;
-                        const text = await resp.text();
-                        return parseNewsSentiment(text, symbol);
-                    } catch (e) {
-                        if (e.name === 'AbortError') throw e;
-                        continue;
-                    }
-                }
+                const resp = await fetchWithTimeout(CORS_PROXIES[preferredProxyIndex](rssUrl), signal);
+                if (!resp.ok) return null;
+                const text = await resp.text();
+                return parseNewsSentiment(text, symbol);
             } catch (e) {
                 if (e.name === 'AbortError') throw e;
             }
