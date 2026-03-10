@@ -98,26 +98,6 @@ header{
   margin-bottom:12px;
 }
 
-/* Series selector */
-.series-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.series-btn{
-  padding:12px 10px;
-  background:var(--bg2);
-  border:2px solid var(--border-light);
-  border-radius:var(--radius);
-  color:var(--text);
-  font-size:0.75rem;
-  font-weight:600;
-  cursor:pointer;
-  text-align:center;
-  transition:all 0.2s;
-  font-family:var(--font);
-}
-.series-btn .series-cap{
-  display:block;font-size:0.65rem;font-weight:400;color:var(--text-dim);margin-top:2px;
-}
-.series-btn:hover{border-color:var(--primary);background:rgba(25,118,210,0.04)}
-.series-btn.active{border-color:var(--primary);background:rgba(25,118,210,0.08);color:var(--primary)}
 
 /* Dimension presets */
 .dim-row{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
@@ -237,17 +217,6 @@ header{
 }
 .reset-cam:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
 
-/* Series info badge */
-.series-info{
-  display:flex;align-items:center;gap:8px;
-  background:var(--surface);
-  border-radius:8px;
-  padding:10px 12px;
-  margin-top:10px;
-}
-.series-info-icon{font-size:20px}
-.series-info-text{font-size:0.72rem;color:var(--text-dim);line-height:1.4}
-.series-info-text strong{color:var(--text);display:block}
 
 /* Loading spinner */
 .loading-overlay{
@@ -317,34 +286,6 @@ header{
       <p>Select a series, customize dimensions, materials &amp; accessories</p>
     </div>
 
-    <!-- Series Selection -->
-    <div class="section">
-      <div class="section-title">Workbench Series</div>
-      <div class="series-grid" id="seriesGrid">
-        <button class="series-btn active" data-series="kennedy" onclick="selectSeries('kennedy')">
-          Kennedy<span class="series-cap">6,600 lb Capacity</span>
-        </button>
-        <button class="series-btn" data-series="roosevelt" onclick="selectSeries('roosevelt')">
-          Roosevelt<span class="series-cap">1,500 lb Capacity</span>
-        </button>
-        <button class="series-btn" data-series="dewey" onclick="selectSeries('dewey')">
-          Dewey<span class="series-cap">5,000 lb Capacity</span>
-        </button>
-        <button class="series-btn" data-series="harding" onclick="selectSeries('harding')">
-          Harding<span class="series-cap">20,000 lb Capacity</span>
-        </button>
-        <button class="series-btn" data-series="hydraulic" onclick="selectSeries('hydraulic')">
-          Hydraulic<span class="series-cap">1,000 lb Capacity</span>
-        </button>
-      </div>
-      <div class="series-info" id="seriesInfo">
-        <div class="series-info-icon">&#128736;</div>
-        <div class="series-info-text">
-          <strong id="seriesInfoName">Kennedy Series</strong>
-          <span id="seriesInfoDesc">Heavy-duty industrial workbench with 14-gauge steel tubing frame</span>
-        </div>
-      </div>
-    </div>
 
     <!-- Dimensions -->
     <div class="section">
@@ -479,7 +420,6 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 // Expose for onclick
 window.resetCamera = resetCamera;
 window.toggleFeature = toggleFeature;
-window.selectSeries = selectSeries;
 window.setDim = setDim;
 
 // ============ Series & Model Config ============
@@ -490,30 +430,6 @@ const seriesData = {
     model: 'models/KSeries.glb',
     accessories: 'models/KennedyAccessories6.glb',
     capacity: '6,600 lb'
-  },
-  roosevelt: {
-    name: 'Roosevelt Series',
-    desc: 'Standard duty workbench with round tubular steel frame, 1,500 lb capacity',
-    model: 'models/RooseveltAccessories.glb',
-    capacity: '1,500 lb'
-  },
-  dewey: {
-    name: 'Dewey Series',
-    desc: 'Heavy-duty workbench with reinforced tubing and full accessory support, 5,000 lb capacity',
-    model: 'models/DeweyAccessories2.glb',
-    capacity: '5,000 lb'
-  },
-  harding: {
-    name: 'Harding Series',
-    desc: 'Extra heavy-duty workbench for extreme loads, 20,000 lb capacity',
-    model: 'models/HardingAccessories.glb',
-    capacity: '20,000 lb'
-  },
-  hydraulic: {
-    name: 'Hydraulic Series',
-    desc: 'Height-adjustable electric hydraulic workbench, 1,000 lb capacity',
-    model: 'models/AdamsAccessories.glb',
-    capacity: '1,000 lb'
   }
 };
 
@@ -920,23 +836,6 @@ function applyColors() {
   applyColorsToModel(accessoriesModel);
 }
 
-// ============ Series Selection ============
-function selectSeries(seriesKey) {
-  config.series = seriesKey;
-
-  // Update UI
-  document.querySelectorAll('.series-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.series === seriesKey);
-  });
-
-  const data = seriesData[seriesKey];
-  document.getElementById('seriesInfoName').textContent = data.name;
-  document.getElementById('seriesInfoDesc').textContent = data.desc;
-
-  // Load the GLB model
-  loadSeriesModel(seriesKey);
-
-}
 
 // ============ Dimension Selection ============
 function setDim(dim, val) {
