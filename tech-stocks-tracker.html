@@ -579,13 +579,19 @@
 
         const TWELVE_DATA_KEY = '52f351e2d67042889eb1c6d16cd9769f';
         const AV_KEYS = ['demo', 'X86NOH6II01P7R24'];
-        const FETCH_TIMEOUT_MS = 10000;
+        const FETCH_TIMEOUT_MS = 5000;
         const CACHE_TTL_MS = 60000;
 
         const CORS_PROXIES = [
             url => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
             url => 'https://corsproxy.io/?' + encodeURIComponent(url)
         ];
+
+        // Track which proxy index last succeeded — try it first next time
+        let preferredProxyIndex = 0;
+        // Track which source last succeeded — reorder waterfall accordingly
+        // 0=yahoo, 1=twelve, 2=alphavantage
+        let preferredSourceIndex = 0;
 
         const TWELVE_DATA_MAP = {
             '1d':  { interval: '5min',  outputsize: 78 },
@@ -736,15 +742,19 @@
             const interval = YAHOO_INTERVAL_MAP[range] || '1d';
             const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`;
 
-            for (const proxyFn of CORS_PROXIES) {
+            // Try preferred proxy first, then the other
+            for (let attempt = 0; attempt < CORS_PROXIES.length; attempt++) {
+                const idx = (preferredProxyIndex + attempt) % CORS_PROXIES.length;
                 try {
-                    const resp = await fetchWithTimeout(proxyFn(targetUrl), signal);
+                    const resp = await fetchWithTimeout(CORS_PROXIES[idx](targetUrl), signal);
                     if (!resp.ok) continue;
                     const data = parseYahooResponse(await resp.json());
-                    if (data) return data;
+                    if (data) {
+                        preferredProxyIndex = idx;
+                        return data;
+                    }
                 } catch (e) {
                     if (e.name === 'AbortError') throw e;
-                    console.warn(`Yahoo proxy failed for ${symbol}:`, e.message);
                 }
             }
             return null;
@@ -868,17 +878,19 @@
             const cached = getCached(cacheKey);
             if (cached) return cached;
 
-            // Waterfall: try each source in order, stop on first success
+            // Waterfall: try preferred source first, then fallbacks
             const sources = [
                 () => fetchYahoo(symbol, range, signal),
                 () => fetchTwelveData(symbol, range, signal),
                 () => fetchAlphaVantage(symbol, range, signal)
             ];
 
-            for (const trySource of sources) {
+            for (let attempt = 0; attempt < sources.length; attempt++) {
+                const idx = (preferredSourceIndex + attempt) % sources.length;
                 try {
-                    const data = await trySource();
+                    const data = await sources[idx]();
                     if (data?.prices?.length) {
+                        preferredSourceIndex = idx;
                         setCache(cacheKey, data);
                         return data;
                     }
@@ -1157,37 +1169,37 @@
         }
 
         async function fetchFearGreedIndex(signal) {
+            // Try alternative.me first (no CORS issues)
             try {
                 const url = 'https://api.alternative.me/fng/?limit=1';
                 const resp = await fetchWithTimeout(url, signal);
-                if (!resp.ok) return null;
-                const json = await resp.json();
-                if (json.data?.[0]) {
-                    return {
-                        value: parseInt(json.data[0].value),
-                        label: json.data[0].value_classification
-                    };
+                if (resp.ok) {
+                    const json = await resp.json();
+                    if (json.data?.[0]) {
+                        return {
+                            value: parseInt(json.data[0].value),
+                            label: json.data[0].value_classification
+                        };
+                    }
                 }
             } catch (e) {
                 if (e.name === 'AbortError') throw e;
-                // Try CNN F&G via proxy
-                try {
-                    const cnnUrl = 'https://production.dataviz.cnn.io/index/fearandgreed/graphdata';
-                    for (const proxyFn of CORS_PROXIES) {
-                        try {
-                            const resp2 = await fetchWithTimeout(proxyFn(cnnUrl), signal);
-                            if (!resp2.ok) continue;
-                            const json2 = await resp2.json();
-                            if (json2.fear_and_greed?.score != null) {
-                                const score = Math.round(json2.fear_and_greed.score);
-                                const label = score <= 25 ? 'Extreme Fear' : score <= 45 ? 'Fear'
-                                    : score <= 55 ? 'Neutral' : score <= 75 ? 'Greed' : 'Extreme Greed';
-                                return { value: score, label };
-                            }
-                        } catch { continue; }
+            }
+            // CNN fallback — single proxy attempt
+            try {
+                const cnnUrl = 'https://production.dataviz.cnn.io/index/fearandgreed/graphdata';
+                const resp = await fetchWithTimeout(CORS_PROXIES[preferredProxyIndex](cnnUrl), signal);
+                if (resp.ok) {
+                    const json = await resp.json();
+                    if (json.fear_and_greed?.score != null) {
+                        const score = Math.round(json.fear_and_greed.score);
+                        const label = score <= 25 ? 'Extreme Fear' : score <= 45 ? 'Fear'
+                            : score <= 55 ? 'Neutral' : score <= 75 ? 'Greed' : 'Extreme Greed';
+                        return { value: score, label };
                     }
-                } catch {}
-                console.warn('Fear & Greed fetch failed:', e.message);
+                }
+            } catch (e) {
+                if (e.name === 'AbortError') throw e;
             }
             return null;
         }
@@ -1244,20 +1256,13 @@
 
         async function fetchNewsForStock(symbol, signal) {
             try {
-                // Use Google News RSS via proxy
+                // Use preferred proxy only — news is low priority, not worth slow fallback
                 const query = encodeURIComponent(`${symbol} stock`);
                 const rssUrl = `https://news.google.com/rss/search?q=${query}&hl=en-US&gl=US&ceid=US:en`;
-                for (const proxyFn of CORS_PROXIES) {
-                    try {
-                        const resp = await fetchWithTimeout(proxyFn(rssUrl), signal);
-                        if (!resp.ok) continue;
-                        const text = await resp.text();
-                        return parseNewsSentiment(text, symbol);
-                    } catch (e) {
-                        if (e.name === 'AbortError') throw e;
-                        continue;
-                    }
-                }
+                const resp = await fetchWithTimeout(CORS_PROXIES[preferredProxyIndex](rssUrl), signal);
+                if (!resp.ok) return null;
+                const text = await resp.text();
+                return parseNewsSentiment(text, symbol);
             } catch (e) {
                 if (e.name === 'AbortError') throw e;
             }
@@ -1731,7 +1736,6 @@
         // ── Overview with market context + news ──
         // ══════════════════════════════════════════
 
-        let signalRefreshTimer = null;
         const SIGNAL_REFRESH_MS = 20 * 60 * 1000; // 20 minutes
 
         function renderSkeletonCards(grid) {
@@ -1757,21 +1761,16 @@
             }
         }
 
-        function populateCard(symbol, dayData, monthData, news, ctx) {
-            const grid = document.getElementById('overviewGrid');
-            const card = grid.querySelector(`[data-symbol="${symbol}"]`);
-            if (!card) return;
+        function renderCardContent(card, symbol, dayData, monthData, news, ctx) {
+            const stock = STOCKS[symbol];
 
             if (!dayData?.prices?.length) {
                 card.classList.remove('skeleton');
-                card.querySelector('.skeleton-bar.wide')?.remove();
-                card.querySelector('.skeleton-bar.medium')?.remove();
-                const priceEl = document.createElement('div');
-                priceEl.className = 'ov-price';
-                priceEl.style.color = '#8b8fa3';
-                priceEl.style.fontSize = '14px';
-                priceEl.textContent = 'No data';
-                card.appendChild(priceEl);
+                card.innerHTML = `
+                    <div class="ticker" style="color: ${stock.color};">${symbol}</div>
+                    <div class="company">${stock.name}</div>
+                    <div class="ov-price" style="color:#8b8fa3;font-size:14px;">No data</div>
+                `;
                 return;
             }
 
@@ -1780,9 +1779,8 @@
             const change = latest.price - prevClose;
             const pct = (change / prevClose) * 100;
             const isUp = change >= 0;
-            const stock = STOCKS[symbol];
 
-            marketContext.news[symbol] = news;
+            if (news) marketContext.news[symbol] = news;
 
             const sig = computeSignal(monthData?.prices, ctx, news);
             const callClass = sig ? sig.call.toLowerCase() : '';
@@ -1819,7 +1817,7 @@
             try {
                 const grid = document.getElementById('overviewGrid');
 
-                // 1. Render all skeleton cards instantly
+                // 1. Show all skeleton cards instantly
                 renderSkeletonCards(grid);
 
                 const symbols = Object.keys(STOCKS);
@@ -1827,40 +1825,53 @@
                 // 2. Kick off market context in parallel with stock data
                 const ctxPromise = fetchMarketContext(signal);
 
-                // 3. Fetch each stock independently — populate card as soon as its data arrives
-                const stockResults = [];
-                const stockPromises = symbols.map(async sym => {
-                    // Fetch 1d price first (fastest to show), then 1mo + news in parallel
-                    const dayData = await fetchStock(sym, '1d', signal);
-                    if (signal.aborted) return null;
+                // 3. Phase 1: Fetch 1d + 1mo in parallel per stock, show price as soon as 1d arrives
+                const stockData = {};
+                await Promise.allSettled(symbols.map(async sym => {
+                    const card = grid.querySelector(`[data-symbol="${sym}"]`);
+                    if (!card) return;
 
-                    // Show price immediately while signals load
-                    populateCard(sym, dayData, null, null, marketContext);
+                    // Fire both ranges in parallel
+                    const dayPromise = fetchStock(sym, '1d', signal);
+                    const monthPromise = fetchStock(sym, '1mo', signal);
 
-                    // Fetch monthly data + news for signals
-                    const [monthData, news] = await Promise.all([
-                        fetchStock(sym, '1mo', signal),
-                        fetchNewsForStock(sym, signal)
-                    ]);
-                    if (signal.aborted) return null;
+                    // Show price as soon as 1d resolves (don't wait for 1mo)
+                    const dayData = await dayPromise;
+                    if (signal.aborted) return;
+                    renderCardContent(card, sym, dayData, null, null, marketContext);
 
-                    const result = { symbol: sym, dayData, monthData, news };
-                    stockResults.push(result);
+                    const monthData = await monthPromise;
+                    if (signal.aborted) return;
 
-                    // Re-populate with signal data
-                    populateCard(sym, dayData, monthData, news, marketContext);
-                    return result;
-                });
+                    stockData[sym] = { dayData, monthData };
 
-                // Wait for everything
-                const [ctx] = await Promise.all([ctxPromise, ...stockPromises]);
+                    // Re-render with signals (from 1mo data)
+                    renderCardContent(card, sym, dayData, monthData, null, marketContext);
+                }));
+
+                if (signal.aborted) return;
+
+                // 4. Wait for market context, re-render signals with full context
+                const ctx = await ctxPromise;
                 if (signal.aborted) return;
                 renderMarketContextBar(ctx);
 
-                // Final pass: re-render with full market context for accurate signals
-                for (const r of stockResults) {
-                    populateCard(r.symbol, r.dayData, r.monthData, r.news, ctx);
+                for (const [sym, { dayData, monthData }] of Object.entries(stockData)) {
+                    const card = grid.querySelector(`[data-symbol="${sym}"]`);
+                    if (card) renderCardContent(card, sym, dayData, monthData, null, ctx);
                 }
+
+                // 5. Phase 2: Fetch news in background, update signals when each arrives
+                await Promise.allSettled(symbols.map(async sym => {
+                    const d = stockData[sym];
+                    if (!d) return;
+                    const news = await fetchNewsForStock(sym, signal);
+                    if (signal.aborted || !news) return;
+                    const card = grid.querySelector(`[data-symbol="${sym}"]`);
+                    if (card) renderCardContent(card, sym, d.dayData, d.monthData, news, ctx);
+                }));
+
+                if (signal.aborted) return;
 
                 // Disclaimer
                 let disc = document.getElementById('signalDisclaimer');
@@ -2164,8 +2175,9 @@
             });
         }
 
-        // Initial load — fetchOverview populates cache, then render detail view
-        fetchOverview().then(() => fetchAndRender());
+        // Initial load — both run in parallel
+        fetchOverview();
+        fetchAndRender();
 
         // Price data refreshes every 60 seconds
         setInterval(fetchAndRender, 60000);
