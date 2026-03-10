@@ -884,17 +884,9 @@ function updateMapLinks(route) {
     gmapsLink.style.display = 'flex';
 
     // ── Apple Maps URL ──
-    // Apple Maps uses maps.apple.com with waypoints as intermediate "daddr" stops
-    // On iOS this opens Apple Maps natively; on other devices it opens the web version
-    let appleUrl;
-    if (waypoints.length) {
-        // Apple Maps route: saddr → waypoint1 → waypoint2 → ... → daddr
-        // Format: https://maps.apple.com/?saddr=lat,lng&daddr=wp1+to:wp2+to:dest&dirflg=d
-        const wpChain = waypoints.map(w => `${w.lat},${w.lng}`).concat([dest]).join('+to:');
-        appleUrl = `https://maps.apple.com/?saddr=${origin}&daddr=${wpChain}&dirflg=d&t=m`;
-    } else {
-        appleUrl = `https://maps.apple.com/?saddr=${origin}&daddr=${dest}&dirflg=d&t=m`;
-    }
+    // Use simple origin→destination without waypoints so Apple Maps shows the "Go" button
+    // (Adding intermediate stops via +to: causes Apple Maps to show "Steps" instead of "Go")
+    const appleUrl = `https://maps.apple.com/?saddr=${origin}&daddr=${dest}&dirflg=d&t=m`;
     amapsLink.href = appleUrl;
     amapsLink.style.display = 'flex';
 
