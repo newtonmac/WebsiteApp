@@ -312,6 +312,46 @@
             transition: width 0.4s;
         }
 
+        /* EV efficiency explanation */
+        .ev-explain {
+            background: #252836;
+            border: 1px solid #2d3040;
+            border-radius: 12px;
+            padding: 14px 16px;
+            margin-top: 12px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #c0c4d0;
+        }
+        .ev-explain h3 {
+            font-size: 13px;
+            font-weight: 700;
+            color: #34d399;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .ev-explain .ev-stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px solid #2d304066;
+        }
+        .ev-explain .ev-stat-row:last-child { border-bottom: none; }
+        .ev-explain .ev-label { color: #8b8fa3; }
+        .ev-explain .ev-value { font-weight: 600; color: #e1e4e8; }
+        .ev-explain .ev-value.good { color: #34d399; }
+        .ev-explain .ev-value.warn { color: #fbbf24; }
+        .ev-explain .ev-tip {
+            margin-top: 10px;
+            padding: 8px 12px;
+            background: #34d39911;
+            border-left: 3px solid #34d399;
+            border-radius: 0 8px 8px 0;
+            font-size: 12px;
+            color: #a0a8b8;
+        }
+
         /* elevation chart */
         .elev-chart-wrap {
             padding: 14px 20px;
@@ -452,6 +492,7 @@
                 <svg viewBox="0 0 24 24" fill="none"><path d="M21 3L3 10.5l6.5 2L12 21l9-18z" fill="white"/></svg>
                 Start Driving — Apple Maps
             </a>
+            <div id="evExplain" class="ev-explain" style="display:none;"></div>
             <div class="share-row" id="shareRow" style="display:none;">
                 <a id="shareEmail" class="share-btn" href="#" target="_blank">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4L12 13 2 4"/></svg>
@@ -490,6 +531,11 @@
             <div class="leg-row"><div class="leg-swatch" style="background:#34d399;"></div> EV Best Route</div>
             <div class="leg-row"><div class="leg-swatch" style="background:#60a5fa;"></div> Fastest Route</div>
             <div class="leg-row"><div class="leg-swatch" style="background:#6b7280;"></div> Alternative</div>
+            <div style="border-top:1px solid #2d3040; margin:6px 0 4px; padding-top:6px; font-size:11px; color:#8b8fa3;">Elevation Gradient</div>
+            <div class="leg-row"><div class="leg-swatch" style="background:#22c55e;"></div> Downhill (regen)</div>
+            <div class="leg-row"><div class="leg-swatch" style="background:#a3e635;"></div> Flat</div>
+            <div class="leg-row"><div class="leg-swatch" style="background:#fbbf24;"></div> Slight uphill</div>
+            <div class="leg-row"><div class="leg-swatch" style="background:#ef4444;"></div> Steep uphill</div>
         </div>
         <div class="loading-overlay hidden" id="loadingOverlay">
             <div class="spinner"></div>
@@ -925,6 +971,8 @@ function displayRoutes(routes) {
     document.getElementById('mapLegend').style.display = 'block';
 }
 
+let elevColorLayers = [];
+
 function selectRoute(idx) {
     selectedRouteIdx = idx;
 
@@ -943,12 +991,109 @@ function selectRoute(idx) {
         if (isSelected) rl.layer.bringToFront();
     });
 
+    // Draw elevation-colored overlay on selected route
+    drawElevColorOverlay(routesData[idx]);
+
     // Draw elevation chart
     drawElevationChart(routesData[idx]);
     document.getElementById('elevSection').style.display = 'block';
 
+    // Show EV efficiency explanation
+    showEvExplanation(routesData[idx], routesData);
+
     // Build map app links with waypoints to follow this route
     updateMapLinks(routesData[idx]);
+}
+
+// ─── Elevation-colored route overlay ───
+// Colors route segments by gradient: green=downhill, yellow=flat, red=uphill
+function drawElevColorOverlay(route) {
+    // Remove previous overlay
+    elevColorLayers.forEach(l => map.removeLayer(l));
+    elevColorLayers = [];
+
+    const sampled = route.sampled;
+    const elev = route.elevations;
+    if (sampled.length < 2 || elev.length < 2) return;
+
+    for (let i = 0; i < sampled.length - 1; i++) {
+        const from = [sampled[i][1], sampled[i][0]];
+        const to = [sampled[i+1][1], sampled[i+1][0]];
+        const diff = elev[i+1] - elev[i];
+
+        // Calculate color based on gradient
+        let color;
+        if (diff > 5) color = '#ef4444';       // steep uphill — red (bad for EV)
+        else if (diff > 2) color = '#f97316';   // moderate uphill — orange
+        else if (diff > 0) color = '#fbbf24';   // slight uphill — yellow
+        else if (diff > -2) color = '#a3e635';   // flat/slight downhill — lime
+        else color = '#22c55e';                  // downhill — green (regen braking)
+
+        const seg = L.polyline([from, to], {
+            color: color,
+            weight: 7,
+            opacity: 0.85
+        }).addTo(map);
+        elevColorLayers.push(seg);
+    }
+
+    // Bring overlay to front
+    elevColorLayers.forEach(l => l.bringToFront());
+}
+
+// ─── EV Efficiency Explanation ───
+function showEvExplanation(route, allRoutes) {
+    const el = document.getElementById('evExplain');
+    el.style.display = 'block';
+
+    const isBest = allRoutes.indexOf(route) === 0;
+    const bestRoute = allRoutes[0];
+
+    // Calculate estimated energy
+    // Rough EV energy model: ~0.3 kWh/mi base + ~0.01 kWh per meter of elevation gain
+    const baseConsumption = route.distMi * 0.3;
+    const elevCost = route.gain * 0.01;
+    const regenRecovery = route.loss * 0.005; // ~50% regen efficiency
+    const estEnergy = baseConsumption + elevCost - regenRecovery;
+    const estRange = route.distMi / estEnergy * 100; // est. efficiency as mi/kWh scaled
+
+    // Compare vs worst route
+    const worstGain = Math.max(...allRoutes.map(r => r.gain));
+    const savedElev = worstGain - route.gain;
+    const savedEnergy = savedElev * 0.01;
+
+    // Net elevation (start vs end)
+    const netElev = route.elevations.length ? route.elevations[route.elevations.length - 1] - route.elevations[0] : 0;
+
+    let explanation = `<h3>Why this route?</h3>`;
+    explanation += `<div class="ev-stat-row"><span class="ev-label">Elevation gain</span><span class="ev-value ${isBest ? 'good' : ''}">${Math.round(route.gain)}m (+${Math.round(route.gain * 3.281)}ft)</span></div>`;
+    explanation += `<div class="ev-stat-row"><span class="ev-label">Elevation loss (regen)</span><span class="ev-value good">-${Math.round(route.loss)}m (-${Math.round(route.loss * 3.281)}ft)</span></div>`;
+    explanation += `<div class="ev-stat-row"><span class="ev-label">Net elevation change</span><span class="ev-value">${netElev >= 0 ? '+' : ''}${Math.round(netElev)}m</span></div>`;
+    explanation += `<div class="ev-stat-row"><span class="ev-label">Est. energy use</span><span class="ev-value">${estEnergy.toFixed(1)} kWh</span></div>`;
+    explanation += `<div class="ev-stat-row"><span class="ev-label">Est. efficiency</span><span class="ev-value">${(route.distMi / estEnergy).toFixed(1)} mi/kWh</span></div>`;
+
+    if (allRoutes.length > 1 && savedElev > 5) {
+        explanation += `<div class="ev-stat-row"><span class="ev-label">Elev saved vs worst</span><span class="ev-value good">-${Math.round(savedElev)}m (≈${savedEnergy.toFixed(1)} kWh)</span></div>`;
+    }
+
+    explanation += `<div class="ev-tip">`;
+    if (isBest) {
+        explanation += `This route minimizes climbing while keeping travel time reasonable. `;
+        explanation += `Less uphill = less energy spent fighting gravity. `;
+        if (route.loss > route.gain * 0.5) {
+            explanation += `Significant downhill sections allow regenerative braking to recover energy.`;
+        }
+    } else {
+        const extraGain = route.gain - bestRoute.gain;
+        explanation += `This route has ${Math.round(extraGain)}m more climbing than the EV Best route, `;
+        explanation += `which costs roughly ${(extraGain * 0.01).toFixed(1)} kWh more energy. `;
+        if (route.durMin < bestRoute.durMin) {
+            explanation += `However, it's ${Math.round(bestRoute.durMin - route.durMin)} min faster.`;
+        }
+    }
+    explanation += `</div>`;
+
+    el.innerHTML = explanation;
 }
 
 // ─── Sample waypoints from route for map app links ───
@@ -1159,8 +1304,11 @@ function formatDuration(min) {
 
 function clearRoutes() {
     clearRouteLayers();
+    elevColorLayers.forEach(l => map.removeLayer(l));
+    elevColorLayers = [];
     document.getElementById('routeResults').style.display = 'none';
     document.getElementById('elevSection').style.display = 'none';
+    document.getElementById('evExplain').style.display = 'none';
     document.getElementById('mapLegend').style.display = 'none';
     document.getElementById('gmapsLink').style.display = 'none';
     document.getElementById('amapsLink').style.display = 'none';
