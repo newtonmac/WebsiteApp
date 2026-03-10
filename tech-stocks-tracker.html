@@ -436,13 +436,15 @@
         };
 
         const TWELVE_DATA_KEY = '52f351e2d67042889eb1c6d16cd9769f';
+        const AV_KEYS = ['demo', 'X86NOH6II01P7R24'];
+        const FETCH_TIMEOUT_MS = 10000;
+        const CACHE_TTL_MS = 60000;
 
         const CORS_PROXIES = [
             url => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
             url => 'https://corsproxy.io/?' + encodeURIComponent(url)
         ];
 
-        // Map our UI ranges to TwelveData intervals and outputsize
         const TWELVE_DATA_MAP = {
             '1d':  { interval: '5min',  outputsize: 78 },
             '5d':  { interval: '15min', outputsize: 130 },
@@ -453,14 +455,78 @@
             '1y':  { interval: '1day',  outputsize: 252 }
         };
 
+        const YAHOO_INTERVAL_MAP = {
+            '1d': '5m', '5d': '15m', '1mo': '1h',
+            '3mo': '1d', '6mo': '1d', 'ytd': '1d', '1y': '1d'
+        };
+
+        const RANGE_LABELS = {
+            '1d': '1 Day', '5d': '5 Days', '1mo': '1 Month', '3mo': '3 Months',
+            '6mo': '6 Months', 'ytd': 'Year to Date', '1y': '1 Year'
+        };
+
+        const RANGE_DAYS = { '1d': 1, '5d': 5, '1mo': 30, '3mo': 90, '6mo': 180, '1y': 365 };
+
         let selectedSymbol = 'NVDA';
         let selectedRange = '1d';
-        let selectedInterval = '5m';
         let chart = null;
-        let stockCache = {};
-        let overviewCache = {};
         let lastUpdated = null;
         let activeSource = '';
+        let avKeyIndex = 0;
+
+        // TTL-based cache: stores { data, timestamp }
+        const stockCache = new Map();
+
+        function getCached(key) {
+            const entry = stockCache.get(key);
+            if (entry && (Date.now() - entry.timestamp) < CACHE_TTL_MS) return entry.data;
+            if (entry) stockCache.delete(key);
+            return null;
+        }
+
+        function setCache(key, data) {
+            stockCache.set(key, { data, timestamp: Date.now() });
+        }
+
+        // AbortController to cancel stale fetches on rapid navigation
+        let currentFetchController = null;
+        let overviewFetchController = null;
+
+        function fetchWithTimeout(url, signal) {
+            const timeout = AbortController.abort
+                ? AbortSignal.timeout(FETCH_TIMEOUT_MS)
+                : null;
+            const signals = [signal, timeout].filter(Boolean);
+            const combined = signals.length > 1
+                ? AbortSignal.any(signals)
+                : signals[0] || undefined;
+            return fetch(url, { signal: combined });
+        }
+
+        // ── Helpers ──
+        function safeMinMax(arr) {
+            let min = Infinity, max = -Infinity;
+            for (const v of arr) {
+                if (v < min) min = v;
+                if (v > max) max = v;
+            }
+            return { min, max };
+        }
+
+        function getCutoffStr(range) {
+            if (range === 'ytd') {
+                return new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10);
+            }
+            const d = new Date();
+            d.setDate(d.getDate() - (RANGE_DAYS[range] || 30));
+            return d.toISOString().slice(0, 10);
+        }
+
+        function normalizeDate(dateStr) {
+            return dateStr.includes(' ')
+                ? dateStr.replace(' ', 'T')
+                : dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00';
+        }
 
         // Stock tab clicks
         document.getElementById('stockTabs').addEventListener('click', e => {
@@ -479,65 +545,63 @@
             document.querySelectorAll('#timeRange button').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             selectedRange = btn.dataset.range;
-            selectedInterval = btn.dataset.interval;
             fetchAndRender();
         });
 
         document.getElementById('refreshBtn').addEventListener('click', () => {
-            stockCache = {};
-            overviewCache = {};
+            stockCache.clear();
             fetchAndRender();
             fetchOverview();
         });
 
         // ── Source 1: Yahoo Finance (via CORS proxies) ──
         function parseYahooResponse(json) {
-            if (json.chart && json.chart.result && json.chart.result[0]) {
-                const result = json.chart.result[0];
-                const meta = result.meta || {};
-                const timestamps = result.timestamp || [];
-                const quote = result.indicators.quote[0] || {};
-                const closes = quote.close || [];
-                const opens = quote.open || [];
-                const highs = quote.high || [];
-                const lows = quote.low || [];
-                const volumes = quote.volume || [];
+            if (!json.chart?.result?.[0]) return null;
 
-                const prices = timestamps.map((ts, i) => ({
-                    date: new Date(ts * 1000).toISOString().replace('Z', '').slice(0, 19),
-                    price: closes[i],
-                    open: opens[i],
-                    high: highs[i],
-                    low: lows[i],
-                    volume: volumes[i]
-                })).filter(p => p.price != null && !isNaN(p.price) && p.price > 0);
+            const result = json.chart.result[0];
+            const meta = result.meta || {};
+            const timestamps = result.timestamp || [];
+            const quote = result.indicators.quote[0] || {};
 
-                if (prices.length > 0) {
-                    return {
-                        prices,
-                        meta: {
-                            previousClose: meta.chartPreviousClose || meta.previousClose,
-                            regularMarketPrice: meta.regularMarketPrice,
-                            currency: meta.currency || 'USD'
-                        },
-                        source: 'Yahoo Finance'
-                    };
+            const prices = timestamps.reduce((acc, ts, i) => {
+                const close = quote.close?.[i];
+                if (close != null && !isNaN(close) && close > 0) {
+                    acc.push({
+                        date: new Date(ts * 1000).toISOString().replace('Z', '').slice(0, 19),
+                        price: close,
+                        open: quote.open?.[i],
+                        high: quote.high?.[i],
+                        low: quote.low?.[i],
+                        volume: quote.volume?.[i]
+                    });
                 }
-            }
-            return null;
+                return acc;
+            }, []);
+
+            if (prices.length === 0) return null;
+
+            return {
+                prices,
+                meta: {
+                    previousClose: meta.chartPreviousClose || meta.previousClose,
+                    regularMarketPrice: meta.regularMarketPrice
+                },
+                source: 'Yahoo Finance'
+            };
         }
 
-        async function fetchYahoo(symbol, range, interval) {
+        async function fetchYahoo(symbol, range, signal) {
+            const interval = YAHOO_INTERVAL_MAP[range] || '1d';
             const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`;
 
             for (const proxyFn of CORS_PROXIES) {
                 try {
-                    const resp = await fetch(proxyFn(targetUrl));
+                    const resp = await fetchWithTimeout(proxyFn(targetUrl), signal);
                     if (!resp.ok) continue;
-                    const json = await resp.json();
-                    const data = parseYahooResponse(json);
+                    const data = parseYahooResponse(await resp.json());
                     if (data) return data;
                 } catch (e) {
+                    if (e.name === 'AbortError') throw e;
                     console.warn(`Yahoo proxy failed for ${symbol}:`, e.message);
                 }
             }
@@ -545,13 +609,13 @@
         }
 
         // ── Source 2: Twelve Data API ──
-        async function fetchTwelveData(symbol, range) {
+        async function fetchTwelveData(symbol, range, signal) {
             const config = TWELVE_DATA_MAP[range];
             if (!config) return null;
 
             try {
                 const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=${config.interval}&outputsize=${config.outputsize}&apikey=${TWELVE_DATA_KEY}`;
-                const resp = await fetch(url);
+                const resp = await fetchWithTimeout(url, signal);
                 if (!resp.ok) return null;
                 const json = await resp.json();
 
@@ -560,118 +624,96 @@
                     return null;
                 }
 
-                if (json.values && json.values.length > 0) {
-                    const prices = json.values
-                        .filter(d => d.close && d.close !== 'null')
-                        .map(d => ({
-                            date: d.datetime.includes(' ')
-                                ? d.datetime.replace(' ', 'T')
-                                : d.datetime + 'T00:00:00',
-                            price: parseFloat(d.close),
+                if (!json.values?.length) return null;
+
+                const cutoff = range === 'ytd' ? getCutoffStr('ytd') : null;
+                const prices = json.values
+                    .reduce((acc, d) => {
+                        if (!d.close || d.close === 'null') return acc;
+                        const price = parseFloat(d.close);
+                        if (isNaN(price) || price <= 0) return acc;
+                        const date = normalizeDate(d.datetime);
+                        if (cutoff && date.slice(0, 10) < cutoff) return acc;
+                        acc.push({
+                            date,
+                            price,
                             open: parseFloat(d.open),
                             high: parseFloat(d.high),
                             low: parseFloat(d.low),
                             volume: parseInt(d.volume) || 0
-                        }))
-                        .filter(p => !isNaN(p.price) && p.price > 0)
-                        .sort((a, b) => a.date.localeCompare(b.date));
+                        });
+                        return acc;
+                    }, [])
+                    .sort((a, b) => a.date.localeCompare(b.date));
 
-                    // Filter for YTD
-                    let filtered = prices;
-                    if (range === 'ytd') {
-                        const ytdCutoff = new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10);
-                        filtered = prices.filter(p => p.date.slice(0, 10) >= ytdCutoff);
-                    }
+                if (prices.length === 0) return null;
 
-                    if (filtered.length > 0) {
-                        return {
-                            prices: filtered,
-                            meta: {
-                                previousClose: filtered.length > 1 ? filtered[0].price : null
-                            },
-                            source: 'Twelve Data'
-                        };
-                    }
-                }
+                return {
+                    prices,
+                    meta: { previousClose: prices[0].price },
+                    source: 'Twelve Data'
+                };
             } catch (e) {
+                if (e.name === 'AbortError') throw e;
                 console.warn(`TwelveData failed for ${symbol}:`, e.message);
             }
             return null;
         }
 
-        // ── Source 3: Alpha Vantage (free tier, 25 requests/day) ──
-        const ALPHA_VANTAGE_KEY = 'demo'; // free demo key; works for popular symbols
-        const AV_KEYS = ['demo', 'X86NOH6II01P7R24']; // multiple keys for fallback
-        let avKeyIndex = 0;
-
-        async function fetchAlphaVantage(symbol, range) {
-            // Alpha Vantage: intraday (5min, 15min, 60min) or daily
+        // ── Source 3: Alpha Vantage ──
+        async function fetchAlphaVantage(symbol, range, signal) {
             const isIntraday = ['1d', '5d', '1mo'].includes(range);
             const avIntervalMap = { '1d': '5min', '5d': '15min', '1mo': '60min' };
+            const outputSize = range === '1d' ? 'compact' : 'full';
 
             for (let attempt = 0; attempt < AV_KEYS.length; attempt++) {
                 const key = AV_KEYS[(avKeyIndex + attempt) % AV_KEYS.length];
                 try {
-                    let url;
-                    if (isIntraday) {
-                        const avInterval = avIntervalMap[range];
-                        url = `https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${encodeURIComponent(symbol)}&interval=${avInterval}&outputsize=full&apikey=${key}`;
-                    } else {
-                        url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${encodeURIComponent(symbol)}&outputsize=full&apikey=${key}`;
-                    }
+                    const fn = isIntraday ? 'TIME_SERIES_INTRADAY' : 'TIME_SERIES_DAILY';
+                    const intervalParam = isIntraday ? `&interval=${avIntervalMap[range]}` : '';
+                    const url = `https://www.alphavantage.co/query?function=${fn}&symbol=${encodeURIComponent(symbol)}${intervalParam}&outputsize=${outputSize}&apikey=${key}`;
 
-                    const resp = await fetch(url);
+                    const resp = await fetchWithTimeout(url, signal);
                     if (!resp.ok) continue;
                     const json = await resp.json();
 
-                    // Check for rate limit / error
                     if (json['Note'] || json['Information'] || json['Error Message']) {
                         console.warn('AlphaVantage limit/error:', json['Note'] || json['Information'] || json['Error Message']);
                         continue;
                     }
 
-                    // Find the time series key
                     const tsKey = Object.keys(json).find(k => k.startsWith('Time Series'));
                     if (!tsKey || !json[tsKey]) continue;
 
-                    const series = json[tsKey];
-                    const entries = Object.entries(series);
-                    if (entries.length === 0) continue;
-
-                    // Determine cutoff date
-                    const now = new Date();
-                    let cutoffDate = new Date();
-                    const rangeDays = { '1d': 1, '5d': 5, '1mo': 30, '3mo': 90, '6mo': 180, '1y': 365 };
-                    if (range === 'ytd') {
-                        cutoffDate = new Date(now.getFullYear(), 0, 1);
-                    } else {
-                        cutoffDate.setDate(cutoffDate.getDate() - (rangeDays[range] || 30));
-                    }
-                    const cutoffStr = cutoffDate.toISOString().slice(0, 10);
-
-                    const prices = entries
-                        .map(([dateStr, vals]) => ({
-                            date: dateStr.includes(' ') ? dateStr.replace(' ', 'T') : dateStr + 'T00:00:00',
-                            price: parseFloat(vals['4. close']),
-                            open: parseFloat(vals['1. open']),
-                            high: parseFloat(vals['2. high']),
-                            low: parseFloat(vals['3. low']),
-                            volume: parseInt(vals['5. volume']) || 0
-                        }))
-                        .filter(p => !isNaN(p.price) && p.price > 0 && p.date.slice(0, 10) >= cutoffStr)
+                    const cutoffStr = getCutoffStr(range);
+                    const prices = Object.entries(json[tsKey])
+                        .reduce((acc, [dateStr, vals]) => {
+                            const price = parseFloat(vals['4. close']);
+                            if (isNaN(price) || price <= 0) return acc;
+                            const date = normalizeDate(dateStr);
+                            if (date.slice(0, 10) < cutoffStr) return acc;
+                            acc.push({
+                                date,
+                                price,
+                                open: parseFloat(vals['1. open']),
+                                high: parseFloat(vals['2. high']),
+                                low: parseFloat(vals['3. low']),
+                                volume: parseInt(vals['5. volume']) || 0
+                            });
+                            return acc;
+                        }, [])
                         .sort((a, b) => a.date.localeCompare(b.date));
 
                     if (prices.length > 0) {
-                        avKeyIndex = (avKeyIndex + attempt) % AV_KEYS.length; // use this key next time
+                        avKeyIndex = (avKeyIndex + attempt) % AV_KEYS.length;
                         return {
                             prices,
-                            meta: {
-                                previousClose: prices.length > 1 ? prices[0].price : null
-                            },
+                            meta: { previousClose: prices[0].price },
                             source: 'Alpha Vantage'
                         };
                     }
                 } catch (e) {
+                    if (e.name === 'AbortError') throw e;
                     console.warn(`AlphaVantage failed for ${symbol}:`, e.message);
                 }
             }
@@ -679,26 +721,25 @@
         }
 
         // ── Multi-source fetch with fallback ──
-        async function fetchStock(symbol, range, interval) {
-            const cacheKey = `${symbol}_${range}_${interval}`;
-            if (stockCache[cacheKey]) return stockCache[cacheKey];
+        async function fetchStock(symbol, range, signal) {
+            const cacheKey = `${symbol}_${range}`;
+            const cached = getCached(cacheKey);
+            if (cached) return cached;
 
-            // Try all sources in parallel, use first successful result by priority
             const [yahooResult, twelveResult, avResult] = await Promise.allSettled([
-                fetchYahoo(symbol, range, interval),
-                fetchTwelveData(symbol, range),
-                fetchAlphaVantage(symbol, range)
+                fetchYahoo(symbol, range, signal),
+                fetchTwelveData(symbol, range, signal),
+                fetchAlphaVantage(symbol, range, signal)
             ]);
 
             const yahoo = yahooResult.status === 'fulfilled' ? yahooResult.value : null;
             const twelve = twelveResult.status === 'fulfilled' ? twelveResult.value : null;
             const av = avResult.status === 'fulfilled' ? avResult.value : null;
 
-            // Priority: Yahoo (most granular) → TwelveData → Alpha Vantage
             const data = yahoo || twelve || av;
 
             if (data) {
-                stockCache[cacheKey] = data;
+                setCache(cacheKey, data);
                 return data;
             }
 
@@ -706,65 +747,82 @@
         }
 
         async function fetchOverview() {
-            const grid = document.getElementById('overviewGrid');
-            grid.innerHTML = '';
+            if (overviewFetchController) overviewFetchController.abort();
+            overviewFetchController = new AbortController();
+            const signal = overviewFetchController.signal;
 
-            const results = await Promise.allSettled(
-                Object.keys(STOCKS).map(async sym => {
-                    const data = await fetchStock(sym, '1d', '5m');
-                    return { symbol: sym, data };
-                })
-            );
+            try {
+                const results = await Promise.allSettled(
+                    Object.keys(STOCKS).map(async sym => {
+                        const data = await fetchStock(sym, '1d', signal);
+                        return { symbol: sym, data };
+                    })
+                );
 
-            results.forEach(r => {
-                if (r.status !== 'fulfilled') return;
-                const { symbol, data } = r.value;
-                if (!data || !data.prices || !data.prices.length) return;
+                if (signal.aborted) return;
 
-                overviewCache[symbol] = data;
-                const latest = data.prices[data.prices.length - 1];
-                const prevClose = (data.meta && data.meta.previousClose) || data.prices[0].price;
-                const change = latest.price - prevClose;
-                const pct = (change / prevClose) * 100;
-                const isUp = change >= 0;
-                const stock = STOCKS[symbol];
+                const grid = document.getElementById('overviewGrid');
+                grid.innerHTML = '';
 
-                const card = document.createElement('div');
-                card.className = 'overview-card';
-                card.innerHTML = `
-                    <div class="ticker" style="color: ${stock.color};">${symbol}</div>
-                    <div class="company">${stock.name}</div>
-                    <div class="ov-price">$${latest.price.toFixed(2)}</div>
-                    <div class="ov-change ${isUp ? 'up' : 'down'}">
-                        ${isUp ? '&#9650;' : '&#9660;'}
-                        ${change >= 0 ? '+' : ''}${change.toFixed(2)}
-                        (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)
-                    </div>
-                `;
-                card.addEventListener('click', () => {
-                    document.querySelectorAll('.stock-tab').forEach(b => b.classList.remove('active'));
-                    const tab = document.querySelector(`.stock-tab[data-symbol="${symbol}"]`);
-                    if (tab) tab.classList.add('active');
-                    selectedSymbol = symbol;
-                    fetchAndRender();
+                results.forEach(r => {
+                    if (r.status !== 'fulfilled') return;
+                    const { symbol, data } = r.value;
+                    if (!data?.prices?.length) return;
+
+                    const latest = data.prices[data.prices.length - 1];
+                    const prevClose = data.meta?.previousClose || data.prices[0].price;
+                    const change = latest.price - prevClose;
+                    const pct = (change / prevClose) * 100;
+                    const isUp = change >= 0;
+                    const stock = STOCKS[symbol];
+
+                    const card = document.createElement('div');
+                    card.className = 'overview-card';
+                    card.innerHTML = `
+                        <div class="ticker" style="color: ${stock.color};">${symbol}</div>
+                        <div class="company">${stock.name}</div>
+                        <div class="ov-price">$${latest.price.toFixed(2)}</div>
+                        <div class="ov-change ${isUp ? 'up' : 'down'}">
+                            ${isUp ? '&#9650;' : '&#9660;'}
+                            ${change >= 0 ? '+' : ''}${change.toFixed(2)}
+                            (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)
+                        </div>
+                    `;
+                    card.addEventListener('click', () => {
+                        document.querySelectorAll('.stock-tab').forEach(b => b.classList.remove('active'));
+                        const tab = document.querySelector(`.stock-tab[data-symbol="${symbol}"]`);
+                        if (tab) tab.classList.add('active');
+                        selectedSymbol = symbol;
+                        fetchAndRender();
+                    });
+                    grid.appendChild(card);
                 });
-                grid.appendChild(card);
-            });
+            } catch (e) {
+                if (e.name === 'AbortError') return;
+                console.warn('Overview fetch failed:', e.message);
+            }
         }
 
         async function fetchAndRender() {
+            if (currentFetchController) currentFetchController.abort();
+            currentFetchController = new AbortController();
+            const signal = currentFetchController.signal;
+
             document.getElementById('content').innerHTML = `
                 <div class="loading">
                     <div class="spinner"></div>
-                    Loading ${selectedSymbol} data (trying multiple sources)...
+                    Loading ${selectedSymbol} data...
                 </div>`;
 
             try {
-                const data = await fetchStock(selectedSymbol, selectedRange, selectedInterval);
+                const data = await fetchStock(selectedSymbol, selectedRange, signal);
+
+                if (signal.aborted) return;
+
                 lastUpdated = new Date();
                 activeSource = data.source || 'unknown';
 
-                if (!data.prices || !data.prices.length) {
+                if (!data.prices?.length) {
                     document.getElementById('content').innerHTML = `
                         <div class="error-msg">
                             No data available for ${selectedSymbol} from any source (Yahoo Finance, Twelve Data, Alpha Vantage).
@@ -774,9 +832,10 @@
                 }
 
                 render(data);
-            } catch (err) {
+            } catch (e) {
+                if (e.name === 'AbortError') return;
                 document.getElementById('content').innerHTML = `
-                    <div class="error-msg">Error fetching data: ${err.message}</div>`;
+                    <div class="error-msg">Error fetching data: ${e.message}</div>`;
             }
         }
 
@@ -788,8 +847,8 @@
             const { prices, meta } = data;
             const stock = STOCKS[selectedSymbol];
             const latest = prices[prices.length - 1];
-            const prevClose = meta.previousClose || prices[0].price;
             const first = prices[0];
+            const prevClose = meta.previousClose || first.price;
 
             // For intraday (1D), change is vs previous close; otherwise vs first price in range
             const isIntraday = selectedRange === '1d';
@@ -799,11 +858,10 @@
             const isUp = change >= 0;
 
             const allPrices = prices.map(p => p.price);
-            const high = Math.max(...allPrices);
-            const low = Math.min(...allPrices);
+            const { min: low, max: high } = safeMinMax(allPrices);
             const avg = allPrices.reduce((s, v) => s + v, 0) / allPrices.length;
             const totalVolume = prices.reduce((s, p) => s + (p.volume || 0), 0);
-            const variance = allPrices.reduce((s, v) => s + Math.pow(v - avg, 2), 0) / (allPrices.length - 1);
+            const variance = allPrices.reduce((s, v) => s + (v - avg) ** 2, 0) / (allPrices.length - 1);
             const volatility = (Math.sqrt(variance) / avg) * 100;
 
             const updatedStr = lastUpdated ? lastUpdated.toLocaleString('en-US', {
@@ -811,11 +869,9 @@
                 hour: 'numeric', minute: '2-digit', hour12: true
             }) : '-';
 
-            const rangeLabels = { '1d': '1 Day', '5d': '5 Days', '1mo': '1 Month', '3mo': '3 Months', '6mo': '6 Months', 'ytd': 'Year to Date', '1y': '1 Year' };
-
             document.getElementById('content').innerHTML = `
                 <div class="data-status">
-                    <div>${selectedSymbol} &bull; ${rangeLabels[selectedRange]} &bull; Updated: <strong>${updatedStr}</strong></div>
+                    <div>${selectedSymbol} &bull; ${RANGE_LABELS[selectedRange]} &bull; Updated: <strong>${updatedStr}</strong></div>
                     <div>Source: <span class="source-tag">${activeSource}</span></div>
                 </div>
 
@@ -926,7 +982,6 @@
             gradient.addColorStop(0, color + '40');
             gradient.addColorStop(1, color + '05');
 
-            const isIntraday = selectedRange === '1d' || selectedRange === '5d';
             const timeConfig = (() => {
                 if (selectedRange === '1d') {
                     return {
@@ -1027,10 +1082,8 @@
         fetchOverview();
         fetchAndRender();
 
-        // Auto-refresh every 60 seconds
+        // Auto-refresh every 60 seconds (stale cache entries expire via TTL)
         setInterval(() => {
-            stockCache = {};
-            overviewCache = {};
             fetchOverview();
             fetchAndRender();
         }, 60000);
