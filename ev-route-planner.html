@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EV Route Planner — Least Elevation Gain</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f1117;
+            color: #e1e4e8;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ── Top bar ── */
+        .topbar {
+            background: linear-gradient(135deg, #1a1d28, #252836);
+            border-bottom: 1px solid #2d3040;
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+        .topbar .back {
+            color: #60a5fa;
+            text-decoration: none;
+            font-size: 22px;
+            line-height: 1;
+        }
+        .topbar h1 {
+            font-size: 20px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #34d399, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .topbar .subtitle {
+            font-size: 12px;
+            color: #8b8fa3;
+            margin-left: auto;
+        }
+
+        /* ── Main layout ── */
+        .main {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+        }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            width: 380px;
+            flex-shrink: 0;
+            background: #1a1d28;
+            border-right: 1px solid #2d3040;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        .sidebar-section {
+            padding: 18px 20px;
+            border-bottom: 1px solid #2d3040;
+        }
+        .sidebar-section h2 {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #8b8fa3;
+            margin-bottom: 12px;
+        }
+
+        /* inputs */
+        .input-group {
+            position: relative;
+            margin-bottom: 12px;
+        }
+        .input-group label {
+            display: block;
+            font-size: 12px;
+            color: #8b8fa3;
+            margin-bottom: 4px;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid #2d3040;
+            background: #252836;
+            color: #e1e4e8;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .input-group input:focus {
+            border-color: #34d399;
+        }
+        .autocomplete-list {
+            position: absolute;
+            top: 100%;
+            left: 0; right: 0;
+            background: #252836;
+            border: 1px solid #2d3040;
+            border-radius: 0 0 10px 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+        .autocomplete-list .ac-item {
+            padding: 8px 12px;
+            font-size: 13px;
+            cursor: pointer;
+            border-bottom: 1px solid #2d3040;
+        }
+        .autocomplete-list .ac-item:hover {
+            background: #34d39922;
+        }
+
+        .swap-btn {
+            display: block;
+            margin: -4px auto 8px;
+            background: none;
+            border: 1px solid #2d3040;
+            color: #8b8fa3;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+        .swap-btn:hover { border-color: #34d399; color: #34d399; }
+
+        .plan-btn {
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, #34d399, #059669);
+            color: #fff;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .plan-btn:hover { opacity: 0.9; }
+        .plan-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* route cards */
+        .route-card {
+            background: #252836;
+            border: 2px solid #2d3040;
+            border-radius: 14px;
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .route-card:hover { border-color: #4b5068; }
+        .route-card.selected { border-color: #34d399; box-shadow: 0 0 0 1px #34d399; }
+        .route-card.best { border-color: #34d399; }
+        .route-card .rc-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .route-card .rc-badge {
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .badge-best { background: #34d39933; color: #34d399; }
+        .badge-fastest { background: #60a5fa33; color: #60a5fa; }
+        .badge-alt { background: #8b8fa333; color: #8b8fa3; }
+        .route-card .rc-name {
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .route-card .rc-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 6px;
+        }
+        .rc-stat {
+            text-align: center;
+        }
+        .rc-stat .val {
+            font-size: 16px;
+            font-weight: 700;
+            color: #e1e4e8;
+        }
+        .rc-stat .lbl {
+            font-size: 10px;
+            color: #8b8fa3;
+            text-transform: uppercase;
+        }
+        .rc-stat .val.good { color: #34d399; }
+        .rc-stat .val.warn { color: #fbbf24; }
+
+        /* score bar */
+        .score-bar {
+            margin-top: 8px;
+            height: 4px;
+            border-radius: 2px;
+            background: #2d3040;
+            overflow: hidden;
+        }
+        .score-bar-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.4s;
+        }
+
+        /* elevation chart */
+        .elev-chart-wrap {
+            padding: 14px 20px;
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .elev-chart-wrap h2 {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #8b8fa3;
+            margin-bottom: 10px;
+        }
+        .elev-canvas-container {
+            flex: 1;
+            min-height: 120px;
+            position: relative;
+        }
+        .elev-canvas-container canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ── Map ── */
+        .map-wrap {
+            flex: 1;
+            position: relative;
+        }
+        #map { width: 100%; height: 100%; }
+
+        /* legend overlay */
+        .map-legend {
+            position: absolute;
+            bottom: 24px;
+            right: 16px;
+            background: #1a1d28ee;
+            border: 1px solid #2d3040;
+            border-radius: 12px;
+            padding: 12px 16px;
+            z-index: 1000;
+            font-size: 12px;
+        }
+        .map-legend .leg-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        .map-legend .leg-row:last-child { margin-bottom: 0; }
+        .leg-swatch {
+            width: 24px;
+            height: 4px;
+            border-radius: 2px;
+        }
+
+        /* loading overlay */
+        .loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: #0f1117cc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        .loading-overlay.hidden { display: none; }
+        .spinner {
+            width: 40px; height: 40px;
+            border: 3px solid #2d3040;
+            border-top-color: #34d399;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-overlay p { margin-top: 12px; color: #8b8fa3; font-size: 14px; }
+
+        /* empty state */
+        .empty-state {
+            text-align: center;
+            color: #8b8fa3;
+            padding: 40px 20px;
+        }
+        .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+        .empty-state p { font-size: 14px; line-height: 1.5; }
+
+        /* ── Mobile ── */
+        @media (max-width: 768px) {
+            .main { flex-direction: column; }
+            .sidebar {
+                width: 100%;
+                max-height: 45vh;
+                border-right: none;
+                border-bottom: 1px solid #2d3040;
+            }
+            .map-wrap { min-height: 300px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <a href="index.html" class="back" title="Home">&#8592;</a>
+    <h1>EV Route Planner</h1>
+    <span class="subtitle">Minimize elevation gain &bull; Save battery</span>
+</div>
+
+<div class="main">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-section">
+            <h2>Route</h2>
+            <div class="input-group" id="originGroup">
+                <label>Origin</label>
+                <input type="text" id="originInput" placeholder="Enter starting address..." autocomplete="off" />
+                <div class="autocomplete-list" id="originAC"></div>
+            </div>
+            <button class="swap-btn" id="swapBtn" title="Swap origin &amp; destination">&#8645;</button>
+            <div class="input-group" id="destGroup">
+                <label>Destination</label>
+                <input type="text" id="destInput" placeholder="Enter destination address..." autocomplete="off" />
+                <div class="autocomplete-list" id="destAC"></div>
+            </div>
+            <button class="plan-btn" id="planBtn" disabled>Plan EV-Efficient Route</button>
+        </div>
+
+        <div class="sidebar-section" id="routeResults" style="display:none;">
+            <h2>Routes Found</h2>
+            <div id="routeCards"></div>
+        </div>
+
+        <div class="elev-chart-wrap" id="elevSection" style="display:none;">
+            <h2>Elevation Profile</h2>
+            <div class="elev-canvas-container">
+                <canvas id="elevCanvas"></canvas>
+            </div>
+        </div>
+
+        <div class="empty-state" id="emptyState">
+            <div class="icon">&#9889;</div>
+            <p>Enter an origin and destination to find<br>the most battery-efficient route for your EV.<br><br>
+            Routes are scored by <strong>elevation gain</strong><br>balanced with <strong>trip time</strong>.</p>
+        </div>
+    </div>
+
+    <!-- Map -->
+    <div class="map-wrap">
+        <div id="map"></div>
+        <div class="map-legend" id="mapLegend" style="display:none;">
+            <div class="leg-row"><div class="leg-swatch" style="background:#34d399;"></div> EV Best Route</div>
+            <div class="leg-row"><div class="leg-swatch" style="background:#60a5fa;"></div> Fastest Route</div>
+            <div class="leg-row"><div class="leg-swatch" style="background:#6b7280;"></div> Alternative</div>
+        </div>
+        <div class="loading-overlay hidden" id="loadingOverlay">
+            <div class="spinner"></div>
+            <p id="loadingMsg">Calculating routes...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+// ─── Map Setup ───
+const map = L.map('map', { zoomControl: false }).setView([32.72, -117.16], 11);
+L.control.zoom({ position: 'topright' }).addTo(map);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap &copy; CARTO',
+    maxZoom: 19
+}).addTo(map);
+
+// ─── State ───
+let originCoord = null;   // [lat, lng]
+let destCoord = null;
+let originMarker = null;
+let destMarker = null;
+let routeLayers = [];
+let routesData = [];
+let selectedRouteIdx = 0;
+
+const originInput = document.getElementById('originInput');
+const destInput = document.getElementById('destInput');
+const originAC = document.getElementById('originAC');
+const destAC = document.getElementById('destAC');
+const planBtn = document.getElementById('planBtn');
+
+// ─── Geocoding (Nominatim) ───
+let acTimeout = null;
+function setupAutocomplete(input, acList, setCoord) {
+    input.addEventListener('input', () => {
+        clearTimeout(acTimeout);
+        const q = input.value.trim();
+        if (q.length < 3) { acList.style.display = 'none'; return; }
+        acTimeout = setTimeout(async () => {
+            try {
+                const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(q)}`, {
+                    headers: { 'Accept-Language': 'en' }
+                });
+                const data = await resp.json();
+                acList.innerHTML = '';
+                if (!data.length) { acList.style.display = 'none'; return; }
+                data.forEach(r => {
+                    const div = document.createElement('div');
+                    div.className = 'ac-item';
+                    div.textContent = r.display_name;
+                    div.addEventListener('click', () => {
+                        input.value = r.display_name;
+                        setCoord([parseFloat(r.lat), parseFloat(r.lon)]);
+                        acList.style.display = 'none';
+                        updatePlanBtn();
+                    });
+                    acList.appendChild(div);
+                });
+                acList.style.display = 'block';
+            } catch(e) { acList.style.display = 'none'; }
+        }, 350);
+    });
+
+    // close on outside click
+    document.addEventListener('click', e => {
+        if (!e.target.closest('#' + input.parentElement.id)) acList.style.display = 'none';
+    });
+}
+
+function setOrigin(coord) {
+    originCoord = coord;
+    if (originMarker) map.removeLayer(originMarker);
+    originMarker = L.circleMarker(coord, { radius: 8, color: '#34d399', fillColor: '#34d399', fillOpacity: 1, weight: 2 })
+        .bindTooltip('Origin', { permanent: false }).addTo(map);
+    fitMarkers();
+}
+function setDest(coord) {
+    destCoord = coord;
+    if (destMarker) map.removeLayer(destMarker);
+    destMarker = L.circleMarker(coord, { radius: 8, color: '#ef4444', fillColor: '#ef4444', fillOpacity: 1, weight: 2 })
+        .bindTooltip('Destination', { permanent: false }).addTo(map);
+    fitMarkers();
+}
+function fitMarkers() {
+    const pts = [];
+    if (originCoord) pts.push(originCoord);
+    if (destCoord) pts.push(destCoord);
+    if (pts.length === 2) map.fitBounds(L.latLngBounds(pts).pad(0.3));
+    else if (pts.length === 1) map.setView(pts[0], 13);
+}
+
+setupAutocomplete(originInput, originAC, setOrigin);
+setupAutocomplete(destInput, destAC, setDest);
+
+function updatePlanBtn() {
+    planBtn.disabled = !(originCoord && destCoord);
+}
+
+// ─── Swap ───
+document.getElementById('swapBtn').addEventListener('click', () => {
+    const tmpVal = originInput.value; originInput.value = destInput.value; destInput.value = tmpVal;
+    const tmpC = originCoord; originCoord = destCoord; destCoord = tmpC;
+    if (originMarker) map.removeLayer(originMarker);
+    if (destMarker) map.removeLayer(destMarker);
+    originMarker = destMarker = null;
+    if (originCoord) setOrigin(originCoord);
+    if (destCoord) setDest(destCoord);
+    updatePlanBtn();
+});
+
+// ─── Route Planning ───
+planBtn.addEventListener('click', planRoutes);
+
+async function planRoutes() {
+    if (!originCoord || !destCoord) return;
+
+    showLoading('Fetching routes...');
+    clearRoutes();
+    document.getElementById('emptyState').style.display = 'none';
+
+    try {
+        // 1) Get alternative routes from OSRM
+        const routeUrl = `https://router.project-osrm.org/route/v1/driving/${originCoord[1]},${originCoord[0]};${destCoord[1]},${destCoord[0]}?overview=full&geometries=geojson&alternatives=3&steps=true`;
+        const routeResp = await fetch(routeUrl);
+        const routeData = await routeResp.json();
+
+        if (routeData.code !== 'Ok' || !routeData.routes.length) {
+            throw new Error('No routes found');
+        }
+
+        setLoadingMsg('Sampling elevation data...');
+
+        // 2) Get elevation for each route
+        const routes = routeData.routes;
+        routesData = [];
+
+        for (let i = 0; i < routes.length; i++) {
+            const r = routes[i];
+            const coords = r.geometry.coordinates; // [lng, lat]
+            const sampled = samplePoints(coords, 80); // sample up to 80 points
+            const elevations = await fetchElevations(sampled);
+            const { gain, loss } = calcElevation(elevations);
+            const distKm = r.distance / 1000;
+            const distMi = distKm * 0.621371;
+            const durMin = r.duration / 60;
+
+            routesData.push({
+                index: i,
+                coords: coords,        // [lng, lat] array
+                sampled: sampled,       // [lng, lat] sampled
+                elevations: elevations, // elevation values
+                gain: gain,             // meters gained
+                loss: loss,             // meters lost
+                distMi: distMi,
+                durMin: durMin,
+                score: 0               // computed below
+            });
+        }
+
+        // 3) Score routes — balance elevation gain vs time
+        scoreRoutes(routesData);
+
+        // Sort by score (lower = better)
+        routesData.sort((a, b) => a.score - b.score);
+
+        // 4) Display
+        displayRoutes(routesData);
+        selectRoute(0);
+        hideLoading();
+
+    } catch (err) {
+        hideLoading();
+        alert('Error planning route: ' + err.message);
+        console.error(err);
+    }
+}
+
+// ─── Sample evenly-spaced points along a route ───
+function samplePoints(coords, maxPoints) {
+    if (coords.length <= maxPoints) return coords;
+    const step = (coords.length - 1) / (maxPoints - 1);
+    const result = [];
+    for (let i = 0; i < maxPoints; i++) {
+        result.push(coords[Math.round(i * step)]);
+    }
+    return result;
+}
+
+// ─── Fetch elevations from Open-Elevation API ───
+async function fetchElevations(coords) {
+    // coords are [lng, lat] — API wants {latitude, longitude}
+    // Batch into chunks of 80 to respect API limits
+    const chunkSize = 80;
+    const allElevations = [];
+
+    for (let i = 0; i < coords.length; i += chunkSize) {
+        const chunk = coords.slice(i, i + chunkSize);
+        const locations = chunk.map(c => ({ latitude: c[1], longitude: c[0] }));
+
+        try {
+            const resp = await fetch('https://api.open-elevation.com/api/v1/lookup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ locations })
+            });
+            const data = await resp.json();
+            data.results.forEach(r => allElevations.push(r.elevation));
+        } catch(e) {
+            // Fallback: use open-meteo elevation API
+            const lats = chunk.map(c => c[1]).join(',');
+            const lngs = chunk.map(c => c[0]).join(',');
+            try {
+                const resp2 = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`);
+                const data2 = await resp2.json();
+                if (data2.elevation) {
+                    data2.elevation.forEach(e => allElevations.push(e));
+                }
+            } catch(e2) {
+                // Last resort: fill with 0s
+                chunk.forEach(() => allElevations.push(0));
+            }
+        }
+    }
+    return allElevations;
+}
+
+// ─── Calculate elevation gain/loss ───
+function calcElevation(elevations) {
+    let gain = 0, loss = 0;
+    // Smooth with a simple 3-point moving average to reduce noise
+    const smoothed = [];
+    for (let i = 0; i < elevations.length; i++) {
+        if (i === 0 || i === elevations.length - 1) {
+            smoothed.push(elevations[i]);
+        } else {
+            smoothed.push((elevations[i-1] + elevations[i] + elevations[i+1]) / 3);
+        }
+    }
+    for (let i = 1; i < smoothed.length; i++) {
+        const diff = smoothed[i] - smoothed[i-1];
+        if (diff > 0) gain += diff;
+        else loss += Math.abs(diff);
+    }
+    return { gain, loss };
+}
+
+// ─── Score routes ───
+// Lower score = better for EV
+// We want to minimize elevation gain while not adding too much time.
+// Formula: score = elevGain + timePenalty
+// timePenalty = max(0, (duration - fastestDuration) / fastestDuration) * penaltyWeight * avgGain
+function scoreRoutes(routes) {
+    if (!routes.length) return;
+    const fastestDur = Math.min(...routes.map(r => r.durMin));
+    const avgGain = routes.reduce((s, r) => s + r.gain, 0) / routes.length || 1;
+
+    routes.forEach(r => {
+        const timeRatio = (r.durMin - fastestDur) / fastestDur; // 0 for fastest, >0 for slower
+        // Penalize time heavily only when it's significantly longer (>20% more)
+        const timePenalty = timeRatio > 0.2
+            ? (timeRatio - 0.2) * avgGain * 3
+            : 0;
+        r.score = r.gain + timePenalty;
+    });
+}
+
+// ─── Display routes on map + sidebar ───
+const routeColors = ['#34d399', '#60a5fa', '#6b7280', '#fbbf24'];
+const routeLabels = ['EV Best', 'Route 2', 'Route 3', 'Route 4'];
+
+function displayRoutes(routes) {
+    clearRouteLayers();
+
+    // Draw routes on map (draw non-selected first so best is on top)
+    for (let i = routes.length - 1; i >= 0; i--) {
+        const r = routes[i];
+        const latlngs = r.coords.map(c => [c[1], c[0]]);
+        const color = i === 0 ? '#34d399' : (i === 1 ? '#60a5fa' : '#6b7280');
+        const weight = i === 0 ? 5 : 3;
+        const opacity = i === 0 ? 0.9 : 0.5;
+        const layer = L.polyline(latlngs, { color, weight, opacity }).addTo(map);
+        routeLayers.push({ idx: i, layer });
+    }
+
+    // Fit map to best route
+    if (routes.length) {
+        const latlngs = routes[0].coords.map(c => [c[1], c[0]]);
+        map.fitBounds(L.latLngBounds(latlngs).pad(0.1));
+    }
+
+    // Build route cards
+    const container = document.getElementById('routeCards');
+    container.innerHTML = '';
+
+    const bestGain = Math.min(...routes.map(r => r.gain));
+    const fastestDur = Math.min(...routes.map(r => r.durMin));
+
+    routes.forEach((r, i) => {
+        const card = document.createElement('div');
+        card.className = 'route-card' + (i === 0 ? ' selected best' : '');
+        card.dataset.idx = i;
+
+        const badge = i === 0 ? '<span class="rc-badge badge-best">EV Best</span>'
+            : (r.durMin === fastestDur ? '<span class="rc-badge badge-fastest">Fastest</span>'
+            : '<span class="rc-badge badge-alt">Alt ' + i + '</span>');
+
+        const gainClass = r.gain === bestGain ? 'good' : (r.gain > bestGain * 1.5 ? 'warn' : '');
+        const timeClass = r.durMin === fastestDur ? 'good' : (r.durMin > fastestDur * 1.3 ? 'warn' : '');
+
+        // Score bar — normalized 0-100
+        const maxScore = Math.max(...routes.map(x => x.score)) || 1;
+        const minScore = Math.min(...routes.map(x => x.score));
+        const scoreNorm = maxScore === minScore ? 100 : 100 - ((r.score - minScore) / (maxScore - minScore) * 100);
+        const barColor = scoreNorm > 70 ? '#34d399' : (scoreNorm > 40 ? '#fbbf24' : '#ef4444');
+
+        card.innerHTML = `
+            <div class="rc-header">${badge} <span class="rc-name">${r.distMi.toFixed(1)} mi</span></div>
+            <div class="rc-stats">
+                <div class="rc-stat"><div class="val ${timeClass}">${formatDuration(r.durMin)}</div><div class="lbl">Time</div></div>
+                <div class="rc-stat"><div class="val ${gainClass}">+${Math.round(r.gain)}m</div><div class="lbl">Elev Gain</div></div>
+                <div class="rc-stat"><div class="val">-${Math.round(r.loss)}m</div><div class="lbl">Elev Loss</div></div>
+            </div>
+            <div class="score-bar"><div class="score-bar-fill" style="width:${scoreNorm}%; background:${barColor};"></div></div>
+        `;
+
+        card.addEventListener('click', () => selectRoute(i));
+        container.appendChild(card);
+    });
+
+    document.getElementById('routeResults').style.display = 'block';
+    document.getElementById('mapLegend').style.display = 'block';
+}
+
+function selectRoute(idx) {
+    selectedRouteIdx = idx;
+
+    // Update card styles
+    document.querySelectorAll('.route-card').forEach((c, i) => {
+        c.classList.toggle('selected', i === idx);
+    });
+
+    // Bring selected route to front on map
+    routeLayers.forEach(rl => {
+        const isSelected = rl.idx === idx;
+        rl.layer.setStyle({
+            opacity: isSelected ? 0.9 : 0.35,
+            weight: isSelected ? 6 : 3
+        });
+        if (isSelected) rl.layer.bringToFront();
+    });
+
+    // Draw elevation chart
+    drawElevationChart(routesData[idx]);
+    document.getElementById('elevSection').style.display = 'block';
+}
+
+// ─── Elevation Chart (Canvas) ───
+function drawElevationChart(route) {
+    const canvas = document.getElementById('elevCanvas');
+    const container = canvas.parentElement;
+    canvas.width = container.clientWidth * (window.devicePixelRatio || 1);
+    canvas.height = container.clientHeight * (window.devicePixelRatio || 1);
+    canvas.style.width = container.clientWidth + 'px';
+    canvas.style.height = container.clientHeight + 'px';
+
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width;
+    const H = canvas.height;
+    const pad = { top: 20, right: 20, bottom: 30, left: 50 };
+    const plotW = W - pad.left - pad.right;
+    const plotH = H - pad.top - pad.bottom;
+
+    ctx.clearRect(0, 0, W, H);
+
+    const elev = route.elevations;
+    if (!elev.length) return;
+
+    const minE = Math.min(...elev) - 10;
+    const maxE = Math.max(...elev) + 10;
+    const rangeE = maxE - minE || 1;
+
+    // Grid lines
+    ctx.strokeStyle = '#2d3040';
+    ctx.lineWidth = 1;
+    const gridLines = 5;
+    for (let i = 0; i <= gridLines; i++) {
+        const y = pad.top + (plotH / gridLines) * i;
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(pad.left + plotW, y);
+        ctx.stroke();
+
+        // Y labels
+        const val = maxE - (rangeE / gridLines) * i;
+        ctx.fillStyle = '#8b8fa3';
+        ctx.font = `${11 * (window.devicePixelRatio || 1)}px -apple-system, sans-serif`;
+        ctx.textAlign = 'right';
+        ctx.fillText(Math.round(val) + 'm', pad.left - 8, y + 4);
+    }
+
+    // Distance labels on X axis
+    ctx.textAlign = 'center';
+    const totalDist = route.distMi;
+    for (let i = 0; i <= 4; i++) {
+        const x = pad.left + (plotW / 4) * i;
+        ctx.fillText((totalDist / 4 * i).toFixed(1) + ' mi', x, H - 6);
+    }
+
+    // Draw gradient fill
+    const gradient = ctx.createLinearGradient(0, pad.top, 0, pad.top + plotH);
+    gradient.addColorStop(0, '#34d39944');
+    gradient.addColorStop(1, '#34d39900');
+
+    ctx.beginPath();
+    ctx.moveTo(pad.left, pad.top + plotH);
+    for (let i = 0; i < elev.length; i++) {
+        const x = pad.left + (i / (elev.length - 1)) * plotW;
+        const y = pad.top + plotH - ((elev[i] - minE) / rangeE) * plotH;
+        ctx.lineTo(x, y);
+    }
+    ctx.lineTo(pad.left + plotW, pad.top + plotH);
+    ctx.closePath();
+    ctx.fillStyle = gradient;
+    ctx.fill();
+
+    // Draw line
+    ctx.beginPath();
+    for (let i = 0; i < elev.length; i++) {
+        const x = pad.left + (i / (elev.length - 1)) * plotW;
+        const y = pad.top + plotH - ((elev[i] - minE) / rangeE) * plotH;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = '#34d399';
+    ctx.lineWidth = 2 * (window.devicePixelRatio || 1);
+    ctx.stroke();
+
+    // Draw gain/loss annotations
+    ctx.fillStyle = '#34d399';
+    ctx.font = `bold ${12 * (window.devicePixelRatio || 1)}px -apple-system, sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.fillText(`↑ +${Math.round(route.gain)}m gain`, pad.left + 8, pad.top + 14);
+    ctx.fillStyle = '#60a5fa';
+    ctx.fillText(`↓ -${Math.round(route.loss)}m loss`, pad.left + 8 + plotW * 0.4, pad.top + 14);
+}
+
+// ─── Helpers ───
+function formatDuration(min) {
+    if (min < 60) return Math.round(min) + 'min';
+    const h = Math.floor(min / 60);
+    const m = Math.round(min % 60);
+    return h + 'h ' + (m < 10 ? '0' : '') + m + 'm';
+}
+
+function clearRoutes() {
+    clearRouteLayers();
+    document.getElementById('routeResults').style.display = 'none';
+    document.getElementById('elevSection').style.display = 'none';
+    document.getElementById('mapLegend').style.display = 'none';
+    routesData = [];
+}
+function clearRouteLayers() {
+    routeLayers.forEach(rl => map.removeLayer(rl.layer));
+    routeLayers = [];
+}
+
+function showLoading(msg) {
+    document.getElementById('loadingMsg').textContent = msg;
+    document.getElementById('loadingOverlay').classList.remove('hidden');
+}
+function setLoadingMsg(msg) {
+    document.getElementById('loadingMsg').textContent = msg;
+}
+function hideLoading() {
+    document.getElementById('loadingOverlay').classList.add('hidden');
+}
+
+// ─── Resize handling for elevation chart ───
+window.addEventListener('resize', () => {
+    if (routesData.length && routesData[selectedRouteIdx]) {
+        drawElevationChart(routesData[selectedRouteIdx]);
+    }
+});
+</script>
+
+</body>
+</html>
