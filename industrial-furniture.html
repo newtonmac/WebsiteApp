@@ -531,21 +531,47 @@ const seriesData = {
   }
 };
 
-// Node name mapping for accessories visibility
-// These are the top-level group names found in the GLB models
+// Prefix matching - handles numeric suffixes (SOLERA001), dots, spaces, underscores
+function nameMatches(name, prefix) {
+  if (name === prefix) return true;
+  if (!name.startsWith(prefix)) return false;
+  const ch = name.charAt(prefix.length);
+  return ch === '.' || ch === ' ' || ch === '_' || ch === '-' || (ch >= '0' && ch <= '9');
+}
+function nameMatchesAny(name, prefixes) {
+  for (let i = 0; i < prefixes.length; i++) {
+    if (nameMatches(name, prefixes[i])) return true;
+  }
+  return false;
+}
+
+// Base workbench structure nodes (always visible) - frame, legs, surface, glides, hardware
+const baseStructureNodes = [
+  'Kennedy Series', 'CUADRO', 'PIERNA', 'PIERNAS',
+  'SURFACE', 'SOLERA', 'SOLERAP', 'TRAVE', 'ENSAMBLE-GLIDES',
+  'GLIDE', 'Stainless Trim', 'LP',
+  'Brakets', 'hex bolt', 'KENNEDY BENCH Accesories',
+  'Roosevelt', 'Dewey', 'Harding', 'Adams', 'Hydraulic',
+  'FRAME', 'LEG', 'BASE', 'TOP'
+];
+
+// Accessory node name mapping for toggling visibility
 const accessoryNodes = {
-  topShelf: ['TS1260', 'SURFACE TOP SHELF', 'UPRIGHT', 'UPRIGHT PC', 'UPRIGHT TP'],
+  topShelf: ['TS', 'SURFACE TOP SHELF', 'UPRIGHT', 'UP'],
   bottomShelf: ['SURFACE BOTTOM_SHELF', 'SHELF BRACKET'],
-  cabinet: ['CABINET DOOR', 'CABINET ENCLOSURE', 'CABINET SUPPORT', 'CABINET BRACKET', 'UNDERCA', 'D6+C12'],
-  ledLight: ['LED LGTH ENCLOSURE TP', 'LED LGTH ACRILIC', 'LED LGTH ENCLOSURE', 'LED LGTH ENCLOSURE OP', 'LED LGTH ENCLOSURE SWITCH', 'LED LGTH TP', 'LFA+LEDO +CABLE+CONECTOR UP', 'INOTL'],
-  powerStrip: ['POWER STRIP 48 - C_A8-40', 'PLUG STP', 'outletm'],
-  keyboard: ['KEYBOARD TRAY', 'KEYBOARD TRAY PULL', 'KEYBOARD TRAY RAIL', 'MKBT ASSY_POS 1'],
-  monitor: ['MHLV-NEW DESING_Predeterminado', 'MHL SUPPORT'],
-  cpuHolder: ['CPU HOLDER'],
-  wireShelf: ['WIRESLF', 'WS1260', 'WS003'],
-  docHolder: ['DOCUMENTH', 'DH001'],
-  binBoxes: ['BIN BOX BRACKET', 'BIN BOX FRONT', 'X8BB'],
-  cs60: ['CS60']
+  cabinet: ['CABINET', 'UNDERCA', 'D6+C', 'LOCK_largo', '6INDRAWER', 'DRAWER',
+            'COMFF', 'DF4', 'FSDC', 'FTDC', 'F4F4DC', 'F66DC', 'F412DC',
+            'F444DC', 'F446DC', 'F466DC', 'F612DC', 'F666DC'],
+  ledLight: ['LED LGTH', 'LFA+LEDO', 'INOTL', '90 DEGREE LF', 'LC5FT', 'ENSAMBLE LC'],
+  powerStrip: ['POWER STRIP', 'PLUG STP', 'outletm', 'USB'],
+  keyboard: ['KEYBOARD', 'MKBT'],
+  monitor: ['MHLV', 'MHL SUPPORT', 'mhlvc', 'AL'],
+  cpuHolder: ['CPU HOLDER', 'BN-FC'],
+  wireShelf: ['WIRESLF', 'WS'],
+  docHolder: ['DOCUMENTH', 'DH'],
+  binBoxes: ['BIN BOX', 'X8BB'],
+  cs60: ['CS'],
+  articulatingShelf: ['Articulating Shelf', 'ARTS', 'U48']
 };
 
 // Node groups for frame vs surface coloring
@@ -562,7 +588,8 @@ const config = {
   topShelf: false, bottomShelf: false, cabinet: false,
   ledLight: false, powerStrip: false, keyboard: false,
   monitor: false, cpuHolder: false, wireShelf: false,
-  docHolder: false, binBoxes: false
+  docHolder: false, binBoxes: false,
+  articulatingShelf: false, cs60: false
 };
 
 // Material PBR definitions
@@ -769,24 +796,49 @@ function loadSeriesModel(seriesKey) {
 }
 
 // ============ Accessory Visibility ============
+function getAccessoryFeature(nodeName) {
+  for (const [feature, prefixes] of Object.entries(accessoryNodes)) {
+    if (nameMatchesAny(nodeName, prefixes)) return feature;
+  }
+  return null;
+}
+
 function applyAccessoryVisibility() {
   if (!currentModel) return;
 
-  // First, show everything
-  currentModel.traverse(child => { child.visible = true; });
+  // Classify every named node: base structure (always show), accessory (toggle), or unknown (hide)
+  allNodes.forEach((obj, name) => {
+    // Base structure - always visible
+    if (nameMatchesAny(name, baseStructureNodes)) {
+      setSubtreeVisibility(obj, true);
+      return;
+    }
+    // Known accessory - show/hide based on config
+    const feature = getAccessoryFeature(name);
+    if (feature !== null) {
+      setSubtreeVisibility(obj, config[feature]);
+      return;
+    }
+    // Unknown node - hide (likely an unmapped accessory sub-part)
+    setSubtreeVisibility(obj, false);
+  });
 
-  // Then hide disabled accessories
-  for (const [feature, nodeNames] of Object.entries(accessoryNodes)) {
-    const show = config[feature];
-    for (const nodeName of nodeNames) {
-      // Match nodes by prefix
-      allNodes.forEach((obj, name) => {
-        if (name === nodeName || name.startsWith(nodeName + '.') || name.startsWith(nodeName + ' ')) {
-          setSubtreeVisibility(obj, show);
-        }
-      });
+  // Keep the model root and top-level group containers visible
+  // so their visible children can render
+  currentModel.visible = true;
+  function ensureParentsVisible(obj) {
+    let p = obj.parent;
+    while (p && p !== scene) {
+      p.visible = true;
+      p = p.parent;
     }
   }
+  // For every visible leaf, ensure all parent groups are visible
+  currentModel.traverse(child => {
+    if (child.visible && child.isMesh) {
+      ensureParentsVisible(child);
+    }
+  });
 }
 
 function setSubtreeVisibility(obj, visible) {
