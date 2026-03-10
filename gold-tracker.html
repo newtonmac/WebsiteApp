@@ -387,8 +387,8 @@
         }
 
         // Yahoo Finance intraday/hourly data for all time ranges
-        // Keyed by range: { 1: [...], 7: [...], 30: [...], 90: [...], 180: [...], 365: [...] }
-        let yahooGranularData = {};
+        // Keyed by type then range: { gold: { 1: [...], 7: [...], ... }, silver: { ... }, bitcoin: { ... } }
+        let yahooGranularData = { gold: {}, silver: {}, bitcoin: {} };
 
         function parseYahooIntraday(json) {
             if (json.chart && json.chart.result && json.chart.result[0]) {
@@ -404,13 +404,13 @@
             return [];
         }
 
-        async function fetchYahooGranular(yahooRange, interval, rangeKey) {
+        async function fetchYahooGranular(symbol, yahooRange, interval, rangeKey) {
             try {
-                const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/GC%3DF?range=${yahooRange}&interval=${interval}`;
+                const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${yahooRange}&interval=${interval}`;
                 const resp = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl));
                 return { key: rangeKey, data: parseYahooIntraday(await resp.json()) };
             } catch (e) {
-                console.warn(`Yahoo ${yahooRange}/${interval} fetch failed:`, e.message);
+                console.warn(`Yahoo ${symbol} ${yahooRange}/${interval} fetch failed:`, e.message);
             }
             return { key: rangeKey, data: [] };
         }
@@ -492,20 +492,36 @@
                 dataSources = [];
 
                 const [btcResult, yahooGold, yahooSilver, yahooBtc, tdGold, tdBtc,
-                       g1D, g1W, g1M, g3M, g6M, g1Y] = await Promise.allSettled([
+                       g1D, g1W, g1M, g3M, g6M, g1Y,
+                       s1D, s1W, s1M, s3M, s6M, s1Y,
+                       b1D, b1W, b1M, b3M, b6M, b1Y] = await Promise.allSettled([
                     fetchBitcoin(),
                     fetchYahooFinance('GC=F'),
                     fetchYahooFinance('SI=F'),
                     fetchYahooFinance('BTC-USD'),
                     fetchTwelveData('XAU/USD'),
                     fetchTwelveData('BTC/USD'),
-                    // Granular Yahoo for gold: range / interval / key
-                    fetchYahooGranular('1d',  '5m',  1),
-                    fetchYahooGranular('5d',  '15m', 7),
-                    fetchYahooGranular('1mo', '1h',  30),
-                    fetchYahooGranular('3mo', '1h',  90),
-                    fetchYahooGranular('6mo', '1h',  180),
-                    fetchYahooGranular('1y',  '1h',  365)
+                    // Granular Yahoo for gold (GC=F)
+                    fetchYahooGranular('GC=F', '1d',  '5m',  1),
+                    fetchYahooGranular('GC=F', '5d',  '15m', 7),
+                    fetchYahooGranular('GC=F', '1mo', '1h',  30),
+                    fetchYahooGranular('GC=F', '3mo', '1h',  90),
+                    fetchYahooGranular('GC=F', '6mo', '1h',  180),
+                    fetchYahooGranular('GC=F', '1y',  '1h',  365),
+                    // Granular Yahoo for silver (SI=F)
+                    fetchYahooGranular('SI=F', '1d',  '5m',  1),
+                    fetchYahooGranular('SI=F', '5d',  '15m', 7),
+                    fetchYahooGranular('SI=F', '1mo', '1h',  30),
+                    fetchYahooGranular('SI=F', '3mo', '1h',  90),
+                    fetchYahooGranular('SI=F', '6mo', '1h',  180),
+                    fetchYahooGranular('SI=F', '1y',  '1h',  365),
+                    // Granular Yahoo for bitcoin (BTC-USD)
+                    fetchYahooGranular('BTC-USD', '1d',  '5m',  1),
+                    fetchYahooGranular('BTC-USD', '5d',  '15m', 7),
+                    fetchYahooGranular('BTC-USD', '1mo', '1h',  30),
+                    fetchYahooGranular('BTC-USD', '3mo', '1h',  90),
+                    fetchYahooGranular('BTC-USD', '6mo', '1h',  180),
+                    fetchYahooGranular('BTC-USD', '1y',  '1h',  365)
                 ]);
 
                 const val = r => r.status === 'fulfilled' ? r.value : [];
@@ -517,11 +533,21 @@
                 const tdGoldData = val(tdGold);
                 const tdBtcData = val(tdBtc);
 
-                // Store granular data keyed by range
-                yahooGranularData = {};
+                // Store granular data keyed by type and range
+                yahooGranularData = { gold: {}, silver: {}, bitcoin: {} };
                 [g1D, g1W, g1M, g3M, g6M, g1Y].forEach(r => {
                     if (r.status === 'fulfilled' && r.value.data.length > 0) {
-                        yahooGranularData[r.value.key] = r.value.data;
+                        yahooGranularData.gold[r.value.key] = r.value.data;
+                    }
+                });
+                [s1D, s1W, s1M, s3M, s6M, s1Y].forEach(r => {
+                    if (r.status === 'fulfilled' && r.value.data.length > 0) {
+                        yahooGranularData.silver[r.value.key] = r.value.data;
+                    }
+                });
+                [b1D, b1W, b1M, b3M, b6M, b1Y].forEach(r => {
+                    if (r.status === 'fulfilled' && r.value.data.length > 0) {
+                        yahooGranularData.bitcoin[r.value.key] = r.value.data;
                     }
                 });
 
@@ -557,14 +583,15 @@
         }
 
         function getFilteredPrices() {
-            // Use granular Yahoo data for gold when available
-            if (selectedType === 'gold') {
-                if (selectedRange !== 'ytd' && yahooGranularData[selectedRange]) {
-                    return yahooGranularData[selectedRange];
+            // Use granular Yahoo data when available (gold, silver, bitcoin)
+            const granular = yahooGranularData[selectedType];
+            if (granular) {
+                if (selectedRange !== 'ytd' && granular[selectedRange]) {
+                    return granular[selectedRange];
                 }
-                if (selectedRange === 'ytd' && yahooGranularData[365]) {
+                if (selectedRange === 'ytd' && granular[365]) {
                     const ytdCutoff = new Date(new Date().getFullYear(), 0, 1);
-                    return yahooGranularData[365].filter(p => new Date(p.date) >= ytdCutoff);
+                    return granular[365].filter(p => new Date(p.date) >= ytdCutoff);
                 }
             }
             // Fallback to daily data
@@ -759,11 +786,10 @@
                         x: {
                             type: 'time',
                             time: (() => {
-                                const useGranular = selectedType === 'gold' && (
-                                    selectedRange !== 'ytd'
-                                        ? !!yahooGranularData[selectedRange]
-                                        : !!yahooGranularData[365]
-                                );
+                                const granular = yahooGranularData[selectedType] || {};
+                                const useGranular = selectedRange !== 'ytd'
+                                    ? !!granular[selectedRange]
+                                    : !!granular[365];
                                 if (!useGranular) {
                                     return {
                                         parser: 'yyyy-MM-dd',
