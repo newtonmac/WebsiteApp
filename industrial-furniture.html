@@ -852,6 +852,21 @@ function applyAccessoryVisibility() {
       }
     }
   });
+
+  // DEBUG: log all visible meshes to console
+  console.group('Visible meshes after applyAccessoryVisibility:');
+  currentModel.traverse(child => {
+    if (child.visible && child.isMesh) {
+      const parentNames = [];
+      let p = child.parent;
+      while (p && p !== currentModel) {
+        if (p.name) parentNames.unshift(p.name);
+        p = p.parent;
+      }
+      console.log(child.name || '(unnamed)', ' | path:', parentNames.join(' > '));
+    }
+  });
+  console.groupEnd();
 }
 
 function setSubtreeVisibility(obj, visible) {
