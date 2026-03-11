@@ -855,6 +855,26 @@ function applyAccessoryVisibility() {
 }
 
 // ============ Colors ============
+// Keywords used to identify frame vs top meshes/materials in the GLB.
+// Meshes that don't match either list keep their original material untouched.
+var frameKeywords = ['FRAME', 'LEG', 'SUPPORT', 'BASE', 'RAIL', 'STRUT', 'BRACE', 'CROSSBAR'];
+var topKeywords   = ['SURFACE', 'TOP', 'WORKTOP', 'TABLETOP', 'COUNTER', 'DESK'];
+
+function meshRole(child) {
+  var n  = (child.name || '').toUpperCase();
+  var pn = child.parent ? (child.parent.name || '').toUpperCase() : '';
+  var mn = child.material ? (child.material.name || '').toUpperCase() : '';
+  var all = n + ' ' + pn + ' ' + mn;
+
+  for (var i = 0; i < topKeywords.length; i++) {
+    if (all.includes(topKeywords[i])) return 'top';
+  }
+  for (var j = 0; j < frameKeywords.length; j++) {
+    if (all.includes(frameKeywords[j])) return 'frame';
+  }
+  return null; // unknown — leave original material
+}
+
 function applyColors() {
   if (!currentModel) return;
   var fc = new THREE.Color(config.frameColor);
@@ -863,20 +883,20 @@ function applyColors() {
 
   currentModel.traverse(function(child) {
     if (!child.isMesh || !child.material) return;
-    var n = (child.name || '').toUpperCase();
-    var pn = child.parent ? (child.parent.name || '').toUpperCase() : '';
+    var role = meshRole(child);
 
-    if (n.includes('SURFACE') || n.includes('TOP') || pn.includes('SURFACE') || pn.includes('TOP')) {
+    if (role === 'top') {
       var m = child.material.clone();
       m.color.copy(tc);
       m.roughness = md.roughness;
       m.metalness = md.metalness;
       child.material = m;
-    } else {
+    } else if (role === 'frame') {
       var m2 = child.material.clone();
       m2.color.copy(fc);
       child.material = m2;
     }
+    // else: keep original material unchanged
   });
 }
 
