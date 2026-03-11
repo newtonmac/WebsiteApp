@@ -760,8 +760,9 @@ function updateEvSpecs() {
         <span class="ev-car-spec"><strong>${ev.epaMiles}</strong> mi range</span>
         <span class="ev-car-spec"><strong>${(ev.effKwhMi * 1000).toFixed(0)}</strong> Wh/mi</span>
     `;
-    // Re-run explanation if routes exist
+    // Re-run display if routes exist (invalidates cached estimates)
     if (routesData.length && routesData[selectedRouteIdx]) {
+        cachedTripEstimates = routesData.map(r => estimateTripEnergy(r, ev));
         showEvExplanation(routesData[selectedRouteIdx], routesData);
     }
 }
@@ -856,6 +857,7 @@ let destMarker = null;
 let routeLayers = [];
 let routesData = [];
 let selectedRouteIdx = 0;
+let cachedTripEstimates = [];  // cached energy estimates, invalidated on EV change or new route plan
 
 // Multi-stop state: array of { coord, marker, inputEl, acEl }
 let stops = [];
@@ -869,13 +871,13 @@ const planBtn = document.getElementById('planBtn');
 const stopsContainer = document.getElementById('stopsContainer');
 
 // ─── Geocoding (Nominatim) ───
-let acTimeout = null;
+const acTimers = new WeakMap();
 function setupAutocomplete(input, acList, setCoord) {
     input.addEventListener('input', () => {
-        clearTimeout(acTimeout);
+        clearTimeout(acTimers.get(input));
         const q = input.value.trim();
         if (q.length < 3) { acList.style.display = 'none'; return; }
-        acTimeout = setTimeout(async () => {
+        acTimers.set(input, setTimeout(async () => {
             try {
                 const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(q)}`, {
                     headers: { 'Accept-Language': 'en' }
@@ -897,14 +899,16 @@ function setupAutocomplete(input, acList, setCoord) {
                 });
                 acList.style.display = 'block';
             } catch(e) { acList.style.display = 'none'; }
-        }, 350);
-    });
-
-    // close on outside click
-    document.addEventListener('click', e => {
-        if (!e.target.closest('#' + input.parentElement.id)) acList.style.display = 'none';
+        }, 350));
     });
 }
+
+// Single global click listener to close all autocomplete dropdowns
+document.addEventListener('click', e => {
+    document.querySelectorAll('.autocomplete-list').forEach(list => {
+        if (!e.target.closest('#' + list.parentElement.id)) list.style.display = 'none';
+    });
+});
 
 function setOrigin(coord) {
     originCoord = coord;
@@ -1040,32 +1044,24 @@ async function planRoutes() {
 
         setLoadingMsg('Sampling elevation data...');
 
-        // 2) Get elevation for each route
+        // 2) Get elevation for each route (in parallel)
         const routes = routeData.routes;
-        routesData = [];
+        const sampledPerRoute = routes.map(r => samplePoints(r.geometry.coordinates, 80));
+        const elevResults = await Promise.all(sampledPerRoute.map(s => fetchElevations(s)));
 
-        for (let i = 0; i < routes.length; i++) {
-            const r = routes[i];
-            const coords = r.geometry.coordinates; // [lng, lat]
-            const sampled = samplePoints(coords, 80); // sample up to 80 points
-            const elevations = await fetchElevations(sampled);
-            const { gain, loss } = calcElevation(elevations);
-            const distKm = r.distance / 1000;
-            const distMi = distKm * 0.621371;
-            const durMin = r.duration / 60;
-
-            routesData.push({
+        routesData = routes.map((r, i) => {
+            const { gain, loss } = calcElevation(elevResults[i]);
+            return {
                 index: i,
-                coords: coords,        // [lng, lat] array
-                sampled: sampled,       // [lng, lat] sampled
-                elevations: elevations, // elevation values
-                gain: gain,             // meters gained
-                loss: loss,             // meters lost
-                distMi: distMi,
-                durMin: durMin,
-                score: 0               // computed below
-            });
-        }
+                coords: r.geometry.coordinates,
+                sampled: sampledPerRoute[i],
+                elevations: elevResults[i],
+                gain, loss,
+                distMi: (r.distance / 1000) * 0.621371,
+                durMin: r.duration / 60,
+                score: 0
+            };
+        });
 
         // 3) Score routes — balance elevation gain vs time
         scoreRoutes(routesData);
@@ -1225,7 +1221,8 @@ function displayRoutes(routes) {
 
     const ev = getSelectedEV();
     const fastestDur = Math.min(...routes.map(r => r.durMin));
-    const tripEstimates = routes.map(r => estimateTripEnergy(r, ev));
+    cachedTripEstimates = routes.map(r => estimateTripEnergy(r, ev));
+    const tripEstimates = cachedTripEstimates;
     const bestEnergy = Math.min(...tripEstimates.map(t => t.totalEnergy));
 
     routes.forEach((r, i) => {
@@ -1266,7 +1263,7 @@ function displayRoutes(routes) {
     document.getElementById('mapLegend').style.display = 'block';
 }
 
-let elevColorLayers = [];
+let elevColorGroup = null;
 
 function selectRoute(idx) {
     selectedRouteIdx = idx;
@@ -1304,13 +1301,13 @@ function selectRoute(idx) {
 // Colors route segments by gradient: green=downhill, yellow=flat, red=uphill
 function drawElevColorOverlay(route) {
     // Remove previous overlay
-    elevColorLayers.forEach(l => map.removeLayer(l));
-    elevColorLayers = [];
+    if (elevColorGroup) { map.removeLayer(elevColorGroup); elevColorGroup = null; }
 
     const sampled = route.sampled;
     const elev = route.elevations;
     if (sampled.length < 2 || elev.length < 2) return;
 
+    const segments = [];
     for (let i = 0; i < sampled.length - 1; i++) {
         const from = [sampled[i][1], sampled[i][0]];
         const to = [sampled[i+1][1], sampled[i+1][0]];
@@ -1324,16 +1321,11 @@ function drawElevColorOverlay(route) {
         else if (diff > -2) color = '#a3e635';   // flat/slight downhill — lime
         else color = '#22c55e';                  // downhill — green (regen braking)
 
-        const seg = L.polyline([from, to], {
-            color: color,
-            weight: 7,
-            opacity: 0.85
-        }).addTo(map);
-        elevColorLayers.push(seg);
+        segments.push(L.polyline([from, to], { color, weight: 7, opacity: 0.85 }));
     }
 
-    // Bring overlay to front
-    elevColorLayers.forEach(l => l.bringToFront());
+    elevColorGroup = L.layerGroup(segments).addTo(map);
+    elevColorGroup.eachLayer(l => l.bringToFront());
 }
 
 // ─── EV Efficiency Explanation ───
@@ -1342,10 +1334,11 @@ function showEvExplanation(route, allRoutes) {
     el.style.display = 'block';
 
     const ev = getSelectedEV();
-    const trip = estimateTripEnergy(route, ev);
-    const isBest = allRoutes.indexOf(route) === 0;
+    const routeIdx = allRoutes.indexOf(route);
+    const trip = cachedTripEstimates[routeIdx] || estimateTripEnergy(route, ev);
+    const isBest = routeIdx === 0;
     const bestRoute = allRoutes[0];
-    const bestTrip = estimateTripEnergy(bestRoute, ev);
+    const bestTrip = cachedTripEstimates[0] || estimateTripEnergy(bestRoute, ev);
 
     // Net elevation (start vs end)
     const netElev = route.elevations.length ? route.elevations[route.elevations.length - 1] - route.elevations[0] : 0;
@@ -1520,17 +1513,20 @@ document.getElementById('shareCopy').addEventListener('click', async () => {
 });
 
 // ─── Elevation Chart (Canvas) ───
-function drawElevationChart(route) {
-    const canvas = document.getElementById('elevCanvas');
-    const container = canvas.parentElement;
-    canvas.width = container.clientWidth * (window.devicePixelRatio || 1);
-    canvas.height = container.clientHeight * (window.devicePixelRatio || 1);
-    canvas.style.width = container.clientWidth + 'px';
-    canvas.style.height = container.clientHeight + 'px';
+const elevCanvas = document.getElementById('elevCanvas');
+const elevCtx = elevCanvas.getContext('2d');
 
-    const ctx = canvas.getContext('2d');
-    const W = canvas.width;
-    const H = canvas.height;
+function drawElevationChart(route) {
+    const dpr = window.devicePixelRatio || 1;
+    const container = elevCanvas.parentElement;
+    elevCanvas.width = container.clientWidth * dpr;
+    elevCanvas.height = container.clientHeight * dpr;
+    elevCanvas.style.width = container.clientWidth + 'px';
+    elevCanvas.style.height = container.clientHeight + 'px';
+
+    const ctx = elevCtx;
+    const W = elevCanvas.width;
+    const H = elevCanvas.height;
     const pad = { top: 20, right: 20, bottom: 30, left: 50 };
     const plotW = W - pad.left - pad.right;
     const plotH = H - pad.top - pad.bottom;
@@ -1540,8 +1536,12 @@ function drawElevationChart(route) {
     const elev = route.elevations;
     if (!elev.length) return;
 
-    const minE = Math.min(...elev) - 10;
-    const maxE = Math.max(...elev) + 10;
+    let minE = elev[0], maxE = elev[0];
+    for (let i = 1; i < elev.length; i++) {
+        if (elev[i] < minE) minE = elev[i];
+        if (elev[i] > maxE) maxE = elev[i];
+    }
+    minE -= 10; maxE += 10;
     const rangeE = maxE - minE || 1;
 
     // Grid lines
@@ -1558,7 +1558,7 @@ function drawElevationChart(route) {
         // Y labels
         const val = maxE - (rangeE / gridLines) * i;
         ctx.fillStyle = '#8b8fa3';
-        ctx.font = `${11 * (window.devicePixelRatio || 1)}px -apple-system, sans-serif`;
+        ctx.font = `${11 * dpr}px -apple-system, sans-serif`;
         ctx.textAlign = 'right';
         ctx.fillText(Math.round(val) + 'm', pad.left - 8, y + 4);
     }
@@ -1597,12 +1597,12 @@ function drawElevationChart(route) {
         else ctx.lineTo(x, y);
     }
     ctx.strokeStyle = '#34d399';
-    ctx.lineWidth = 2 * (window.devicePixelRatio || 1);
+    ctx.lineWidth = 2 * dpr;
     ctx.stroke();
 
     // Draw gain/loss annotations
     ctx.fillStyle = '#34d399';
-    ctx.font = `bold ${12 * (window.devicePixelRatio || 1)}px -apple-system, sans-serif`;
+    ctx.font = `bold ${12 * dpr}px -apple-system, sans-serif`;
     ctx.textAlign = 'left';
     ctx.fillText(`↑ +${Math.round(route.gain)}m gain`, pad.left + 8, pad.top + 14);
     ctx.fillStyle = '#60a5fa';
@@ -1619,8 +1619,7 @@ function formatDuration(min) {
 
 function clearRoutes() {
     clearRouteLayers();
-    elevColorLayers.forEach(l => map.removeLayer(l));
-    elevColorLayers = [];
+    if (elevColorGroup) { map.removeLayer(elevColorGroup); elevColorGroup = null; }
     document.getElementById('routeResults').style.display = 'none';
     document.getElementById('elevSection').style.display = 'none';
     document.getElementById('evExplain').style.display = 'none';
@@ -1646,11 +1645,15 @@ function hideLoading() {
     document.getElementById('loadingOverlay').classList.add('hidden');
 }
 
-// ─── Resize handling for elevation chart ───
+// ─── Resize handling for elevation chart (debounced) ───
+let resizeTimer = null;
 window.addEventListener('resize', () => {
-    if (routesData.length && routesData[selectedRouteIdx]) {
-        drawElevationChart(routesData[selectedRouteIdx]);
-    }
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+        if (routesData.length && routesData[selectedRouteIdx]) {
+            drawElevationChart(routesData[selectedRouteIdx]);
+        }
+    }, 150);
 });
 
 // Initialize EV specs display
