@@ -11,7 +11,7 @@
   --primary:#1976d2;
   --primary-dark:#1565C0;
   --primary-light:#42a5f5;
-  --secondary:#dc004e;
+  --accent:#43a047;
   --bg:#f8fafc;
   --bg2:#ffffff;
   --surface:#f1f5f9;
@@ -25,43 +25,20 @@
   --font:'Inter',system-ui,sans-serif;
   --shadow:0 1px 3px rgba(0,0,0,0.1),0 1px 2px rgba(0,0,0,0.06);
   --shadow-md:0 4px 6px rgba(0,0,0,0.07),0 2px 4px rgba(0,0,0,0.06);
+  --shadow-lg:0 10px 15px rgba(0,0,0,0.1),0 4px 6px rgba(0,0,0,0.05);
 }
 html,body{height:100%;overflow:hidden}
-body{
-  background:var(--bg);
-  font-family:var(--font);
-  color:var(--text);
-  display:flex;
-  flex-direction:column;
-}
+body{background:var(--bg);font-family:var(--font);color:var(--text);display:flex;flex-direction:column}
 
 /* Header */
 header{
-  background:var(--primary-dark);
-  padding:0 24px;
-  height:56px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  flex-shrink:0;
-  z-index:100;
-  box-shadow:0 2px 4px rgba(0,0,0,0.15);
+  background:var(--primary-dark);padding:0 24px;height:56px;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;z-index:100;box-shadow:0 2px 4px rgba(0,0,0,0.15);
 }
 .logo{display:flex;align-items:center;gap:10px;font-weight:600;font-size:0.95rem;color:#fff;text-decoration:none}
-.logo-icon{
-  width:34px;height:34px;
-  background:rgba(255,255,255,0.15);
-  border-radius:8px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:18px;
-}
-.back-btn{
-  color:rgba(255,255,255,0.7);
-  text-decoration:none;
-  font-size:0.82rem;
-  display:flex;align-items:center;gap:6px;
-  transition:color 0.2s;
-}
+.logo-icon{width:34px;height:34px;background:rgba(255,255,255,0.15);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.back-btn{color:rgba(255,255,255,0.7);text-decoration:none;font-size:0.82rem;display:flex;align-items:center;gap:6px;transition:color 0.2s}
 .back-btn:hover{color:#fff}
 
 /* Main layout */
@@ -69,50 +46,93 @@ header{
 
 /* Sidebar */
 .sidebar{
-  width:360px;
+  width:400px;background:var(--bg2);border-right:1px solid var(--border-light);
+  display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;
+}
+
+/* Step progress bar */
+.step-progress{
+  display:flex;padding:16px 20px 12px;border-bottom:1px solid var(--border-light);
+  background:var(--surface);gap:4px;flex-shrink:0;
+}
+.step-dot{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;
+  cursor:pointer;position:relative;
+}
+.step-dot-bar{
+  width:100%;height:4px;border-radius:2px;
+  background:var(--surface2);transition:background 0.3s;
+}
+.step-dot.completed .step-dot-bar{background:var(--accent)}
+.step-dot.active .step-dot-bar{background:var(--primary)}
+.step-dot-label{
+  font-size:0.62rem;font-weight:600;text-transform:uppercase;
+  letter-spacing:0.05em;color:var(--text-light);transition:color 0.3s;
+  white-space:nowrap;
+}
+.step-dot.active .step-dot-label{color:var(--primary)}
+.step-dot.completed .step-dot-label{color:var(--accent)}
+
+/* Step content */
+.step-content{flex:1;overflow-y:auto;padding:0}
+.step-content::-webkit-scrollbar{width:6px}
+.step-content::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+.step-panel{display:none;padding:20px}
+.step-panel.active{display:block}
+.step-panel h3{font-size:0.95rem;font-weight:600;margin-bottom:4px}
+.step-panel .step-desc{font-size:0.75rem;color:var(--text-dim);margin-bottom:16px}
+
+/* Step footer nav */
+.step-nav{
+  display:flex;gap:8px;padding:12px 20px;
+  border-top:1px solid var(--border-light);flex-shrink:0;
   background:var(--bg2);
-  border-right:1px solid var(--border-light);
-  overflow-y:auto;
-  flex-shrink:0;
-  padding:0;
 }
-.sidebar::-webkit-scrollbar{width:6px}
-.sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-
-.sidebar-header{
-  padding:16px 20px;
-  border-bottom:1px solid var(--border-light);
-  background:var(--surface);
+.step-nav button{
+  flex:1;padding:10px 16px;border-radius:8px;font-size:0.82rem;
+  font-weight:600;cursor:pointer;font-family:var(--font);
+  transition:all 0.2s;border:1px solid var(--border);
 }
-.sidebar-header h3{font-size:0.85rem;font-weight:600;color:var(--text);margin-bottom:2px}
-.sidebar-header p{font-size:0.72rem;color:var(--text-dim)}
+.btn-back{background:var(--bg2);color:var(--text)}
+.btn-back:hover{background:var(--surface)}
+.btn-next{background:var(--primary);color:#fff;border-color:var(--primary)}
+.btn-next:hover{background:var(--primary-dark)}
+.btn-quote{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-quote:hover{opacity:0.9}
 
-.section{padding:16px 20px;border-bottom:1px solid var(--border-light)}
-.section:last-child{border-bottom:none}
+/* Section styling inside steps */
+.section{margin-bottom:20px}
+.section:last-child{margin-bottom:0}
 .section-title{
-  font-size:0.7rem;
-  font-weight:600;
-  text-transform:uppercase;
-  letter-spacing:0.08em;
-  color:var(--text-dim);
-  margin-bottom:12px;
+  font-size:0.7rem;font-weight:600;text-transform:uppercase;
+  letter-spacing:0.08em;color:var(--text-dim);margin-bottom:10px;
 }
 
+/* Frame selection cards */
+.frame-grid{display:grid;grid-template-columns:1fr;gap:10px}
+.frame-card{
+  padding:16px;background:var(--bg2);border:2px solid var(--border-light);
+  border-radius:var(--radius);cursor:pointer;transition:all 0.2s;
+}
+.frame-card:hover{border-color:var(--primary);box-shadow:var(--shadow-md)}
+.frame-card.active{border-color:var(--primary);background:rgba(25,118,210,0.04)}
+.frame-card h4{font-size:0.85rem;font-weight:600;margin-bottom:4px}
+.frame-card p{font-size:0.72rem;color:var(--text-dim);line-height:1.4}
+.frame-card .frame-specs{
+  display:flex;gap:12px;margin-top:8px;
+  font-size:0.68rem;color:var(--text-light);
+}
+.frame-card .frame-specs span{
+  background:var(--surface);padding:3px 8px;border-radius:4px;
+}
 
-/* Dimension presets */
+/* Dimension buttons */
 .dim-row{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
-.dim-label{font-size:0.78rem;font-weight:500;color:var(--text);margin-bottom:6px}
 .dim-btn{
-  padding:6px 12px;
-  background:var(--bg2);
-  border:1px solid var(--border);
-  border-radius:6px;
-  font-size:0.72rem;
-  font-weight:500;
-  cursor:pointer;
-  color:var(--text);
-  font-family:var(--font);
-  transition:all 0.15s;
+  padding:8px 14px;background:var(--bg2);border:1px solid var(--border);
+  border-radius:6px;font-size:0.75rem;font-weight:500;cursor:pointer;
+  color:var(--text);font-family:var(--font);transition:all 0.15s;
 }
 .dim-btn:hover{border-color:var(--primary)}
 .dim-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
@@ -120,13 +140,8 @@ header{
 /* Color swatches */
 .swatch-row{display:flex;gap:8px;flex-wrap:wrap}
 .swatch{
-  width:36px;height:36px;
-  border-radius:8px;
-  border:2px solid var(--border-light);
-  cursor:pointer;
-  transition:all 0.2s;
-  position:relative;
-  box-shadow:var(--shadow);
+  width:36px;height:36px;border-radius:8px;border:2px solid var(--border-light);
+  cursor:pointer;transition:all 0.2s;position:relative;box-shadow:var(--shadow);
 }
 .swatch:hover{transform:scale(1.1);border-color:var(--primary)}
 .swatch.active{border-color:var(--primary);box-shadow:0 0 0 3px rgba(25,118,210,0.25)}
@@ -140,93 +155,105 @@ header{
 /* Material buttons */
 .material-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .material-btn{
-  padding:10px 12px;
-  background:var(--bg2);
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  color:var(--text);
-  font-size:0.75rem;
-  font-weight:500;
-  cursor:pointer;
-  text-align:center;
-  transition:all 0.2s;
-  font-family:var(--font);
+  padding:10px 12px;background:var(--bg2);border:1px solid var(--border);
+  border-radius:var(--radius);color:var(--text);font-size:0.75rem;font-weight:500;
+  cursor:pointer;text-align:center;transition:all 0.2s;font-family:var(--font);
 }
-.material-btn .mat-price{
-  display:block;font-size:0.65rem;color:var(--text-light);margin-top:2px;
-}
+.material-btn .mat-price{display:block;font-size:0.65rem;color:var(--text-light);margin-top:2px}
 .material-btn:hover{border-color:var(--primary);background:rgba(25,118,210,0.04)}
 .material-btn.active{background:rgba(25,118,210,0.08);border-color:var(--primary);color:var(--primary)}
 
+/* Upright cards */
+.upright-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.upright-card{
+  padding:14px 12px;background:var(--bg2);border:2px solid var(--border-light);
+  border-radius:var(--radius);cursor:pointer;text-align:center;transition:all 0.2s;
+}
+.upright-card:hover{border-color:var(--primary)}
+.upright-card.active{border-color:var(--primary);background:rgba(25,118,210,0.04)}
+.upright-card .upright-height{font-size:1.1rem;font-weight:700;color:var(--text)}
+.upright-card .upright-desc{font-size:0.68rem;color:var(--text-dim);margin-top:4px}
+
+/* Accessory cards */
+.accessory-grid{display:grid;grid-template-columns:1fr;gap:8px}
+.accessory-card{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 14px;background:var(--bg2);border:2px solid var(--border-light);
+  border-radius:var(--radius);cursor:pointer;transition:all 0.2s;
+  user-select:none;
+}
+.accessory-card:hover{border-color:var(--primary-light);box-shadow:var(--shadow)}
+.accessory-card.on{border-color:var(--primary);background:rgba(25,118,210,0.04)}
+.accessory-icon{
+  width:40px;height:40px;border-radius:8px;background:var(--surface);
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;flex-shrink:0;
+}
+.accessory-card.on .accessory-icon{background:rgba(25,118,210,0.12)}
+.accessory-info{flex:1;min-width:0}
+.accessory-info h4{font-size:0.8rem;font-weight:600;margin-bottom:2px}
+.accessory-info p{font-size:0.68rem;color:var(--text-dim)}
+.accessory-toggle{
+  width:40px;height:22px;border-radius:11px;background:var(--surface2);
+  position:relative;transition:background 0.2s;flex-shrink:0;
+}
+.accessory-card.on .accessory-toggle{background:var(--primary)}
+.accessory-toggle::after{
+  content:'';position:absolute;top:3px;left:3px;
+  width:16px;height:16px;background:#fff;border-radius:50%;
+  transition:transform 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);
+}
+.accessory-card.on .accessory-toggle::after{transform:translateX(18px)}
 
 /* 3D Viewport */
 .viewport{
-  flex:1;
-  position:relative;
+  flex:1;position:relative;
   background:linear-gradient(135deg, #e8ecf1 0%, #d1d8e0 50%, #c8cfd8 100%);
 }
 .viewport canvas{display:block;width:100%;height:100%}
 .viewport-hint{
   position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
   font-size:0.72rem;color:var(--text-dim);
-  background:rgba(255,255,255,0.85);
-  padding:6px 14px;border-radius:20px;
-  pointer-events:none;
-  backdrop-filter:blur(8px);
-  box-shadow:var(--shadow);
+  background:rgba(255,255,255,0.85);padding:6px 14px;border-radius:20px;
+  pointer-events:none;backdrop-filter:blur(8px);box-shadow:var(--shadow);
 }
-
-/* Reset camera button */
 .reset-cam{
   position:absolute;top:16px;right:16px;
-  background:var(--bg2);
-  border:1px solid var(--border);
-  color:var(--text);
-  padding:8px 14px;
-  border-radius:8px;
-  font-size:0.78rem;
-  cursor:pointer;
-  font-family:var(--font);
-  transition:all 0.2s;
-  box-shadow:var(--shadow);
+  background:var(--bg2);border:1px solid var(--border);color:var(--text);
+  padding:8px 14px;border-radius:8px;font-size:0.78rem;cursor:pointer;
+  font-family:var(--font);transition:all 0.2s;box-shadow:var(--shadow);
 }
 .reset-cam:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
 
+/* Config summary floating badge */
+.config-badge{
+  position:absolute;top:16px;left:16px;
+  background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);
+  padding:10px 14px;border-radius:var(--radius);
+  box-shadow:var(--shadow-md);font-size:0.72rem;
+  line-height:1.6;max-width:220px;
+}
+.config-badge strong{font-weight:600;color:var(--text)}
+.config-badge span{color:var(--text-dim)}
 
-/* Loading spinner */
+/* Loading */
 .loading-overlay{
-  position:absolute;inset:0;
-  display:none;
+  position:absolute;inset:0;display:none;
   align-items:center;justify-content:center;
-  background:rgba(248,250,252,0.9);
-  z-index:50;
+  background:rgba(248,250,252,0.9);z-index:50;
   flex-direction:column;gap:12px;
 }
 .loading-overlay.show{display:flex}
 .spinner{
-  width:44px;height:44px;
-  border:4px solid var(--border-light);
-  border-top-color:var(--primary);
-  border-radius:50%;
+  width:44px;height:44px;border:4px solid var(--border-light);
+  border-top-color:var(--primary);border-radius:50%;
   animation:spin 0.8s linear infinite;
 }
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading-text{font-size:0.85rem;color:var(--text-dim);font-weight:500}
-.loading-progress{
-  width:200px;height:4px;
-  background:var(--surface2);
-  border-radius:2px;
-  overflow:hidden;
-}
-.loading-bar{
-  height:100%;
-  background:var(--primary);
-  border-radius:2px;
-  width:0%;
-  transition:width 0.3s;
-}
+.loading-progress{width:200px;height:4px;background:var(--surface2);border-radius:2px;overflow:hidden}
+.loading-bar{height:100%;background:var(--primary);border-radius:2px;width:0%;transition:width 0.3s}
 
-/* Responsive */
 @media(max-width:768px){
   .app{flex-direction:column}
   .sidebar{width:100%;height:45%;border-right:none;border-top:1px solid var(--border);order:2}
@@ -252,81 +279,262 @@ header{
       <div class="loading-progress"><div class="loading-bar" id="loadingBar"></div></div>
     </div>
     <button class="reset-cam" onclick="resetCamera()">&#8634; Reset View</button>
+    <div class="config-badge" id="configBadge">
+      <strong>Kennedy Series</strong><br>
+      <span>60" x 30" &bull; Formica</span>
+    </div>
     <div class="viewport-hint">Click &amp; drag to rotate &bull; Scroll to zoom &bull; Right-click to pan</div>
   </div>
 
   <div class="sidebar">
-    <div class="sidebar-header">
-      <h3>Workbench Configurator</h3>
-      <p>Select a series, customize dimensions, materials &amp; accessories</p>
-    </div>
-
-
-    <!-- Dimensions -->
-    <div class="section">
-      <div class="section-title">Width</div>
-      <div class="dim-row" id="widthBtns">
-        <button class="dim-btn" data-val="48" onclick="setDim('width',48)">48"</button>
-        <button class="dim-btn active" data-val="60" onclick="setDim('width',60)">60"</button>
-        <button class="dim-btn" data-val="72" onclick="setDim('width',72)">72"</button>
-        <button class="dim-btn" data-val="96" onclick="setDim('width',96)">96"</button>
+    <!-- Step Progress -->
+    <div class="step-progress" id="stepProgress">
+      <div class="step-dot active" data-step="0" onclick="goToStep(0)">
+        <div class="step-dot-bar"></div>
+        <div class="step-dot-label">Frame</div>
       </div>
-      <div class="section-title" style="margin-top:12px">Depth</div>
-      <div class="dim-row" id="depthBtns">
-        <button class="dim-btn" data-val="24" onclick="setDim('depth',24)">24"</button>
-        <button class="dim-btn active" data-val="30" onclick="setDim('depth',30)">30"</button>
-        <button class="dim-btn" data-val="36" onclick="setDim('depth',36)">36"</button>
-        <button class="dim-btn" data-val="48" onclick="setDim('depth',48)">48"</button>
+      <div class="step-dot" data-step="1" onclick="goToStep(1)">
+        <div class="step-dot-bar"></div>
+        <div class="step-dot-label">Size &amp; Surface</div>
       </div>
-      <div class="section-title" style="margin-top:12px">Height</div>
-      <div class="dim-row" id="heightBtns">
-        <button class="dim-btn" data-val="30" onclick="setDim('height',30)">30"</button>
-        <button class="dim-btn" data-val="32" onclick="setDim('height',32)">32"</button>
-        <button class="dim-btn active" data-val="34" onclick="setDim('height',34)">34"</button>
-        <button class="dim-btn" data-val="36" onclick="setDim('height',36)">36"</button>
+      <div class="step-dot" data-step="2" onclick="goToStep(2)">
+        <div class="step-dot-bar"></div>
+        <div class="step-dot-label">Uprights</div>
+      </div>
+      <div class="step-dot" data-step="3" onclick="goToStep(3)">
+        <div class="step-dot-bar"></div>
+        <div class="step-dot-label">Accessories</div>
       </div>
     </div>
 
-    <!-- Frame Color -->
-    <div class="section">
-      <div class="section-title">Frame Color</div>
-      <div class="swatch-row" id="frameColors">
-        <div class="swatch active" data-color="#4489b7" style="background:#4489b7" title="Blue"></div>
-        <div class="swatch" data-color="#75787B" style="background:#75787B" title="Gray"></div>
-        <div class="swatch" data-color="#2C2F33" style="background:#2C2F33" title="Black"></div>
-        <div class="swatch" data-color="#FFFFFF" style="background:#FFFFFF;border-color:#ccc" title="White"></div>
-        <div class="swatch" data-color="#033c5a" style="background:#033c5a" title="Dark Blue"></div>
-        <div class="swatch" data-color="#D4B896" style="background:#D4B896" title="Beige"></div>
+    <!-- Step panels -->
+    <div class="step-content">
+      <!-- STEP 0: Frame -->
+      <div class="step-panel active" id="step0">
+        <h3>Select Your Frame</h3>
+        <p class="step-desc">Choose the workstation frame best suited for your application.</p>
+
+        <div class="frame-grid">
+          <div class="frame-card active" data-frame="kennedy" onclick="selectFrame('kennedy')">
+            <h4>Kennedy Series</h4>
+            <p>Heavy-duty industrial workbench with 14-gauge steel tubing frame. Built for demanding manufacturing and assembly environments.</p>
+            <div class="frame-specs">
+              <span>6,600 lb capacity</span>
+              <span>14-gauge steel</span>
+              <span>Welded frame</span>
+            </div>
+          </div>
+          <div class="frame-card" data-frame="concept" onclick="selectFrame('concept')">
+            <h4>Concept Series</h4>
+            <p>Ergonomic workstation with height adjustability and modular frame design for technical applications.</p>
+            <div class="frame-specs">
+              <span>660 lb capacity</span>
+              <span>ESD compatible</span>
+              <span>Modular</span>
+            </div>
+          </div>
+          <div class="frame-card" data-frame="workshop" onclick="selectFrame('workshop')">
+            <h4>Workshop Series</h4>
+            <p>Versatile workshop bench with heavy-gauge steel construction for maintenance and repair operations.</p>
+            <div class="frame-specs">
+              <span>2,200 lb capacity</span>
+              <span>12-gauge steel</span>
+              <span>Heavy duty</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 1: Size & Surface -->
+      <div class="step-panel" id="step1">
+        <h3>Size &amp; Worktop</h3>
+        <p class="step-desc">Choose dimensions, surface material, and colors.</p>
+
+        <div class="section">
+          <div class="section-title">Width</div>
+          <div class="dim-row" id="widthBtns">
+            <button class="dim-btn" data-val="48" onclick="setDim('width',48)">48"</button>
+            <button class="dim-btn active" data-val="60" onclick="setDim('width',60)">60"</button>
+            <button class="dim-btn" data-val="72" onclick="setDim('width',72)">72"</button>
+            <button class="dim-btn" data-val="96" onclick="setDim('width',96)">96"</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Depth</div>
+          <div class="dim-row" id="depthBtns">
+            <button class="dim-btn" data-val="24" onclick="setDim('depth',24)">24"</button>
+            <button class="dim-btn active" data-val="30" onclick="setDim('depth',30)">30"</button>
+            <button class="dim-btn" data-val="36" onclick="setDim('depth',36)">36"</button>
+            <button class="dim-btn" data-val="48" onclick="setDim('depth',48)">48"</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Top Material</div>
+          <div class="material-grid" id="topMaterials">
+            <button class="material-btn active" data-material="formica">Standard Laminate<span class="mat-price">Formica</span></button>
+            <button class="material-btn" data-material="phenolic-resin">Phenolic Resin<span class="mat-price">Chemical Resistant</span></button>
+            <button class="material-btn" data-material="stainless-steel">304 Stainless Steel</button>
+            <button class="material-btn" data-material="maple-butcher">Maple Butcher Block</button>
+            <button class="material-btn" data-material="esd-static">ESD Static Control</button>
+            <button class="material-btn" data-material="cleanroom-laminate">Cleanroom Laminate</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Frame Color</div>
+          <div class="swatch-row" id="frameColors">
+            <div class="swatch active" data-color="#4489b7" style="background:#4489b7" title="Blue"></div>
+            <div class="swatch" data-color="#75787B" style="background:#75787B" title="Gray"></div>
+            <div class="swatch" data-color="#2C2F33" style="background:#2C2F33" title="Black"></div>
+            <div class="swatch" data-color="#FFFFFF" style="background:#FFFFFF;border-color:#ccc" title="White"></div>
+            <div class="swatch" data-color="#033c5a" style="background:#033c5a" title="Dark Blue"></div>
+            <div class="swatch" data-color="#D4B896" style="background:#D4B896" title="Beige"></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Top Surface Color</div>
+          <div class="swatch-row" id="topColors">
+            <div class="swatch active" data-color="#FFFFFF" style="background:#FFFFFF;border-color:#ccc" title="White"></div>
+            <div class="swatch" data-color="#000000" style="background:#000000" title="Black"></div>
+            <div class="swatch" data-color="#cccccc" style="background:#cccccc" title="Stainless Steel"></div>
+            <div class="swatch" data-color="#D4B896" style="background:#D4B896" title="Beige"></div>
+            <div class="swatch" data-color="#808080" style="background:#808080" title="Light Gray"></div>
+            <div class="swatch" data-color="#444444" style="background:#444444" title="Dark Gray"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2: Uprights -->
+      <div class="step-panel" id="step2">
+        <h3>Select Uprights</h3>
+        <p class="step-desc">Uprights allow you to mount shelves, lights, and other above-surface accessories.</p>
+
+        <div class="section">
+          <div class="section-title">Upright Height</div>
+          <div class="upright-grid" id="uprightBtns">
+            <div class="upright-card active" data-val="none" onclick="selectUpright('none')">
+              <div class="upright-height">None</div>
+              <div class="upright-desc">No uprights</div>
+            </div>
+            <div class="upright-card" data-val="36" onclick="selectUpright('36')">
+              <div class="upright-height">36"</div>
+              <div class="upright-desc">Standard height</div>
+            </div>
+            <div class="upright-card" data-val="48" onclick="selectUpright('48')">
+              <div class="upright-height">48"</div>
+              <div class="upright-desc">For shelf + light</div>
+            </div>
+            <div class="upright-card" data-val="72" onclick="selectUpright('72')">
+              <div class="upright-height">72"</div>
+              <div class="upright-desc">Full height w/ panels</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section" id="uprightColorSection" style="display:none">
+          <div class="section-title">Upright Color</div>
+          <div class="swatch-row" id="uprightColors">
+            <div class="swatch active" data-color="frame" style="background:#4489b7" title="Match Frame"></div>
+            <div class="swatch" data-color="#2C2F33" style="background:#2C2F33" title="Black"></div>
+            <div class="swatch" data-color="#75787B" style="background:#75787B" title="Gray"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 3: Accessories -->
+      <div class="step-panel" id="step3">
+        <h3>Add Accessories</h3>
+        <p class="step-desc">Complete your workstation with shelves, lighting, power, and storage options.</p>
+
+        <div class="section">
+          <div class="section-title">Shelving</div>
+          <div class="accessory-grid">
+            <div class="accessory-card" data-feature="topShelf" onclick="toggleAccessory(this,'topShelf')">
+              <div class="accessory-icon">&#9744;</div>
+              <div class="accessory-info"><h4>Upper Shelf</h4><p>Riser shelf above work surface</p></div>
+              <div class="accessory-toggle"></div>
+            </div>
+            <div class="accessory-card" data-feature="bottomShelf" onclick="toggleAccessory(this,'bottomShelf')">
+              <div class="accessory-icon">&#9744;</div>
+              <div class="accessory-info"><h4>Lower Shelf</h4><p>Bottom storage shelf</p></div>
+              <div class="accessory-toggle"></div>
+            </div>
+            <div class="accessory-card" data-feature="wireShelf" onclick="toggleAccessory(this,'wireShelf')">
+              <div class="accessory-icon">&#9783;</div>
+              <div class="accessory-info"><h4>Wire Shelf</h4><p>Wire mesh bottom shelf</p></div>
+              <div class="accessory-toggle"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Lighting &amp; Power</div>
+          <div class="accessory-grid">
+            <div class="accessory-card" data-feature="ledLight" onclick="toggleAccessory(this,'ledLight')">
+              <div class="accessory-icon">&#9728;</div>
+              <div class="accessory-info"><h4>LED Light Bar</h4><p>Task lighting with switch</p></div>
+              <div class="accessory-toggle"></div>
+            </div>
+            <div class="accessory-card" data-feature="powerStrip" onclick="toggleAccessory(this,'powerStrip')">
+              <div class="accessory-icon">&#9889;</div>
+              <div class="accessory-info"><h4>Power Strip</h4><p>48" power strip with outlets</p></div>
+              <div class="accessory-toggle"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Storage</div>
+          <div class="accessory-grid">
+            <div class="accessory-card" data-feature="cabinet" onclick="toggleAccessory(this,'cabinet')">
+              <div class="accessory-icon">&#9782;</div>
+              <div class="accessory-info"><h4>Cabinet</h4><p>Locking under-cabinet storage</p></div>
+              <div class="accessory-toggle"></div>
+            </div>
+            <div class="accessory-card" data-feature="binBoxes" onclick="toggleAccessory(this,'binBoxes')">
+              <div class="accessory-icon">&#9638;</div>
+              <div class="accessory-info"><h4>Bin Boxes</h4><p>Parts bin rack</p></div>
+              <div class="accessory-toggle"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Ergonomics</div>
+          <div class="accessory-grid">
+            <div class="accessory-card" data-feature="keyboard" onclick="toggleAccessory(this,'keyboard')">
+              <div class="accessory-icon">&#9000;</div>
+              <div class="accessory-info"><h4>Keyboard Tray</h4><p>Sliding keyboard platform</p></div>
+              <div class="accessory-toggle"></div>
+            </div>
+            <div class="accessory-card" data-feature="monitor" onclick="toggleAccessory(this,'monitor')">
+              <div class="accessory-icon">&#9633;</div>
+              <div class="accessory-info"><h4>Monitor Arm</h4><p>Articulating monitor holder</p></div>
+              <div class="accessory-toggle"></div>
+            </div>
+            <div class="accessory-card" data-feature="cpuHolder" onclick="toggleAccessory(this,'cpuHolder')">
+              <div class="accessory-icon">&#9641;</div>
+              <div class="accessory-info"><h4>CPU Holder</h4><p>Under-desk CPU mount</p></div>
+              <div class="accessory-toggle"></div>
+            </div>
+            <div class="accessory-card" data-feature="docHolder" onclick="toggleAccessory(this,'docHolder')">
+              <div class="accessory-icon">&#9112;</div>
+              <div class="accessory-info"><h4>Document Holder</h4><p>Angled document rest</p></div>
+              <div class="accessory-toggle"></div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Top Surface Color -->
-    <div class="section">
-      <div class="section-title">Top Surface Color</div>
-      <div class="swatch-row" id="topColors">
-        <div class="swatch active" data-color="#FFFFFF" style="background:#FFFFFF;border-color:#ccc" title="White"></div>
-        <div class="swatch" data-color="#000000" style="background:#000000" title="Black"></div>
-        <div class="swatch" data-color="#cccccc" style="background:#cccccc" title="Stainless Steel"></div>
-        <div class="swatch" data-color="#D4B896" style="background:#D4B896" title="Beige"></div>
-        <div class="swatch" data-color="#808080" style="background:#808080" title="Light Gray"></div>
-        <div class="swatch" data-color="#444444" style="background:#444444" title="Dark Gray"></div>
-      </div>
+    <!-- Step navigation -->
+    <div class="step-nav" id="stepNav">
+      <button class="btn-back" id="btnBack" onclick="prevStep()" style="display:none">&larr; Back</button>
+      <button class="btn-next" id="btnNext" onclick="nextStep()">Next: Size &amp; Surface &rarr;</button>
     </div>
-
-    <!-- Top Material -->
-    <div class="section">
-      <div class="section-title">Top Material</div>
-      <div class="material-grid" id="topMaterials">
-        <button class="material-btn active" data-material="formica">Standard Laminate<span class="mat-price">Formica</span></button>
-        <button class="material-btn" data-material="phenolic-resin">Phenolic Resin<span class="mat-price">Chemical Resistant</span></button>
-        <button class="material-btn" data-material="stainless-steel">304 Stainless Steel</button>
-        <button class="material-btn" data-material="maple-butcher">Maple Butcher Block</button>
-        <button class="material-btn" data-material="esd-static">ESD Static Control</button>
-        <button class="material-btn" data-material="cleanroom-laminate">Cleanroom Laminate</button>
-      </div>
-    </div>
-
-
   </div>
 </div>
 
@@ -344,47 +552,120 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-// Expose for onclick
 window.resetCamera = resetCamera;
 window.setDim = setDim;
+window.selectFrame = selectFrame;
+window.selectUpright = selectUpright;
+window.toggleAccessory = toggleAccessory;
+window.goToStep = goToStep;
+window.nextStep = nextStep;
+window.prevStep = prevStep;
 
-// ============ Series & Model Config ============
-const seriesData = {
-  kennedy: {
-    name: 'Kennedy Series',
-    desc: 'Heavy-duty industrial workbench with 14-gauge steel tubing frame, 6,600 lb capacity',
-    model: 'models/KSeries.glb',
-    capacity: '6,600 lb'
-  }
-};
+// ============ Step wizard state ============
+let currentStep = 0;
+const totalSteps = 4;
+const stepLabels = ['Frame', 'Size & Surface', 'Uprights', 'Accessories'];
+const nextLabels = ['Next: Size & Surface', 'Next: Uprights', 'Next: Accessories', ''];
 
 // ============ Configuration State ============
 const config = {
-  width: 60, depth: 30, height: 34,
+  frame: 'kennedy',
+  width: 60, depth: 30,
   frameColor: '#4489b7',
   topColor: '#FFFFFF',
-  topMaterial: 'formica'
+  topMaterial: 'formica',
+  upright: 'none',
+  topShelf: false, bottomShelf: false, cabinet: false,
+  ledLight: false, powerStrip: false, keyboard: false,
+  monitor: false, cpuHolder: false, wireShelf: false,
+  docHolder: false, binBoxes: false
 };
 
-// Material PBR definitions
+// Accessory node name prefixes — must match names in the exported GLBs
+const accessoryNodes = {
+  topShelf: ['UPPER_SHELF', 'TOP_SHELF', 'RISER'],
+  bottomShelf: ['LOWER_SHELF', 'BOTTOM_SHELF'],
+  cabinet: ['CABINET', 'DRAWER'],
+  ledLight: ['LED', 'LIGHT_BAR'],
+  powerStrip: ['POWER_STRIP', 'OUTLET'],
+  keyboard: ['KEYBOARD', 'KB_TRAY'],
+  monitor: ['MONITOR_ARM', 'MONITOR'],
+  cpuHolder: ['CPU_HOLDER', 'CPU'],
+  wireShelf: ['WIRE_SHELF'],
+  docHolder: ['DOC_HOLDER', 'DOCUMENT'],
+  binBoxes: ['BIN_BOX', 'BIN'],
+  upright: ['UPRIGHT', 'RISER_FRAME', 'VERTICAL']
+};
+
 const materialDefs = {
-  'formica':           { roughness: 0.4, metalness: 0.0, clearcoat: 0.1 },
-  'phenolic-resin':    { roughness: 0.35, metalness: 0.05, clearcoat: 0 },
-  'stainless-steel':   { roughness: 0.2, metalness: 1.0, clearcoat: 0.3 },
-  'maple-butcher':     { roughness: 0.7, metalness: 0.0, clearcoat: 0 },
-  'esd-static':        { roughness: 0.4, metalness: 0.05, clearcoat: 0.1 },
-  'cleanroom-laminate':{ roughness: 0.3, metalness: 0.0, clearcoat: 0.2 }
+  'formica':           { roughness: 0.4, metalness: 0.0 },
+  'phenolic-resin':    { roughness: 0.35, metalness: 0.05 },
+  'stainless-steel':   { roughness: 0.2, metalness: 1.0 },
+  'maple-butcher':     { roughness: 0.7, metalness: 0.0 },
+  'esd-static':        { roughness: 0.4, metalness: 0.05 },
+  'cleanroom-laminate':{ roughness: 0.3, metalness: 0.0 }
 };
 
+const materialNames = {
+  'formica': 'Formica',
+  'phenolic-resin': 'Phenolic Resin',
+  'stainless-steel': 'Stainless Steel',
+  'maple-butcher': 'Butcher Block',
+  'esd-static': 'ESD',
+  'cleanroom-laminate': 'Cleanroom'
+};
+
+// ============ Step Navigation ============
+function goToStep(step) {
+  if (step < 0 || step >= totalSteps) return;
+  currentStep = step;
+  updateStepUI();
+}
+
+function nextStep() {
+  if (currentStep < totalSteps - 1) goToStep(currentStep + 1);
+}
+
+function prevStep() {
+  if (currentStep > 0) goToStep(currentStep - 1);
+}
+
+function updateStepUI() {
+  // Panels
+  document.querySelectorAll('.step-panel').forEach(function(p, i) {
+    p.classList.toggle('active', i === currentStep);
+  });
+
+  // Progress dots
+  document.querySelectorAll('.step-dot').forEach(function(d, i) {
+    d.classList.remove('active', 'completed');
+    if (i === currentStep) d.classList.add('active');
+    else if (i < currentStep) d.classList.add('completed');
+  });
+
+  // Nav buttons
+  var btnBack = document.getElementById('btnBack');
+  var btnNext = document.getElementById('btnNext');
+  btnBack.style.display = currentStep === 0 ? 'none' : '';
+
+  if (currentStep === totalSteps - 1) {
+    btnNext.textContent = 'Get Quote';
+    btnNext.className = 'btn-quote';
+    btnNext.onclick = function() { alert('Quote request would be submitted here.\n\nConfiguration:\n' + JSON.stringify(config, null, 2)); };
+  } else {
+    btnNext.innerHTML = nextLabels[currentStep] + ' &rarr;';
+    btnNext.className = 'btn-next';
+    btnNext.onclick = nextStep;
+  }
+}
 
 // ============ Three.js Setup ============
-const viewport = document.getElementById('viewport');
-const scene = new THREE.Scene();
-
-const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+var viewport = document.getElementById('viewport');
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
 camera.position.set(5, 4, 6);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -393,11 +674,8 @@ renderer.toneMappingExposure = 1.2;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 viewport.insertBefore(renderer.domElement, viewport.firstChild);
 
-// Lighting - brighter for light theme
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-scene.add(ambientLight);
-
-const mainLight = new THREE.DirectionalLight(0xffffff, 1.0);
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+var mainLight = new THREE.DirectionalLight(0xffffff, 1.0);
 mainLight.position.set(5, 8, 4);
 mainLight.castShadow = true;
 mainLight.shadow.mapSize.set(2048, 2048);
@@ -409,37 +687,25 @@ mainLight.shadow.camera.top = 6;
 mainLight.shadow.camera.bottom = -6;
 mainLight.shadow.bias = -0.0001;
 scene.add(mainLight);
+scene.add(new THREE.DirectionalLight(0xc4d4ff, 0.4)).position.set(-3, 4, -2);
+scene.add(new THREE.DirectionalLight(0xffeedd, 0.3)).position.set(0, 2, -5);
 
-const fillLight = new THREE.DirectionalLight(0xc4d4ff, 0.4);
-fillLight.position.set(-3, 4, -2);
-scene.add(fillLight);
-
-const rimLight = new THREE.DirectionalLight(0xffeedd, 0.3);
-rimLight.position.set(0, 2, -5);
-scene.add(rimLight);
-
-// Ground
-const groundGeo = new THREE.PlaneGeometry(30, 30);
-const groundMat = new THREE.MeshStandardMaterial({
-  color: 0xd1d5db, roughness: 0.95, metalness: 0.0
-});
-const ground = new THREE.Mesh(groundGeo, groundMat);
+var ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(30, 30),
+  new THREE.MeshStandardMaterial({ color: 0xd1d5db, roughness: 0.95, metalness: 0 })
+);
 ground.rotation.x = -Math.PI / 2;
 ground.position.y = -0.01;
 ground.receiveShadow = true;
 scene.add(ground);
 
-// Subtle grid
-const grid = new THREE.GridHelper(12, 24, 0xb0b8c0, 0xc8ced6);
-grid.position.y = 0;
+var grid = new THREE.GridHelper(12, 24, 0xb0b8c0, 0xc8ced6);
 scene.add(grid);
 
-// Model group
-const modelGroup = new THREE.Group();
+var modelGroup = new THREE.Group();
 scene.add(modelGroup);
 
-// ============ OrbitControls ============
-const controls = new OrbitControls(camera, renderer.domElement);
+var controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 1.2, 0);
 controls.enableDamping = true;
 controls.dampingFactor = 0.08;
@@ -448,8 +714,8 @@ controls.maxDistance = 20;
 controls.maxPolarAngle = Math.PI / 2 - 0.02;
 controls.update();
 
-const defaultCamPos = new THREE.Vector3(4, 3.5, 5);
-const defaultTarget = new THREE.Vector3(0, 1.0, 0);
+var defaultCamPos = new THREE.Vector3(4, 3.5, 5);
+var defaultTarget = new THREE.Vector3(0, 1.0, 0);
 
 function resetCamera() {
   camera.position.copy(defaultCamPos);
@@ -457,14 +723,13 @@ function resetCamera() {
   controls.update();
 }
 
-// ============ GLTFLoader ============
-const gltfLoader = new GLTFLoader();
-const dracoLoader = new DRACOLoader();
+// ============ Loader ============
+var gltfLoader = new GLTFLoader();
+var dracoLoader = new DRACOLoader();
 dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/');
 gltfLoader.setDRACOLoader(dracoLoader);
 
-let currentModel = null;
-const meshRefData = new Map(); // uuid -> { baseEffScaleX/Y/Z, localSizeX/Y/Z }
+var currentModel = null;
 
 function showLoading(msg) {
   document.getElementById('loadingText').textContent = msg || 'Loading 3D Model...';
@@ -474,255 +739,242 @@ function showLoading(msg) {
 
 function hideLoading() {
   document.getElementById('loadingBar').style.width = '100%';
-  setTimeout(() => {
-    document.getElementById('loadingOverlay').classList.remove('show');
-  }, 300);
+  setTimeout(function() { document.getElementById('loadingOverlay').classList.remove('show'); }, 300);
 }
 
 function setupModel(model) {
-  // Auto-fit: scale to reasonable size
-  const box = new THREE.Box3().setFromObject(model);
-  const size = box.getSize(new THREE.Vector3());
-  const maxDim = Math.max(size.x, size.y, size.z);
-  const targetSize = 3.5;
-  const scale = targetSize / maxDim;
+  var box = new THREE.Box3().setFromObject(model);
+  var size = box.getSize(new THREE.Vector3());
+  var scale = 3.5 / Math.max(size.x, size.y, size.z);
   model.scale.setScalar(scale);
 
-  // Re-center
-  const scaledBox = new THREE.Box3().setFromObject(model);
-  const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
-  model.position.x -= scaledCenter.x;
-  model.position.z -= scaledCenter.z;
-  model.position.y -= scaledBox.min.y;
+  var sb = new THREE.Box3().setFromObject(model);
+  var sc = sb.getCenter(new THREE.Vector3());
+  model.position.x -= sc.x;
+  model.position.z -= sc.z;
+  model.position.y -= sb.min.y;
 
-  // Enable shadows on all meshes
-  model.traverse(function(child) {
-    if (child.isMesh) {
-      child.castShadow = true;
-      child.receiveShadow = true;
-    }
+  model.traverse(function(c) {
+    if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; }
   });
 }
 
 function fitCamera() {
   if (!currentModel) return;
-  const finalBox = new THREE.Box3().setFromObject(modelGroup);
-  const finalCenter = finalBox.getCenter(new THREE.Vector3());
-  const finalSize = finalBox.getSize(new THREE.Vector3());
-  const dist = Math.max(finalSize.x, finalSize.y, finalSize.z) * 2.2;
-  controls.target.copy(finalCenter);
-  camera.position.set(
-    finalCenter.x + dist * 0.6,
-    finalCenter.y + dist * 0.4,
-    finalCenter.z + dist * 0.6
-  );
+  var b = new THREE.Box3().setFromObject(modelGroup);
+  var c = b.getCenter(new THREE.Vector3());
+  var s = b.getSize(new THREE.Vector3());
+  var d = Math.max(s.x, s.y, s.z) * 2.2;
+  controls.target.copy(c);
+  camera.position.set(c.x + d * 0.6, c.y + d * 0.4, c.z + d * 0.6);
   controls.update();
 }
 
-function loadSeriesModel(seriesKey) {
-  const data = seriesData[seriesKey];
-  if (!data) return;
+// ============ Model Loading ============
+// All frames currently use the single KSeries.glb model.
+// When size-specific GLBs are available, update this map.
+var frameModelMap = {
+  kennedy: 'models/KSeries.glb',
+  concept: 'models/KSeries.glb',
+  workshop: 'models/KSeries.glb'
+};
 
-  showLoading('Loading ' + data.name + '...');
+var loadedModelPath = null;
 
-  // Clear existing
+function loadModel(forceReload) {
+  var path = frameModelMap[config.frame] || 'models/KSeries.glb';
+
+  // Skip reload if same model is already loaded (e.g. size change with single GLB)
+  if (!forceReload && path === loadedModelPath && currentModel) {
+    updateConfigBadge();
+    return;
+  }
+
+  showLoading('Loading model...');
   while (modelGroup.children.length) modelGroup.remove(modelGroup.children[0]);
   currentModel = null;
+  loadedModelPath = null;
 
-  gltfLoader.load(
-    data.model,
-    function(gltf) {
-      const model = gltf.scene;
-      setupModel(model);
-      currentModel = model;
-      modelGroup.add(model);
-
-      modelGroup.scale.set(1, 1, 1);
-      storeBaseMeshData();
-      applyColors();
-      applyDimensionScale();
-      fitCamera();
-      hideLoading();
-    },
-    function(progress) {
-      if (progress.total > 0) {
-        const pct = Math.round((progress.loaded / progress.total) * 100);
-        document.getElementById('loadingBar').style.width = pct + '%';
-        document.getElementById('loadingText').textContent = 'Loading ' + data.name + '... ' + pct + '%';
-      }
-    },
-    function(error) {
-      console.error('Model load error:', error);
-      hideLoading();
-    }
+  gltfLoader.load(path,
+    function(gltf) { loadedModelPath = path; onModelLoaded(gltf); },
+    function(p) { if (p.total > 0) document.getElementById('loadingBar').style.width = Math.round(p.loaded / p.total * 100) + '%'; },
+    function(e) { console.error('Model load error:', e); hideLoading(); }
   );
 }
 
+function onModelLoaded(gltf) {
+  var model = gltf.scene;
+  setupModel(model);
+  currentModel = model;
+  modelGroup.add(model);
 
-// ============ Color Application ============
-function applyColors() {
+  console.log('=== Model nodes ===');
+  model.traverse(function(c) {
+    if (c.name) console.log('  ' + (c.isMesh ? '[mesh]' : '[node]') + ' ' + c.name);
+  });
+
+  applyAccessoryVisibility();
+  applyColors();
+  updateConfigBadge();
+  fitCamera();
+  hideLoading();
+}
+
+// ============ Accessory Visibility ============
+function nameMatches(name, prefix) {
+  var u = name.toUpperCase(), p = prefix.toUpperCase();
+  if (u === p) return true;
+  if (!u.startsWith(p)) return false;
+  var ch = u.charAt(p.length);
+  return ch === '' || ch === '.' || ch === ' ' || ch === '_' || ch === '-' || (ch >= '0' && ch <= '9');
+}
+
+function getAccessoryFeature(nodeName) {
+  for (var f in accessoryNodes) {
+    var prefixes = accessoryNodes[f];
+    for (var i = 0; i < prefixes.length; i++) {
+      if (nameMatches(nodeName, prefixes[i])) return f;
+    }
+  }
+  return null;
+}
+
+function applyAccessoryVisibility() {
   if (!currentModel) return;
-
-  const frameColorHex = new THREE.Color(config.frameColor);
-  const topColorHex = new THREE.Color(config.topColor);
-  const matDef = materialDefs[config.topMaterial];
-
-  currentModel.traverse(child => {
-    if (!child.isMesh || !child.material) return;
-
-    const name = (child.name || '').toUpperCase();
-
-    // Apply surface material to nodes containing SURFACE in name
-    if (name.includes('SURFACE') || name.includes('TOP')) {
-      const mat = child.material.clone();
-      mat.color.copy(topColorHex);
-      mat.roughness = matDef.roughness;
-      mat.metalness = matDef.metalness;
-      child.material = mat;
-    } else {
-      // Everything else gets frame color
-      const mat = child.material.clone();
-      mat.color.copy(frameColorHex);
-      child.material = mat;
+  currentModel.traverse(function(child) {
+    if (!child.name) return;
+    var feature = getAccessoryFeature(child.name);
+    if (feature === 'upright') {
+      var vis = config.upright !== 'none';
+      child.visible = vis;
+      child.traverse(function(c) { c.visible = vis; });
+    } else if (feature !== null) {
+      var vis2 = config[feature];
+      child.visible = vis2;
+      child.traverse(function(c) { c.visible = vis2; });
+    }
+  });
+  // Ensure parent chain visibility
+  currentModel.traverse(function(c) {
+    if (c.visible && c.isMesh) {
+      var p = c.parent;
+      while (p && p !== scene) { p.visible = true; p = p.parent; }
     }
   });
 }
 
+// ============ Colors ============
+function applyColors() {
+  if (!currentModel) return;
+  var fc = new THREE.Color(config.frameColor);
+  var tc = new THREE.Color(config.topColor);
+  var md = materialDefs[config.topMaterial];
 
-// ============ Dimension Selection ============
+  currentModel.traverse(function(child) {
+    if (!child.isMesh || !child.material) return;
+    var n = (child.name || '').toUpperCase();
+    var pn = child.parent ? (child.parent.name || '').toUpperCase() : '';
+
+    if (n.includes('SURFACE') || n.includes('TOP') || pn.includes('SURFACE') || pn.includes('TOP')) {
+      var m = child.material.clone();
+      m.color.copy(tc);
+      m.roughness = md.roughness;
+      m.metalness = md.metalness;
+      child.material = m;
+    } else {
+      var m2 = child.material.clone();
+      m2.color.copy(fc);
+      child.material = m2;
+    }
+  });
+}
+
+// ============ Config badge ============
+function updateConfigBadge() {
+  var frameName = { kennedy: 'Kennedy Series', concept: 'Concept Series', workshop: 'Workshop Series' };
+  var accessories = [];
+  ['topShelf','bottomShelf','wireShelf','cabinet','binBoxes','ledLight','powerStrip','keyboard','monitor','cpuHolder','docHolder'].forEach(function(k) {
+    if (config[k]) accessories.push(k.replace(/([A-Z])/g, ' $1').trim());
+  });
+
+  var html = '<strong>' + (frameName[config.frame] || config.frame) + '</strong><br>';
+  html += '<span>' + config.width + '" x ' + config.depth + '" &bull; ' + (materialNames[config.topMaterial] || config.topMaterial) + '</span>';
+  if (config.upright !== 'none') html += '<br><span>Uprights: ' + config.upright + '"</span>';
+  if (accessories.length) html += '<br><span style="color:var(--primary);font-weight:500">+ ' + accessories.length + ' accessor' + (accessories.length === 1 ? 'y' : 'ies') + '</span>';
+  document.getElementById('configBadge').innerHTML = html;
+}
+
+// ============ UI Handlers ============
+function selectFrame(frame) {
+  config.frame = frame;
+  document.querySelectorAll('.frame-card').forEach(function(c) {
+    c.classList.toggle('active', c.dataset.frame === frame);
+  });
+  loadModel(true);
+}
+
 function setDim(dim, val) {
   config[dim] = val;
-  const container = document.getElementById(dim + 'Btns');
-  container.querySelectorAll('.dim-btn').forEach(b => {
+  document.getElementById(dim + 'Btns').querySelectorAll('.dim-btn').forEach(function(b) {
     b.classList.toggle('active', parseInt(b.dataset.val) === val);
   });
-  // Dimensions affect scale of the loaded model
-  applyDimensionScale();
-
+  // With single GLB per frame, size is config-only (no model reload needed)
+  loadModel();
 }
 
-// Store base effective scale per mesh (called once after model loads, with modelGroup.scale = 1,1,1)
-function storeMeshDataForModel(model) {
-  if (!model) return;
-  model.traverse(child => {
-    if (!child.isMesh || !child.geometry) return;
-    child.scale.set(1, 1, 1);
-    child.updateWorldMatrix(true, false);
-
-    const m = child.matrixWorld.elements;
-    if (!child.geometry.boundingBox) child.geometry.computeBoundingBox();
-    const bb = child.geometry.boundingBox;
-    const ls = new THREE.Vector3();
-    bb.getSize(ls);
-
-    meshRefData.set(child.uuid, {
-      bx: Math.sqrt(m[0]*m[0] + m[1]*m[1] + m[2]*m[2]),
-      by: Math.sqrt(m[4]*m[4] + m[5]*m[5] + m[6]*m[6]),
-      bz: Math.sqrt(m[8]*m[8] + m[9]*m[9] + m[10]*m[10]),
-      sx: ls.x, sy: ls.y, sz: ls.z
-    });
+function selectUpright(val) {
+  config.upright = val;
+  document.querySelectorAll('.upright-card').forEach(function(c) {
+    c.classList.toggle('active', c.dataset.val === val);
   });
+  document.getElementById('uprightColorSection').style.display = val === 'none' ? 'none' : '';
+  applyAccessoryVisibility();
+  updateConfigBadge();
 }
 
-function storeBaseMeshData() {
-  meshRefData.clear();
-  storeMeshDataForModel(currentModel);
+function toggleAccessory(el, feature) {
+  config[feature] = !config[feature];
+  el.classList.toggle('on', config[feature]);
+  applyAccessoryVisibility();
+  updateConfigBadge();
 }
 
-function applyDimensionScale() {
-  if (!currentModel) return;
-
-  // Scale ratios relative to base model dimensions (60x30x34)
-  const sx = config.width / 60;
-  const sy = config.height / 34;
-  const sz = config.depth / 30;
-
-  // Apply non-uniform scale at modelGroup (no rotation here, clean world-axis scale)
-  modelGroup.scale.set(sx, sy, sz);
-
-  // Compensate tube cross-sections and surface thickness
-  // so only lengths change while profiles stay constant (e.g. 2"x1" tubing)
-  function compensateMeshes(model) {
-    if (!model) return;
-    model.traverse(child => {
-      if (!child.isMesh) return;
-      const ref = meshRefData.get(child.uuid);
-      if (!ref) return;
-
-      child.scale.set(1, 1, 1);
-      child.updateWorldMatrix(true, false);
-
-      const m = child.matrixWorld.elements;
-      const cx = Math.sqrt(m[0]*m[0] + m[1]*m[1] + m[2]*m[2]);
-      const cy = Math.sqrt(m[4]*m[4] + m[5]*m[5] + m[6]*m[6]);
-      const cz = Math.sqrt(m[8]*m[8] + m[9]*m[9] + m[10]*m[10]);
-
-      const dims = [
-        { a: 'x', size: ref.sx, base: ref.bx, cur: cx },
-        { a: 'y', size: ref.sy, base: ref.by, cur: cy },
-        { a: 'z', size: ref.sz, base: ref.bz, cur: cz }
-      ].sort((a, b) => b.size - a.size);
-
-      const r01 = dims[0].size / Math.max(dims[1].size, 0.0001);
-      const r12 = dims[1].size / Math.max(dims[2].size, 0.0001);
-
-      const comp = { x: 1, y: 1, z: 1 };
-
-      if (r01 > 3 && r12 < 3) {
-        comp[dims[1].a] = dims[1].base / dims[1].cur;
-        comp[dims[2].a] = dims[2].base / dims[2].cur;
-      } else if (r01 < 3 && r12 > 5) {
-        comp[dims[2].a] = dims[2].base / dims[2].cur;
-      }
-
-      child.scale.set(comp.x, comp.y, comp.z);
-    });
-  }
-  compensateMeshes(currentModel);
-}
-
-// ============ Feature Toggles ============
-
-// ============ UI Bindings ============
-// Frame colors
-document.querySelectorAll('#frameColors .swatch').forEach(el => {
-  el.addEventListener('click', () => {
-    document.querySelectorAll('#frameColors .swatch').forEach(s => s.classList.remove('active'));
+// Swatch and material bindings
+document.querySelectorAll('#frameColors .swatch').forEach(function(el) {
+  el.addEventListener('click', function() {
+    document.querySelectorAll('#frameColors .swatch').forEach(function(s) { s.classList.remove('active'); });
     el.classList.add('active');
     config.frameColor = el.dataset.color;
     applyColors();
   });
 });
 
-// Top colors
-document.querySelectorAll('#topColors .swatch').forEach(el => {
-  el.addEventListener('click', () => {
-    document.querySelectorAll('#topColors .swatch').forEach(s => s.classList.remove('active'));
+document.querySelectorAll('#topColors .swatch').forEach(function(el) {
+  el.addEventListener('click', function() {
+    document.querySelectorAll('#topColors .swatch').forEach(function(s) { s.classList.remove('active'); });
     el.classList.add('active');
     config.topColor = el.dataset.color;
     applyColors();
   });
 });
 
-// Materials
-document.querySelectorAll('#topMaterials .material-btn').forEach(el => {
-  el.addEventListener('click', () => {
-    document.querySelectorAll('#topMaterials .material-btn').forEach(b => b.classList.remove('active'));
+document.querySelectorAll('#topMaterials .material-btn').forEach(function(el) {
+  el.addEventListener('click', function() {
+    document.querySelectorAll('#topMaterials .material-btn').forEach(function(b) { b.classList.remove('active'); });
     el.classList.add('active');
     config.topMaterial = el.dataset.material;
     applyColors();
-  
+    updateConfigBadge();
   });
 });
 
 // ============ Render Loop ============
 function onResize() {
-  const rect = viewport.getBoundingClientRect();
-  camera.aspect = rect.width / rect.height;
+  var r = viewport.getBoundingClientRect();
+  camera.aspect = r.width / r.height;
   camera.updateProjectionMatrix();
-  renderer.setSize(rect.width, rect.height);
+  renderer.setSize(r.width, r.height);
 }
-
 window.addEventListener('resize', onResize);
 
 function animate() {
@@ -735,9 +987,8 @@ function animate() {
 onResize();
 resetCamera();
 animate();
-
-// Load default model
-loadSeriesModel('kennedy');
+updateStepUI();
+loadModel();
 </script>
 </body>
 </html>
