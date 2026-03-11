@@ -670,12 +670,12 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.2;
+renderer.toneMappingExposure = 1.8;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 viewport.insertBefore(renderer.domElement, viewport.firstChild);
 
-scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-var mainLight = new THREE.DirectionalLight(0xffffff, 1.0);
+scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+var mainLight = new THREE.DirectionalLight(0xffffff, 1.6);
 mainLight.position.set(5, 8, 4);
 mainLight.castShadow = true;
 mainLight.shadow.mapSize.set(2048, 2048);
@@ -687,8 +687,8 @@ mainLight.shadow.camera.top = 6;
 mainLight.shadow.camera.bottom = -6;
 mainLight.shadow.bias = -0.0001;
 scene.add(mainLight);
-scene.add(new THREE.DirectionalLight(0xc4d4ff, 0.4)).position.set(-3, 4, -2);
-scene.add(new THREE.DirectionalLight(0xffeedd, 0.3)).position.set(0, 2, -5);
+scene.add(new THREE.DirectionalLight(0xc4d4ff, 0.8)).position.set(-3, 4, -2);
+scene.add(new THREE.DirectionalLight(0xffeedd, 0.6)).position.set(0, 2, -5);
 
 var ground = new THREE.Mesh(
   new THREE.PlaneGeometry(30, 30),
