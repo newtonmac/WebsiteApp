@@ -771,35 +771,34 @@ function fitCamera() {
 }
 
 // ============ Model Loading ============
-// File naming: models/Kennedy-60x30.glb  (fallback: models/KSeries.glb)
-function getModelPath() {
-  var frameName = config.frame.charAt(0).toUpperCase() + config.frame.slice(1);
-  return 'models/' + frameName + '-' + config.width + 'x' + config.depth + '.glb';
-}
+// All frames currently use the single KSeries.glb model.
+// When size-specific GLBs are available, update this map.
+var frameModelMap = {
+  kennedy: 'models/KSeries.glb',
+  concept: 'models/KSeries.glb',
+  workshop: 'models/KSeries.glb'
+};
 
-function getFallbackPath() {
-  var map = { kennedy: 'models/KSeries.glb', concept: 'models/KSeries.glb', workshop: 'models/KSeries.glb' };
-  return map[config.frame] || 'models/KSeries.glb';
-}
+var loadedModelPath = null;
 
-function loadModel() {
-  var path = getModelPath();
-  showLoading('Loading ' + config.width + '" x ' + config.depth + '"...');
+function loadModel(forceReload) {
+  var path = frameModelMap[config.frame] || 'models/KSeries.glb';
 
+  // Skip reload if same model is already loaded (e.g. size change with single GLB)
+  if (!forceReload && path === loadedModelPath && currentModel) {
+    updateConfigBadge();
+    return;
+  }
+
+  showLoading('Loading model...');
   while (modelGroup.children.length) modelGroup.remove(modelGroup.children[0]);
   currentModel = null;
+  loadedModelPath = null;
 
   gltfLoader.load(path,
-    function(gltf) { onModelLoaded(gltf); },
+    function(gltf) { loadedModelPath = path; onModelLoaded(gltf); },
     function(p) { if (p.total > 0) document.getElementById('loadingBar').style.width = Math.round(p.loaded / p.total * 100) + '%'; },
-    function() {
-      console.warn('Size model not found (' + path + '), loading fallback');
-      gltfLoader.load(getFallbackPath(),
-        function(gltf) { onModelLoaded(gltf); },
-        null,
-        function(e) { console.error('Fallback failed:', e); hideLoading(); }
-      );
-    }
+    function(e) { console.error('Model load error:', e); hideLoading(); }
   );
 }
 
@@ -911,7 +910,7 @@ function selectFrame(frame) {
   document.querySelectorAll('.frame-card').forEach(function(c) {
     c.classList.toggle('active', c.dataset.frame === frame);
   });
-  loadModel();
+  loadModel(true);
 }
 
 function setDim(dim, val) {
@@ -919,6 +918,7 @@ function setDim(dim, val) {
   document.getElementById(dim + 'Btns').querySelectorAll('.dim-btn').forEach(function(b) {
     b.classList.toggle('active', parseInt(b.dataset.val) === val);
   });
+  // With single GLB per frame, size is config-only (no model reload needed)
   loadModel();
 }
 
