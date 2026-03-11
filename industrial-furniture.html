@@ -667,8 +667,7 @@ camera.position.set(5, 4, 6);
 
 var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.enabled = false;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.8;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -677,15 +676,7 @@ viewport.insertBefore(renderer.domElement, viewport.firstChild);
 scene.add(new THREE.AmbientLight(0xffffff, 1.0));
 var mainLight = new THREE.DirectionalLight(0xffffff, 1.6);
 mainLight.position.set(5, 8, 4);
-mainLight.castShadow = true;
-mainLight.shadow.mapSize.set(2048, 2048);
-mainLight.shadow.camera.near = 0.5;
-mainLight.shadow.camera.far = 25;
-mainLight.shadow.camera.left = -6;
-mainLight.shadow.camera.right = 6;
-mainLight.shadow.camera.top = 6;
-mainLight.shadow.camera.bottom = -6;
-mainLight.shadow.bias = -0.0001;
+mainLight.castShadow = false;
 scene.add(mainLight);
 scene.add(new THREE.DirectionalLight(0xc4d4ff, 0.8)).position.set(-3, 4, -2);
 scene.add(new THREE.DirectionalLight(0xffeedd, 0.6)).position.set(0, 2, -5);
@@ -696,7 +687,7 @@ var ground = new THREE.Mesh(
 );
 ground.rotation.x = -Math.PI / 2;
 ground.position.y = -0.01;
-ground.receiveShadow = true;
+ground.receiveShadow = false;
 scene.add(ground);
 
 var grid = new THREE.GridHelper(12, 24, 0xb0b8c0, 0xc8ced6);
@@ -755,7 +746,7 @@ function setupModel(model) {
   model.position.y -= sb.min.y;
 
   model.traverse(function(c) {
-    if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; }
+    if (c.isMesh) { c.castShadow = false; c.receiveShadow = false; }
   });
 }
 
