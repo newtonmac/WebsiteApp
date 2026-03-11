@@ -324,22 +324,40 @@ header{
               <span>Welded frame</span>
             </div>
           </div>
-          <div class="frame-card" data-frame="concept" onclick="selectFrame('concept')">
-            <h4>Concept Series</h4>
-            <p>Ergonomic workstation with height adjustability and modular frame design for technical applications.</p>
+          <div class="frame-card" data-frame="roosevelt" onclick="selectFrame('roosevelt')">
+            <h4>Roosevelt Series</h4>
+            <p>Versatile light-duty workbench ideal for electronics assembly, packaging, and general-purpose workstation applications.</p>
             <div class="frame-specs">
-              <span>660 lb capacity</span>
-              <span>ESD compatible</span>
+              <span>1,500 lb capacity</span>
+              <span>16-gauge steel</span>
               <span>Modular</span>
             </div>
           </div>
-          <div class="frame-card" data-frame="workshop" onclick="selectFrame('workshop')">
-            <h4>Workshop Series</h4>
-            <p>Versatile workshop bench with heavy-gauge steel construction for maintenance and repair operations.</p>
+          <div class="frame-card" data-frame="dewey" onclick="selectFrame('dewey')">
+            <h4>Dewey Series</h4>
+            <p>Heavy-duty workbench with robust construction for industrial manufacturing, assembly, and heavy equipment maintenance.</p>
             <div class="frame-specs">
-              <span>2,200 lb capacity</span>
+              <span>5,000 lb capacity</span>
               <span>12-gauge steel</span>
               <span>Heavy duty</span>
+            </div>
+          </div>
+          <div class="frame-card" data-frame="harding" onclick="selectFrame('harding')">
+            <h4>Harding Series</h4>
+            <p>Extra-heavy-duty workbench engineered for the most demanding industrial environments and maximum load requirements.</p>
+            <div class="frame-specs">
+              <span>20,000 lb capacity</span>
+              <span>7-gauge steel</span>
+              <span>Extra heavy duty</span>
+            </div>
+          </div>
+          <div class="frame-card" data-frame="hydraulic" onclick="selectFrame('hydraulic')">
+            <h4>Hydraulic Series</h4>
+            <p>Height-adjustable workbench with hydraulic lift mechanism for ergonomic positioning and versatile applications.</p>
+            <div class="frame-specs">
+              <span>1,000 lb capacity</span>
+              <span>Adjustable height</span>
+              <span>Electric / Manual</span>
             </div>
           </div>
         </div>
@@ -762,18 +780,27 @@ function fitCamera() {
 }
 
 // ============ Model Loading ============
-// All frames currently use the single KSeries.glb model.
-// When size-specific GLBs are available, update this map.
+// Each series has its own GLB model from BenchDepot.
 var frameModelMap = {
-  kennedy: 'models/KSeries.glb',
-  concept: 'models/KSeries.glb',
-  workshop: 'models/KSeries.glb'
+  kennedy:   'models/KennedyAccessories6.glb',
+  roosevelt: 'models/RooseveltAccessories.glb',
+  dewey:     'models/DeweyAccessories2.glb',
+  harding:   'models/HardingAccessories.glb',
+  hydraulic: 'models/AdamsAccessories.glb'
+};
+var hydraulicModelMap = {
+  electric: 'models/AdamsAccessories.glb',
+  manual:   'models/AdamsManualAccessories.glb'
 };
 
 var loadedModelPath = null;
 
 function loadModel(forceReload) {
-  var path = frameModelMap[config.frame] || 'models/KSeries.glb';
+  var path = frameModelMap[config.frame] || 'models/KennedyAccessories6.glb';
+  // For hydraulic series, pick electric vs manual variant
+  if (config.frame === 'hydraulic' && config.hydraulicType) {
+    path = hydraulicModelMap[config.hydraulicType] || path;
+  }
 
   // Skip reload if same model is already loaded (e.g. size change with single GLB)
   if (!forceReload && path === loadedModelPath && currentModel) {
@@ -902,7 +929,7 @@ function applyColors() {
 
 // ============ Config badge ============
 function updateConfigBadge() {
-  var frameName = { kennedy: 'Kennedy Series', concept: 'Concept Series', workshop: 'Workshop Series' };
+  var frameName = { kennedy: 'Kennedy Series', roosevelt: 'Roosevelt Series', dewey: 'Dewey Series', harding: 'Harding Series', hydraulic: 'Hydraulic Series' };
   var accessories = [];
   ['topShelf','bottomShelf','wireShelf','cabinet','binBoxes','ledLight','powerStrip','keyboard','monitor','cpuHolder','docHolder'].forEach(function(k) {
     if (config[k]) accessories.push(k.replace(/([A-Z])/g, ' $1').trim());
