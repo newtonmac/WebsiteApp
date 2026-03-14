@@ -109,9 +109,14 @@ class EVRouteService {
 
     private func fetchElevationChunk(_ points: [CLLocationCoordinate2D]) async -> [Double] {
         let locations = points.map { "\($0.latitude),\($0.longitude)" }.joined(separator: "|")
-        let urlString = "https://maps.googleapis.com/maps/api/elevation/json?locations=\(locations)&key=\(googleAPIKey)"
 
-        guard let url = URL(string: urlString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? urlString) else {
+        var components = URLComponents(string: "https://maps.googleapis.com/maps/api/elevation/json")!
+        components.queryItems = [
+            URLQueryItem(name: "locations", value: locations),
+            URLQueryItem(name: "key", value: googleAPIKey)
+        ]
+
+        guard let url = components.url else {
             return Array(repeating: 0, count: points.count)
         }
 
@@ -120,9 +125,11 @@ class EVRouteService {
             let response = try JSONDecoder().decode(GoogleElevationResponse.self, from: data)
             if response.status == "OK" {
                 return response.results.map { $0.elevation }
+            } else {
+                print("Elevation API error: \(response.status)")
             }
         } catch {
-            // Fallback: return zeros
+            print("Elevation fetch error: \(error)")
         }
 
         return Array(repeating: 0, count: points.count)
