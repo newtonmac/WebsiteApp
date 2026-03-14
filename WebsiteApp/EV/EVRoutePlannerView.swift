@@ -90,7 +90,7 @@ struct EVRoutePlannerView: View {
                 UnevenRoundedRectangle(topLeadingRadius: 20, topTrailingRadius: 20)
                     .stroke(EVTheme.border, lineWidth: 1)
             }
-            .frame(maxHeight: UIScreen.main.bounds.height * 0.55)
+            .frame(maxHeight: UIScreen.main.bounds.height * 0.40)
         }
         .ignoresSafeArea(edges: .bottom)
         .preferredColorScheme(.dark)
@@ -150,6 +150,13 @@ struct EVRoutePlannerView: View {
                 icon: "bolt.fill",
                 isOn: $showChargers
             )
+            .onChange(of: showChargers) { _, isOn in
+                if isOn, let route = selectedRoute, chargerService.chargers.isEmpty {
+                    Task {
+                        await chargerService.findChargersAlongRoute(route.route)
+                    }
+                }
+            }
         }
     }
 
@@ -325,9 +332,7 @@ struct EVRoutePlannerView: View {
         if let best = routeService.routes.first {
             selectedRoute = best
             fitMapToRoute(best)
-            if showChargers {
-                await chargerService.findChargersAlongRoute(best.route)
-            }
+            await chargerService.findChargersAlongRoute(best.route)
         }
     }
 

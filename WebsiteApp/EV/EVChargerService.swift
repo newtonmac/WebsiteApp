@@ -65,7 +65,7 @@ class EVChargerService {
     private let nrelAPIKey = "S8BQYZzqG6TBnADBFb60EYDUiLsRcxgJovLJ76Bg"
     private var cache: [String: [NRELStation]] = [:]
 
-    func findChargersAlongRoute(_ route: MKRoute, radiusMiles: Double = 1.5) async {
+    func findChargersAlongRoute(_ route: MKRoute, radiusMiles: Double = 3.0) async {
         isLoading = true
         chargers = []
 
@@ -84,10 +84,7 @@ class EVChargerService {
                 for charger in results {
                     if !seenIds.contains(charger.id) {
                         seenIds.insert(charger.id)
-                        // Filter: only keep chargers within radiusMiles of route
-                        if self.isChargerNearRoute(charger.coordinate, route: route, maxDistanceMiles: radiusMiles) {
-                            allChargers.append(charger)
-                        }
+                        allChargers.append(charger)
                     }
                 }
             }
@@ -105,16 +102,27 @@ class EVChargerService {
             return cached.map { mapStationToCharger($0) }
         }
 
-        let urlString = "https://developer.nrel.gov/api/alt-fuel-stations/v1/nearest.json?api_key=\(nrelAPIKey)&latitude=\(point.latitude)&longitude=\(point.longitude)&radius=\(radiusMiles)&fuel_type=ELEC&ev_charging_level=dc_fast&limit=10&status=E"
+        var components = URLComponents(string: "https://developer.nrel.gov/api/alt-fuel-stations/v1/nearest.json")!
+        components.queryItems = [
+            URLQueryItem(name: "api_key", value: nrelAPIKey),
+            URLQueryItem(name: "latitude", value: "\(point.latitude)"),
+            URLQueryItem(name: "longitude", value: "\(point.longitude)"),
+            URLQueryItem(name: "radius", value: "\(radiusMiles)"),
+            URLQueryItem(name: "fuel_type", value: "ELEC"),
+            URLQueryItem(name: "limit", value: "20"),
+            URLQueryItem(name: "status", value: "E")
+        ]
 
-        guard let url = URL(string: urlString) else { return [] }
+        guard let url = components.url else { return [] }
 
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
             let response = try JSONDecoder().decode(NRELResponse.self, from: data)
+            print("NREL: Found \(response.fuel_stations.count) stations near \(String(format: "%.4f", point.latitude)),\(String(format: "%.4f", point.longitude))")
             cache[cacheKey] = response.fuel_stations
             return response.fuel_stations.map { mapStationToCharger($0) }
         } catch {
+            print("NREL fetch error: \(error)")
             return []
         }
     }
