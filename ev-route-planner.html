@@ -1854,10 +1854,14 @@ function updateMapLinks(route) {
     gmapsLink.style.display = 'flex';
 
     // ── Apple Maps URL ──
-    // Only set destination — no saddr, no waypoints.
-    // This lets Apple Maps use current GPS location and show the
-    // "Go" button for immediate turn-by-turn navigation.
-    amapsLink.href = `https://maps.apple.com/?daddr=${dest}&dirflg=d&t=m`;
+    // Include route waypoints so Apple Maps follows the EV-optimized path.
+    // User taps "Go" after reviewing the route.
+    if (allWaypoints.length) {
+        const wpChain = [...allWaypoints, dest].join('+to:');
+        amapsLink.href = `https://maps.apple.com/?saddr=${origin}&daddr=${wpChain}&dirflg=d&t=m`;
+    } else {
+        amapsLink.href = `https://maps.apple.com/?saddr=${origin}&daddr=${dest}&dirflg=d&t=m`;
+    }
     amapsLink.style.display = 'flex';
 
     // ── Waze ──
