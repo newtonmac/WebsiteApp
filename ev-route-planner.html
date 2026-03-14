@@ -788,6 +788,16 @@
 
         /* EV Charger toggle */
         .charger-toggle { margin-bottom: 0; }
+        .network-filters { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; padding-left: 2px; }
+        .network-chip {
+            display: flex; align-items: center; gap: 5px;
+            font-size: 11px; padding: 3px 8px 3px 6px;
+            border-radius: 12px; cursor: pointer; user-select: none;
+            border: 1.5px solid; transition: opacity 0.2s, filter 0.2s;
+        }
+        .network-chip.active { opacity: 1; }
+        .network-chip.inactive { opacity: 0.35; filter: grayscale(0.8); }
+        .network-chip .chip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
         .charger-info { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 6px 2px; max-width: 240px; }
         .charger-info .ci-name { font-weight: 600; font-size: 13px; color: #1a1d28; margin-bottom: 4px; }
         .charger-info .ci-network { font-size: 11px; color: #555; margin-bottom: 3px; }
@@ -1011,6 +1021,7 @@
                     <span class="toggle-switch"></span>
                     Show EV Chargers
                 </label>
+                <div id="networkFilters" class="network-filters" style="display:none;"></div>
             </div>
             <div id="stopsContainer"></div>
             <button class="add-stop-btn" id="addStopBtn" type="button">+ Add Another Destination</button>
@@ -1196,6 +1207,7 @@ function initApp() {
     });
 
     // Charger toggle
+    buildNetworkFilterChips();
     document.getElementById('chargerCb').addEventListener('change', function() {
         if (this.checked && routesData.length && !chargerSearchDone) {
             searchChargersAlongRoute(routesData[selectedRouteIdx]);
@@ -2657,6 +2669,45 @@ const CHARGER_QUERIES = [
 const NREL_NETWORK_MAP = {};
 CHARGER_QUERIES.forEach(n => { NREL_NETWORK_MAP[n.nrelKey] = n; });
 
+// Track which networks are enabled (all on by default)
+const enabledNetworks = new Set(CHARGER_QUERIES.map(n => n.nrelKey));
+
+function buildNetworkFilterChips() {
+    const container = document.getElementById('networkFilters');
+    if (!container) return;
+    container.innerHTML = '';
+    CHARGER_QUERIES.forEach(n => {
+        const chip = document.createElement('div');
+        chip.className = 'network-chip ' + (enabledNetworks.has(n.nrelKey) ? 'active' : 'inactive');
+        chip.style.borderColor = n.color;
+        chip.style.background = enabledNetworks.has(n.nrelKey) ? n.color + '18' : 'transparent';
+        chip.innerHTML = `<span class="chip-dot" style="background:${n.color}"></span><span style="color:#c8cad0">${n.label}</span>`;
+        chip.dataset.nrelKey = n.nrelKey;
+        chip.addEventListener('click', () => {
+            if (enabledNetworks.has(n.nrelKey)) {
+                enabledNetworks.delete(n.nrelKey);
+                chip.className = 'network-chip inactive';
+                chip.style.background = 'transparent';
+            } else {
+                enabledNetworks.add(n.nrelKey);
+                chip.className = 'network-chip active';
+                chip.style.background = n.color + '18';
+            }
+            applyNetworkFilter();
+        });
+        container.appendChild(chip);
+    });
+}
+
+function applyNetworkFilter() {
+    const chargerVisible = document.getElementById('chargerCb').checked;
+    chargerMarkers.forEach(m => {
+        const nrelKey = m.chargerData && m.chargerData.nrelKey;
+        const show = chargerVisible && enabledNetworks.has(nrelKey);
+        m.setMap(show ? map : null);
+    });
+}
+
 function makeChargerIcon(network) {
     const size = 28;
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size + 8}" viewBox="0 0 ${size} ${size + 8}">
@@ -2933,6 +2984,7 @@ async function searchChargersAlongRoute(route) {
 
                 marker.chargerData = {
                     name: station.station_name,
+                    nrelKey: station.ev_network,
                     networkLabel: network.label,
                     networkColor: network.color,
                     rating: null,
@@ -2985,10 +3037,15 @@ async function searchChargersAlongRoute(route) {
 }
 
 function toggleChargers(show) {
-    chargerMarkers.forEach(m => m.setMap(show ? map : null));
+    chargerMarkers.forEach(m => {
+        const nrelKey = m.chargerData && m.chargerData.nrelKey;
+        m.setMap(show && enabledNetworks.has(nrelKey) ? map : null);
+    });
     if (!show && chargerInfoWindow) chargerInfoWindow.close();
     const legend = document.getElementById('chargerLegend');
     if (legend) legend.style.display = show ? 'block' : 'none';
+    const filters = document.getElementById('networkFilters');
+    if (filters) filters.style.display = show ? 'flex' : 'none';
 }
 
 function clearRoutes() {
@@ -3089,7 +3146,7 @@ window.addEventListener('resize', () => {
 
 <!-- Footer bar -->
 <div class="footer-bar">
-    <span>&copy; 2026 EV Route Planner &nbsp;·&nbsp; v1.11 &nbsp;·&nbsp; Updated Mar 14, 2026</span>
+    <span>&copy; 2026 EV Route Planner &nbsp;·&nbsp; v1.12 &nbsp;·&nbsp; Updated Mar 14, 2026</span>
     <button class="footer-link" data-modal="aboutModal">About</button>
     <button class="footer-link" data-modal="newsModal">News</button>
     <button class="footer-link" data-modal="legalModal">Disclaimer & Privacy</button>
