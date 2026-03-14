@@ -85,7 +85,7 @@ struct EVMapContent: View {
                 }
             }
         }
-        .mapStyle(.standard(elevation: .realistic, pointsOfInterest: .excludingAll))
+        .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
         .mapControls {
             MapCompass()
             MapScaleView()
