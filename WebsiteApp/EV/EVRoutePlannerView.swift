@@ -159,8 +159,11 @@ struct EVRoutePlannerView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { notification in
             if let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
+                let screenH = UIScreen.main.bounds.height
+                // Cap offset so panel top doesn't go above the screen
+                let maxOffset = max(0, screenH - panelHeight)
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                    keyboardOffset = frame.height
+                    keyboardOffset = min(frame.height, maxOffset)
                     panelExpanded = true
                 }
             }
