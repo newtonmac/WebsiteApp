@@ -626,6 +626,16 @@
         .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
         .empty-state p { font-size: 14px; line-height: 1.5; }
 
+        /* EV Charger toggle */
+        .charger-toggle { margin-bottom: 0; }
+        .charger-info { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 6px 2px; max-width: 220px; }
+        .charger-info .ci-name { font-weight: 600; font-size: 13px; color: #1a1d28; margin-bottom: 4px; }
+        .charger-info .ci-network { font-size: 11px; color: #555; margin-bottom: 3px; }
+        .charger-info .ci-rating { font-size: 11px; color: #777; }
+        .charger-info .ci-status { font-size: 11px; margin-top: 2px; }
+        .charger-info .ci-status.open { color: #16a34a; }
+        .charger-info .ci-status.closed { color: #dc2626; }
+
         /* Places Autocomplete dropdown styling */
         .pac-container {
             background: #252836 !important;
@@ -679,6 +689,15 @@
                 opacity: 0;
                 pointer-events: none;
             }
+            .map-wrap.mobile-show {
+                position: relative;
+                width: 100%;
+                height: 280px;
+                overflow: visible;
+                opacity: 1;
+                pointer-events: auto;
+                border-radius: 10px;
+            }
             .topbar { padding: 10px 16px; }
             .topbar h1 { font-size: 26px; }
             .topbar .subtitle { display: none; }
@@ -697,63 +716,90 @@
             .empty-state { padding: 30px 16px; }
             .empty-state .icon { font-size: 36px; }
             .empty-state p { font-size: 13px; }
-            .disclaimer { padding: 16px; }
-            .disclaimer p { font-size: 10px; line-height: 1.5; }
+            .footer-bar { padding: 10px 16px; gap: 12px; }
+            .modal { padding: 20px; max-height: 80vh; }
         }
 
-        .footer-section {
-            background: #0f1117;
-            border-top: 1px solid #2d3040;
-            padding: 24px;
-            flex-shrink: 0;
+        /* (footer styles moved to .footer-bar and .modal above) */
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 100000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
         }
-        .about-section {
-            max-width: 900px;
-            margin-bottom: 20px;
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: #1a1d28;
+            border: 1px solid #2d3040;
+            border-radius: 16px;
+            max-width: 640px;
+            width: 100%;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 28px;
+            position: relative;
         }
-        .about-section h3 {
-            font-size: 16px;
+        .modal h3 {
+            font-size: 18px;
             color: #e1e4e8;
-            margin-bottom: 10px;
+            margin-bottom: 14px;
         }
-        .about-section p {
+        .modal p {
             font-size: 13px;
             color: #8b8fa3;
             line-height: 1.7;
         }
-        .about-section p + p {
-            margin-top: 8px;
-        }
-        .feedback-btn {
-            display: inline-flex;
+        .modal p + p { margin-top: 10px; }
+        .modal-close {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: 1px solid #2d3040;
+            background: #252836;
+            color: #8b8fa3;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 12px 20px;
-            border-radius: 10px;
-            background: linear-gradient(135deg, #34d399, #059669);
-            color: #fff;
-            font-size: 14px;
-            font-weight: 600;
-            text-decoration: none;
-            transition: opacity 0.2s, transform 0.15s;
-            margin-top: 14px;
+            justify-content: center;
         }
-        .feedback-btn:hover { opacity: 0.9; transform: translateY(-1px); }
-        .feedback-btn svg { width: 18px; height: 18px; }
-        .disclaimer {
-            margin-top: 20px;
-            padding-top: 16px;
-            border-top: 1px solid #1a1d28;
+        .modal-close:hover { border-color: #4b5068; color: #e1e4e8; }
+
+        /* Footer bar */
+        .footer-bar {
+            background: #0f1117;
+            border-top: 1px solid #2d3040;
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            flex-shrink: 0;
         }
-        .disclaimer p {
+        .footer-bar span {
             font-size: 11px;
             color: #555;
-            line-height: 1.6;
-            max-width: 900px;
         }
-        .disclaimer p + p {
-            margin-top: 8px;
+        .footer-link {
+            font-size: 11px;
+            color: #60a5fa;
+            cursor: pointer;
+            background: none;
+            border: none;
+            text-decoration: underline;
+            padding: 0;
         }
+        .footer-link:hover { color: #93c5fd; }
     </style>
 </head>
 <body>
@@ -786,6 +832,13 @@
                     <input type="checkbox" id="roundTripCb" />
                     <span class="toggle-switch"></span>
                     Round Trip
+                </label>
+            </div>
+            <div class="round-trip-toggle charger-toggle">
+                <label class="toggle-label" for="chargerCb">
+                    <input type="checkbox" id="chargerCb" />
+                    <span class="toggle-switch"></span>
+                    Show EV Chargers
                 </label>
             </div>
             <div id="stopsContainer"></div>
@@ -846,6 +899,7 @@
         <div class="sidebar-section" id="routeResults" style="display:none;">
             <h2>Routes Found</h2>
             <div id="routeCards"></div>
+            <div id="mobileMapSlot"></div>
             <a id="gmapsLink" class="nav-btn gmaps-btn" href="#" target="_blank" rel="noopener" style="display:none;">
                 <svg viewBox="0 0 24 24" fill="none"><path d="M21 3L3 10.5l6.5 2L12 21l9-18z" fill="white"/></svg>
                 Start Driving — Google Maps
@@ -902,6 +956,13 @@
             <div class="leg-row"><div class="leg-swatch" style="background:#a3e635;"></div> Flat</div>
             <div class="leg-row"><div class="leg-swatch" style="background:#fbbf24;"></div> Slight uphill</div>
             <div class="leg-row"><div class="leg-swatch" style="background:#ef4444;"></div> Steep uphill</div>
+            <div id="chargerLegend" style="display:none;">
+                <div style="border-top:1px solid #d1d5db; margin:6px 0 4px; padding-top:6px; font-size:11px; color:#6b7280;">EV Chargers</div>
+                <div class="leg-row"><div class="leg-swatch" style="background:#e31937; border-radius:50%;"></div> Tesla</div>
+                <div class="leg-row"><div class="leg-swatch" style="background:#0072ce; border-radius:50%;"></div> Electrify America</div>
+                <div class="leg-row"><div class="leg-swatch" style="background:#5cbf14; border-radius:50%;"></div> ChargePoint</div>
+                <div class="leg-row"><div class="leg-swatch" style="background:#6b7280; border-radius:50%;"></div> Other</div>
+            </div>
         </div>
         <div class="loading-overlay hidden" id="loadingOverlay">
             <div class="spinner"></div>
@@ -943,6 +1004,14 @@ function initApp() {
     document.getElementById('roundTripCb').addEventListener('change', () => {
         planBtn.textContent = document.getElementById('roundTripCb').checked
             ? 'Plan Round Trip' : 'Plan EV-Efficient Route';
+    });
+
+    // Charger toggle
+    document.getElementById('chargerCb').addEventListener('change', function() {
+        if (this.checked && routesData.length && !chargerSearchDone) {
+            searchChargersAlongRoute(routesData[selectedRouteIdx]);
+        }
+        toggleChargers(this.checked);
     });
 
     // Waze: try deep link, hide button if app not installed
@@ -1705,6 +1774,7 @@ function displayRoutes(routes) {
 
     document.getElementById('routeResults').style.display = 'block';
     document.getElementById('mapLegend').style.display = 'block';
+    showMobileMap();
 }
 
 function selectReturnRoute(idx) {
@@ -1762,6 +1832,11 @@ function selectRoute(idx) {
 
     // Build map app links with waypoints to follow this route
     updateMapLinks(routesData[idx]);
+
+    // Refresh chargers if toggle is on
+    if (document.getElementById('chargerCb').checked) {
+        searchChargersAlongRoute(routesData[idx]);
+    }
 }
 
 // ─── Elevation-colored route overlay ───
@@ -2095,6 +2170,129 @@ function formatDuration(min) {
     return h + 'h ' + (m < 10 ? '0' : '') + m + 'm';
 }
 
+// ─── EV Charger Locations ───
+let chargerMarkers = [];
+let chargerInfoWindow = null;
+let chargerSearchDone = false;
+
+const CHARGER_NETWORKS = {
+    'tesla':             { color: '#e31937', label: 'T' },
+    'supercharger':      { color: '#e31937', label: 'T' },
+    'electrify america': { color: '#0072ce', label: 'EA' },
+    'chargepoint':       { color: '#5cbf14', label: 'CP' },
+    'evgo':              { color: '#00aaef', label: 'EG' },
+    'blink':             { color: '#ff6f00', label: 'BL' },
+    'shell recharge':    { color: '#fbce07', label: 'SR' },
+    'flo':               { color: '#00b4d8', label: 'FL' },
+    'volta':             { color: '#7c3aed', label: 'V' },
+};
+
+function getNetworkInfo(name) {
+    const lower = (name || '').toLowerCase();
+    for (const [key, val] of Object.entries(CHARGER_NETWORKS)) {
+        if (lower.includes(key)) return val;
+    }
+    return { color: '#6b7280', label: 'EV' };
+}
+
+function clearChargers() {
+    chargerMarkers.forEach(m => m.setMap(null));
+    chargerMarkers = [];
+    chargerSearchDone = false;
+    if (chargerInfoWindow) chargerInfoWindow.close();
+}
+
+function searchChargersAlongRoute(route) {
+    if (!route || !route.sampled || route.sampled.length < 2) return;
+
+    clearChargers();
+    chargerSearchDone = true;
+
+    const placesService = new google.maps.places.PlacesService(map);
+    const sampled = route.sampled;
+
+    // Pick points along the route to search (every ~30 miles or ~10 points)
+    const step = Math.max(1, Math.floor(sampled.length / 10));
+    const searchPoints = [];
+    for (let i = 0; i < sampled.length; i += step) {
+        searchPoints.push(sampled[i]);
+    }
+    // Always include last point
+    if (searchPoints[searchPoints.length - 1] !== sampled[sampled.length - 1]) {
+        searchPoints.push(sampled[sampled.length - 1]);
+    }
+
+    const seenPlaceIds = new Set();
+
+    searchPoints.forEach(pt => {
+        const loc = new google.maps.LatLng(pt[1], pt[0]); // sampled is [lng, lat]
+        placesService.nearbySearch({
+            location: loc,
+            radius: 8000, // 8km (~5 miles) radius
+            type: 'electric_vehicle_charging_station'
+        }, (results, status) => {
+            if (status !== google.maps.places.PlacesServiceStatus.OK || !results) return;
+
+            results.forEach(place => {
+                if (seenPlaceIds.has(place.place_id)) return;
+                seenPlaceIds.add(place.place_id);
+
+                const net = getNetworkInfo(place.name);
+
+                const marker = new google.maps.Marker({
+                    position: place.geometry.location,
+                    map: document.getElementById('chargerCb').checked ? map : null,
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        fillColor: net.color,
+                        fillOpacity: 0.9,
+                        strokeColor: '#fff',
+                        strokeWeight: 2,
+                        scale: 8
+                    },
+                    title: place.name,
+                    zIndex: 10
+                });
+
+                marker.chargerData = {
+                    name: place.name,
+                    network: net,
+                    rating: place.rating,
+                    totalRatings: place.user_ratings_total,
+                    openNow: place.opening_hours ? place.opening_hours.isOpen() : null,
+                    vicinity: place.vicinity
+                };
+
+                marker.addListener('click', () => {
+                    const d = marker.chargerData;
+                    if (!chargerInfoWindow) {
+                        chargerInfoWindow = new google.maps.InfoWindow();
+                    }
+                    let html = '<div class="charger-info">';
+                    html += `<div class="ci-name">${d.name}</div>`;
+                    if (d.vicinity) html += `<div class="ci-network">${d.vicinity}</div>`;
+                    if (d.rating) html += `<div class="ci-rating">${'&#9733;'.repeat(Math.round(d.rating))} ${d.rating} (${d.totalRatings || 0} reviews)</div>`;
+                    if (d.openNow !== null) {
+                        html += `<div class="ci-status ${d.openNow ? 'open' : 'closed'}">${d.openNow ? 'Open Now' : 'Closed'}</div>`;
+                    }
+                    html += '</div>';
+                    chargerInfoWindow.setContent(html);
+                    chargerInfoWindow.open(map, marker);
+                });
+
+                chargerMarkers.push(marker);
+            });
+        });
+    });
+}
+
+function toggleChargers(show) {
+    chargerMarkers.forEach(m => m.setMap(show ? map : null));
+    if (!show && chargerInfoWindow) chargerInfoWindow.close();
+    const legend = document.getElementById('chargerLegend');
+    if (legend) legend.style.display = show ? 'block' : 'none';
+}
+
 function clearRoutes() {
     clearRouteLayers();
     elevColorLines.forEach(l => l.setMap(null));
@@ -2110,10 +2308,32 @@ function clearRoutes() {
     routesData = [];
     returnRoutesData = [];
     cachedReturnEstimates = [];
+    clearChargers();
+    hideMobileMap();
 }
 function clearRouteLayers() {
     routeLayers.forEach(rl => rl.layer.setMap(null));
     routeLayers = [];
+}
+
+function showMobileMap() {
+    if (window.innerWidth > 768) return;
+    const mapWrap = document.querySelector('.map-wrap');
+    const slot = document.getElementById('mobileMapSlot');
+    if (mapWrap && slot) {
+        slot.appendChild(mapWrap);
+        mapWrap.classList.add('mobile-show');
+        google.maps.event.trigger(map, 'resize');
+    }
+}
+
+function hideMobileMap() {
+    const mapWrap = document.querySelector('.map-wrap');
+    const mainDiv = document.querySelector('.main');
+    if (mapWrap && mainDiv) {
+        mainDiv.appendChild(mapWrap);
+        mapWrap.classList.remove('mobile-show');
+    }
 }
 
 function showLoading(msg) {
@@ -2127,12 +2347,26 @@ function hideLoading() {
     document.getElementById('loadingOverlay').classList.add('hidden');
 }
 
-// ─── Feedback form toggle ───
-document.getElementById('toggleFeedback').addEventListener('click', function() {
-    const form = document.getElementById('feedbackForm');
-    const showing = form.style.display !== 'none';
-    form.style.display = showing ? 'none' : 'block';
-    this.textContent = showing ? 'Rate & Send Suggestions' : 'Hide Feedback Form';
+// ─── Modal handling ───
+document.addEventListener('DOMContentLoaded', () => {
+    // Open modals
+    document.querySelectorAll('[data-modal]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.getElementById(btn.dataset.modal).classList.add('open');
+        });
+    });
+    // Close buttons
+    document.querySelectorAll('.modal-close').forEach(btn => {
+        btn.addEventListener('click', () => {
+            btn.closest('.modal-overlay').classList.remove('open');
+        });
+    });
+    // Click outside to close
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) overlay.classList.remove('open');
+        });
+    });
 });
 
 // ─── Resize handling for elevation chart (debounced) ───
@@ -2148,25 +2382,61 @@ window.addEventListener('resize', () => {
 
 </script>
 
-<div class="footer-section">
-    <div class="about-section">
+<!-- Footer bar -->
+<div class="footer-bar">
+    <span>&copy; 2026 EV Route Planner</span>
+    <button class="footer-link" data-modal="aboutModal">About</button>
+    <button class="footer-link" data-modal="newsModal">News</button>
+    <button class="footer-link" data-modal="legalModal">Disclaimer & Privacy</button>
+    <button class="footer-link" data-modal="feedbackModal">Rate & Suggest</button>
+</div>
+
+<!-- About Modal -->
+<div class="modal-overlay" id="aboutModal">
+    <div class="modal">
+        <button class="modal-close" data-close>&times;</button>
         <h3>About This Project</h3>
-        <p>EV Route Planner was built by an EV owner who wanted a better way to plan trips. After experiencing range anxiety firsthand and realizing that elevation plays a huge role in battery consumption, I set out to build a tool that factors in terrain — not just distance — when planning routes.</p>
+        <p>EV Route Planner was built by an EV owner who wanted to get the most out of every charge. Realizing that elevation plays a huge role in battery consumption, I set out to build a tool that factors in terrain — not just distance — when planning routes, helping you drive as efficiently as possible.</p>
         <p>The idea is simple: two routes can be the same distance, but the one that climbs a mountain will drain your battery far more than the one that takes a gentler path. This app analyzes elevation profiles, calculates grade-aware energy consumption for your specific vehicle, and helps you pick the route that saves the most battery — so you can drive with confidence instead of worry.</p>
         <p>This is a free community project, built for EV drivers by an EV driver. If you find it useful or have ideas to make it better, I'd love to hear from you.</p>
-        <button class="feedback-btn" id="toggleFeedback" type="button">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            Rate & Send Suggestions
-        </button>
-        <div id="feedbackForm" style="display:none; margin-top: 16px;">
-            <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSe8e8kb48PVZXjvalrvtL1-WiBHEc-tHkcnPohigUOx43zV2g/viewform?embedded=true" width="100%" height="600" frameborder="0" marginheight="0" marginwidth="0" style="border-radius: 10px; background: #fff;">Loading…</iframe>
-        </div>
+        <p><strong>Technology:</strong> Built with Google Maps Platform APIs including Maps JavaScript API, Places API, Directions API, and Elevation API. Vehicle efficiency data is based on publicly available EPA ratings and manufacturer specifications. Energy calculations use a grade-aware model that accounts for motor efficiency, regenerative braking, and terrain profile.</p>
     </div>
-    <div class="disclaimer">
+</div>
+
+<!-- News Modal -->
+<div class="modal-overlay" id="newsModal">
+    <div class="modal">
+        <button class="modal-close" data-close>&times;</button>
+        <h3>News & Roadmap</h3>
+        <p><strong>March 2026</strong></p>
+        <p>We're excited to announce that we're working on bringing EV Route Planner to iOS and Android as a native app. The native versions will offer a smoother experience, background GPS tracking, offline route caching, and direct integration with your phone's navigation. Stay tuned for updates!</p>
+        <p><strong>What's New</strong></p>
+        <p>&bull; Round trip mode with independently optimized outbound and return routes<br>
+        &bull; GPS location detection for instant origin setup<br>
+        &bull; Google Maps, Apple Maps, and Waze navigation integration<br>
+        &bull; 25+ EV models including Tesla, Rivian, Lucid, VW, Ford, Hyundai, Kia, BMW, and Mercedes<br>
+        &bull; Grade-aware energy model that penalizes steep climbs and rewards regenerative braking<br>
+        &bull; Mobile-optimized layout for on-the-go route planning</p>
+    </div>
+</div>
+
+<!-- Disclaimer & Privacy Modal -->
+<div class="modal-overlay" id="legalModal">
+    <div class="modal">
+        <button class="modal-close" data-close>&times;</button>
+        <h3>Disclaimer & Privacy</h3>
         <p><strong>Disclaimer:</strong> EV Route Planner is a free community project provided "as is" without warranty of any kind, express or implied. Route suggestions, energy estimates, and battery calculations are approximations based on general vehicle specifications and elevation data. Actual energy consumption varies based on driving conditions, weather, speed, vehicle load, tire pressure, HVAC usage, and other factors. Always rely on your vehicle's built-in range and energy indicators for critical decisions. The developers assume no liability for any damages, losses, or inconveniences arising from the use of this tool, including but not limited to running out of charge, missed destinations, or inaccurate route information.</p>
         <p><strong>Privacy:</strong> This application runs entirely in your browser. We do not collect, store, or transmit any personal data, location history, or route information to our servers. Location data requested via GPS is used only within your browser session to set your origin point and is not saved or shared. Google Maps services (Maps, Places, Directions, Elevation) are used to provide routing and mapping functionality and are subject to <a href="https://policies.google.com/privacy" target="_blank" rel="noopener" style="color:#60a5fa;">Google's Privacy Policy</a>. No cookies, analytics, or tracking tools are used by this application.</p>
-        <p><strong>Technology:</strong> Built with Google Maps Platform APIs including Maps JavaScript API, Places API, Directions API, and Elevation API. Vehicle efficiency data is based on publicly available EPA ratings and manufacturer specifications. Energy calculations use a grade-aware model that accounts for motor efficiency, regenerative braking, and terrain profile.</p>
-        <p>&copy; 2026 EV Route Planner &mdash; A community project. Not affiliated with any vehicle manufacturer.</p>
+        <p>Not affiliated with any vehicle manufacturer.</p>
+    </div>
+</div>
+
+<!-- Feedback Modal -->
+<div class="modal-overlay" id="feedbackModal">
+    <div class="modal">
+        <button class="modal-close" data-close>&times;</button>
+        <h3>Rate & Send Suggestions</h3>
+        <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSe8e8kb48PVZXjvalrvtL1-WiBHEc-tHkcnPohigUOx43zV2g/viewform?embedded=true" width="100%" height="500" frameborder="0" marginheight="0" marginwidth="0" style="border-radius: 10px; background: #fff;">Loading…</iframe>
     </div>
 </div>
 
