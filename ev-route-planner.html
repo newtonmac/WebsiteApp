@@ -1240,41 +1240,55 @@ function useMyLocation() {
     const input = document.getElementById('originInput');
     btn.classList.add('loading');
 
+    function onSuccess(position) {
+        btn.classList.remove('loading');
+        btn.classList.add('active');
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
+        // Set coordinates and show them immediately as fallback
+        setOrigin([lat, lng]);
+        input.value = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        updatePlanBtn();
+
+        // Then try to reverse geocode for a readable address
+        if (geocoder) {
+            try {
+                geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+                    if (status === 'OK' && results && results[0]) {
+                        input.value = results[0].formatted_address;
+                    }
+                });
+            } catch(e) {
+                console.warn('Reverse geocode failed:', e);
+            }
+        }
+
+        try { map.setCenter({ lat, lng }); map.setZoom(13); } catch(e) {}
+    }
+
+    // Try high accuracy first, fall back to low accuracy (Wi-Fi/cell) on failure
     navigator.geolocation.getCurrentPosition(
-        (position) => {
-            btn.classList.remove('loading');
-            btn.classList.add('active');
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
-
-            // Set coordinates and show them immediately as fallback
-            setOrigin([lat, lng]);
-            input.value = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-            updatePlanBtn();
-
-            // Then try to reverse geocode for a readable address
-            if (geocoder) {
-                try {
-                    geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-                        if (status === 'OK' && results && results[0]) {
-                            input.value = results[0].formatted_address;
-                        }
-                    });
-                } catch(e) {
-                    console.warn('Reverse geocode failed:', e);
-                }
-            }
-
-            try { map.setCenter({ lat, lng }); map.setZoom(13); } catch(e) {}
-        },
+        onSuccess,
         (error) => {
-            btn.classList.remove('loading');
-            console.warn('GPS error:', error.message);
-            if (error.code !== 1) {
-                alert('Could not get your location: ' + error.message);
+            console.warn('GPS high-accuracy failed, retrying low accuracy:', error.message);
+            if (error.code === 1) {
+                // Permission denied — don't retry
+                btn.classList.remove('loading');
+                return;
             }
+            // Retry without high accuracy (uses Wi-Fi/cell, much faster)
+            navigator.geolocation.getCurrentPosition(
+                onSuccess,
+                (error2) => {
+                    btn.classList.remove('loading');
+                    console.warn('GPS fallback also failed:', error2.message);
+                    alert('Could not get your location. Please check your device location settings or enter an address manually.');
+                },
+                { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 }
+            );
         },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 300000 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
     );
 }
 
@@ -2802,15 +2816,16 @@ async function searchChargersAlongRoute(route) {
     chargerSearchDone = true;
 
     const sampled = route.sampled;
-    const fullCoords = route.coords || sampled;
+    const fullCoords = route.coords || sampled; // full-resolution path for proximity checks
 
-    // Build route path from FULL coords for accurate proximity checking
+    // Build route path from FULL coords for accurate distance checking
+    // Sub-sample to ~500 points max for performance (enough for ~1mi resolution on 500mi routes)
     const proxSample = samplePoints(fullCoords, Math.min(fullCoords.length, 1000));
     const routePath = proxSample.map(pt => new google.maps.LatLng(pt[1], pt[0]));
-    const MAX_DISTANCE_M = 8047; // 5 miles in meters
+    const MAX_DISTANCE_M = 8047; // 5 miles in meters — proximity filter
 
-    // Pick search points every ~15 miles along the route for dense coverage
-    const SEARCH_INTERVAL_MI = 15;
+    // Pick search points every ~20 miles along the route
+    const SEARCH_INTERVAL_MI = 20;
     const totalMi = route.distMi || 100;
     const numPoints = Math.max(3, Math.ceil(totalMi / SEARCH_INTERVAL_MI));
     const step = Math.max(1, Math.floor((sampled.length - 1) / numPoints));
@@ -2822,35 +2837,29 @@ async function searchChargersAlongRoute(route) {
         searchPoints.push(sampled[sampled.length - 1]);
     }
 
-    const SEARCH_RADIUS_MI = 20; // miles — generous overlap between search points
+    const SEARCH_RADIUS_MI = 15; // miles — overlap ensures full coverage
     const seenStationIds = new Set();
     const showOnMap = document.getElementById('chargerCb').checked;
-    // Encode each network name individually, keep commas as literal separators
-    const networkFilter = CHARGER_QUERIES.map(n => encodeURIComponent(n.nrelKey)).join(',');
+    const networkFilter = CHARGER_QUERIES.map(n => n.nrelKey).join(',');
 
-    console.log(`[EV Chargers] Searching ${searchPoints.length} points along ${totalMi.toFixed(0)}mi route`);
-
-    // Fetch chargers from NREL AFDC in batches
+    // Fetch chargers from NREL AFDC in batches to avoid hammering the API
     const BATCH_SIZE = 5;
-    let totalFound = 0;
-    let totalShown = 0;
     for (let b = 0; b < searchPoints.length; b += BATCH_SIZE) {
         const batch = searchPoints.slice(b, b + BATCH_SIZE);
         const promises = batch.map(pt => {
             const url = `https://developer.nrel.gov/api/alt-fuel-stations/v1/nearest.json?api_key=${NREL_API_KEY}`
                 + `&fuel_type=ELEC&latitude=${pt[1]}&longitude=${pt[0]}`
-                + `&radius=${SEARCH_RADIUS_MI}&limit=200&status=E`
-                + `&ev_network=${networkFilter}`;
+                + `&radius=${SEARCH_RADIUS_MI}&limit=50&status=E`
+                + `&ev_network=${encodeURIComponent(networkFilter)}`;
             return fetch(url).then(r => {
-                if (!r.ok) { console.warn(`[EV Chargers] NREL ${r.status} at [${pt[1].toFixed(2)},${pt[0].toFixed(2)}]`); return null; }
+                if (!r.ok) { console.warn('NREL search failed:', r.status, pt); return null; }
                 return r.json();
-            }).catch(e => { console.warn('[EV Chargers] fetch error:', e.message); return null; });
+            }).catch(e => { console.warn('NREL fetch error:', e, pt); return null; });
         });
         const results = await Promise.all(promises);
 
         results.forEach(data => {
             if (!data || !data.fuel_stations) return;
-            totalFound += data.fuel_stations.length;
             data.fuel_stations.forEach(station => {
                 if (seenStationIds.has(station.id)) return;
                 const network = NREL_NETWORK_MAP[station.ev_network];
@@ -2867,7 +2876,6 @@ async function searchChargersAlongRoute(route) {
                 }
                 if (!withinRange) return;
                 seenStationIds.add(station.id);
-                totalShown++;
 
                 // Pre-cache NREL data so click popup loads instantly
                 const connectorKw = {};
@@ -2956,10 +2964,9 @@ async function searchChargersAlongRoute(route) {
 
         // Small delay between batches to be polite to the API
         if (b + BATCH_SIZE < searchPoints.length) {
-            await new Promise(r => setTimeout(r, 300));
+            await new Promise(r => setTimeout(r, 200));
         }
     }
-    console.log(`[EV Chargers] Done: ${totalFound} stations found from NREL, ${totalShown} unique within range shown on map`);
 }
 
 function toggleChargers(show) {
@@ -3067,7 +3074,7 @@ window.addEventListener('resize', () => {
 
 <!-- Footer bar -->
 <div class="footer-bar">
-    <span>&copy; 2026 EV Route Planner &nbsp;·&nbsp; v1.10 &nbsp;·&nbsp; Updated Mar 14, 2026</span>
+    <span>&copy; 2026 EV Route Planner &nbsp;·&nbsp; v1.09 &nbsp;·&nbsp; Updated Mar 14, 2026</span>
     <button class="footer-link" data-modal="aboutModal">About</button>
     <button class="footer-link" data-modal="newsModal">News</button>
     <button class="footer-link" data-modal="legalModal">Disclaimer & Privacy</button>
