@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EV Route Planner — Least Elevation Gain</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCvbijNp_WBn0pgnoVtXyAl1AMcZb7zrZ8&libraries=geometry,places"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -488,12 +487,14 @@
             position: absolute;
             bottom: 24px;
             right: 16px;
-            background: #1a1d28ee;
-            border: 1px solid #2d3040;
+            background: #ffffffee;
+            border: 1px solid #d1d5db;
             border-radius: 12px;
             padding: 12px 16px;
             z-index: 1000;
             font-size: 12px;
+            color: #374151;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
         }
         .map-legend .leg-row {
             display: flex;
@@ -512,7 +513,7 @@
         .loading-overlay {
             position: absolute;
             inset: 0;
-            background: #0f1117cc;
+            background: #ffffffcc;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -522,13 +523,13 @@
         .loading-overlay.hidden { display: none; }
         .spinner {
             width: 40px; height: 40px;
-            border: 3px solid #2d3040;
-            border-top-color: #34d399;
+            border: 3px solid #d1d5db;
+            border-top-color: #059669;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-        .loading-overlay p { margin-top: 12px; color: #8b8fa3; font-size: 14px; }
+        .loading-overlay p { margin-top: 12px; color: #6b7280; font-size: 14px; }
 
         /* empty state */
         .empty-state {
@@ -538,6 +539,34 @@
         }
         .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
         .empty-state p { font-size: 14px; line-height: 1.5; }
+
+        /* Google Places Autocomplete dropdown styling */
+        .pac-container {
+            background: #252836;
+            border: 1px solid #2d3040;
+            border-radius: 0 0 10px 10px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            z-index: 10000;
+        }
+        .pac-item {
+            padding: 8px 12px;
+            font-size: 13px;
+            color: #e1e4e8;
+            border-bottom: 1px solid #2d3040;
+            cursor: pointer;
+            line-height: 1.4;
+        }
+        .pac-item:hover, .pac-item-selected {
+            background: #34d39922;
+        }
+        .pac-item-query {
+            color: #e1e4e8;
+            font-size: 13px;
+        }
+        .pac-icon { display: none; }
+        .pac-item span { color: #8b8fa3; }
+        .pac-matched { color: #34d399; font-weight: 600; }
 
         /* ── Mobile ── */
         @media (max-width: 768px) {
@@ -674,7 +703,7 @@
             <div class="leg-row"><div class="leg-swatch" style="background:#34d399;"></div> EV Best Route</div>
             <div class="leg-row"><div class="leg-swatch" style="background:#60a5fa;"></div> Fastest Route</div>
             <div class="leg-row"><div class="leg-swatch" style="background:#6b7280;"></div> Alternative</div>
-            <div style="border-top:1px solid #2d3040; margin:6px 0 4px; padding-top:6px; font-size:11px; color:#8b8fa3;">Elevation Gradient</div>
+            <div style="border-top:1px solid #d1d5db; margin:6px 0 4px; padding-top:6px; font-size:11px; color:#6b7280;">Elevation Gradient</div>
             <div class="leg-row"><div class="leg-swatch" style="background:#22c55e;"></div> Downhill (regen)</div>
             <div class="leg-row"><div class="leg-swatch" style="background:#a3e635;"></div> Flat</div>
             <div class="leg-row"><div class="leg-swatch" style="background:#fbbf24;"></div> Slight uphill</div>
@@ -688,24 +717,15 @@
 </div>
 
 <script>
-// ─── Map Setup ───
-const map = L.map('map', { zoomControl: false }).setView([32.72, -117.16], 11);
-L.control.zoom({ position: 'topright' }).addTo(map);
-
-// Try CARTO dark tiles, fallback to OSM
-const cartoLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap &copy; CARTO',
-    maxZoom: 19
+// ─── Map Setup (Google Maps — light theme) ───
+const map = new google.maps.Map(document.getElementById('map'), {
+    center: { lat: 32.72, lng: -117.16 },
+    zoom: 11,
+    mapTypeControl: false,
+    streetViewControl: false,
+    fullscreenControl: false,
+    zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_TOP }
 });
-const osmLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap',
-    maxZoom: 19
-});
-cartoLayer.on('tileerror', function() {
-    map.removeLayer(cartoLayer);
-    osmLayer.addTo(map);
-});
-cartoLayer.addTo(map);
 
 // ─── EV Model Database ───
 // batteryKwh: usable battery capacity
@@ -760,8 +780,9 @@ function updateEvSpecs() {
         <span class="ev-car-spec"><strong>${ev.epaMiles}</strong> mi range</span>
         <span class="ev-car-spec"><strong>${(ev.effKwhMi * 1000).toFixed(0)}</strong> Wh/mi</span>
     `;
-    // Re-run explanation if routes exist
+    // Re-run display if routes exist (invalidates cached estimates)
     if (routesData.length && routesData[selectedRouteIdx]) {
+        cachedTripEstimates = routesData.map(r => estimateTripEnergy(r, ev));
         showEvExplanation(routesData[selectedRouteIdx], routesData);
     }
 }
@@ -856,6 +877,7 @@ let destMarker = null;
 let routeLayers = [];
 let routesData = [];
 let selectedRouteIdx = 0;
+let cachedTripEstimates = [];  // cached energy estimates, invalidated on EV change or new route plan
 
 // Multi-stop state: array of { coord, marker, inputEl, acEl }
 let stops = [];
@@ -868,56 +890,53 @@ const destAC = document.getElementById('destAC');
 const planBtn = document.getElementById('planBtn');
 const stopsContainer = document.getElementById('stopsContainer');
 
-// ─── Geocoding (Nominatim) ───
-let acTimeout = null;
-function setupAutocomplete(input, acList, setCoord) {
-    input.addEventListener('input', () => {
-        clearTimeout(acTimeout);
-        const q = input.value.trim();
-        if (q.length < 3) { acList.style.display = 'none'; return; }
-        acTimeout = setTimeout(async () => {
-            try {
-                const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(q)}`, {
-                    headers: { 'Accept-Language': 'en' }
-                });
-                const data = await resp.json();
-                acList.innerHTML = '';
-                if (!data.length) { acList.style.display = 'none'; return; }
-                data.forEach(r => {
-                    const div = document.createElement('div');
-                    div.className = 'ac-item';
-                    div.textContent = r.display_name;
-                    div.addEventListener('click', () => {
-                        input.value = r.display_name;
-                        setCoord([parseFloat(r.lat), parseFloat(r.lon)]);
-                        acList.style.display = 'none';
-                        updatePlanBtn();
-                    });
-                    acList.appendChild(div);
-                });
-                acList.style.display = 'block';
-            } catch(e) { acList.style.display = 'none'; }
-        }, 350);
-    });
+// ─── Google Services ───
+const directionsService = new google.maps.DirectionsService();
+const elevationService = new google.maps.ElevationService();
 
-    // close on outside click
-    document.addEventListener('click', e => {
-        if (!e.target.closest('#' + input.parentElement.id)) acList.style.display = 'none';
+// ─── Geocoding (Google Places Autocomplete) ───
+const acTimers = new WeakMap();
+function setupAutocomplete(input, _unused, setCoord) {
+    const autocomplete = new google.maps.places.Autocomplete(input, {
+        fields: ['geometry', 'formatted_address']
+    });
+    autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace();
+        if (place.geometry && place.geometry.location) {
+            const lat = place.geometry.location.lat();
+            const lng = place.geometry.location.lng();
+            setCoord([lat, lng]);
+            updatePlanBtn();
+        }
+    });
+}
+
+function createCircleMarker(coord, color, title) {
+    return new google.maps.Marker({
+        position: { lat: coord[0], lng: coord[1] },
+        map: map,
+        title: title,
+        icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: color,
+            fillOpacity: 1,
+            strokeColor: color,
+            strokeWeight: 2
+        }
     });
 }
 
 function setOrigin(coord) {
     originCoord = coord;
-    if (originMarker) map.removeLayer(originMarker);
-    originMarker = L.circleMarker(coord, { radius: 8, color: '#34d399', fillColor: '#34d399', fillOpacity: 1, weight: 2 })
-        .bindTooltip('Origin', { permanent: false }).addTo(map);
+    if (originMarker) originMarker.setMap(null);
+    originMarker = createCircleMarker(coord, '#34d399', 'Origin');
     fitMarkers();
 }
 function setDest(coord) {
     destCoord = coord;
-    if (destMarker) map.removeLayer(destMarker);
-    destMarker = L.circleMarker(coord, { radius: 8, color: '#ef4444', fillColor: '#ef4444', fillOpacity: 1, weight: 2 })
-        .bindTooltip('Destination', { permanent: false }).addTo(map);
+    if (destMarker) destMarker.setMap(null);
+    destMarker = createCircleMarker(coord, '#ef4444', 'Destination');
     fitMarkers();
 }
 function fitMarkers() {
@@ -925,8 +944,14 @@ function fitMarkers() {
     if (originCoord) pts.push(originCoord);
     stops.forEach(s => { if (s.coord) pts.push(s.coord); });
     if (destCoord) pts.push(destCoord);
-    if (pts.length >= 2) map.fitBounds(L.latLngBounds(pts).pad(0.3));
-    else if (pts.length === 1) map.setView(pts[0], 13);
+    if (pts.length >= 2) {
+        const bounds = new google.maps.LatLngBounds();
+        pts.forEach(p => bounds.extend({ lat: p[0], lng: p[1] }));
+        map.fitBounds(bounds, 60);
+    } else if (pts.length === 1) {
+        map.setCenter({ lat: pts[0][0], lng: pts[0][1] });
+        map.setZoom(13);
+    }
 }
 
 setupAutocomplete(originInput, originAC, setOrigin);
@@ -962,10 +987,8 @@ function addStop() {
 
     setupAutocomplete(inputEl, acEl, (coord) => {
         stopObj.coord = coord;
-        if (stopObj.marker) map.removeLayer(stopObj.marker);
-        stopObj.marker = L.circleMarker(coord, {
-            radius: 7, color: color, fillColor: color, fillOpacity: 1, weight: 2
-        }).bindTooltip(`Stop ${label}`, { permanent: false }).addTo(map);
+        if (stopObj.marker) stopObj.marker.setMap(null);
+        stopObj.marker = createCircleMarker(coord, color, `Stop ${label}`);
         fitMarkers();
         updatePlanBtn();
     });
@@ -979,7 +1002,7 @@ function removeStop(id) {
     const idx = stops.findIndex(s => s.id === id);
     if (idx === -1) return;
     const stop = stops[idx];
-    if (stop.marker) map.removeLayer(stop.marker);
+    if (stop.marker) stop.marker.setMap(null);
     stops.splice(idx, 1);
     const row = stopsContainer.querySelector(`[data-stop-id="${id}"]`);
     if (row) row.remove();
@@ -995,10 +1018,8 @@ function renumberStops() {
         if (group) group.querySelector('label').textContent = `Stop ${label}`;
         s.color = stopColors[i % stopColors.length];
         if (s.marker && s.coord) {
-            map.removeLayer(s.marker);
-            s.marker = L.circleMarker(s.coord, {
-                radius: 7, color: s.color, fillColor: s.color, fillOpacity: 1, weight: 2
-            }).bindTooltip(`Stop ${label}`, { permanent: false }).addTo(map);
+            s.marker.setMap(null);
+            s.marker = createCircleMarker(s.coord, s.color, `Stop ${label}`);
         }
     });
 }
@@ -1022,58 +1043,87 @@ async function planRoutes() {
     document.getElementById('emptyState').style.display = 'none';
 
     try {
-        // Build coordinate chain: origin → stops → destination
-        const allPoints = [originCoord, ...stops.map(s => s.coord), destCoord];
-        const coordStr = allPoints.map(c => `${c[1]},${c[0]}`).join(';');
+        const origin = new google.maps.LatLng(originCoord[0], originCoord[1]);
+        const destination = new google.maps.LatLng(destCoord[0], destCoord[1]);
+        const waypoints = stops.filter(s => s.coord).map(s => ({
+            location: new google.maps.LatLng(s.coord[0], s.coord[1]),
+            stopover: true
+        }));
 
-        // 1) Get alternative routes from OSRM
-        // Note: OSRM only returns alternatives when there are exactly 2 waypoints
-        const hasStops = stops.length > 0;
-        const altParam = hasStops ? '' : '&alternatives=3';
-        const routeUrl = `https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson${altParam}&steps=true`;
-        const routeResp = await fetch(routeUrl);
-        const routeData = await routeResp.json();
+        // 1) Get routes from Google Directions API
+        const request = {
+            origin,
+            destination,
+            waypoints,
+            travelMode: google.maps.TravelMode.DRIVING,
+            provideRouteAlternatives: stops.length === 0, // alternatives only without waypoints
+            unitSystem: google.maps.UnitSystem.IMPERIAL
+        };
 
-        if (routeData.code !== 'Ok' || !routeData.routes.length) {
-            throw new Error('No routes found');
-        }
+        const result = await new Promise((resolve, reject) => {
+            directionsService.route(request, (res, status) => {
+                if (status === 'OK') resolve(res);
+                else reject(new Error('Directions failed: ' + status));
+            });
+        });
+
+        if (!result.routes.length) throw new Error('No routes found');
 
         setLoadingMsg('Sampling elevation data...');
 
-        // 2) Get elevation for each route
-        const routes = routeData.routes;
-        routesData = [];
+        // 2) Convert Google routes to our format and get elevations
+        const routes = result.routes;
+        const processedRoutes = [];
 
         for (let i = 0; i < routes.length; i++) {
-            const r = routes[i];
-            const coords = r.geometry.coordinates; // [lng, lat]
-            const sampled = samplePoints(coords, 80); // sample up to 80 points
-            const elevations = await fetchElevations(sampled);
-            const { gain, loss } = calcElevation(elevations);
-            const distKm = r.distance / 1000;
-            const distMi = distKm * 0.621371;
-            const durMin = r.duration / 60;
+            const route = routes[i];
+            const path = route.overview_path;
+            // Convert to [lng, lat] format for consistency with rest of code
+            const coords = path.map(p => [p.lng(), p.lat()]);
 
-            routesData.push({
+            // Calculate total distance and duration from legs
+            let totalDistM = 0, totalDurS = 0;
+            route.legs.forEach(leg => {
+                totalDistM += leg.distance.value;
+                totalDurS += leg.duration.value;
+            });
+
+            // Sample points for elevation
+            const sampled = samplePoints(coords, 80);
+
+            processedRoutes.push({
                 index: i,
-                coords: coords,        // [lng, lat] array
-                sampled: sampled,       // [lng, lat] sampled
-                elevations: elevations, // elevation values
-                gain: gain,             // meters gained
-                loss: loss,             // meters lost
-                distMi: distMi,
-                durMin: durMin,
-                score: 0               // computed below
+                coords,
+                sampled,
+                elevations: [],
+                gain: 0, loss: 0,
+                distMi: (totalDistM / 1000) * 0.621371,
+                durMin: totalDurS / 60,
+                score: 0
             });
         }
 
-        // 3) Score routes — balance elevation gain vs time
+        // 3) Get elevations using Google Elevation API (in parallel)
+        const elevResults = await Promise.all(
+            processedRoutes.map(r => fetchElevations(r.sampled))
+        );
+
+        processedRoutes.forEach((r, i) => {
+            r.elevations = elevResults[i];
+            const { gain, loss } = calcElevation(elevResults[i]);
+            r.gain = gain;
+            r.loss = loss;
+        });
+
+        routesData = processedRoutes;
+
+        // 4) Score routes — balance elevation gain vs time
         scoreRoutes(routesData);
 
         // Sort by score (lower = better)
         routesData.sort((a, b) => a.score - b.score);
 
-        // 4) Display
+        // 5) Display
         displayRoutes(routesData);
         selectRoute(0);
         hideLoading();
@@ -1096,52 +1146,27 @@ function samplePoints(coords, maxPoints) {
     return result;
 }
 
-// ─── Fetch elevations — tries Open-Meteo first (most reliable), then Open-Elevation ───
+// ─── Fetch elevations using Google Elevation API ───
 async function fetchElevations(coords) {
-    // coords are [lng, lat]
-    // Open-Meteo accepts up to ~100 coords per request via query params
-    const chunkSize = 80;
+    // coords are [lng, lat] — Google expects LatLng objects
+    // Google Elevation API allows up to 512 locations per request, but we chunk at 250 to be safe
+    const chunkSize = 250;
     const allElevations = [];
 
     for (let i = 0; i < coords.length; i += chunkSize) {
         const chunk = coords.slice(i, i + chunkSize);
-        let got = false;
+        const locations = chunk.map(c => new google.maps.LatLng(c[1], c[0]));
 
-        // Try Open-Meteo first (GET, very reliable)
         try {
-            const lats = chunk.map(c => c[1]).join(',');
-            const lngs = chunk.map(c => c[0]).join(',');
-            const resp = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`);
-            if (resp.ok) {
-                const data = await resp.json();
-                if (data.elevation && data.elevation.length === chunk.length) {
-                    data.elevation.forEach(e => allElevations.push(e));
-                    got = true;
-                }
-            }
-        } catch(e) { /* fall through */ }
-
-        // Fallback: Open-Elevation (POST, sometimes down)
-        if (!got) {
-            try {
-                const locations = chunk.map(c => ({ latitude: c[1], longitude: c[0] }));
-                const resp = await fetch('https://api.open-elevation.com/api/v1/lookup', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ locations })
+            const result = await new Promise((resolve, reject) => {
+                elevationService.getElevationForLocations({ locations }, (results, status) => {
+                    if (status === 'OK' && results) resolve(results);
+                    else reject(new Error('Elevation failed: ' + status));
                 });
-                if (resp.ok) {
-                    const data = await resp.json();
-                    if (data.results) {
-                        data.results.forEach(r => allElevations.push(r.elevation));
-                        got = true;
-                    }
-                }
-            } catch(e2) { /* fall through */ }
-        }
-
-        // Last resort: fill with 0
-        if (!got) {
+            });
+            result.forEach(r => allElevations.push(r.elevation));
+        } catch(e) {
+            // Fallback: fill with 0 if elevation API fails
             chunk.forEach(() => allElevations.push(0));
         }
     }
@@ -1205,18 +1230,21 @@ function displayRoutes(routes) {
     // Draw routes on map (draw non-selected first so best is on top)
     for (let i = routes.length - 1; i >= 0; i--) {
         const r = routes[i];
-        const latlngs = r.coords.map(c => [c[1], c[0]]);
+        const path = r.coords.map(c => ({ lat: c[1], lng: c[0] }));
         const color = i === 0 ? '#34d399' : (i === 1 ? '#60a5fa' : '#6b7280');
         const weight = i === 0 ? 5 : 3;
         const opacity = i === 0 ? 0.9 : 0.5;
-        const layer = L.polyline(latlngs, { color, weight, opacity }).addTo(map);
-        routeLayers.push({ idx: i, layer });
+        const polyline = new google.maps.Polyline({
+            path, strokeColor: color, strokeWeight: weight, strokeOpacity: opacity, map, zIndex: i === 0 ? 10 : 1
+        });
+        routeLayers.push({ idx: i, layer: polyline });
     }
 
     // Fit map to best route
     if (routes.length) {
-        const latlngs = routes[0].coords.map(c => [c[1], c[0]]);
-        map.fitBounds(L.latLngBounds(latlngs).pad(0.1));
+        const bounds = new google.maps.LatLngBounds();
+        routes[0].coords.forEach(c => bounds.extend({ lat: c[1], lng: c[0] }));
+        map.fitBounds(bounds, 40);
     }
 
     // Build route cards
@@ -1225,7 +1253,8 @@ function displayRoutes(routes) {
 
     const ev = getSelectedEV();
     const fastestDur = Math.min(...routes.map(r => r.durMin));
-    const tripEstimates = routes.map(r => estimateTripEnergy(r, ev));
+    cachedTripEstimates = routes.map(r => estimateTripEnergy(r, ev));
+    const tripEstimates = cachedTripEstimates;
     const bestEnergy = Math.min(...tripEstimates.map(t => t.totalEnergy));
 
     routes.forEach((r, i) => {
@@ -1266,7 +1295,7 @@ function displayRoutes(routes) {
     document.getElementById('mapLegend').style.display = 'block';
 }
 
-let elevColorLayers = [];
+let elevColorLines = [];
 
 function selectRoute(idx) {
     selectedRouteIdx = idx;
@@ -1279,11 +1308,11 @@ function selectRoute(idx) {
     // Bring selected route to front on map
     routeLayers.forEach(rl => {
         const isSelected = rl.idx === idx;
-        rl.layer.setStyle({
-            opacity: isSelected ? 0.9 : 0.35,
-            weight: isSelected ? 6 : 3
+        rl.layer.setOptions({
+            strokeOpacity: isSelected ? 0.9 : 0.35,
+            strokeWeight: isSelected ? 6 : 3,
+            zIndex: isSelected ? 20 : 1
         });
-        if (isSelected) rl.layer.bringToFront();
     });
 
     // Draw elevation-colored overlay on selected route
@@ -1304,16 +1333,16 @@ function selectRoute(idx) {
 // Colors route segments by gradient: green=downhill, yellow=flat, red=uphill
 function drawElevColorOverlay(route) {
     // Remove previous overlay
-    elevColorLayers.forEach(l => map.removeLayer(l));
-    elevColorLayers = [];
+    elevColorLines.forEach(l => l.setMap(null));
+    elevColorLines = [];
 
     const sampled = route.sampled;
     const elev = route.elevations;
     if (sampled.length < 2 || elev.length < 2) return;
 
     for (let i = 0; i < sampled.length - 1; i++) {
-        const from = [sampled[i][1], sampled[i][0]];
-        const to = [sampled[i+1][1], sampled[i+1][0]];
+        const from = { lat: sampled[i][1], lng: sampled[i][0] };
+        const to = { lat: sampled[i+1][1], lng: sampled[i+1][0] };
         const diff = elev[i+1] - elev[i];
 
         // Calculate color based on gradient
@@ -1324,16 +1353,10 @@ function drawElevColorOverlay(route) {
         else if (diff > -2) color = '#a3e635';   // flat/slight downhill — lime
         else color = '#22c55e';                  // downhill — green (regen braking)
 
-        const seg = L.polyline([from, to], {
-            color: color,
-            weight: 7,
-            opacity: 0.85
-        }).addTo(map);
-        elevColorLayers.push(seg);
+        elevColorLines.push(new google.maps.Polyline({
+            path: [from, to], strokeColor: color, strokeWeight: 7, strokeOpacity: 0.85, map, zIndex: 30
+        }));
     }
-
-    // Bring overlay to front
-    elevColorLayers.forEach(l => l.bringToFront());
 }
 
 // ─── EV Efficiency Explanation ───
@@ -1342,10 +1365,11 @@ function showEvExplanation(route, allRoutes) {
     el.style.display = 'block';
 
     const ev = getSelectedEV();
-    const trip = estimateTripEnergy(route, ev);
-    const isBest = allRoutes.indexOf(route) === 0;
+    const routeIdx = allRoutes.indexOf(route);
+    const trip = cachedTripEstimates[routeIdx] || estimateTripEnergy(route, ev);
+    const isBest = routeIdx === 0;
     const bestRoute = allRoutes[0];
-    const bestTrip = estimateTripEnergy(bestRoute, ev);
+    const bestTrip = cachedTripEstimates[0] || estimateTripEnergy(bestRoute, ev);
 
     // Net elevation (start vs end)
     const netElev = route.elevations.length ? route.elevations[route.elevations.length - 1] - route.elevations[0] : 0;
@@ -1520,17 +1544,20 @@ document.getElementById('shareCopy').addEventListener('click', async () => {
 });
 
 // ─── Elevation Chart (Canvas) ───
-function drawElevationChart(route) {
-    const canvas = document.getElementById('elevCanvas');
-    const container = canvas.parentElement;
-    canvas.width = container.clientWidth * (window.devicePixelRatio || 1);
-    canvas.height = container.clientHeight * (window.devicePixelRatio || 1);
-    canvas.style.width = container.clientWidth + 'px';
-    canvas.style.height = container.clientHeight + 'px';
+const elevCanvas = document.getElementById('elevCanvas');
+const elevCtx = elevCanvas.getContext('2d');
 
-    const ctx = canvas.getContext('2d');
-    const W = canvas.width;
-    const H = canvas.height;
+function drawElevationChart(route) {
+    const dpr = window.devicePixelRatio || 1;
+    const container = elevCanvas.parentElement;
+    elevCanvas.width = container.clientWidth * dpr;
+    elevCanvas.height = container.clientHeight * dpr;
+    elevCanvas.style.width = container.clientWidth + 'px';
+    elevCanvas.style.height = container.clientHeight + 'px';
+
+    const ctx = elevCtx;
+    const W = elevCanvas.width;
+    const H = elevCanvas.height;
     const pad = { top: 20, right: 20, bottom: 30, left: 50 };
     const plotW = W - pad.left - pad.right;
     const plotH = H - pad.top - pad.bottom;
@@ -1540,8 +1567,12 @@ function drawElevationChart(route) {
     const elev = route.elevations;
     if (!elev.length) return;
 
-    const minE = Math.min(...elev) - 10;
-    const maxE = Math.max(...elev) + 10;
+    let minE = elev[0], maxE = elev[0];
+    for (let i = 1; i < elev.length; i++) {
+        if (elev[i] < minE) minE = elev[i];
+        if (elev[i] > maxE) maxE = elev[i];
+    }
+    minE -= 10; maxE += 10;
     const rangeE = maxE - minE || 1;
 
     // Grid lines
@@ -1558,7 +1589,7 @@ function drawElevationChart(route) {
         // Y labels
         const val = maxE - (rangeE / gridLines) * i;
         ctx.fillStyle = '#8b8fa3';
-        ctx.font = `${11 * (window.devicePixelRatio || 1)}px -apple-system, sans-serif`;
+        ctx.font = `${11 * dpr}px -apple-system, sans-serif`;
         ctx.textAlign = 'right';
         ctx.fillText(Math.round(val) + 'm', pad.left - 8, y + 4);
     }
@@ -1597,12 +1628,12 @@ function drawElevationChart(route) {
         else ctx.lineTo(x, y);
     }
     ctx.strokeStyle = '#34d399';
-    ctx.lineWidth = 2 * (window.devicePixelRatio || 1);
+    ctx.lineWidth = 2 * dpr;
     ctx.stroke();
 
     // Draw gain/loss annotations
     ctx.fillStyle = '#34d399';
-    ctx.font = `bold ${12 * (window.devicePixelRatio || 1)}px -apple-system, sans-serif`;
+    ctx.font = `bold ${12 * dpr}px -apple-system, sans-serif`;
     ctx.textAlign = 'left';
     ctx.fillText(`↑ +${Math.round(route.gain)}m gain`, pad.left + 8, pad.top + 14);
     ctx.fillStyle = '#60a5fa';
@@ -1619,8 +1650,8 @@ function formatDuration(min) {
 
 function clearRoutes() {
     clearRouteLayers();
-    elevColorLayers.forEach(l => map.removeLayer(l));
-    elevColorLayers = [];
+    elevColorLines.forEach(l => l.setMap(null));
+    elevColorLines = [];
     document.getElementById('routeResults').style.display = 'none';
     document.getElementById('elevSection').style.display = 'none';
     document.getElementById('evExplain').style.display = 'none';
@@ -1631,7 +1662,7 @@ function clearRoutes() {
     routesData = [];
 }
 function clearRouteLayers() {
-    routeLayers.forEach(rl => map.removeLayer(rl.layer));
+    routeLayers.forEach(rl => rl.layer.setMap(null));
     routeLayers = [];
 }
 
@@ -1646,11 +1677,15 @@ function hideLoading() {
     document.getElementById('loadingOverlay').classList.add('hidden');
 }
 
-// ─── Resize handling for elevation chart ───
+// ─── Resize handling for elevation chart (debounced) ───
+let resizeTimer = null;
 window.addEventListener('resize', () => {
-    if (routesData.length && routesData[selectedRouteIdx]) {
-        drawElevationChart(routesData[selectedRouteIdx]);
-    }
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+        if (routesData.length && routesData[selectedRouteIdx]) {
+            drawElevationChart(routesData[selectedRouteIdx]);
+        }
+    }, 150);
 });
 
 // Initialize EV specs display
