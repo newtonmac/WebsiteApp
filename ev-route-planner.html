@@ -2484,7 +2484,7 @@ async function fetchNRELData(lat, lng, networkLabel) {
     const cacheKey = `${lat.toFixed(4)},${lng.toFixed(4)}`;
     if (nrelCache.has(cacheKey)) return nrelCache.get(cacheKey);
     try {
-        const url = `https://developer.nrel.gov/api/alt-fuel-stations/v1/nearest.json?api_key=DEMO_KEY&fuel_type=ELEC&latitude=${lat}&longitude=${lng}&radius=0.5&limit=1`;
+        const url = `https://developer.nrel.gov/api/alt-fuel-stations/v1/nearest.json?api_key=S8BQYZzqG6TBnADBFb60EYDUiLsRcxgJovLJ76Bg&fuel_type=ELEC&latitude=${lat}&longitude=${lng}&radius=0.5&limit=1`;
         const resp = await fetch(url);
         if (!resp.ok) return null;
         const data = await resp.json();
