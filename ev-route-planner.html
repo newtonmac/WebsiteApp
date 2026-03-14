@@ -103,6 +103,33 @@
         .autocomplete-list {
             display: none;
         }
+        .input-with-btn {
+            display: flex;
+            gap: 6px;
+        }
+        .input-with-btn input {
+            flex: 1;
+            min-width: 0;
+        }
+        .gps-btn {
+            width: 40px;
+            height: 40px;
+            flex-shrink: 0;
+            border-radius: 10px;
+            border: 1px solid #2d3040;
+            background: #252836;
+            color: #60a5fa;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .gps-btn:hover { border-color: #60a5fa; background: #60a5fa22; }
+        .gps-btn.active { border-color: #34d399; color: #34d399; background: #34d39922; }
+        .gps-btn.loading { animation: pulse-gps 1s ease-in-out infinite; }
+        @keyframes pulse-gps { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 
         /* stop row */
         .stop-row {
@@ -582,14 +609,19 @@
             <h2>Route</h2>
             <div class="input-group" id="originGroup">
                 <label>Origin</label>
-                <input type="text" id="originInput" placeholder="Enter starting address..." />
+                <div class="input-with-btn">
+                    <input type="text" id="originInput" placeholder="Enter starting address..." />
+                    <button class="gps-btn" id="gpsBtn" type="button" title="Use my current location">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>
+                    </button>
+                </div>
             </div>
-            <div id="stopsContainer"></div>
-            <button class="add-stop-btn" id="addStopBtn" type="button">+ Add Stop</button>
             <div class="input-group" id="destGroup">
                 <label>Destination</label>
                 <input type="text" id="destInput" placeholder="Enter destination address..." />
             </div>
+            <div id="stopsContainer"></div>
+            <button class="add-stop-btn" id="addStopBtn" type="button">+ Add Another Destination</button>
             <div class="ev-select-group">
                 <label>Your EV</label>
                 <select id="evModelSelect">
@@ -729,12 +761,58 @@ function initApp() {
     document.getElementById('addStopBtn').addEventListener('click', addStop);
     planBtn.addEventListener('click', planRoutes);
     document.getElementById('shareCopy').addEventListener('click', handleCopyLink);
+    document.getElementById('gpsBtn').addEventListener('click', useMyLocation);
 
     // Initialize EV specs display
     updateEvSpecs();
+
+    // Auto-fetch GPS location on load
+    useMyLocation();
 }
 
 // initApp() is called by Google Maps API callback
+
+// ─── GPS Location ───
+function useMyLocation() {
+    if (!navigator.geolocation) {
+        alert('Geolocation is not supported by your browser');
+        return;
+    }
+    const btn = document.getElementById('gpsBtn');
+    btn.classList.add('loading');
+
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            btn.classList.remove('loading');
+            btn.classList.add('active');
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            setOrigin([lat, lng]);
+            // Reverse geocode to show address in the input
+            geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+                if (status === 'OK' && results[0]) {
+                    document.getElementById('originInput').value = results[0].formatted_address;
+                } else {
+                    document.getElementById('originInput').value = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+                }
+                updatePlanBtn();
+            });
+            map.setCenter({ lat, lng });
+            map.setZoom(13);
+        },
+        (error) => {
+            btn.classList.remove('loading');
+            console.warn('GPS error:', error.message);
+            // Don't alert on auto-fetch, only on manual click
+            if (error.code === 1) {
+                // Permission denied — user can still type address
+            } else {
+                alert('Could not get your location: ' + error.message);
+            }
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+    );
+}
 
 // ─── EV Model Database ───
 // batteryKwh: usable battery capacity
@@ -986,17 +1064,18 @@ function addStop() {
     const id = stopIdCounter++;
     const colorIdx = stops.length % stopColors.length;
     const color = stopColors[colorIdx];
-    const label = String.fromCharCode(66 + stops.length); // B, C, D, ...
+    const stopNum = stops.length + 1;
+    const label = `Destination ${stopNum + 1}`;
 
     const row = document.createElement('div');
     row.className = 'stop-row';
     row.dataset.stopId = id;
     row.innerHTML = `
         <div class="input-group" id="stopGroup_${id}">
-            <label>Stop ${label}</label>
-            <input type="text" id="stopInput_${id}" placeholder="Enter stop address..." />
+            <label>${label}</label>
+            <input type="text" id="stopInput_${id}" placeholder="Enter address..." />
         </div>
-        <button class="remove-stop-btn" title="Remove stop" data-stop-id="${id}">&times;</button>
+        <button class="remove-stop-btn" title="Remove" data-stop-id="${id}">&times;</button>
     `;
     stopsContainer.appendChild(row);
 
@@ -1007,7 +1086,7 @@ function addStop() {
     setupAutocomplete(inputEl, (coord) => {
         stopObj.coord = coord;
         if (stopObj.marker) stopObj.marker.setMap(null);
-        stopObj.marker = createCircleMarker(coord, color, `Stop ${label}`);
+        stopObj.marker = createCircleMarker(coord, color, label);
         fitMarkers();
         updatePlanBtn();
     });
@@ -1032,9 +1111,9 @@ function removeStop(id) {
 
 function renumberStops() {
     stops.forEach((s, i) => {
-        const label = String.fromCharCode(66 + i); // B, C, D, ...
+        const label = `Destination ${i + 2}`;
         const group = document.getElementById(`stopGroup_${s.id}`);
-        if (group) group.querySelector('label').textContent = `Stop ${label}`;
+        if (group) group.querySelector('label').textContent = label;
         s.color = stopColors[i % stopColors.length];
         if (s.marker && s.coord) {
             s.marker.setMap(null);
@@ -1059,9 +1138,13 @@ async function planRoutes() {
 
     try {
         const origin = new google.maps.LatLng(originCoord[0], originCoord[1]);
-        const destination = new google.maps.LatLng(destCoord[0], destCoord[1]);
-        const waypoints = stops.filter(s => s.coord).map(s => ({
-            location: new google.maps.LatLng(s.coord[0], s.coord[1]),
+        // Build ordered list: destination first, then additional stops
+        const allDests = [destCoord, ...stops.filter(s => s.coord).map(s => s.coord)];
+        const finalDest = allDests[allDests.length - 1];
+        const destination = new google.maps.LatLng(finalDest[0], finalDest[1]);
+        // All points except the last become waypoints
+        const waypoints = allDests.slice(0, -1).map(c => ({
+            location: new google.maps.LatLng(c[0], c[1]),
             stopover: true
         }));
 
@@ -1207,11 +1290,9 @@ function calcElevation(elevations) {
 
 // ─── Score routes ───
 // Lower score = better for EV.
-// Uses the actual vehicle-specific energy model (which accounts for grade
-// steepness, not just total elevation gain) to rank routes. A route with
-// the same total climb but steeper grades will score WORSE because the
-// motor loses more energy on steep hills.
-// Time penalty prevents picking very long detours just to avoid hills.
+// Primary goal: minimize battery usage (energy consumption).
+// Secondary: prefer gradual elevation gains over steep climbs.
+// Constraint: don't extend travel time excessively (>30% longer).
 function scoreRoutes(routes) {
     if (!routes.length) return;
     const ev = getSelectedEV();
@@ -1219,16 +1300,35 @@ function scoreRoutes(routes) {
 
     // Compute actual energy for each route using grade-aware model
     const energies = routes.map(r => estimateTripEnergy(r, ev));
-    const avgEnergy = energies.reduce((s, e) => s + e.totalEnergy, 0) / energies.length || 1;
 
     routes.forEach((r, i) => {
         const tripEnergy = energies[i].totalEnergy;
         const timeRatio = (r.durMin - fastestDur) / fastestDur;
-        // Penalize time heavily only when significantly longer (>20% more)
-        const timePenalty = timeRatio > 0.2
-            ? (timeRatio - 0.2) * avgEnergy * 3
+
+        // Grade steepness penalty — penalize routes with steep uphill segments
+        // even if total elevation gain is similar, steep bursts drain the battery more
+        let steepPenalty = 0;
+        if (r.elevations.length >= 2 && r.sampled.length >= 2) {
+            const segDistM = (r.distMi * 1609.34) / (r.sampled.length - 1);
+            for (let j = 1; j < r.elevations.length; j++) {
+                const rise = r.elevations[j] - r.elevations[j-1];
+                if (rise > 0) {
+                    const gradePct = (rise / segDistM) * 100;
+                    // Exponential penalty for steep grades (>5%)
+                    if (gradePct > 5) {
+                        steepPenalty += Math.pow(gradePct - 5, 1.5) * 0.01;
+                    }
+                }
+            }
+        }
+
+        // Time penalty — only penalize when >30% longer than fastest
+        const timePenalty = timeRatio > 0.3
+            ? (timeRatio - 0.3) * tripEnergy * 2
             : 0;
-        r.score = tripEnergy + timePenalty;
+
+        // Score = energy (primary) + steep grade penalty + time penalty
+        r.score = tripEnergy + steepPenalty + timePenalty;
     });
 }
 
@@ -1476,12 +1576,14 @@ function updateMapLinks(route) {
     }
 
     const origin = `${originCoord[0]},${originCoord[1]}`;
-    const dest = `${destCoord[0]},${destCoord[1]}`;
-
-    // Build waypoints: user-defined stops + sampled route waypoints
-    const userStops = stops.filter(s => s.coord).map(s => `${s.coord[0]},${s.coord[1]}`);
-    const routeWps = sampleRouteWaypoints(route, Math.max(2, 8 - userStops.length));
-    const allWaypoints = [...userStops, ...routeWps.map(w => `${w.lat},${w.lng}`)];
+    // Build ordered destinations: Destination → Additional stops
+    const allDests = [destCoord, ...stops.filter(s => s.coord).map(s => s.coord)];
+    const finalDest = allDests[allDests.length - 1];
+    const dest = `${finalDest[0]},${finalDest[1]}`;
+    // Intermediate waypoints (all except last become waypoints)
+    const userWaypoints = allDests.slice(0, -1).map(c => `${c[0]},${c[1]}`);
+    const routeWps = sampleRouteWaypoints(route, Math.max(2, 8 - userWaypoints.length));
+    const allWaypoints = [...userWaypoints, ...routeWps.map(w => `${w.lat},${w.lng}`)];
 
     // ── Google Maps URL ──
     let gWaypoints = '';
@@ -1492,13 +1594,11 @@ function updateMapLinks(route) {
     gmapsLink.style.display = 'flex';
 
     // ── Apple Maps URL ──
-    if (userStops.length) {
-        // With user stops, build the chained daddr format
-        const wpChain = [...userStops, dest].join('+to:');
+    if (userWaypoints.length) {
+        const wpChain = [...userWaypoints, dest].join('+to:');
         const appleUrl = `https://maps.apple.com/?saddr=${origin}&daddr=${wpChain}&dirflg=d&t=m`;
         amapsLink.href = appleUrl;
     } else {
-        // Simple origin→destination so Apple Maps shows the "Go" button
         amapsLink.href = `https://maps.apple.com/?saddr=${origin}&daddr=${dest}&dirflg=d&t=m`;
     }
     amapsLink.style.display = 'flex';
@@ -1509,7 +1609,7 @@ function updateMapLinks(route) {
     const oName = (document.getElementById('originInput').value || '').split(',')[0];
     const dName = (document.getElementById('destInput').value || '').split(',')[0];
     const sNames = stops.filter(s => s.inputEl && s.inputEl.value).map(s => s.inputEl.value.split(',')[0]);
-    const routeDesc = [oName, ...sNames, dName].join(' → ');
+    const routeDesc = [oName, dName, ...sNames].join(' → ');
     const subject = encodeURIComponent(`EV Route: ${routeDesc}`);
     const body = encodeURIComponent(
         `Here's an EV-optimized route: ${routeDesc}\n\n` +
@@ -1531,7 +1631,7 @@ async function handleCopyLink() {
     const oName = (document.getElementById('originInput').value || '').split(',')[0];
     const dName = (document.getElementById('destInput').value || '').split(',')[0];
     const sNames = stops.filter(s => s.inputEl && s.inputEl.value).map(s => s.inputEl.value.split(',')[0]);
-    const routeDesc = [oName, ...sNames, dName].join(' → ');
+    const routeDesc = [oName, dName, ...sNames].join(' → ');
     const route = routesData[selectedRouteIdx];
     const text =
         `EV Route: ${routeDesc}\n` +
