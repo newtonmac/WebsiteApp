@@ -2,7 +2,7 @@ import Foundation
 import MapKit
 import Observation
 
-struct EVCharger: Identifiable {
+struct EVCharger: Identifiable, Hashable {
     let id: String
     let name: String
     let network: ChargerNetwork
@@ -13,6 +13,14 @@ struct EVCharger: Identifiable {
     let hours: String?
     let pricing: String?
     let stallCount: Int?
+
+    static func == (lhs: EVCharger, rhs: EVCharger) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
 }
 
 enum ChargerNetwork: String, CaseIterable {

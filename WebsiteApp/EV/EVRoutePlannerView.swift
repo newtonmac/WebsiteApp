@@ -16,13 +16,14 @@ struct EVRoutePlannerView: View {
     @State private var isRoundTrip = false
     @State private var showChargers = true
     @State private var panelExpanded = true
+    @State private var selectedCharger: EVCharger?
     @GestureState private var dragOffset: CGFloat = 0
     @State private var mapCameraPosition: MapCameraPosition = .region(
         MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 32.72, longitude: -117.16),
                           span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5))
     )
 
-    private let expandedFraction: CGFloat = 0.35
+    private let expandedFraction: CGFloat = 0.42
     private let collapsedFraction: CGFloat = 0.10
 
     private var panelHeight: CGFloat {
@@ -43,7 +44,8 @@ struct EVRoutePlannerView: View {
                 selectedRoute: selectedRoute,
                 chargers: showChargers ? chargerService.chargers : [],
                 origin: originCoord,
-                destination: destinationCoord
+                destination: destinationCoord,
+                selectedCharger: $selectedCharger
             )
             .ignoresSafeArea(edges: .top)
 
@@ -141,6 +143,11 @@ struct EVRoutePlannerView: View {
             if let route = detailRoute {
                 EVRouteDetailView(route: route, vehicle: selectedVehicle, chargers: chargerService.chargers)
             }
+        }
+        .sheet(item: $selectedCharger) { charger in
+            ChargerDetailSheet(charger: charger)
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
         }
     }
 
