@@ -2428,7 +2428,7 @@ function searchChargersAlongRoute(route) {
 
     // Build route path as LatLng array for distance checking
     const routePath = sampled.map(pt => new google.maps.LatLng(pt[1], pt[0]));
-    const MAX_DISTANCE_M = 8047; // 5 miles in meters
+    const MAX_DISTANCE_M = 3219; // 2 miles in meters
 
     // Pick search points along the route
     const step = Math.max(1, Math.floor(sampled.length / 8));
@@ -2450,7 +2450,7 @@ function searchChargersAlongRoute(route) {
             placesService.textSearch({
                 query: network.query,
                 location: loc,
-                radius: 8047, // 5 miles
+                radius: 3219, // 2 miles
                 type: 'electric_vehicle_charging_station'
             }, (results, status) => {
                 if (status !== google.maps.places.PlacesServiceStatus.OK || !results) return;
