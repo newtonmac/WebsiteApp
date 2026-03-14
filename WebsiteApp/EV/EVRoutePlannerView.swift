@@ -184,19 +184,21 @@ struct EVRoutePlannerView: View {
 
     private var togglesSection: some View {
         VStack(spacing: 10) {
-            // Round trip toggle
-            EVToggleRow(
-                label: "Round Trip",
-                icon: "arrow.triangle.2.circlepath",
-                isOn: $isRoundTrip
-            )
+            HStack(spacing: 12) {
+                // Round trip toggle
+                EVToggleRow(
+                    label: "Round Trip",
+                    icon: "arrow.triangle.2.circlepath",
+                    isOn: $isRoundTrip
+                )
 
-            // Show chargers toggle
-            EVToggleRow(
-                label: "Show EV Chargers",
-                icon: "bolt.fill",
-                isOn: $showChargers
-            )
+                // Show chargers toggle
+                EVToggleRow(
+                    label: "EV Chargers",
+                    icon: "bolt.fill",
+                    isOn: $showChargers
+                )
+            }
             .onChange(of: showChargers) { _, isOn in
                 if isOn, let route = selectedRoute, chargerService.chargers.isEmpty {
                     Task {
