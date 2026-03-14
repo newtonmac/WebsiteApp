@@ -482,6 +482,75 @@
         .rc-stat .val.good { color: #34d399; }
         .rc-stat .val.warn { color: #fbbf24; }
 
+        /* route info button */
+        .rc-info-btn {
+            background: none;
+            border: 1px solid #4b5068;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #8b8fa3;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: auto;
+            transition: all 0.2s;
+            font-style: italic;
+            font-family: Georgia, serif;
+            line-height: 1;
+        }
+        .rc-info-btn:hover { border-color: #34d399; color: #34d399; }
+
+        /* route info popup */
+        .route-info-popup {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 100001;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .route-info-content {
+            background: #1a1d28;
+            border: 1px solid #2d3040;
+            border-radius: 16px;
+            max-width: 400px;
+            width: 100%;
+            padding: 22px;
+            position: relative;
+            color: #c0c4d0;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .route-info-content h4 {
+            font-size: 15px;
+            color: #e1e4e8;
+            margin-bottom: 12px;
+        }
+        .route-info-content .ri-close {
+            position: absolute;
+            top: 10px;
+            right: 14px;
+            background: none;
+            border: none;
+            color: #8b8fa3;
+            font-size: 22px;
+            cursor: pointer;
+        }
+        .route-info-content .ri-close:hover { color: #e1e4e8; }
+        .ri-pros, .ri-cons { margin: 8px 0; }
+        .ri-pros li { color: #34d399; margin-bottom: 4px; }
+        .ri-cons li { color: #fbbf24; margin-bottom: 4px; }
+        .ri-pros li span, .ri-cons li span { color: #c0c4d0; }
+        .ri-legend { margin-top: 12px; padding-top: 10px; border-top: 1px solid #2d3040; font-size: 12px; color: #8b8fa3; }
+        .ri-legend-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+        .ri-legend-swatch { width: 20px; height: 3px; border-radius: 2px; }
+
         /* score bar */
         .score-bar {
             margin-top: 8px;
@@ -1676,7 +1745,7 @@ function buildRouteCards(routes, tripEstimates, container, legPrefix, selectFn) 
         const barColor = scoreNorm > 70 ? '#34d399' : (scoreNorm > 40 ? '#fbbf24' : '#ef4444');
 
         card.innerHTML = `
-            <div class="rc-header">${badge} <span class="rc-name">${r.distMi.toFixed(1)} mi</span></div>
+            <div class="rc-header">${badge} <span class="rc-name">${r.distMi.toFixed(1)} mi</span><button class="rc-info-btn" title="Route info">i</button></div>
             <div class="rc-stats">
                 <div class="rc-stat"><div class="val ${timeClass}">${formatDuration(r.durMin)}</div><div class="lbl">Time</div></div>
                 <div class="rc-stat"><div class="val ${energyClass}">${trip.totalEnergy.toFixed(1)}</div><div class="lbl">kWh</div></div>
@@ -1685,9 +1754,103 @@ function buildRouteCards(routes, tripEstimates, container, legPrefix, selectFn) 
             <div class="score-bar"><div class="score-bar-fill" style="width:${scoreNorm}%; background:${barColor};"></div></div>
         `;
 
+        card.querySelector('.rc-info-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            showRouteInfoPopup(r, trip, i, routes, tripEstimates, fastestDur);
+        });
+
         card.addEventListener('click', () => selectFn(i));
         container.appendChild(card);
     });
+}
+
+function showRouteInfoPopup(route, trip, idx, allRoutes, allTrips, fastestDur) {
+    const bestTrip = allTrips[0];
+    const bestRoute = allRoutes[0];
+    const isBest = idx === 0;
+    const isFastest = route.durMin === fastestDur;
+
+    // Build pros
+    const pros = [];
+    if (isBest) pros.push('Uses the <strong>least battery</strong> — the most energy-efficient path');
+    if (isFastest && !isBest) pros.push('The <strong>fastest</strong> route by time');
+    if (isFastest && isBest) pros.push('Also the <strong>fastest</strong> route');
+    if (route.gain < bestRoute.gain * 0.9 || (isBest && route.gain < 200)) {
+        pros.push(`<strong>Low climbing</strong> — only +${Math.round(route.gain)}m (+${Math.round(route.gain * 3.281)}ft) elevation gain`);
+    }
+    if (trip.regenEnergy > 0.5) {
+        pros.push(`Recovers <strong>${trip.regenEnergy.toFixed(1)} kWh</strong> through regenerative braking on downhill sections`);
+    }
+    if (trip.remainingPct > 50) {
+        pros.push(`Arrives with <strong>${Math.round(trip.remainingPct)}% battery</strong> remaining — plenty of margin`);
+    }
+    if (!isBest && route.distMi < bestRoute.distMi) {
+        pros.push(`<strong>Shorter distance</strong> — ${route.distMi.toFixed(1)} mi vs ${bestRoute.distMi.toFixed(1)} mi`);
+    }
+
+    // Build cons
+    const cons = [];
+    if (!isBest) {
+        const extraKwh = trip.totalEnergy - bestTrip.totalEnergy;
+        const extraPct = trip.batteryPct - bestTrip.batteryPct;
+        if (extraKwh > 0.2) cons.push(`Uses <strong>${extraKwh.toFixed(1)} kWh more</strong> energy (+${extraPct.toFixed(1)}% battery) than the best route`);
+    }
+    if (!isFastest) {
+        const extraMin = route.durMin - fastestDur;
+        if (extraMin > 1) cons.push(`Takes <strong>${Math.round(extraMin)} min longer</strong> than the fastest route`);
+    }
+    if (route.gain > 300) {
+        cons.push(`Significant climbing — <strong>+${Math.round(route.gain)}m</strong> (+${Math.round(route.gain * 3.281)}ft) elevation gain drains extra battery`);
+    }
+    // Check for steep grades
+    if (route.elevations && route.elevations.length >= 2 && route.sampled && route.sampled.length >= 2) {
+        const segDist = (route.distMi * 1609.34) / (route.sampled.length - 1);
+        let peakGrade = 0;
+        for (let j = 1; j < route.elevations.length; j++) {
+            const rise = route.elevations[j] - route.elevations[j-1];
+            if (rise > 0) {
+                const g = (rise / segDist) * 100;
+                if (g > peakGrade) peakGrade = g;
+            }
+        }
+        if (peakGrade > 5) cons.push(`Has <strong>steep sections</strong> (up to ~${Math.round(peakGrade)}% grade) that will spike energy use`);
+    }
+    if (trip.remainingPct < 20) {
+        cons.push(`Arrives with only <strong>${Math.round(trip.remainingPct)}% battery</strong> — plan a charging stop`);
+    }
+
+    // Fallback if no pros/cons generated
+    if (!pros.length) pros.push('A viable alternative route');
+    if (!cons.length) cons.push('No significant drawbacks for this route');
+
+    const label = idx === 0 ? 'EV Best Route' : (isFastest ? 'Fastest Route' : 'Alternative Route ' + idx);
+    const lineColor = idx === 0 ? '#34d399' : (idx === 1 ? '#60a5fa' : '#6b7280');
+
+    const popup = document.createElement('div');
+    popup.className = 'route-info-popup';
+    popup.innerHTML = `
+        <div class="route-info-content">
+            <button class="ri-close">&times;</button>
+            <h4 style="color:${lineColor};">${label} — ${route.distMi.toFixed(1)} mi</h4>
+            <ul class="ri-pros" style="list-style:none; padding:0;">
+                ${pros.map(p => `<li>&#10003; <span>${p}</span></li>`).join('')}
+            </ul>
+            <ul class="ri-cons" style="list-style:none; padding:0;">
+                ${cons.map(c => `<li>&#9888; <span>${c}</span></li>`).join('')}
+            </ul>
+            <div class="ri-legend">
+                <strong>Map Colors</strong>
+                <div class="ri-legend-row"><div class="ri-legend-swatch" style="background:#22c55e;"></div> Green segments = downhill (battery recovers via regen braking)</div>
+                <div class="ri-legend-row"><div class="ri-legend-swatch" style="background:#a3e635;"></div> Yellow-green = flat (low energy use)</div>
+                <div class="ri-legend-row"><div class="ri-legend-swatch" style="background:#fbbf24;"></div> Yellow/orange = moderate uphill</div>
+                <div class="ri-legend-row"><div class="ri-legend-swatch" style="background:#ef4444;"></div> Red segments = steep uphill (high energy drain)</div>
+            </div>
+        </div>
+    `;
+
+    popup.addEventListener('click', (e) => { if (e.target === popup) popup.remove(); });
+    popup.querySelector('.ri-close').addEventListener('click', () => popup.remove());
+    document.body.appendChild(popup);
 }
 
 function displayRoutes(routes) {
