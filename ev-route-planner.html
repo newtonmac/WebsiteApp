@@ -2193,6 +2193,7 @@ window.addEventListener('resize', () => {
 <div class="footer-bar">
     <span>&copy; 2026 EV Route Planner</span>
     <button class="footer-link" data-modal="aboutModal">About</button>
+    <button class="footer-link" data-modal="newsModal">News</button>
     <button class="footer-link" data-modal="legalModal">Disclaimer & Privacy</button>
     <button class="footer-link" data-modal="feedbackModal">Rate & Suggest</button>
 </div>
@@ -2206,6 +2207,23 @@ window.addEventListener('resize', () => {
         <p>The idea is simple: two routes can be the same distance, but the one that climbs a mountain will drain your battery far more than the one that takes a gentler path. This app analyzes elevation profiles, calculates grade-aware energy consumption for your specific vehicle, and helps you pick the route that saves the most battery — so you can drive with confidence instead of worry.</p>
         <p>This is a free community project, built for EV drivers by an EV driver. If you find it useful or have ideas to make it better, I'd love to hear from you.</p>
         <p><strong>Technology:</strong> Built with Google Maps Platform APIs including Maps JavaScript API, Places API, Directions API, and Elevation API. Vehicle efficiency data is based on publicly available EPA ratings and manufacturer specifications. Energy calculations use a grade-aware model that accounts for motor efficiency, regenerative braking, and terrain profile.</p>
+    </div>
+</div>
+
+<!-- News Modal -->
+<div class="modal-overlay" id="newsModal">
+    <div class="modal">
+        <button class="modal-close" data-close>&times;</button>
+        <h3>News & Roadmap</h3>
+        <p><strong>March 2026</strong></p>
+        <p>We're excited to announce that we're working on bringing EV Route Planner to iOS and Android as a native app. The native versions will offer a smoother experience, background GPS tracking, offline route caching, and direct integration with your phone's navigation. Stay tuned for updates!</p>
+        <p><strong>What's New</strong></p>
+        <p>&bull; Round trip mode with independently optimized outbound and return routes<br>
+        &bull; GPS location detection for instant origin setup<br>
+        &bull; Google Maps, Apple Maps, and Waze navigation integration<br>
+        &bull; 25+ EV models including Tesla, Rivian, Lucid, VW, Ford, Hyundai, Kia, BMW, and Mercedes<br>
+        &bull; Grade-aware energy model that penalizes steep climbs and rewards regenerative braking<br>
+        &bull; Mobile-optimized layout for on-the-go route planning</p>
     </div>
 </div>
 
