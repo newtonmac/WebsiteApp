@@ -23,7 +23,7 @@ struct EVRoutePlannerView: View {
                           span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5))
     )
 
-    private let expandedFraction: CGFloat = 0.35
+    private let expandedFraction: CGFloat = 0.43
     private let collapsedFraction: CGFloat = 0.10
 
     private var panelHeight: CGFloat {
