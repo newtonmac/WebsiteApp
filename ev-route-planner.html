@@ -2802,10 +2802,13 @@ function searchChargersAlongRoute(route) {
 
     // Build route path as LatLng array for distance checking
     const routePath = sampled.map(pt => new google.maps.LatLng(pt[1], pt[0]));
-    const MAX_DISTANCE_M = 2414; // 1.5 miles in meters
+    const MAX_DISTANCE_M = 4828; // 3 miles in meters — proximity filter for showing chargers
 
-    // Pick search points along the route
-    const step = Math.max(1, Math.floor(sampled.length / 8));
+    // Pick search points every ~30 miles along the route for full coverage
+    const SEARCH_INTERVAL_MI = 30;
+    const totalMi = route.distMi || 100;
+    const numPoints = Math.max(3, Math.min(20, Math.ceil(totalMi / SEARCH_INTERVAL_MI)));
+    const step = Math.max(1, Math.floor((sampled.length - 1) / numPoints));
     const searchPoints = [];
     for (let i = 0; i < sampled.length; i += step) {
         searchPoints.push(sampled[i]);
@@ -2813,6 +2816,9 @@ function searchChargersAlongRoute(route) {
     if (searchPoints[searchPoints.length - 1] !== sampled[sampled.length - 1]) {
         searchPoints.push(sampled[sampled.length - 1]);
     }
+
+    // Search radius — large enough to cover gaps between search points (~25 miles)
+    const SEARCH_RADIUS_M = 40000;
 
     const seenPlaceIds = new Set();
     const showOnMap = document.getElementById('chargerCb').checked;
@@ -2824,7 +2830,7 @@ function searchChargersAlongRoute(route) {
             placesService.textSearch({
                 query: network.query,
                 location: loc,
-                radius: 2414, // 1.5 miles
+                radius: SEARCH_RADIUS_M,
                 type: 'electric_vehicle_charging_station'
             }, (results, status) => {
                 if (status !== google.maps.places.PlacesServiceStatus.OK || !results) return;
