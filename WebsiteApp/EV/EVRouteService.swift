@@ -207,115 +207,109 @@ class EVRouteService {
         return response.routes
     }
 
-    // MARK: - Elevation (Google Elevation API)
+    // MARK: - Elevation (Open Elevation API — no key required)
 
     private func fetchElevations(for points: [CLLocationCoordinate2D]) async -> [Double] {
-        let chunkSize = 250
+        // Open Elevation API accepts up to ~500 points per POST
+        let chunkSize = 200
         var allElevations: [Double] = []
 
         for chunkStart in stride(from: 0, to: points.count, by: chunkSize) {
             let chunkEnd = min(chunkStart + chunkSize, points.count)
             let chunk = Array(points[chunkStart..<chunkEnd])
-            let elevations = await fetchElevationChunk(chunk)
+            let elevations = await fetchElevationOpenElevation(chunk)
             allElevations.append(contentsOf: elevations)
+        }
+
+        // If all zeros, try Open-Meteo as fallback
+        if allElevations.allSatisfy({ $0 == 0 }) {
+            print("Open Elevation returned all zeros, trying Open-Meteo fallback...")
+            return await fetchElevationsOpenMeteo(points)
         }
 
         return allElevations
     }
 
-    private func fetchElevationChunk(_ points: [CLLocationCoordinate2D]) async -> [Double] {
-        // Use POST to avoid URL length limits and pipe encoding issues
-        let locations = points.map { ["lat": $0.latitude, "lng": $0.longitude] }
-        let body: [String: Any] = ["locations": locations]
-
-        let urlString = "https://maps.googleapis.com/maps/api/elevation/json?key=\(googleAPIKey)"
-        guard let url = URL(string: urlString) else {
-            print("Elevation API: invalid URL")
+    /// Primary: Open Elevation API (POST, no API key)
+    private func fetchElevationOpenElevation(_ points: [CLLocationCoordinate2D]) async -> [Double] {
+        guard let url = URL(string: "https://api.open-elevation.com/api/v1/lookup") else {
             return Array(repeating: 0, count: points.count)
         }
 
-        // Try POST first
+        let locations = points.map { ["latitude": $0.latitude, "longitude": $0.longitude] }
+        let body: [String: Any] = ["locations": locations]
+
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 30
 
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
         } catch {
-            print("Elevation API: JSON serialization error: \(error)")
+            print("Open Elevation: JSON error: \(error)")
             return Array(repeating: 0, count: points.count)
         }
 
-        print("Elevation API POST request: \(points.count) points")
+        print("Open Elevation: requesting \(points.count) points")
 
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
 
             if let httpResponse = response as? HTTPURLResponse {
-                print("Elevation API HTTP \(httpResponse.statusCode)")
+                print("Open Elevation HTTP \(httpResponse.statusCode)")
             }
 
-            if let raw = String(data: data, encoding: .utf8) {
-                print("Elevation API raw (first 500): \(String(raw.prefix(500)))")
-            }
-
-            let decoded = try JSONDecoder().decode(GoogleElevationResponse.self, from: data)
-            if decoded.status == "OK" {
-                let elevs = decoded.results.map { $0.elevation }
-                let minE = elevs.min() ?? 0
-                let maxE = elevs.max() ?? 0
-                print("Elevation API OK: \(elevs.count) pts, \(String(format: "%.1f", minE))m - \(String(format: "%.1f", maxE))m")
-                return elevs
-            } else {
-                print("Elevation API error status: \(decoded.status)")
-                // Fallback to GET with percent-encoded pipe
-                return await fetchElevationChunkGET(points)
-            }
+            let decoded = try JSONDecoder().decode(OpenElevationResponse.self, from: data)
+            let elevs = decoded.results.map { $0.elevation }
+            let minE = elevs.min() ?? 0
+            let maxE = elevs.max() ?? 0
+            print("Open Elevation: \(elevs.count) pts, range \(String(format: "%.1f", minE))m - \(String(format: "%.1f", maxE))m")
+            return elevs
         } catch {
-            print("Elevation POST error: \(error)")
-            return await fetchElevationChunkGET(points)
+            print("Open Elevation error: \(error)")
+            return Array(repeating: 0, count: points.count)
         }
     }
 
-    private func fetchElevationChunkGET(_ points: [CLLocationCoordinate2D]) async -> [Double] {
-        let locations = points.map { "\($0.latitude),\($0.longitude)" }.joined(separator: "|")
+    /// Fallback: Open-Meteo Elevation API (GET, no API key)
+    private func fetchElevationsOpenMeteo(_ points: [CLLocationCoordinate2D]) async -> [Double] {
+        // Open-Meteo accepts comma-separated lat/lng lists via GET
+        let chunkSize = 100
+        var allElevations: [Double] = []
 
-        var components = URLComponents(string: "https://maps.googleapis.com/maps/api/elevation/json")!
-        components.queryItems = [
-            URLQueryItem(name: "locations", value: locations),
-            URLQueryItem(name: "key", value: googleAPIKey)
-        ]
+        for chunkStart in stride(from: 0, to: points.count, by: chunkSize) {
+            let chunkEnd = min(chunkStart + chunkSize, points.count)
+            let chunk = Array(points[chunkStart..<chunkEnd])
 
-        // URLComponents encodes | as %7C — Google accepts %7C in GET requests
-        guard let url = components.url else {
-            print("Elevation GET: invalid URL")
-            return Array(repeating: 0, count: points.count)
+            let lats = chunk.map { String($0.latitude) }.joined(separator: ",")
+            let lngs = chunk.map { String($0.longitude) }.joined(separator: ",")
+
+            var components = URLComponents(string: "https://api.open-meteo.com/v1/elevation")!
+            components.queryItems = [
+                URLQueryItem(name: "latitude", value: lats),
+                URLQueryItem(name: "longitude", value: lngs)
+            ]
+
+            guard let url = components.url else {
+                allElevations.append(contentsOf: Array(repeating: 0, count: chunk.count))
+                continue
+            }
+
+            print("Open-Meteo: requesting \(chunk.count) points")
+
+            do {
+                let (data, _) = try await URLSession.shared.data(from: url)
+                let decoded = try JSONDecoder().decode(OpenMeteoElevationResponse.self, from: data)
+                print("Open-Meteo: got \(decoded.elevation.count) elevations")
+                allElevations.append(contentsOf: decoded.elevation)
+            } catch {
+                print("Open-Meteo error: \(error)")
+                allElevations.append(contentsOf: Array(repeating: 0, count: chunk.count))
+            }
         }
 
-        print("Elevation GET fallback: \(points.count) points, URL length: \(url.absoluteString.count)")
-
-        do {
-            let (data, response) = try await URLSession.shared.data(from: url)
-            if let httpResponse = response as? HTTPURLResponse {
-                print("Elevation GET HTTP \(httpResponse.statusCode)")
-            }
-            if let raw = String(data: data, encoding: .utf8) {
-                print("Elevation GET raw (first 500): \(String(raw.prefix(500)))")
-            }
-
-            let decoded = try JSONDecoder().decode(GoogleElevationResponse.self, from: data)
-            if decoded.status == "OK" {
-                let elevs = decoded.results.map { $0.elevation }
-                print("Elevation GET OK: \(elevs.count) pts")
-                return elevs
-            } else {
-                print("Elevation GET error status: \(decoded.status)")
-            }
-        } catch {
-            print("Elevation GET error: \(error)")
-        }
-
-        return Array(repeating: 0, count: points.count)
+        return allElevations
     }
 
     // MARK: - Route Sampling
@@ -447,20 +441,20 @@ class EVRouteService {
     }
 }
 
-// MARK: - Google Elevation API Models
+// MARK: - Open Elevation API Models
 
-struct GoogleElevationResponse: Codable {
-    let results: [GoogleElevationResult]
-    let status: String
+struct OpenElevationResponse: Codable {
+    let results: [OpenElevationResult]
 }
 
-struct GoogleElevationResult: Codable {
+struct OpenElevationResult: Codable {
     let elevation: Double
-    let location: GoogleLatLng
-    let resolution: Double?
+    let latitude: Double
+    let longitude: Double
 }
 
-struct GoogleLatLng: Codable {
-    let lat: Double
-    let lng: Double
+// MARK: - Open-Meteo Elevation API Models
+
+struct OpenMeteoElevationResponse: Codable {
+    let elevation: [Double]
 }
