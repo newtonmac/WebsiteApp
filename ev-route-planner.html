@@ -2577,11 +2577,31 @@ async function fetchNRELStationData(lat, lng, stationName) {
             }
         }
 
+        // Extract per-connector kW from ev_charging_units
+        const connectorKw = {};
+        const connectorPorts = {};
+        if (best.ev_charging_units && best.ev_charging_units.length) {
+            best.ev_charging_units.forEach(unit => {
+                if (!unit.connectors) return;
+                Object.entries(unit.connectors).forEach(([type, info]) => {
+                    if (info.port_count > 0 && info.power_kw) {
+                        // Keep the highest kW seen for each connector type
+                        if (!connectorKw[type] || info.power_kw > connectorKw[type]) {
+                            connectorKw[type] = info.power_kw;
+                        }
+                        connectorPorts[type] = (connectorPorts[type] || 0) + info.port_count;
+                    }
+                });
+            });
+        }
+
         const result = {
             dcFast: best.ev_dc_fast_num || 0,
             level2: best.ev_level2_evse_num || 0,
             level1: best.ev_level1_evse_num || 0,
             connectors: best.ev_connector_types || [],
+            connectorKw,
+            connectorPorts,
             network: best.ev_network || '',
             pricing: best.ev_pricing || '',
             accessTime: best.access_days_time || '',
@@ -2625,12 +2645,17 @@ function buildChargerHtml(d, nrel, loading) {
         if (nrel.level1) parts.push(`<b>${nrel.level1}</b> Level 1`);
         if (parts.length) html += `<div class="ci-detail">${parts.join(' &middot; ')}</div>`;
 
-        // Connector types
+        // Connector types with kW
         if (nrel.connectors.length) {
             html += '<div class="ci-connectors">';
             nrel.connectors.forEach(c => {
                 const label = CONNECTOR_LABELS[c] || c;
-                html += `<span class="ci-conn-tag">${label}</span>`;
+                const kw = nrel.connectorKw[c];
+                const ports = nrel.connectorPorts[c];
+                let tag = label;
+                if (kw) tag += ` ${kw} kW`;
+                if (ports) tag += ` (${ports})`;
+                html += `<span class="ci-conn-tag">${tag}</span>`;
             });
             html += '</div>';
         }
