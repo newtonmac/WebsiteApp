@@ -91,7 +91,6 @@ struct EVMapContent: View {
             MapScaleView()
             MapUserLocationButton()
         }
-        .interactionModes(.all)
     }
 }
 

@@ -36,8 +36,6 @@ struct EVRoutePlannerView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            EVTheme.bgPrimary.ignoresSafeArea()
-
             // Map
             EVMapContent(
                 cameraPosition: $mapCameraPosition,
