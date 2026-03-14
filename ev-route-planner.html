@@ -664,6 +664,40 @@
             border-radius: 2px;
         }
 
+        /* legend toggle button (mobile) */
+        .legend-toggle-btn {
+            display: none;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1001;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: #ffffffee;
+            border: 1px solid #d1d5db;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: #374151;
+        }
+        .legend-toggle-btn:hover { background: #fff; }
+        @media (max-width: 768px) {
+            .legend-toggle-btn { display: flex; }
+        }
+        .map-legend.mobile-open {
+            display: block !important;
+            bottom: auto;
+            top: 52px;
+            right: 10px;
+            max-height: 220px;
+            overflow-y: auto;
+            font-size: 11px;
+            padding: 10px 12px;
+        }
+
         /* loading overlay */
         .loading-overlay {
             position: absolute;
@@ -1021,6 +1055,7 @@
     <!-- Map -->
     <div class="map-wrap">
         <div id="map"></div>
+        <button class="legend-toggle-btn" id="legendToggleBtn" title="Map legend">&#9776;</button>
         <div class="map-legend" id="mapLegend" style="display:none;">
             <div class="leg-row"><div class="leg-swatch" style="background:#34d399;"></div> EV Best Route</div>
             <div class="leg-row"><div class="leg-swatch" style="background:#60a5fa;"></div> Fastest Route</div>
@@ -1032,10 +1067,11 @@
             <div class="leg-row"><div class="leg-swatch" style="background:#ef4444;"></div> Steep uphill</div>
             <div id="chargerLegend" style="display:none;">
                 <div style="border-top:1px solid #d1d5db; margin:6px 0 4px; padding-top:6px; font-size:11px; color:#6b7280;">EV Chargers</div>
-                <div class="leg-row"><div class="leg-swatch" style="background:#e31937; border-radius:50%;"></div> Tesla</div>
-                <div class="leg-row"><div class="leg-swatch" style="background:#0072ce; border-radius:50%;"></div> Electrify America</div>
-                <div class="leg-row"><div class="leg-swatch" style="background:#5cbf14; border-radius:50%;"></div> ChargePoint</div>
-                <div class="leg-row"><div class="leg-swatch" style="background:#6b7280; border-radius:50%;"></div> Other</div>
+                <div class="leg-row"><div class="leg-swatch" style="background:#e31937; border-radius:50%; height:10px; width:10px;"></div> Tesla</div>
+                <div class="leg-row"><div class="leg-swatch" style="background:#0072ce; border-radius:50%; height:10px; width:10px;"></div> Electrify America</div>
+                <div class="leg-row"><div class="leg-swatch" style="background:#00aaef; border-radius:50%; height:10px; width:10px;"></div> EVgo</div>
+                <div class="leg-row"><div class="leg-swatch" style="background:#ff6f00; border-radius:50%; height:10px; width:10px;"></div> Blink</div>
+                <div class="leg-row"><div class="leg-swatch" style="background:#5cbf14; border-radius:50%; height:10px; width:10px;"></div> EV Connect</div>
             </div>
         </div>
         <div class="loading-overlay hidden" id="loadingOverlay">
@@ -1078,6 +1114,12 @@ function initApp() {
     document.getElementById('roundTripCb').addEventListener('change', () => {
         planBtn.textContent = document.getElementById('roundTripCb').checked
             ? 'Plan Round Trip' : 'Plan EV-Efficient Route';
+    });
+
+    // Legend toggle button (mobile)
+    document.getElementById('legendToggleBtn').addEventListener('click', () => {
+        const legend = document.getElementById('mapLegend');
+        legend.classList.toggle('mobile-open');
     });
 
     // Charger toggle
@@ -2344,13 +2386,29 @@ let chargerInfoWindow = null;
 let chargerSearchDone = false;
 
 const CHARGER_QUERIES = [
-    { query: 'Tesla Supercharger',         color: '#e31937', label: 'Tesla' },
-    { query: 'Electrify America',          color: '#0072ce', label: 'Electrify America' },
-    { query: 'ChargePoint',                color: '#5cbf14', label: 'ChargePoint' },
-    { query: 'EVgo',                       color: '#00aaef', label: 'EVgo' },
-    { query: 'Blink Charging',             color: '#ff6f00', label: 'Blink' },
-    { query: 'Shell Recharge',             color: '#fbce07', label: 'Shell Recharge' },
+    { query: 'Tesla Supercharger',    color: '#e31937', label: 'Tesla',              letter: 'T',  textColor: '#fff' },
+    { query: 'Electrify America',     color: '#0072ce', label: 'Electrify America',  letter: 'EA', textColor: '#fff' },
+    { query: 'EVgo',                  color: '#00aaef', label: 'EVgo',               letter: 'EG', textColor: '#fff' },
+    { query: 'Blink Charging',        color: '#ff6f00', label: 'Blink',              letter: 'BL', textColor: '#fff' },
+    { query: 'EV Connect',            color: '#5cbf14', label: 'EV Connect',         letter: 'EC', textColor: '#fff' },
 ];
+
+function makeChargerIcon(network) {
+    const size = 28;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size + 8}" viewBox="0 0 ${size} ${size + 8}">
+        <filter id="s"><feDropShadow dx="0" dy="1" stdDeviation="1" flood-opacity="0.3"/></filter>
+        <g filter="url(#s)">
+            <circle cx="${size/2}" cy="${size/2}" r="${size/2 - 1}" fill="${network.color}" stroke="#fff" stroke-width="2"/>
+            <text x="${size/2}" y="${size/2 + 1}" text-anchor="middle" dominant-baseline="central" fill="${network.textColor}" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="${network.letter.length > 1 ? 9 : 13}">${network.letter}</text>
+            <polygon points="${size/2 - 4},${size - 2} ${size/2},${size + 6} ${size/2 + 4},${size - 2}" fill="${network.color}"/>
+        </g>
+    </svg>`;
+    return {
+        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+        scaledSize: new google.maps.Size(size, size + 8),
+        anchor: new google.maps.Point(size / 2, size + 6)
+    };
+}
 
 function clearChargers() {
     chargerMarkers.forEach(m => m.setMap(null));
@@ -2368,21 +2426,9 @@ function searchChargersAlongRoute(route) {
     const placesService = new google.maps.places.PlacesService(map);
     const sampled = route.sampled;
 
-    // Build a bounding box along the route with some padding
-    let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
-    sampled.forEach(pt => {
-        const lat = pt[1], lng = pt[0]; // sampled is [lng, lat]
-        if (lat < minLat) minLat = lat;
-        if (lat > maxLat) maxLat = lat;
-        if (lng < minLng) minLng = lng;
-        if (lng > maxLng) maxLng = lng;
-    });
-    // Pad by ~0.1 degrees (~7 miles)
-    const pad = 0.1;
-    const routeBounds = new google.maps.LatLngBounds(
-        new google.maps.LatLng(minLat - pad, minLng - pad),
-        new google.maps.LatLng(maxLat + pad, maxLng + pad)
-    );
+    // Build route path as LatLng array for distance checking
+    const routePath = sampled.map(pt => new google.maps.LatLng(pt[1], pt[0]));
+    const MAX_DISTANCE_M = 8047; // 5 miles in meters
 
     // Pick search points along the route
     const step = Math.max(1, Math.floor(sampled.length / 8));
@@ -2404,28 +2450,29 @@ function searchChargersAlongRoute(route) {
             placesService.textSearch({
                 query: network.query,
                 location: loc,
-                radius: 12000, // 12km (~7.5 miles)
+                radius: 8047, // 5 miles
                 type: 'electric_vehicle_charging_station'
             }, (results, status) => {
                 if (status !== google.maps.places.PlacesServiceStatus.OK || !results) return;
 
                 results.forEach(place => {
                     if (seenPlaceIds.has(place.place_id)) return;
-                    // Only show chargers within the route corridor
-                    if (!routeBounds.contains(place.geometry.location)) return;
+                    // Only show chargers within 5 miles of the route
+                    const placePos = place.geometry.location;
+                    let withinRange = false;
+                    for (let k = 0; k < routePath.length; k++) {
+                        if (google.maps.geometry.spherical.computeDistanceBetween(placePos, routePath[k]) <= MAX_DISTANCE_M) {
+                            withinRange = true;
+                            break;
+                        }
+                    }
+                    if (!withinRange) return;
                     seenPlaceIds.add(place.place_id);
 
                     const marker = new google.maps.Marker({
                         position: place.geometry.location,
                         map: showOnMap ? map : null,
-                        icon: {
-                            path: google.maps.SymbolPath.CIRCLE,
-                            fillColor: network.color,
-                            fillOpacity: 0.9,
-                            strokeColor: '#fff',
-                            strokeWeight: 2,
-                            scale: 8
-                        },
+                        icon: makeChargerIcon(network),
                         title: place.name,
                         zIndex: 10
                     });
