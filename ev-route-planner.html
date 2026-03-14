@@ -654,14 +654,42 @@
 
         /* ── Mobile ── */
         @media (max-width: 768px) {
+            body { overflow: auto; height: auto; min-height: 100vh; }
             .main { flex-direction: column; }
             .sidebar {
                 width: 100%;
-                max-height: 45vh;
+                max-height: none;
+                overflow-y: visible;
                 border-right: none;
-                border-bottom: 1px solid #2d3040;
+                border-bottom: none;
+                flex: 1;
             }
-            .map-wrap { min-height: 300px; }
+            .map-wrap {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                overflow: hidden;
+                opacity: 0;
+                pointer-events: none;
+            }
+            .topbar { padding: 10px 16px; }
+            .topbar h1 { font-size: 17px; }
+            .topbar .subtitle { display: none; }
+            .sidebar-section { padding: 14px 16px; }
+            .input-group input { font-size: 16px; padding: 12px; }
+            .plan-btn { font-size: 16px; padding: 14px; }
+            .nav-btn { font-size: 16px; padding: 16px; border-radius: 12px; }
+            .route-card { padding: 12px 14px; }
+            .route-card .rc-stats { gap: 4px; }
+            .ev-select-group select { font-size: 15px; padding: 10px; }
+            .elev-chart-wrap { padding: 14px 16px; flex: none; min-height: auto; }
+            .elev-canvas-container { min-height: 150px; height: 150px; }
+            .share-btn { padding: 12px 8px; font-size: 12px; }
+            .round-trip-toggle { margin-bottom: 10px; }
+            .gps-btn { width: 44px; height: 44px; }
+            .empty-state { padding: 30px 16px; }
+            .empty-state .icon { font-size: 36px; }
+            .empty-state p { font-size: 13px; }
         }
     </style>
 </head>
