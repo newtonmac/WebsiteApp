@@ -3006,24 +3006,19 @@ async function searchChargersAlongRoute(route) {
     const fullCoords = route.coords || sampled;
 
     // Build route path from FULL coords for accurate proximity checking
-    const proxSample = samplePoints(fullCoords, Math.min(fullCoords.length, 1000));
+    const proxSample = samplePoints(fullCoords, Math.min(fullCoords.length, 2000));
     const routePath = proxSample.map(pt => new google.maps.LatLng(pt[1], pt[0]));
-    const MAX_DISTANCE_M = 8047; // 5 miles in meters
+    const MAX_DISTANCE_M = 3219; // 2 miles in meters
 
-    // Pick search points every ~10 miles along the route
-    const SEARCH_INTERVAL_MI = 10;
+    // Pick search points every ~5 miles along the route for thorough coverage
+    const SEARCH_INTERVAL_MI = 5;
     const totalMi = route.distMi || 100;
-    const numPoints = Math.max(4, Math.ceil(totalMi / SEARCH_INTERVAL_MI));
-    const step = Math.max(1, Math.floor((sampled.length - 1) / numPoints));
-    const searchPoints = [];
-    for (let i = 0; i < sampled.length; i += step) {
-        searchPoints.push(sampled[i]);
-    }
-    if (searchPoints[searchPoints.length - 1] !== sampled[sampled.length - 1]) {
-        searchPoints.push(sampled[sampled.length - 1]);
-    }
+    const numPoints = Math.max(5, Math.ceil(totalMi / SEARCH_INTERVAL_MI));
+    // Use samplePoints to evenly distribute search points along the route
+    const searchCoords = samplePoints(sampled, numPoints);
+    const searchPoints = searchCoords;
 
-    const SEARCH_RADIUS_MI = 25; // miles — generous overlap between search circles
+    const SEARCH_RADIUS_MI = 10; // miles — tighter radius with more search points
     const seenStationIds = new Set();
     const showOnMap = document.getElementById('chargerCb').checked;
 
@@ -3284,7 +3279,7 @@ window.addEventListener('resize', () => {
 
 <!-- Footer bar -->
 <div class="footer-bar">
-    <span>&copy; 2026 EV Route Planner &nbsp;·&nbsp; v1.14 &nbsp;·&nbsp; Updated Mar 14, 2026</span>
+    <span>&copy; 2026 EV Route Planner &nbsp;·&nbsp; v1.15 &nbsp;·&nbsp; Updated Mar 14, 2026</span>
     <button class="footer-link" data-modal="aboutModal">About</button>
     <button class="footer-link" data-modal="newsModal">News</button>
     <button class="footer-link" data-modal="legalModal">Disclaimer & Privacy</button>
