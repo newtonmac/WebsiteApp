@@ -542,31 +542,32 @@
 
         /* Google Places Autocomplete dropdown styling */
         .pac-container {
-            background: #252836;
-            border: 1px solid #2d3040;
+            background: #252836 !important;
+            border: 1px solid #2d3040 !important;
             border-radius: 0 0 10px 10px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4) !important;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            z-index: 10000;
+            z-index: 100000 !important;
         }
         .pac-item {
-            padding: 8px 12px;
-            font-size: 13px;
-            color: #e1e4e8;
-            border-bottom: 1px solid #2d3040;
+            padding: 8px 12px !important;
+            font-size: 13px !important;
+            color: #e1e4e8 !important;
+            border-top: 1px solid #2d3040 !important;
             cursor: pointer;
-            line-height: 1.4;
+            line-height: 1.4 !important;
+            background: #252836 !important;
         }
         .pac-item:hover, .pac-item-selected {
-            background: #34d39922;
+            background: #34d39922 !important;
         }
         .pac-item-query {
-            color: #e1e4e8;
-            font-size: 13px;
+            color: #e1e4e8 !important;
+            font-size: 13px !important;
         }
-        .pac-icon { display: none; }
-        .pac-item span { color: #8b8fa3; }
-        .pac-matched { color: #34d399; font-weight: 600; }
+        .pac-icon { display: none !important; }
+        .pac-item span { color: #8b8fa3 !important; }
+        .pac-matched { color: #34d399 !important; font-weight: 600 !important; }
 
         /* ── Mobile ── */
         @media (max-width: 768px) {
@@ -596,14 +597,14 @@
             <h2>Route</h2>
             <div class="input-group" id="originGroup">
                 <label>Origin</label>
-                <input type="text" id="originInput" placeholder="Enter starting address..." autocomplete="off" />
+                <input type="text" id="originInput" placeholder="Enter starting address..." autocomplete="new-password" />
                 <div class="autocomplete-list" id="originAC"></div>
             </div>
             <div id="stopsContainer"></div>
             <button class="add-stop-btn" id="addStopBtn" type="button">+ Add Stop</button>
             <div class="input-group" id="destGroup">
                 <label>Destination</label>
-                <input type="text" id="destInput" placeholder="Enter destination address..." autocomplete="off" />
+                <input type="text" id="destInput" placeholder="Enter destination address..." autocomplete="new-password" />
                 <div class="autocomplete-list" id="destAC"></div>
             </div>
             <div class="ev-select-group">
@@ -893,13 +894,15 @@ const stopsContainer = document.getElementById('stopsContainer');
 // ─── Google Services ───
 const directionsService = new google.maps.DirectionsService();
 const elevationService = new google.maps.ElevationService();
+const geocoder = new google.maps.Geocoder();
 
 // ─── Geocoding (Google Places Autocomplete) ───
-const acTimers = new WeakMap();
 function setupAutocomplete(input, _unused, setCoord) {
     const autocomplete = new google.maps.places.Autocomplete(input, {
         fields: ['geometry', 'formatted_address']
     });
+    autocomplete.bindTo('bounds', map);
+
     autocomplete.addListener('place_changed', () => {
         const place = autocomplete.getPlace();
         if (place.geometry && place.geometry.location) {
@@ -907,6 +910,37 @@ function setupAutocomplete(input, _unused, setCoord) {
             const lng = place.geometry.location.lng();
             setCoord([lat, lng]);
             updatePlanBtn();
+        } else if (place.name) {
+            // User typed and hit Enter without selecting — use Geocoder fallback
+            geocoder.geocode({ address: place.name }, (results, status) => {
+                if (status === 'OK' && results[0]) {
+                    const loc = results[0].geometry.location;
+                    input.value = results[0].formatted_address;
+                    setCoord([loc.lat(), loc.lng()]);
+                    updatePlanBtn();
+                }
+            });
+        }
+    });
+
+    // Also handle Enter key when no autocomplete selection was made
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            // Give Places Autocomplete a moment to fire, then fallback to geocoder
+            setTimeout(() => {
+                const q = input.value.trim();
+                if (q.length >= 3) {
+                    geocoder.geocode({ address: q }, (results, status) => {
+                        if (status === 'OK' && results[0]) {
+                            const loc = results[0].geometry.location;
+                            input.value = results[0].formatted_address;
+                            setCoord([loc.lat(), loc.lng()]);
+                            updatePlanBtn();
+                        }
+                    });
+                }
+            }, 300);
         }
     });
 }
@@ -972,7 +1006,7 @@ function addStop() {
     row.innerHTML = `
         <div class="input-group" id="stopGroup_${id}">
             <label>Stop ${label}</label>
-            <input type="text" id="stopInput_${id}" placeholder="Enter stop address..." autocomplete="off" />
+            <input type="text" id="stopInput_${id}" placeholder="Enter stop address..." autocomplete="new-password" />
             <div class="autocomplete-list" id="stopAC_${id}"></div>
         </div>
         <button class="remove-stop-btn" title="Remove stop" data-stop-id="${id}">&times;</button>
