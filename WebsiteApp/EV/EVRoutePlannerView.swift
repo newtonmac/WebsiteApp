@@ -17,7 +17,6 @@ struct EVRoutePlannerView: View {
     @State private var showChargers = true
     @State private var panelExpanded = true
     @State private var selectedCharger: EVCharger?
-    @State private var keyboardOffset: CGFloat = 0
     @GestureState private var dragOffset: CGFloat = 0
     @State private var mapCameraPosition: MapCameraPosition = .region(
         MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 32.72, longitude: -117.16),
@@ -134,10 +133,8 @@ struct EVRoutePlannerView: View {
                     .stroke(EVTheme.border, lineWidth: 1)
             }
             .animation(.spring(response: 0.3, dampingFraction: 0.8), value: panelExpanded)
-            .offset(y: -keyboardOffset)
         }
         .ignoresSafeArea(edges: .bottom)
-        .ignoresSafeArea(.keyboard)
         .preferredColorScheme(.dark)
         .sheet(isPresented: $showingVehiclePicker) {
             EVVehiclePickerView(selectedVehicle: $selectedVehicle)
@@ -151,19 +148,6 @@ struct EVRoutePlannerView: View {
             ChargerDetailSheet(charger: charger)
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { notification in
-            if let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                    keyboardOffset = frame.height
-                    panelExpanded = true
-                }
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidHideNotification)) { _ in
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                keyboardOffset = 0
-            }
         }
     }
 
@@ -265,7 +249,6 @@ struct EVRoutePlannerView: View {
 
     private var planButton: some View {
         Button {
-            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             Task { await planRoute() }
         } label: {
             HStack {
