@@ -734,13 +734,17 @@
 
         /* EV Charger toggle */
         .charger-toggle { margin-bottom: 0; }
-        .charger-info { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 6px 2px; max-width: 220px; }
+        .charger-info { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 8px 4px; max-width: 260px; }
         .charger-info .ci-name { font-weight: 600; font-size: 13px; color: #1a1d28; margin-bottom: 4px; }
         .charger-info .ci-network { font-size: 11px; color: #555; margin-bottom: 3px; }
         .charger-info .ci-rating { font-size: 11px; color: #777; }
         .charger-info .ci-status { font-size: 11px; margin-top: 2px; }
         .charger-info .ci-status.open { color: #16a34a; }
         .charger-info .ci-status.closed { color: #dc2626; }
+        .charger-info .ci-divider { border-top: 1px solid #e5e7eb; margin: 6px 0; }
+        .charger-info .ci-detail { font-size: 11px; color: #555; margin-bottom: 3px; display: flex; align-items: flex-start; gap: 4px; }
+        .charger-info .ci-detail-icon { flex-shrink: 0; width: 14px; text-align: center; }
+        .charger-info .ci-loading { font-size: 10px; color: #999; font-style: italic; margin-top: 4px; }
 
         /* Places Autocomplete dropdown styling */
         .pac-container {
@@ -2474,6 +2478,47 @@ function formatDuration(min) {
 let chargerMarkers = [];
 let chargerInfoWindow = null;
 let chargerSearchDone = false;
+const nrelCache = new Map(); // cache NREL lookups by place_id
+
+async function fetchNRELData(lat, lng, networkLabel) {
+    const cacheKey = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+    if (nrelCache.has(cacheKey)) return nrelCache.get(cacheKey);
+    try {
+        const url = `https://developer.nrel.gov/api/alt-fuel-stations/v1/nearest.json?api_key=DEMO_KEY&fuel_type=ELEC&latitude=${lat}&longitude=${lng}&radius=0.5&limit=1`;
+        const resp = await fetch(url);
+        if (!resp.ok) return null;
+        const data = await resp.json();
+        if (!data.fuel_stations || data.fuel_stations.length === 0) return null;
+        const s = data.fuel_stations[0];
+        const result = {
+            evConnectorTypes: s.ev_connector_types || [],
+            evLevel1Count: s.ev_level1_evse_num || 0,
+            evLevel2Count: s.ev_level2_evse_num || 0,
+            evDCFastCount: s.ev_dc_fast_num || 0,
+            evNetworkWeb: s.ev_network_web || '',
+            evPricing: s.ev_pricing || '',
+            accessCode: s.access_code || '',
+            maxKW: s.ev_dc_fast_num > 0 ? (s.ev_connector_types || []).includes('TESLA') ? '250' : '150-350' : null
+        };
+        nrelCache.set(cacheKey, result);
+        return result;
+    } catch (e) {
+        return null;
+    }
+}
+
+function formatConnectors(types) {
+    const map = { 'NACS': 'NACS (Tesla)', 'J1772': 'J1772', 'J1772COMBO': 'CCS', 'CHADEMO': 'CHAdeMO', 'TESLA': 'Tesla' };
+    return (types || []).map(t => map[t] || t).join(', ');
+}
+
+function formatPortCount(nrel) {
+    const parts = [];
+    if (nrel.evDCFastCount > 0) parts.push(`${nrel.evDCFastCount} DC Fast`);
+    if (nrel.evLevel2Count > 0) parts.push(`${nrel.evLevel2Count} Level 2`);
+    if (nrel.evLevel1Count > 0) parts.push(`${nrel.evLevel1Count} Level 1`);
+    return parts.join(', ');
+}
 
 const CHARGER_QUERIES = [
     { query: 'Tesla Supercharger',    color: '#e31937', label: 'Tesla',              letter: 'T',  textColor: '#fff' },
@@ -2506,6 +2551,58 @@ function clearChargers() {
     chargerMarkers = [];
     chargerSearchDone = false;
     if (chargerInfoWindow) chargerInfoWindow.close();
+}
+
+function buildChargerHTML(d, details, nrel) {
+    let html = '<div class="charger-info">';
+    html += `<div class="ci-name">${d.name}</div>`;
+    html += `<div class="ci-network" style="color:${d.networkColor}; font-weight:600;">${d.networkLabel}</div>`;
+    if (d.address) html += `<div class="ci-detail"><span class="ci-detail-icon">&#128205;</span> ${d.address}</div>`;
+    if (d.rating) html += `<div class="ci-rating">${'&#9733;'.repeat(Math.round(d.rating))} ${d.rating} (${d.totalRatings || 0} reviews)</div>`;
+    if (d.openNow !== null) {
+        html += `<div class="ci-status ${d.openNow ? 'open' : 'closed'}">${d.openNow ? 'Open Now' : 'Closed'}</div>`;
+    }
+
+    // NREL data: connectors, ports, speed
+    if (nrel) {
+        html += '<div class="ci-divider"></div>';
+        if (nrel.evConnectorTypes.length > 0) {
+            html += `<div class="ci-detail"><span class="ci-detail-icon">&#9889;</span> ${formatConnectors(nrel.evConnectorTypes)}</div>`;
+        }
+        const ports = formatPortCount(nrel);
+        if (ports) {
+            html += `<div class="ci-detail"><span class="ci-detail-icon">&#128268;</span> ${ports}</div>`;
+        }
+        if (nrel.evDCFastCount > 0) {
+            const speedLabel = nrel.evConnectorTypes.includes('TESLA') ? 'Up to 250 kW' : 'Up to 150–350 kW';
+            html += `<div class="ci-detail"><span class="ci-detail-icon">&#9889;</span> ${speedLabel}</div>`;
+        } else if (nrel.evLevel2Count > 0) {
+            html += `<div class="ci-detail"><span class="ci-detail-icon">&#9889;</span> Level 2 (up to 19 kW)</div>`;
+        }
+        if (nrel.accessCode === 'public') {
+            html += `<div class="ci-detail"><span class="ci-detail-icon">&#127919;</span> Public access</div>`;
+        }
+    } else if (nrel === null && details !== undefined) {
+        // nrel fetch returned nothing — skip
+    } else {
+        html += '<div class="ci-loading">Loading charger details...</div>';
+    }
+
+    // Google details: hours, directions link
+    if (details) {
+        if (details.opening_hours && details.opening_hours.weekday_text) {
+            const today = new Date().getDay();
+            const dayIdx = today === 0 ? 6 : today - 1;
+            const todayHours = details.opening_hours.weekday_text[dayIdx];
+            if (todayHours) html += `<div class="ci-detail"><span class="ci-detail-icon">&#128336;</span> ${todayHours}</div>`;
+        }
+        if (details.url) {
+            html += `<div class="ci-detail"><a href="${details.url}" target="_blank" rel="noopener" style="color:#2563eb; text-decoration:none; font-size:11px;">Open in Google Maps &#8599;</a></div>`;
+        }
+    }
+
+    html += '</div>';
+    return html;
 }
 
 function searchChargersAlongRoute(route) {
@@ -2575,25 +2672,36 @@ function searchChargersAlongRoute(route) {
                         rating: place.rating,
                         totalRatings: place.user_ratings_total,
                         openNow: place.opening_hours ? place.opening_hours.open_now : null,
-                        address: place.formatted_address || ''
+                        address: place.formatted_address || '',
+                        placeId: place.place_id
                     };
 
-                    marker.addListener('click', () => {
+                    marker.addListener('click', async () => {
                         const d = marker.chargerData;
                         if (!chargerInfoWindow) {
                             chargerInfoWindow = new google.maps.InfoWindow();
                         }
-                        let html = '<div class="charger-info">';
-                        html += `<div class="ci-name">${d.name}</div>`;
-                        html += `<div class="ci-network" style="color:${d.networkColor}; font-weight:600;">${d.networkLabel}</div>`;
-                        if (d.address) html += `<div class="ci-network">${d.address}</div>`;
-                        if (d.rating) html += `<div class="ci-rating">${'&#9733;'.repeat(Math.round(d.rating))} ${d.rating} (${d.totalRatings || 0} reviews)</div>`;
-                        if (d.openNow !== null) {
-                            html += `<div class="ci-status ${d.openNow ? 'open' : 'closed'}">${d.openNow ? 'Open Now' : 'Closed'}</div>`;
-                        }
-                        html += '</div>';
+                        // Show basic info immediately
+                        let html = buildChargerHTML(d, null, null);
                         chargerInfoWindow.setContent(html);
                         chargerInfoWindow.open(map, marker);
+
+                        // Fetch Place Details + NREL in parallel
+                        const lat = marker.getPosition().lat();
+                        const lng = marker.getPosition().lng();
+                        const [details, nrel] = await Promise.all([
+                            new Promise(resolve => {
+                                const svc = new google.maps.places.PlacesService(map);
+                                svc.getDetails({ placeId: d.placeId, fields: ['opening_hours', 'website', 'url'] }, (result, status) => {
+                                    resolve(status === google.maps.places.PlacesServiceStatus.OK ? result : null);
+                                });
+                            }),
+                            fetchNRELData(lat, lng, d.networkLabel)
+                        ]);
+
+                        // Re-render with full data
+                        html = buildChargerHTML(d, details, nrel);
+                        chargerInfoWindow.setContent(html);
                     });
 
                     chargerMarkers.push(marker);
@@ -2708,7 +2816,7 @@ window.addEventListener('resize', () => {
 
 <!-- Footer bar -->
 <div class="footer-bar">
-    <span>&copy; 2026 EV Route Planner &nbsp;·&nbsp; v1.02 &nbsp;·&nbsp; Updated Mar 14, 2026</span>
+    <span>&copy; 2026 EV Route Planner &nbsp;·&nbsp; v1.03 &nbsp;·&nbsp; Updated Mar 14, 2026</span>
     <button class="footer-link" data-modal="aboutModal">About</button>
     <button class="footer-link" data-modal="newsModal">News</button>
     <button class="footer-link" data-modal="legalModal">Disclaimer & Privacy</button>
