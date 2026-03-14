@@ -1,6 +1,28 @@
 import SwiftUI
 import MapKit
 
+enum EVMapStyle: String, CaseIterable {
+    case standard = "Standard"
+    case satellite = "Satellite"
+    case hybrid = "Hybrid"
+
+    var icon: String {
+        switch self {
+        case .standard: return "map"
+        case .satellite: return "globe.americas"
+        case .hybrid: return "square.stack.3d.up"
+        }
+    }
+
+    var next: EVMapStyle {
+        switch self {
+        case .standard: return .satellite
+        case .satellite: return .hybrid
+        case .hybrid: return .standard
+        }
+    }
+}
+
 struct EVMapContent: View {
     @Binding var cameraPosition: MapCameraPosition
     let routes: [RouteResult]
@@ -9,6 +31,10 @@ struct EVMapContent: View {
     let origin: CLLocationCoordinate2D?
     let destination: CLLocationCoordinate2D?
     @Binding var selectedCharger: EVCharger?
+    @State private var mapStyle: EVMapStyle = .standard
+    @State private var showLookAround = false
+    @State private var lookAroundScene: MKLookAroundScene?
+    @State private var isLoadingLookAround = false
 
     var body: some View {
         Map(position: $cameraPosition) {
@@ -85,12 +111,102 @@ struct EVMapContent: View {
                 }
             }
         }
-        .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
+        .mapStyle(currentMapStyle)
         .mapControls {
             MapCompass()
             MapScaleView()
+            MapPitchToggle()
             MapUserLocationButton()
         }
+        .overlay(alignment: .bottomLeading) {
+            HStack {
+                // Look Around button (bottom-left)
+                Button {
+                    Task { await loadLookAround() }
+                } label: {
+                    ZStack {
+                        if isLoadingLookAround {
+                            ProgressView()
+                                .tint(.primary)
+                        } else {
+                            Image(systemName: "binoculars.fill")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundStyle(.primary)
+                        }
+                    }
+                    .frame(width: 44, height: 44)
+                    .background(.ultraThinMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                }
+
+                Spacer()
+
+                // Map style toggle (bottom-right, below the MapKit controls)
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        mapStyle = mapStyle.next
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: mapStyle.icon)
+                            .font(.system(size: 14, weight: .medium))
+                        Text(mapStyle.rawValue)
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 12)
+                    .frame(height: 36)
+                    .background(.ultraThinMaterial)
+                    .clipShape(Capsule())
+                    .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.bottom, 60)
+        }
+        .sheet(isPresented: $showLookAround) {
+            if let scene = lookAroundScene {
+                LookAroundPreview(scene: .constant(scene))
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
+        }
+    }
+
+    private var currentMapStyle: MapStyle {
+        switch mapStyle {
+        case .standard:
+            return .standard(elevation: .realistic, pointsOfInterest: .excludingAll)
+        case .satellite:
+            return .imagery(elevation: .realistic)
+        case .hybrid:
+            return .hybrid(elevation: .realistic, pointsOfInterest: .excludingAll)
+        }
+    }
+
+    private func loadLookAround() async {
+        // Get the center coordinate from the current camera position
+        guard let center = currentCenterCoordinate else { return }
+        isLoadingLookAround = true
+        defer { isLoadingLookAround = false }
+
+        let request = MKLookAroundSceneRequest(coordinate: center)
+        do {
+            lookAroundScene = try await request.scene
+            if lookAroundScene != nil {
+                showLookAround = true
+            }
+        } catch {
+            // Look Around not available at this location
+        }
+    }
+
+    private var currentCenterCoordinate: CLLocationCoordinate2D? {
+        // Use destination, origin, or fallback
+        if let destination { return destination }
+        if let origin { return origin }
+        return CLLocationCoordinate2D(latitude: 32.72, longitude: -117.16)
     }
 }
 
