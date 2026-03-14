@@ -626,6 +626,16 @@
         .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
         .empty-state p { font-size: 14px; line-height: 1.5; }
 
+        /* EV Charger toggle */
+        .charger-toggle { margin-bottom: 0; }
+        .charger-info { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 6px 2px; max-width: 220px; }
+        .charger-info .ci-name { font-weight: 600; font-size: 13px; color: #1a1d28; margin-bottom: 4px; }
+        .charger-info .ci-network { font-size: 11px; color: #555; margin-bottom: 3px; }
+        .charger-info .ci-rating { font-size: 11px; color: #777; }
+        .charger-info .ci-status { font-size: 11px; margin-top: 2px; }
+        .charger-info .ci-status.open { color: #16a34a; }
+        .charger-info .ci-status.closed { color: #dc2626; }
+
         /* Places Autocomplete dropdown styling */
         .pac-container {
             background: #252836 !important;
@@ -824,6 +834,13 @@
                     Round Trip
                 </label>
             </div>
+            <div class="round-trip-toggle charger-toggle">
+                <label class="toggle-label" for="chargerCb">
+                    <input type="checkbox" id="chargerCb" />
+                    <span class="toggle-switch"></span>
+                    Show EV Chargers
+                </label>
+            </div>
             <div id="stopsContainer"></div>
             <button class="add-stop-btn" id="addStopBtn" type="button">+ Add Another Destination</button>
             <div class="ev-select-group">
@@ -939,6 +956,13 @@
             <div class="leg-row"><div class="leg-swatch" style="background:#a3e635;"></div> Flat</div>
             <div class="leg-row"><div class="leg-swatch" style="background:#fbbf24;"></div> Slight uphill</div>
             <div class="leg-row"><div class="leg-swatch" style="background:#ef4444;"></div> Steep uphill</div>
+            <div id="chargerLegend" style="display:none;">
+                <div style="border-top:1px solid #d1d5db; margin:6px 0 4px; padding-top:6px; font-size:11px; color:#6b7280;">EV Chargers</div>
+                <div class="leg-row"><div class="leg-swatch" style="background:#e31937; border-radius:50%;"></div> Tesla</div>
+                <div class="leg-row"><div class="leg-swatch" style="background:#0072ce; border-radius:50%;"></div> Electrify America</div>
+                <div class="leg-row"><div class="leg-swatch" style="background:#5cbf14; border-radius:50%;"></div> ChargePoint</div>
+                <div class="leg-row"><div class="leg-swatch" style="background:#6b7280; border-radius:50%;"></div> Other</div>
+            </div>
         </div>
         <div class="loading-overlay hidden" id="loadingOverlay">
             <div class="spinner"></div>
@@ -980,6 +1004,14 @@ function initApp() {
     document.getElementById('roundTripCb').addEventListener('change', () => {
         planBtn.textContent = document.getElementById('roundTripCb').checked
             ? 'Plan Round Trip' : 'Plan EV-Efficient Route';
+    });
+
+    // Charger toggle
+    document.getElementById('chargerCb').addEventListener('change', function() {
+        if (this.checked && routesData.length && !chargerSearchDone) {
+            searchChargersAlongRoute(routesData[selectedRouteIdx]);
+        }
+        toggleChargers(this.checked);
     });
 
     // Waze: try deep link, hide button if app not installed
@@ -1800,6 +1832,11 @@ function selectRoute(idx) {
 
     // Build map app links with waypoints to follow this route
     updateMapLinks(routesData[idx]);
+
+    // Refresh chargers if toggle is on
+    if (document.getElementById('chargerCb').checked) {
+        searchChargersAlongRoute(routesData[idx]);
+    }
 }
 
 // ─── Elevation-colored route overlay ───
@@ -2133,6 +2170,129 @@ function formatDuration(min) {
     return h + 'h ' + (m < 10 ? '0' : '') + m + 'm';
 }
 
+// ─── EV Charger Locations ───
+let chargerMarkers = [];
+let chargerInfoWindow = null;
+let chargerSearchDone = false;
+
+const CHARGER_NETWORKS = {
+    'tesla':             { color: '#e31937', label: 'T' },
+    'supercharger':      { color: '#e31937', label: 'T' },
+    'electrify america': { color: '#0072ce', label: 'EA' },
+    'chargepoint':       { color: '#5cbf14', label: 'CP' },
+    'evgo':              { color: '#00aaef', label: 'EG' },
+    'blink':             { color: '#ff6f00', label: 'BL' },
+    'shell recharge':    { color: '#fbce07', label: 'SR' },
+    'flo':               { color: '#00b4d8', label: 'FL' },
+    'volta':             { color: '#7c3aed', label: 'V' },
+};
+
+function getNetworkInfo(name) {
+    const lower = (name || '').toLowerCase();
+    for (const [key, val] of Object.entries(CHARGER_NETWORKS)) {
+        if (lower.includes(key)) return val;
+    }
+    return { color: '#6b7280', label: 'EV' };
+}
+
+function clearChargers() {
+    chargerMarkers.forEach(m => m.setMap(null));
+    chargerMarkers = [];
+    chargerSearchDone = false;
+    if (chargerInfoWindow) chargerInfoWindow.close();
+}
+
+function searchChargersAlongRoute(route) {
+    if (!route || !route.sampled || route.sampled.length < 2) return;
+
+    clearChargers();
+    chargerSearchDone = true;
+
+    const placesService = new google.maps.places.PlacesService(map);
+    const sampled = route.sampled;
+
+    // Pick points along the route to search (every ~30 miles or ~10 points)
+    const step = Math.max(1, Math.floor(sampled.length / 10));
+    const searchPoints = [];
+    for (let i = 0; i < sampled.length; i += step) {
+        searchPoints.push(sampled[i]);
+    }
+    // Always include last point
+    if (searchPoints[searchPoints.length - 1] !== sampled[sampled.length - 1]) {
+        searchPoints.push(sampled[sampled.length - 1]);
+    }
+
+    const seenPlaceIds = new Set();
+
+    searchPoints.forEach(pt => {
+        const loc = new google.maps.LatLng(pt[1], pt[0]); // sampled is [lng, lat]
+        placesService.nearbySearch({
+            location: loc,
+            radius: 8000, // 8km (~5 miles) radius
+            type: 'electric_vehicle_charging_station'
+        }, (results, status) => {
+            if (status !== google.maps.places.PlacesServiceStatus.OK || !results) return;
+
+            results.forEach(place => {
+                if (seenPlaceIds.has(place.place_id)) return;
+                seenPlaceIds.add(place.place_id);
+
+                const net = getNetworkInfo(place.name);
+
+                const marker = new google.maps.Marker({
+                    position: place.geometry.location,
+                    map: document.getElementById('chargerCb').checked ? map : null,
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        fillColor: net.color,
+                        fillOpacity: 0.9,
+                        strokeColor: '#fff',
+                        strokeWeight: 2,
+                        scale: 8
+                    },
+                    title: place.name,
+                    zIndex: 10
+                });
+
+                marker.chargerData = {
+                    name: place.name,
+                    network: net,
+                    rating: place.rating,
+                    totalRatings: place.user_ratings_total,
+                    openNow: place.opening_hours ? place.opening_hours.isOpen() : null,
+                    vicinity: place.vicinity
+                };
+
+                marker.addListener('click', () => {
+                    const d = marker.chargerData;
+                    if (!chargerInfoWindow) {
+                        chargerInfoWindow = new google.maps.InfoWindow();
+                    }
+                    let html = '<div class="charger-info">';
+                    html += `<div class="ci-name">${d.name}</div>`;
+                    if (d.vicinity) html += `<div class="ci-network">${d.vicinity}</div>`;
+                    if (d.rating) html += `<div class="ci-rating">${'&#9733;'.repeat(Math.round(d.rating))} ${d.rating} (${d.totalRatings || 0} reviews)</div>`;
+                    if (d.openNow !== null) {
+                        html += `<div class="ci-status ${d.openNow ? 'open' : 'closed'}">${d.openNow ? 'Open Now' : 'Closed'}</div>`;
+                    }
+                    html += '</div>';
+                    chargerInfoWindow.setContent(html);
+                    chargerInfoWindow.open(map, marker);
+                });
+
+                chargerMarkers.push(marker);
+            });
+        });
+    });
+}
+
+function toggleChargers(show) {
+    chargerMarkers.forEach(m => m.setMap(show ? map : null));
+    if (!show && chargerInfoWindow) chargerInfoWindow.close();
+    const legend = document.getElementById('chargerLegend');
+    if (legend) legend.style.display = show ? 'block' : 'none';
+}
+
 function clearRoutes() {
     clearRouteLayers();
     elevColorLines.forEach(l => l.setMap(null));
@@ -2148,6 +2308,7 @@ function clearRoutes() {
     routesData = [];
     returnRoutesData = [];
     cachedReturnEstimates = [];
+    clearChargers();
     hideMobileMap();
 }
 function clearRouteLayers() {
