@@ -440,7 +440,7 @@
         }
         .route-card:hover { border-color: #4b5068; }
         .route-card.selected { border-color: #34d399; box-shadow: 0 0 0 1px #34d399; }
-        .route-card.best:not(.selected) { border-color: #34d39955; }
+        .route-card.best:not(.selected) { border-color: #2d3040; box-shadow: none; }
         .route-card .rc-header {
             display: flex;
             align-items: center;
@@ -1705,10 +1705,10 @@ function scoreRoutes(routes) {
                     if (gradePct > peakGrade) peakGrade = gradePct;
                 }
             }
-            // Small nudge based on peak grade — only matters when routes
-            // are otherwise similar in energy. Scaled to ~2-5% of typical energy.
-            if (peakGrade > 3) {
-                steepNudge = (peakGrade - 3) * 0.1;
+            // Tiny tiebreaker — only matters when routes have nearly identical energy.
+            // Capped at 0.15 kWh so it never overrides a real energy difference.
+            if (peakGrade > 5) {
+                steepNudge = Math.min((peakGrade - 5) * 0.02, 0.15);
             }
         }
 
