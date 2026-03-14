@@ -34,9 +34,13 @@ struct EVMapContent: View {
     @Binding var mapStyle: EVMapStyle
     let panelHeight: CGFloat
 
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+
     @State private var showLookAround = false
     @State private var lookAroundScene: MKLookAroundScene?
     @State private var isLoadingLookAround = false
+
+    private var isLandscape: Bool { verticalSizeClass == .compact }
 
     var body: some View {
         Map(position: $cameraPosition) {
@@ -118,81 +122,28 @@ struct EVMapContent: View {
             MapCompass()
             MapScaleView()
         }
-        .overlay(alignment: .leading) {
-            // Left-side controls stack — out of the way of the bottom panel
-            VStack(spacing: 10) {
-                // Look Around button
-                Button {
-                    Task { await loadLookAround() }
-                } label: {
-                    ZStack {
-                        if isLoadingLookAround {
-                            ProgressView()
-                                .tint(.primary)
-                        } else {
-                            Image(systemName: "binoculars.fill")
-                                .font(.system(size: 18, weight: .medium))
-                                .foregroundStyle(.primary)
-                        }
-                    }
-                    .frame(width: 44, height: 44)
-                    .background(.ultraThinMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+        .overlay(alignment: isLandscape ? .leading : .bottomTrailing) {
+            if isLandscape {
+                // Landscape: left-side vertical stack, out of panel's way
+                VStack(spacing: 10) {
+                    lookAroundButton
+                    mapControlButtons
                 }
-
-                // 3D, Map Style, Location
-                VStack(spacing: 0) {
-                    // 3D / Pitch toggle
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            cameraPosition = .camera(
-                                MapCamera(
-                                    centerCoordinate: currentCenterCoordinate ?? CLLocationCoordinate2D(latitude: 32.72, longitude: -117.16),
-                                    distance: 5000,
-                                    heading: 0,
-                                    pitch: 60
-                                )
-                            )
-                        }
-                    } label: {
-                        Text("3D")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(.primary)
-                            .frame(width: 44, height: 44)
-                    }
-
-                    Divider().frame(width: 34)
-
-                    // Map style toggle
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            mapStyle = mapStyle.next
-                        }
-                    } label: {
-                        Image(systemName: mapStyle.icon)
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(.primary)
-                            .frame(width: 44, height: 44)
-                    }
-
-                    Divider().frame(width: 34)
-
-                    // Location button
-                    Button {
-                        cameraPosition = .userLocation(fallback: .automatic)
-                    } label: {
-                        Image(systemName: "location.fill")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(.blue)
-                            .frame(width: 44, height: 44)
-                    }
-                }
-                .background(.ultraThinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                .padding(.leading, 12)
+            } else {
+                // Portrait: original bottom-right position
+                mapControlButtons
+                    .padding(.trailing, 12)
+                    .padding(.bottom, panelHeight + 16)
             }
-            .padding(.leading, 12)
+        }
+        .overlay(alignment: .bottomLeading) {
+            if !isLandscape {
+                // Portrait: look-around button bottom-left
+                lookAroundButton
+                    .padding(.leading, 12)
+                    .padding(.bottom, panelHeight + 16)
+            }
         }
         .sheet(isPresented: $showLookAround) {
             if let scene = lookAroundScene {
@@ -232,10 +183,81 @@ struct EVMapContent: View {
     }
 
     private var currentCenterCoordinate: CLLocationCoordinate2D? {
-        // Use destination, origin, or fallback
         if let destination { return destination }
         if let origin { return origin }
         return CLLocationCoordinate2D(latitude: 32.72, longitude: -117.16)
+    }
+
+    // MARK: - Map Control Buttons
+
+    private var lookAroundButton: some View {
+        Button {
+            Task { await loadLookAround() }
+        } label: {
+            ZStack {
+                if isLoadingLookAround {
+                    ProgressView()
+                        .tint(.primary)
+                } else {
+                    Image(systemName: "binoculars.fill")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(.primary)
+                }
+            }
+            .frame(width: 44, height: 44)
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+        }
+    }
+
+    private var mapControlButtons: some View {
+        VStack(spacing: 0) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    cameraPosition = .camera(
+                        MapCamera(
+                            centerCoordinate: currentCenterCoordinate ?? CLLocationCoordinate2D(latitude: 32.72, longitude: -117.16),
+                            distance: 5000,
+                            heading: 0,
+                            pitch: 60
+                        )
+                    )
+                }
+            } label: {
+                Text("3D")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 44, height: 44)
+            }
+
+            Divider().frame(width: 34)
+
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    mapStyle = mapStyle.next
+                }
+            } label: {
+                Image(systemName: mapStyle.icon)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(.primary)
+                    .frame(width: 44, height: 44)
+            }
+
+            Divider().frame(width: 34)
+
+            Button {
+                cameraPosition = .userLocation(fallback: .automatic)
+            } label: {
+                Image(systemName: "location.fill")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(.blue)
+                    .frame(width: 44, height: 44)
+            }
+        }
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
     }
 }
 
