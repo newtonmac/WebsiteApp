@@ -22,6 +22,7 @@ enum ChargerNetwork: String, CaseIterable {
     case chargePoint = "ChargePoint"
     case blink = "Blink"
     case evConnect = "EV Connect"
+    case shell = "Shell Recharge"
 
     var abbreviation: String {
         switch self {
@@ -31,6 +32,7 @@ enum ChargerNetwork: String, CaseIterable {
         case .chargePoint: return "CP"
         case .blink: return "BL"
         case .evConnect: return "EC"
+        case .shell: return "SH"
         }
     }
 
@@ -42,6 +44,7 @@ enum ChargerNetwork: String, CaseIterable {
         case .chargePoint: return "#48b84e"
         case .blink: return "#ff6f00"
         case .evConnect: return "#5cbf14"
+        case .shell: return "#fbce07"
         }
     }
 }
@@ -122,12 +125,23 @@ class EVChargerService {
         guard let url = components.url else { return [] }
 
         do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            let response = try JSONDecoder().decode(NRELResponse.self, from: data)
-            cache[cacheKey] = response.fuel_stations
-            return response.fuel_stations.map { mapStationToCharger($0) }
+            let (data, response) = try await URLSession.shared.data(from: url)
+            if let httpResponse = response as? HTTPURLResponse {
+                print("NREL HTTP \(httpResponse.statusCode) for \(String(format: "%.3f", point.latitude)),\(String(format: "%.3f", point.longitude))")
+            }
+            let decoder = JSONDecoder()
+            let nrelResponse = try decoder.decode(NRELResponse.self, from: data)
+            print("NREL: \(nrelResponse.fuel_stations.count) stations found")
+            cache[cacheKey] = nrelResponse.fuel_stations
+            return nrelResponse.fuel_stations.map { mapStationToCharger($0) }
         } catch {
             print("NREL fetch error: \(error)")
+            // Try to print raw response for debugging
+            if let url = components.url,
+               let (data, _) = try? await URLSession.shared.data(from: url),
+               let raw = String(data: data, encoding: .utf8) {
+                print("NREL raw response (first 500): \(String(raw.prefix(500)))")
+            }
             return []
         }
     }
@@ -158,6 +172,7 @@ class EVChargerService {
         if lower.contains("chargepoint") { return .chargePoint }
         if lower.contains("blink") { return .blink }
         if lower.contains("ev connect") { return .evConnect }
+        if lower.contains("shell") || lower.contains("greenlots") { return .shell }
         return .chargePoint
     }
 
@@ -241,11 +256,20 @@ class EVChargerService {
 
 // MARK: - NREL API Models
 
-struct NRELResponse: Codable {
+struct NRELResponse: Decodable {
     let fuel_stations: [NRELStation]
+
+    enum CodingKeys: String, CodingKey {
+        case fuel_stations
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        fuel_stations = (try? container.decode([NRELStation].self, forKey: .fuel_stations)) ?? []
+    }
 }
 
-struct NRELStation: Codable {
+struct NRELStation: Decodable {
     let id: Int
     let station_name: String
     let latitude: Double
@@ -258,4 +282,27 @@ struct NRELStation: Codable {
     let ev_dc_fast_num: Int?
     let access_days_time: String?
     let ev_pricing: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, latitude, longitude, city, state
+        case station_name, street_address, ev_network
+        case ev_connector_types, ev_dc_fast_num
+        case access_days_time, ev_pricing
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(Int.self, forKey: .id)
+        station_name = (try? c.decode(String.self, forKey: .station_name)) ?? "Unknown"
+        latitude = try c.decode(Double.self, forKey: .latitude)
+        longitude = try c.decode(Double.self, forKey: .longitude)
+        street_address = try? c.decode(String.self, forKey: .street_address)
+        city = try? c.decode(String.self, forKey: .city)
+        state = try? c.decode(String.self, forKey: .state)
+        ev_network = try? c.decode(String.self, forKey: .ev_network)
+        ev_connector_types = try? c.decode([String].self, forKey: .ev_connector_types)
+        ev_dc_fast_num = try? c.decode(Int.self, forKey: .ev_dc_fast_num)
+        access_days_time = try? c.decode(String.self, forKey: .access_days_time)
+        ev_pricing = try? c.decode(String.self, forKey: .ev_pricing)
+    }
 }

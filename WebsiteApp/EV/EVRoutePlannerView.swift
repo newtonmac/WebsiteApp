@@ -75,13 +75,13 @@ struct EVRoutePlannerView: View {
                     .padding(.bottom, 8)
                 }
                 .contentShape(Rectangle())
-                .gesture(
-                    DragGesture()
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 10)
                         .updating($dragOffset) { value, state, _ in
                             state = value.translation.height
                         }
                         .onEnded { value in
-                            let threshold: CGFloat = 50
+                            let threshold: CGFloat = 30
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                                 if value.translation.height > threshold {
                                     panelExpanded = false
@@ -91,11 +91,13 @@ struct EVRoutePlannerView: View {
                             }
                         }
                 )
-                .onTapGesture {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                        panelExpanded.toggle()
+                .simultaneousGesture(
+                    TapGesture().onEnded {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            panelExpanded.toggle()
+                        }
                     }
-                }
+                )
 
                 if panelExpanded || dragOffset < -30 {
                     ScrollView {

@@ -100,18 +100,11 @@ struct ChargerMarkerView: View {
                 .shadow(color: networkColor.opacity(0.4), radius: 3)
             Text(charger.network.abbreviation)
                 .font(.system(size: 9, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(charger.network == .shell ? .black : .white)
         }
     }
 
     private var networkColor: Color {
-        switch charger.network {
-        case .tesla: return Color(hex: "#e31937")
-        case .electrifyAmerica: return Color(hex: "#0072ce")
-        case .evgo: return Color(hex: "#00aaef")
-        case .chargePoint: return Color(hex: "#48b84e")
-        case .blink: return Color.orange
-        case .evConnect: return Color(hex: "#5cbf14")
-        }
+        Color(hex: charger.network.color)
     }
 }
