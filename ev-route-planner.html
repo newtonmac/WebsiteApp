@@ -2430,7 +2430,7 @@ function searchChargersAlongRoute(route) {
 
     // Build route path as LatLng array for distance checking
     const routePath = sampled.map(pt => new google.maps.LatLng(pt[1], pt[0]));
-    const MAX_DISTANCE_M = 3219; // 2 miles in meters
+    const MAX_DISTANCE_M = 2414; // 1.5 miles in meters
 
     // Pick search points along the route
     const step = Math.max(1, Math.floor(sampled.length / 8));
@@ -2452,14 +2452,14 @@ function searchChargersAlongRoute(route) {
             placesService.textSearch({
                 query: network.query,
                 location: loc,
-                radius: 3219, // 2 miles
+                radius: 2414, // 1.5 miles
                 type: 'electric_vehicle_charging_station'
             }, (results, status) => {
                 if (status !== google.maps.places.PlacesServiceStatus.OK || !results) return;
 
                 results.forEach(place => {
                     if (seenPlaceIds.has(place.place_id)) return;
-                    // Only show chargers within 5 miles of the route
+                    // Only show chargers within 1.5 miles of the route
                     const placePos = place.geometry.location;
                     let withinRange = false;
                     for (let k = 0; k < routePath.length; k++) {
@@ -2619,7 +2619,7 @@ window.addEventListener('resize', () => {
 
 <!-- Footer bar -->
 <div class="footer-bar">
-    <span>&copy; 2026 EV Route Planner &nbsp;·&nbsp; v1.0 &nbsp;·&nbsp; Updated Mar 14, 2026</span>
+    <span>&copy; 2026 EV Route Planner &nbsp;·&nbsp; v1.01 &nbsp;·&nbsp; Updated Mar 14, 2026</span>
     <button class="footer-link" data-modal="aboutModal">About</button>
     <button class="footer-link" data-modal="newsModal">News</button>
     <button class="footer-link" data-modal="legalModal">Disclaimer & Privacy</button>
