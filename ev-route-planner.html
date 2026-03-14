@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EV Route Planner — Least Elevation Gain</title>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCvbijNp_WBn0pgnoVtXyAl1AMcZb7zrZ8&libraries=geometry,places"></script>
+    <script>(g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.googleapis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
+        key: "AIzaSyCvbijNp_WBn0pgnoVtXyAl1AMcZb7zrZ8",
+        v: "weekly"
+    });</script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -101,26 +104,30 @@
         .input-group input:focus {
             border-color: #34d399;
         }
-        .autocomplete-list {
-            position: absolute;
-            top: 100%;
-            left: 0; right: 0;
-            background: #252836;
-            border: 1px solid #2d3040;
-            border-radius: 0 0 10px 10px;
-            max-height: 200px;
-            overflow-y: auto;
-            z-index: 1000;
-            display: none;
+        /* Google PlaceAutocompleteElement styling */
+        gmp-place-autocomplete {
+            width: 100%;
+            --gmpx-color-surface: #252836;
+            --gmpx-color-on-surface: #e1e4e8;
+            --gmpx-color-on-surface-variant: #8b8fa3;
+            --gmpx-color-primary: #34d399;
+            --gmpx-font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --gmpx-font-size-base: 14px;
         }
-        .autocomplete-list .ac-item {
-            padding: 8px 12px;
-            font-size: 13px;
-            cursor: pointer;
-            border-bottom: 1px solid #2d3040;
+        gmp-place-autocomplete input {
+            width: 100% !important;
+            padding: 10px 12px !important;
+            border-radius: 10px !important;
+            border: 1px solid #2d3040 !important;
+            background: #252836 !important;
+            color: #e1e4e8 !important;
+            font-size: 14px !important;
+            outline: none !important;
+            transition: border-color 0.2s !important;
+            box-sizing: border-box !important;
         }
-        .autocomplete-list .ac-item:hover {
-            background: #34d39922;
+        gmp-place-autocomplete input:focus {
+            border-color: #34d399 !important;
         }
 
         /* stop row */
@@ -540,7 +547,7 @@
         .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
         .empty-state p { font-size: 14px; line-height: 1.5; }
 
-        /* Google Places Autocomplete dropdown styling */
+        /* PlaceAutocompleteElement dropdown styling */
         .pac-container {
             background: #252836 !important;
             border: 1px solid #2d3040 !important;
@@ -597,15 +604,13 @@
             <h2>Route</h2>
             <div class="input-group" id="originGroup">
                 <label>Origin</label>
-                <input type="text" id="originInput" placeholder="Enter starting address..." autocomplete="new-password" />
-                <div class="autocomplete-list" id="originAC"></div>
+                <div id="originACContainer"></div>
             </div>
             <div id="stopsContainer"></div>
             <button class="add-stop-btn" id="addStopBtn" type="button">+ Add Stop</button>
             <div class="input-group" id="destGroup">
                 <label>Destination</label>
-                <input type="text" id="destInput" placeholder="Enter destination address..." autocomplete="new-password" />
-                <div class="autocomplete-list" id="destAC"></div>
+                <div id="destACContainer"></div>
             </div>
             <div class="ev-select-group">
                 <label>Your EV</label>
@@ -718,15 +723,47 @@
 </div>
 
 <script>
-// ─── Map Setup (Google Maps — light theme) ───
-const map = new google.maps.Map(document.getElementById('map'), {
-    center: { lat: 32.72, lng: -117.16 },
-    zoom: 11,
-    mapTypeControl: false,
-    streetViewControl: false,
-    fullscreenControl: false,
-    zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_TOP }
-});
+// ─── App Init (async loading) ───
+let map, elevationService, geocoder;
+
+async function initApp() {
+    // Load required libraries
+    await google.maps.importLibrary('maps');
+    await google.maps.importLibrary('places');
+    await google.maps.importLibrary('routes');
+    await google.maps.importLibrary('geometry');
+
+    // ─── Map Setup (Google Maps — light theme) ───
+    map = new google.maps.Map(document.getElementById('map'), {
+        center: { lat: 32.72, lng: -117.16 },
+        zoom: 11,
+        mapId: 'DEMO_MAP_ID',
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_TOP }
+    });
+
+    // ─── Google Services ───
+    elevationService = new google.maps.ElevationService();
+    geocoder = new google.maps.Geocoder();
+
+    // ─── Setup Places Autocomplete ───
+    setupPlaceAutocomplete('originACContainer', 'Enter starting address...', setOrigin, n => { originName = n; });
+    setupPlaceAutocomplete('destACContainer', 'Enter destination address...', setDest, n => { destName = n; });
+
+    // ─── Wire up UI ───
+    document.getElementById('evModelSelect').addEventListener('change', updateEvSpecs);
+    document.getElementById('addStopBtn').addEventListener('click', addStop);
+    planBtn.addEventListener('click', planRoutes);
+    document.getElementById('shareCopy').addEventListener('click', handleCopyLink);
+
+    // Initialize EV specs display
+    updateEvSpecs();
+}
+
+// Start the app
+initApp();
 
 // ─── EV Model Database ───
 // batteryKwh: usable battery capacity
@@ -787,7 +824,6 @@ function updateEvSpecs() {
         showEvExplanation(routesData[selectedRouteIdx], routesData);
     }
 }
-document.getElementById('evModelSelect').addEventListener('change', updateEvSpecs);
 
 // ─── EV Energy Estimation ───
 // Uses vehicle-specific data + grade-aware efficiency model.
@@ -873,6 +909,8 @@ function estimateTripEnergy(route, ev) {
 // ─── State ───
 let originCoord = null;   // [lat, lng]
 let destCoord = null;
+let originName = '';
+let destName = '';
 let originMarker = null;
 let destMarker = null;
 let routeLayers = [];
@@ -880,69 +918,33 @@ let routesData = [];
 let selectedRouteIdx = 0;
 let cachedTripEstimates = [];  // cached energy estimates, invalidated on EV change or new route plan
 
-// Multi-stop state: array of { coord, marker, inputEl, acEl }
+// Multi-stop state: array of { coord, marker, color }
 let stops = [];
 let stopIdCounter = 0;
 
-const originInput = document.getElementById('originInput');
-const destInput = document.getElementById('destInput');
-const originAC = document.getElementById('originAC');
-const destAC = document.getElementById('destAC');
 const planBtn = document.getElementById('planBtn');
 const stopsContainer = document.getElementById('stopsContainer');
 
-// ─── Google Services ───
-const directionsService = new google.maps.DirectionsService();
-const elevationService = new google.maps.ElevationService();
-const geocoder = new google.maps.Geocoder();
-
-// ─── Geocoding (Google Places Autocomplete) ───
-function setupAutocomplete(input, _unused, setCoord) {
-    const autocomplete = new google.maps.places.Autocomplete(input, {
-        fields: ['geometry', 'formatted_address']
+// ─── Places Autocomplete (PlaceAutocompleteElement) ───
+function setupPlaceAutocomplete(containerId, placeholder, setCoord, setName) {
+    const container = document.getElementById(containerId);
+    const acElement = new google.maps.places.PlaceAutocompleteElement({
+        locationBias: map.getBounds() || undefined
     });
-    autocomplete.bindTo('bounds', map);
+    acElement.setAttribute('placeholder', placeholder);
+    container.appendChild(acElement);
 
-    autocomplete.addListener('place_changed', () => {
-        const place = autocomplete.getPlace();
-        if (place.geometry && place.geometry.location) {
-            const lat = place.geometry.location.lat();
-            const lng = place.geometry.location.lng();
-            setCoord([lat, lng]);
+    acElement.addEventListener('gmp-select', async ({ placePrediction }) => {
+        const place = placePrediction.toPlace();
+        await place.fetchFields({ fields: ['location', 'formattedAddress', 'displayName'] });
+        if (place.location) {
+            setCoord([place.location.lat(), place.location.lng()]);
+            if (setName) setName(place.formattedAddress || place.displayName || '');
             updatePlanBtn();
-        } else if (place.name) {
-            // User typed and hit Enter without selecting — use Geocoder fallback
-            geocoder.geocode({ address: place.name }, (results, status) => {
-                if (status === 'OK' && results[0]) {
-                    const loc = results[0].geometry.location;
-                    input.value = results[0].formatted_address;
-                    setCoord([loc.lat(), loc.lng()]);
-                    updatePlanBtn();
-                }
-            });
         }
     });
 
-    // Also handle Enter key when no autocomplete selection was made
-    input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            // Give Places Autocomplete a moment to fire, then fallback to geocoder
-            setTimeout(() => {
-                const q = input.value.trim();
-                if (q.length >= 3) {
-                    geocoder.geocode({ address: q }, (results, status) => {
-                        if (status === 'OK' && results[0]) {
-                            const loc = results[0].geometry.location;
-                            input.value = results[0].formatted_address;
-                            setCoord([loc.lat(), loc.lng()]);
-                            updatePlanBtn();
-                        }
-                    });
-                }
-            }, 300);
-        }
-    });
+    return acElement;
 }
 
 function createCircleMarker(coord, color, title) {
@@ -988,9 +990,6 @@ function fitMarkers() {
     }
 }
 
-setupAutocomplete(originInput, originAC, setOrigin);
-setupAutocomplete(destInput, destAC, setDest);
-
 // ─── Multi-stop management ───
 const stopColors = ['#a78bfa', '#f472b6', '#fbbf24', '#fb923c', '#38bdf8', '#c084fc', '#4ade80', '#f87171'];
 
@@ -1006,26 +1005,22 @@ function addStop() {
     row.innerHTML = `
         <div class="input-group" id="stopGroup_${id}">
             <label>Stop ${label}</label>
-            <input type="text" id="stopInput_${id}" placeholder="Enter stop address..." autocomplete="new-password" />
-            <div class="autocomplete-list" id="stopAC_${id}"></div>
+            <div id="stopACContainer_${id}"></div>
         </div>
         <button class="remove-stop-btn" title="Remove stop" data-stop-id="${id}">&times;</button>
     `;
     stopsContainer.appendChild(row);
 
-    const inputEl = document.getElementById(`stopInput_${id}`);
-    const acEl = document.getElementById(`stopAC_${id}`);
-
-    const stopObj = { id, coord: null, marker: null, inputEl, acEl, color };
+    const stopObj = { id, coord: null, marker: null, color, name: '' };
     stops.push(stopObj);
 
-    setupAutocomplete(inputEl, acEl, (coord) => {
+    setupPlaceAutocomplete(`stopACContainer_${id}`, 'Enter stop address...', (coord) => {
         stopObj.coord = coord;
         if (stopObj.marker) stopObj.marker.setMap(null);
         stopObj.marker = createCircleMarker(coord, color, `Stop ${label}`);
         fitMarkers();
         updatePlanBtn();
-    });
+    }, (n) => { stopObj.name = n; });
 
     row.querySelector('.remove-stop-btn').addEventListener('click', () => removeStop(id));
     renumberStops();
@@ -1058,16 +1053,12 @@ function renumberStops() {
     });
 }
 
-document.getElementById('addStopBtn').addEventListener('click', addStop);
-
 function updatePlanBtn() {
     const allStopsSet = stops.every(s => s.coord !== null);
     planBtn.disabled = !(originCoord && destCoord && allStopsSet);
 }
 
 // ─── Route Planning ───
-planBtn.addEventListener('click', planRoutes);
-
 async function planRoutes() {
     if (!originCoord || !destCoord) return;
     if (!stops.every(s => s.coord !== null)) return;
@@ -1077,50 +1068,52 @@ async function planRoutes() {
     document.getElementById('emptyState').style.display = 'none';
 
     try {
-        const origin = new google.maps.LatLng(originCoord[0], originCoord[1]);
-        const destination = new google.maps.LatLng(destCoord[0], destCoord[1]);
-        const waypoints = stops.filter(s => s.coord).map(s => ({
-            location: new google.maps.LatLng(s.coord[0], s.coord[1]),
-            stopover: true
+        const origin = { lat: originCoord[0], lng: originCoord[1] };
+        const destination = { lat: destCoord[0], lng: destCoord[1] };
+        const intermediates = stops.filter(s => s.coord).map(s => ({
+            location: { lat: s.coord[0], lng: s.coord[1] }
         }));
 
-        // 1) Get routes from Google Directions API
+        // 1) Get routes from Google Routes API (computeRoutes)
         const request = {
             origin,
             destination,
-            waypoints,
-            travelMode: google.maps.TravelMode.DRIVING,
-            provideRouteAlternatives: stops.length === 0, // alternatives only without waypoints
-            unitSystem: google.maps.UnitSystem.IMPERIAL
+            intermediates: intermediates.length ? intermediates : undefined,
+            travelMode: 'DRIVE',
+            computeAlternativeRoutes: stops.length === 0,
+            fields: [
+                'routes.duration',
+                'routes.distanceMeters',
+                'routes.polyline'
+            ]
         };
 
-        const result = await new Promise((resolve, reject) => {
-            directionsService.route(request, (res, status) => {
-                if (status === 'OK') resolve(res);
-                else reject(new Error('Directions failed: ' + status));
-            });
-        });
+        const { routes: computedRoutes } = await google.maps.routes.Route.computeRoutes(request);
 
-        if (!result.routes.length) throw new Error('No routes found');
+        if (!computedRoutes || !computedRoutes.length) throw new Error('No routes found');
 
         setLoadingMsg('Sampling elevation data...');
 
-        // 2) Convert Google routes to our format and get elevations
-        const routes = result.routes;
+        // 2) Convert routes to our format and get elevations
         const processedRoutes = [];
 
-        for (let i = 0; i < routes.length; i++) {
-            const route = routes[i];
-            const path = route.overview_path;
+        for (let i = 0; i < computedRoutes.length; i++) {
+            const route = computedRoutes[i];
+            // Decode the polyline to get path coordinates
+            const decodedPath = google.maps.geometry.encoding.decodePath(route.polyline.encodedPolyline);
             // Convert to [lng, lat] format for consistency with rest of code
-            const coords = path.map(p => [p.lng(), p.lat()]);
+            const coords = decodedPath.map(p => [p.lng(), p.lat()]);
 
-            // Calculate total distance and duration from legs
-            let totalDistM = 0, totalDurS = 0;
-            route.legs.forEach(leg => {
-                totalDistM += leg.distance.value;
-                totalDurS += leg.duration.value;
-            });
+            // Extract duration (comes as "123s" string or {seconds, nanos} object)
+            let totalDurS = 0;
+            if (route.duration) {
+                if (typeof route.duration === 'string') {
+                    totalDurS = parseInt(route.duration.replace('s', ''), 10);
+                } else if (route.duration.seconds) {
+                    totalDurS = Number(route.duration.seconds);
+                }
+            }
+            const totalDistM = route.distanceMeters || 0;
 
             // Sample points for elevation
             const sampled = samplePoints(coords, 80);
@@ -1528,10 +1521,10 @@ function updateMapLinks(route) {
     // ── Share links (Email, Text, Copy) ──
     const gmapsUrl = gmapsLink.href;
     const appleUrl = amapsLink.href;
-    const originName = document.getElementById('originInput').value.split(',')[0];
-    const destName = document.getElementById('destInput').value.split(',')[0];
-    const stopNames = stops.filter(s => s.inputEl.value).map(s => s.inputEl.value.split(',')[0]);
-    const routeDesc = [originName, ...stopNames, destName].join(' → ');
+    const oName = originName.split(',')[0];
+    const dName = destName.split(',')[0];
+    const stopNames = stops.filter(s => s.name).map(s => s.name.split(',')[0]);
+    const routeDesc = [oName, ...stopNames, dName].join(' → ');
     const subject = encodeURIComponent(`EV Route: ${routeDesc}`);
     const body = encodeURIComponent(
         `Here's an EV-optimized route: ${routeDesc}\n\n` +
@@ -1548,12 +1541,12 @@ function updateMapLinks(route) {
 }
 
 // ─── Copy link to clipboard ───
-document.getElementById('shareCopy').addEventListener('click', async () => {
+async function handleCopyLink() {
     const gmapsUrl = document.getElementById('gmapsLink').href;
-    const originName = document.getElementById('originInput').value.split(',')[0];
-    const destName = document.getElementById('destInput').value.split(',')[0];
-    const stopNames = stops.filter(s => s.inputEl.value).map(s => s.inputEl.value.split(',')[0]);
-    const routeDesc = [originName, ...stopNames, destName].join(' → ');
+    const oName = originName.split(',')[0];
+    const dName = destName.split(',')[0];
+    const stopNames = stops.filter(s => s.name).map(s => s.name.split(',')[0]);
+    const routeDesc = [oName, ...stopNames, dName].join(' → ');
     const route = routesData[selectedRouteIdx];
     const text =
         `EV Route: ${routeDesc}\n` +
@@ -1575,7 +1568,7 @@ document.getElementById('shareCopy').addEventListener('click', async () => {
         document.body.appendChild(ta); ta.select(); document.execCommand('copy');
         document.body.removeChild(ta);
     }
-});
+}
 
 // ─── Elevation Chart (Canvas) ───
 const elevCanvas = document.getElementById('elevCanvas');
@@ -1722,8 +1715,6 @@ window.addEventListener('resize', () => {
     }, 150);
 });
 
-// Initialize EV specs display
-updateEvSpecs();
 </script>
 
 </body>
