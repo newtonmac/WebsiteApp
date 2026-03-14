@@ -85,12 +85,13 @@ struct EVRoutePlannerView: View {
                 }
             }
             .background(EVTheme.bgCard)
-            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .clipShape(.rect(topLeadingRadius: 20, topTrailingRadius: 20))
             .overlay(
-                RoundedRectangle(cornerRadius: 20)
+                UnevenRoundedRectangle(topLeadingRadius: 20, topTrailingRadius: 20)
                     .stroke(EVTheme.border, lineWidth: 1)
             )
             .frame(maxHeight: UIScreen.main.bounds.height * 0.55)
+            .ignoresSafeArea(edges: .bottom)
         }
         .preferredColorScheme(.dark)
         .sheet(isPresented: $showingVehiclePicker) {
