@@ -17,6 +17,7 @@ struct EVRoutePlannerView: View {
     @State private var showChargers = true
     @State private var panelExpanded = true
     @State private var selectedCharger: EVCharger?
+    @State private var keyboardHeight: CGFloat = 0
     @GestureState private var dragOffset: CGFloat = 0
     @State private var mapCameraPosition: MapCameraPosition = .region(
         MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 32.72, longitude: -117.16),
@@ -30,7 +31,12 @@ struct EVRoutePlannerView: View {
         let screenH = UIScreen.main.bounds.height
         let target = panelExpanded ? screenH * expandedFraction : screenH * collapsedFraction
         let dragged = target - dragOffset
-        return max(screenH * collapsedFraction, min(screenH * 0.75, dragged))
+        let base = max(screenH * collapsedFraction, min(screenH * 0.75, dragged))
+        // When keyboard is visible, expand panel so input fields + plan button stay above keyboard
+        if keyboardHeight > 0 {
+            return min(screenH * 0.85, base + keyboardHeight)
+        }
+        return base
     }
 
     var body: some View {
@@ -149,6 +155,19 @@ struct EVRoutePlannerView: View {
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
         }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
+            if let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    keyboardHeight = frame.height
+                    panelExpanded = true
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                keyboardHeight = 0
+            }
+        }
     }
 
     // MARK: - Input Section
@@ -249,6 +268,7 @@ struct EVRoutePlannerView: View {
 
     private var planButton: some View {
         Button {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             Task { await planRoute() }
         } label: {
             HStack {
