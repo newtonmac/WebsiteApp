@@ -1383,51 +1383,64 @@ function calcElevation(elevations) {
 
 // ─── Score routes ───
 // Lower score = better for EV.
-// Primary goal: minimize battery usage (energy consumption).
-// Secondary: prefer gradual elevation gains over steep climbs.
-// Constraint: don't extend travel time excessively (>30% longer).
+//
+// Strategy: the energy model (estimateTripEnergy) already captures most of
+// the steep-grade penalty — motor efficiency drops on climbs, regen is
+// limited on steep descents. So energy consumption IS the primary signal
+// and already punishes steep routes.
+//
+// We add two lightweight adjustments:
+//   1. Steep-grade tiebreaker — when two routes use similar energy, prefer
+//      the one with gentler grades (more comfortable, less brake wear).
+//   2. Time cost — every extra minute of travel has a real energy cost
+//      (HVAC, accessories, rolling resistance). Scale smoothly, no cliff.
+//
+// Formula:  score = energy + steepNudge + timeCost
+//   - energy:    kWh from the grade-aware EV model (primary, ~90% of score)
+//   - steepNudge: small tiebreaker for peak grade severity (~5% of score)
+//   - timeCost:  extra time × auxiliary power draw (~5% of score)
+
 function scoreRoutes(routes) {
     if (!routes.length) return;
     const ev = getSelectedEV();
     const fastestDur = Math.min(...routes.map(r => r.durMin));
 
-    // Compute actual energy for each route using grade-aware model
     const energies = routes.map(r => estimateTripEnergy(r, ev));
+
+    // Auxiliary power draw: HVAC + electronics ≈ 1-2 kW while driving
+    const auxKw = 1.5;
 
     routes.forEach((r, i) => {
         const tripEnergy = energies[i].totalEnergy;
-        const timeRatio = (r.durMin - fastestDur) / fastestDur;
 
-        // Grade steepness penalty — steep climbs drain battery disproportionately
-        // Motor efficiency drops significantly on steep grades, avoid them
-        let steepPenalty = 0;
-        let maxGrade = 0;
+        // ── Time cost: extra minutes × auxiliary power ──
+        // Every extra minute on the road costs real energy (HVAC, lights, etc.)
+        // This naturally discourages long detours without a hard cutoff
+        const extraMin = r.durMin - fastestDur;
+        const timeCost = (extraMin / 60) * auxKw;
+
+        // ── Steep-grade tiebreaker ──
+        // Only a nudge — the energy model already penalizes steep climbs.
+        // This breaks ties by preferring gradual grades when energy is close.
+        let steepNudge = 0;
         if (r.elevations.length >= 2 && r.sampled.length >= 2) {
             const segDistM = (r.distMi * 1609.34) / (r.sampled.length - 1);
+            let peakGrade = 0;
             for (let j = 1; j < r.elevations.length; j++) {
                 const rise = r.elevations[j] - r.elevations[j-1];
                 if (rise > 0) {
                     const gradePct = (rise / segDistM) * 100;
-                    maxGrade = Math.max(maxGrade, gradePct);
-                    // Aggressive penalty for steep grades (>4%)
-                    if (gradePct > 4) {
-                        steepPenalty += Math.pow(gradePct - 4, 2) * 0.02;
-                    }
+                    if (gradePct > peakGrade) peakGrade = gradePct;
                 }
             }
-            // Extra penalty if route has any very steep section (>8%)
-            if (maxGrade > 8) {
-                steepPenalty += (maxGrade - 8) * 0.5;
+            // Small nudge based on peak grade — only matters when routes
+            // are otherwise similar in energy. Scaled to ~2-5% of typical energy.
+            if (peakGrade > 3) {
+                steepNudge = (peakGrade - 3) * 0.1;
             }
         }
 
-        // Time penalty — only penalize when >25% longer than fastest
-        const timePenalty = timeRatio > 0.25
-            ? (timeRatio - 0.25) * tripEnergy * 2.5
-            : 0;
-
-        // Score = energy (primary) + steep grade penalty + time penalty
-        r.score = tripEnergy + steepPenalty + timePenalty;
+        r.score = tripEnergy + timeCost + steepNudge;
     });
 }
 
