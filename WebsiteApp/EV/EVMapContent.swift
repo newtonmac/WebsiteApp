@@ -76,11 +76,14 @@ struct EVMapContent: View {
 
             // Charger markers
             ForEach(chargers) { charger in
-                Annotation(charger.name, coordinate: charger.coordinate) {
-                    ChargerMarkerView(charger: charger)
-                        .onTapGesture {
-                            selectedCharger = charger
-                        }
+                Annotation("", coordinate: charger.coordinate, anchor: .center) {
+                    Button {
+                        selectedCharger = charger
+                    } label: {
+                        ChargerMarkerView(charger: charger)
+                            .frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
