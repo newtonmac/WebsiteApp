@@ -226,27 +226,37 @@ class EVRouteService {
     private func fetchElevationChunk(_ points: [CLLocationCoordinate2D]) async -> [Double] {
         let locations = points.map { "\($0.latitude),\($0.longitude)" }.joined(separator: "|")
 
-        var components = URLComponents(string: "https://maps.googleapis.com/maps/api/elevation/json")!
-        components.queryItems = [
-            URLQueryItem(name: "locations", value: locations),
-            URLQueryItem(name: "key", value: googleAPIKey)
-        ]
+        // Build URL manually — URLComponents encodes | as %7C which Google rejects
+        let urlString = "https://maps.googleapis.com/maps/api/elevation/json?locations=\(locations)&key=\(googleAPIKey)"
 
-        guard let url = components.url else {
+        guard let url = URL(string: urlString) else {
+            print("Elevation API: invalid URL")
             return Array(repeating: 0, count: points.count)
         }
 
+        print("Elevation API request: \(points.count) points")
+
         do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            let response = try JSONDecoder().decode(GoogleElevationResponse.self, from: data)
-            if response.status == "OK" {
-                let elevs = response.results.map { $0.elevation }
+            let (data, response) = try await URLSession.shared.data(from: url)
+
+            if let httpResponse = response as? HTTPURLResponse {
+                print("Elevation API HTTP \(httpResponse.statusCode)")
+            }
+
+            // Debug: print first 300 chars of response
+            if let raw = String(data: data, encoding: .utf8) {
+                print("Elevation API raw (first 300): \(String(raw.prefix(300)))")
+            }
+
+            let decoded = try JSONDecoder().decode(GoogleElevationResponse.self, from: data)
+            if decoded.status == "OK" {
+                let elevs = decoded.results.map { $0.elevation }
                 let minE = elevs.min() ?? 0
                 let maxE = elevs.max() ?? 0
-                print("Elevation API: \(elevs.count) points, range \(String(format: "%.0f", minE))m - \(String(format: "%.0f", maxE))m")
+                print("Elevation API: \(elevs.count) points, range \(String(format: "%.1f", minE))m - \(String(format: "%.1f", maxE))m")
                 return elevs
             } else {
-                print("Elevation API error: \(response.status)")
+                print("Elevation API error status: \(decoded.status)")
             }
         } catch {
             print("Elevation fetch error: \(error)")
