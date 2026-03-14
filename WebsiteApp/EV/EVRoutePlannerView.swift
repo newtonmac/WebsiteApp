@@ -112,31 +112,34 @@ struct EVRoutePlannerView: View {
                 if panelExpanded || dragOffset < -30 {
                     ScrollView {
                         if verticalSizeClass == .compact {
-                            // Landscape: two-column layout
-                            HStack(alignment: .top, spacing: 14) {
-                                // Left column: inputs + vehicle + plan button
-                                VStack(spacing: 10) {
-                                    inputSection
-                                    vehicleSection
-                                    planButton
-                                }
-                                .frame(maxWidth: .infinity)
-
-                                // Right column: toggles + networks + results
-                                VStack(spacing: 10) {
-                                    togglesSection
-
-                                    if !routeService.routes.isEmpty {
-                                        routeResultsSection
+                            // Landscape: two-column layout with results below
+                            VStack(spacing: 14) {
+                                HStack(alignment: .top, spacing: 14) {
+                                    // Left column: inputs + vehicle + plan button
+                                    VStack(spacing: 10) {
+                                        inputSection
+                                        vehicleSection
+                                        planButton
                                     }
+                                    .frame(maxWidth: .infinity)
 
-                                    if let error = routeService.errorMessage {
-                                        Text(error)
-                                            .font(.caption)
-                                            .foregroundStyle(EVTheme.accentRed)
+                                    // Right column: toggles + networks
+                                    VStack(spacing: 10) {
+                                        togglesSection
                                     }
+                                    .frame(maxWidth: .infinity)
                                 }
-                                .frame(maxWidth: .infinity)
+
+                                // Route results span full width below both columns
+                                if !routeService.routes.isEmpty {
+                                    routeResultsSection
+                                }
+
+                                if let error = routeService.errorMessage {
+                                    Text(error)
+                                        .font(.caption)
+                                        .foregroundStyle(EVTheme.accentRed)
+                                }
                             }
                             .padding(.horizontal, 20)
                             .padding(.bottom, 100)
