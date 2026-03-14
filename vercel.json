@@ -1,0 +1,14 @@
+{
+  "rewrites": [
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "evrouteplanner.org" }],
+      "destination": "/ev-route-planner.html"
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "www.evrouteplanner.org" }],
+      "destination": "/ev-route-planner.html"
+    }
+  ]
+}
