@@ -1072,6 +1072,7 @@
                 <div class="leg-row"><div class="leg-swatch" style="background:#00aaef; border-radius:50%; height:10px; width:10px;"></div> EVgo</div>
                 <div class="leg-row"><div class="leg-swatch" style="background:#ff6f00; border-radius:50%; height:10px; width:10px;"></div> Blink</div>
                 <div class="leg-row"><div class="leg-swatch" style="background:#5cbf14; border-radius:50%; height:10px; width:10px;"></div> EV Connect</div>
+                <div class="leg-row"><div class="leg-swatch" style="background:#48b84e; border-radius:50%; height:10px; width:10px;"></div> ChargePoint</div>
             </div>
         </div>
         <div class="loading-overlay hidden" id="loadingOverlay">
@@ -2391,6 +2392,7 @@ const CHARGER_QUERIES = [
     { query: 'EVgo',                  color: '#00aaef', label: 'EVgo',               letter: 'EG', textColor: '#fff' },
     { query: 'Blink Charging',        color: '#ff6f00', label: 'Blink',              letter: 'BL', textColor: '#fff' },
     { query: 'EV Connect',            color: '#5cbf14', label: 'EV Connect',         letter: 'EC', textColor: '#fff' },
+    { query: 'ChargePoint',            color: '#48b84e', label: 'ChargePoint',        letter: 'CP', textColor: '#fff' },
 ];
 
 function makeChargerIcon(network) {
@@ -2428,7 +2430,7 @@ function searchChargersAlongRoute(route) {
 
     // Build route path as LatLng array for distance checking
     const routePath = sampled.map(pt => new google.maps.LatLng(pt[1], pt[0]));
-    const MAX_DISTANCE_M = 8047; // 5 miles in meters
+    const MAX_DISTANCE_M = 3219; // 2 miles in meters
 
     // Pick search points along the route
     const step = Math.max(1, Math.floor(sampled.length / 8));
@@ -2450,7 +2452,7 @@ function searchChargersAlongRoute(route) {
             placesService.textSearch({
                 query: network.query,
                 location: loc,
-                radius: 8047, // 5 miles
+                radius: 3219, // 2 miles
                 type: 'electric_vehicle_charging_station'
             }, (results, status) => {
                 if (status !== google.maps.places.PlacesServiceStatus.OK || !results) return;
@@ -2617,7 +2619,7 @@ window.addEventListener('resize', () => {
 
 <!-- Footer bar -->
 <div class="footer-bar">
-    <span>&copy; 2026 EV Route Planner</span>
+    <span>&copy; 2026 EV Route Planner &nbsp;·&nbsp; v1.0 &nbsp;·&nbsp; Updated Mar 14, 2026</span>
     <button class="footer-link" data-modal="aboutModal">About</button>
     <button class="footer-link" data-modal="newsModal">News</button>
     <button class="footer-link" data-modal="legalModal">Disclaimer & Privacy</button>
