@@ -236,14 +236,14 @@ struct EVRoutePlannerView: View {
                     onInfoTap: {
                         detailRoute = route
                         showingRouteDetail = true
+                    },
+                    onCardTap: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedRoute = route
+                        }
+                        fitMapToRoute(route)
                     }
                 )
-                .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        selectedRoute = route
-                    }
-                    fitMapToRoute(route)
-                }
             }
 
             if let route = selectedRoute {

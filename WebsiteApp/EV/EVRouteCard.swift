@@ -6,6 +6,7 @@ struct EVRouteCard: View {
     let isBest: Bool
     let isSelected: Bool
     var onInfoTap: (() -> Void)? = nil
+    var onCardTap: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -36,18 +37,20 @@ struct EVRouteCard: View {
                 Spacer()
 
                 // Info button (i)
-                Button {
-                    onInfoTap?()
-                } label: {
-                    ZStack {
-                        Circle()
-                            .stroke(EVTheme.textSecondary.opacity(0.5), lineWidth: 1)
-                            .frame(width: 22, height: 22)
-                        Text("i")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(EVTheme.textSecondary)
-                    }
+                ZStack {
+                    Circle()
+                        .stroke(EVTheme.textSecondary.opacity(0.5), lineWidth: 1)
+                        .frame(width: 26, height: 26)
+                    Text("i")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(EVTheme.textSecondary)
                 }
+                .contentShape(Circle())
+                .highPriorityGesture(
+                    TapGesture().onEnded {
+                        onInfoTap?()
+                    }
+                )
             }
 
             // Stats row
@@ -86,6 +89,10 @@ struct EVRouteCard: View {
                 .stroke(isSelected ? EVTheme.accentGreen : EVTheme.border, lineWidth: isSelected ? 2 : 1)
         )
         .shadow(color: isSelected ? EVTheme.accentGreen.opacity(0.15) : .clear, radius: 8)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onCardTap?()
+        }
     }
 
     private var batteryColor: Color {
