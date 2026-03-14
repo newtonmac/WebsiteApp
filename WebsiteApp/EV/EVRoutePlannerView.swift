@@ -17,7 +17,7 @@ struct EVRoutePlannerView: View {
     @State private var showChargers = true
     @State private var panelExpanded = true
     @State private var selectedCharger: EVCharger?
-    @State private var keyboardHeight: CGFloat = 0
+    @State private var keyboardOffset: CGFloat = 0
     @GestureState private var dragOffset: CGFloat = 0
     @State private var mapCameraPosition: MapCameraPosition = .region(
         MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 32.72, longitude: -117.16),
@@ -134,10 +134,10 @@ struct EVRoutePlannerView: View {
                     .stroke(EVTheme.border, lineWidth: 1)
             }
             .animation(.spring(response: 0.3, dampingFraction: 0.8), value: panelExpanded)
-            .offset(y: -keyboardHeight)
-            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: keyboardHeight)
+            .offset(y: -keyboardOffset)
         }
         .ignoresSafeArea(edges: .bottom)
+        .ignoresSafeArea(.keyboard)
         .preferredColorScheme(.dark)
         .sheet(isPresented: $showingVehiclePicker) {
             EVVehiclePickerView(selectedVehicle: $selectedVehicle)
@@ -152,18 +152,18 @@ struct EVRoutePlannerView: View {
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
         }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { notification in
             if let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
-                keyboardHeight = frame.height
-                if !panelExpanded {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                        panelExpanded = true
-                    }
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    keyboardOffset = frame.height
+                    panelExpanded = true
                 }
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
-            keyboardHeight = 0
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidHideNotification)) { _ in
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                keyboardOffset = 0
+            }
         }
     }
 
