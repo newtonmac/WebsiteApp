@@ -17,6 +17,7 @@ struct EVRoutePlannerView: View {
     @State private var showChargers = true
     @State private var panelExpanded = true
     @State private var selectedCharger: EVCharger?
+    @State private var mapStyle: EVMapStyle = .standard
     @State private var keyboardOffset: CGFloat = 0
     @GestureState private var dragOffset: CGFloat = 0
     @State private var mapCameraPosition: MapCameraPosition = .region(
@@ -44,7 +45,9 @@ struct EVRoutePlannerView: View {
                 chargers: showChargers ? chargerService.chargers : [],
                 origin: originCoord,
                 destination: destinationCoord,
-                selectedCharger: $selectedCharger
+                selectedCharger: $selectedCharger,
+                mapStyle: $mapStyle,
+                panelHeight: panelHeight
             )
             .ignoresSafeArea(edges: .top)
 

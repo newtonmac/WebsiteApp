@@ -31,7 +31,9 @@ struct EVMapContent: View {
     let origin: CLLocationCoordinate2D?
     let destination: CLLocationCoordinate2D?
     @Binding var selectedCharger: EVCharger?
-    @State private var mapStyle: EVMapStyle = .standard
+    @Binding var mapStyle: EVMapStyle
+    let panelHeight: CGFloat
+
     @State private var showLookAround = false
     @State private var lookAroundScene: MKLookAroundScene?
     @State private var isLoadingLookAround = false
@@ -115,55 +117,84 @@ struct EVMapContent: View {
         .mapControls {
             MapCompass()
             MapScaleView()
-            MapPitchToggle()
-            MapUserLocationButton()
         }
-        .overlay(alignment: .bottomLeading) {
-            HStack {
-                // Look Around button (bottom-left)
+        .overlay(alignment: .bottomTrailing) {
+            // Right-side controls stack: 3D, Map Style, Location
+            VStack(spacing: 0) {
+                // 3D / Pitch toggle
                 Button {
-                    Task { await loadLookAround() }
-                } label: {
-                    ZStack {
-                        if isLoadingLookAround {
-                            ProgressView()
-                                .tint(.primary)
-                        } else {
-                            Image(systemName: "binoculars.fill")
-                                .font(.system(size: 18, weight: .medium))
-                                .foregroundStyle(.primary)
-                        }
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        // Toggle between 2D and 3D by changing camera pitch
+                        cameraPosition = .camera(
+                            MapCamera(
+                                centerCoordinate: currentCenterCoordinate ?? CLLocationCoordinate2D(latitude: 32.72, longitude: -117.16),
+                                distance: 5000,
+                                heading: 0,
+                                pitch: 60
+                            )
+                        )
                     }
-                    .frame(width: 44, height: 44)
-                    .background(.ultraThinMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                } label: {
+                    Text("3D")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(.primary)
+                        .frame(width: 44, height: 44)
                 }
 
-                Spacer()
+                Divider().frame(width: 34)
 
-                // Map style toggle (bottom-right, below the MapKit controls)
+                // Map style toggle
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         mapStyle = mapStyle.next
                     }
                 } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: mapStyle.icon)
-                            .font(.system(size: 14, weight: .medium))
-                        Text(mapStyle.rawValue)
-                            .font(.system(size: 12, weight: .semibold))
-                    }
-                    .foregroundStyle(.primary)
-                    .padding(.horizontal, 12)
-                    .frame(height: 36)
-                    .background(.ultraThinMaterial)
-                    .clipShape(Capsule())
-                    .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                    Image(systemName: mapStyle.icon)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(.primary)
+                        .frame(width: 44, height: 44)
+                }
+
+                Divider().frame(width: 34)
+
+                // Location button
+                Button {
+                    cameraPosition = .userLocation(fallback: .automatic)
+                } label: {
+                    Image(systemName: "location.fill")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(.blue)
+                        .frame(width: 44, height: 44)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.bottom, 60)
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+            .padding(.trailing, 12)
+            .padding(.bottom, panelHeight + 16)
+        }
+        .overlay(alignment: .bottomLeading) {
+            // Look Around button (bottom-left)
+            Button {
+                Task { await loadLookAround() }
+            } label: {
+                ZStack {
+                    if isLoadingLookAround {
+                        ProgressView()
+                            .tint(.primary)
+                    } else {
+                        Image(systemName: "binoculars.fill")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundStyle(.primary)
+                    }
+                }
+                .frame(width: 44, height: 44)
+                .background(.ultraThinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+            }
+            .padding(.leading, 12)
+            .padding(.bottom, panelHeight + 16)
         }
         .sheet(isPresented: $showLookAround) {
             if let scene = lookAroundScene {
