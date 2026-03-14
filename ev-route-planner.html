@@ -2806,7 +2806,7 @@ async function searchChargersAlongRoute(route) {
 
     // Build route path from FULL coords for accurate distance checking
     // Sub-sample to ~500 points max for performance (enough for ~1mi resolution on 500mi routes)
-    const proxSample = samplePoints(fullCoords, Math.min(fullCoords.length, 500));
+    const proxSample = samplePoints(fullCoords, Math.min(fullCoords.length, 1000));
     const routePath = proxSample.map(pt => new google.maps.LatLng(pt[1], pt[0]));
     const MAX_DISTANCE_M = 8047; // 5 miles in meters — proximity filter
 
