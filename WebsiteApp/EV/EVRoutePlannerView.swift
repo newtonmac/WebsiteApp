@@ -311,6 +311,7 @@ struct EVRoutePlannerView: View {
             if let route = selectedRoute {
                 navigationButtons(for: route)
                 energyBreakdownCard(for: route)
+                elevationProfileCard(for: route)
             }
         }
     }
@@ -524,6 +525,55 @@ struct EVRoutePlannerView: View {
                 alignment: .leading
             )
             .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
+    // MARK: - Elevation Profile Card
+
+    private func elevationProfileCard(for route: RouteResult) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("ELEVATION PROFILE")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(EVTheme.textPrimary)
+
+            // Gain / Loss labels
+            HStack(spacing: 16) {
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.up")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(EVTheme.accentGreen)
+                    Text("+\(Int(route.elevationGain))m gain")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(EVTheme.accentGreen)
+                }
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.down")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(EVTheme.accentRed)
+                    Text("-\(Int(route.elevationLoss))m loss")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(EVTheme.accentRed)
+                }
+            }
+
+            if !route.elevationProfile.isEmpty {
+                ElevationChartView(profile: route.elevationProfile)
+                    .frame(height: 160)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+            } else {
+                Text("No elevation data available")
+                    .font(.caption)
+                    .foregroundStyle(EVTheme.textSecondary)
+                    .frame(height: 80)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(14)
+        .background(EVTheme.bgInput)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(EVTheme.border, lineWidth: 1)
+        )
     }
 
     // MARK: - Actions
