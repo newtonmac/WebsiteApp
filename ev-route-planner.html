@@ -701,11 +701,49 @@
             .disclaimer p { font-size: 10px; line-height: 1.5; }
         }
 
-        .disclaimer {
+        .footer-section {
             background: #0f1117;
             border-top: 1px solid #2d3040;
-            padding: 20px 24px;
+            padding: 24px;
             flex-shrink: 0;
+        }
+        .about-section {
+            max-width: 900px;
+            margin-bottom: 20px;
+        }
+        .about-section h3 {
+            font-size: 16px;
+            color: #e1e4e8;
+            margin-bottom: 10px;
+        }
+        .about-section p {
+            font-size: 13px;
+            color: #8b8fa3;
+            line-height: 1.7;
+        }
+        .about-section p + p {
+            margin-top: 8px;
+        }
+        .feedback-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #34d399, #059669);
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: opacity 0.2s, transform 0.15s;
+            margin-top: 14px;
+        }
+        .feedback-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        .feedback-btn svg { width: 18px; height: 18px; }
+        .disclaimer {
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid #1a1d28;
         }
         .disclaimer p {
             font-size: 11px;
@@ -2091,11 +2129,23 @@ window.addEventListener('resize', () => {
 
 </script>
 
-<div class="disclaimer">
-    <p><strong>Disclaimer:</strong> EV Route Planner is a free community project provided "as is" without warranty of any kind, express or implied. Route suggestions, energy estimates, and battery calculations are approximations based on general vehicle specifications and elevation data. Actual energy consumption varies based on driving conditions, weather, speed, vehicle load, tire pressure, HVAC usage, and other factors. Always rely on your vehicle's built-in range and energy indicators for critical decisions. The developers assume no liability for any damages, losses, or inconveniences arising from the use of this tool, including but not limited to running out of charge, missed destinations, or inaccurate route information.</p>
-    <p><strong>Privacy:</strong> This application runs entirely in your browser. We do not collect, store, or transmit any personal data, location history, or route information to our servers. Location data requested via GPS is used only within your browser session to set your origin point and is not saved or shared. Google Maps services (Maps, Places, Directions, Elevation) are used to provide routing and mapping functionality and are subject to <a href="https://policies.google.com/privacy" target="_blank" rel="noopener" style="color:#60a5fa;">Google's Privacy Policy</a>. No cookies, analytics, or tracking tools are used by this application.</p>
-    <p><strong>Technology:</strong> Built with Google Maps Platform APIs including Maps JavaScript API, Places API, Directions API, and Elevation API. Vehicle efficiency data is based on publicly available EPA ratings and manufacturer specifications. Energy calculations use a grade-aware model that accounts for motor efficiency, regenerative braking, and terrain profile.</p>
-    <p>&copy; 2026 EV Route Planner &mdash; A community project. Not affiliated with any vehicle manufacturer.</p>
+<div class="footer-section">
+    <div class="about-section">
+        <h3>About This Project</h3>
+        <p>EV Route Planner was built by an EV owner who wanted a better way to plan trips. After experiencing range anxiety firsthand and realizing that elevation plays a huge role in battery consumption, I set out to build a tool that factors in terrain — not just distance — when planning routes.</p>
+        <p>The idea is simple: two routes can be the same distance, but the one that climbs a mountain will drain your battery far more than the one that takes a gentler path. This app analyzes elevation profiles, calculates grade-aware energy consumption for your specific vehicle, and helps you pick the route that saves the most battery — so you can drive with confidence instead of worry.</p>
+        <p>This is a free community project, built for EV drivers by an EV driver. If you find it useful or have ideas to make it better, I'd love to hear from you.</p>
+        <a href="https://forms.gle/oyGmGkqfpThZSbuC6" target="_blank" rel="noopener" class="feedback-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Rate & Send Suggestions
+        </a>
+    </div>
+    <div class="disclaimer">
+        <p><strong>Disclaimer:</strong> EV Route Planner is a free community project provided "as is" without warranty of any kind, express or implied. Route suggestions, energy estimates, and battery calculations are approximations based on general vehicle specifications and elevation data. Actual energy consumption varies based on driving conditions, weather, speed, vehicle load, tire pressure, HVAC usage, and other factors. Always rely on your vehicle's built-in range and energy indicators for critical decisions. The developers assume no liability for any damages, losses, or inconveniences arising from the use of this tool, including but not limited to running out of charge, missed destinations, or inaccurate route information.</p>
+        <p><strong>Privacy:</strong> This application runs entirely in your browser. We do not collect, store, or transmit any personal data, location history, or route information to our servers. Location data requested via GPS is used only within your browser session to set your origin point and is not saved or shared. Google Maps services (Maps, Places, Directions, Elevation) are used to provide routing and mapping functionality and are subject to <a href="https://policies.google.com/privacy" target="_blank" rel="noopener" style="color:#60a5fa;">Google's Privacy Policy</a>. No cookies, analytics, or tracking tools are used by this application.</p>
+        <p><strong>Technology:</strong> Built with Google Maps Platform APIs including Maps JavaScript API, Places API, Directions API, and Elevation API. Vehicle efficiency data is based on publicly available EPA ratings and manufacturer specifications. Energy calculations use a grade-aware model that accounts for motor efficiency, regenerative braking, and terrain profile.</p>
+        <p>&copy; 2026 EV Route Planner &mdash; A community project. Not affiliated with any vehicle manufacturer.</p>
+    </div>
 </div>
 
 <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAR81pUTUz5ON7ZBuoouTh2RTHyECr6yvg&libraries=places,geometry&loading=async&callback=initApp"></script>
