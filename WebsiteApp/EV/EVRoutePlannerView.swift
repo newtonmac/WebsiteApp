@@ -145,8 +145,8 @@ struct EVRoutePlannerView: View {
             }
         }
         .sheet(item: $selectedCharger) { charger in
-            ChargerDetailSheet(charger: charger, chargerService: chargerService)
-                .presentationDetents([.medium, .large])
+            ChargerDetailSheet(charger: charger)
+                .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { notification in
