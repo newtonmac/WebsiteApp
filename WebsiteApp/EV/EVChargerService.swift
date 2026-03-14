@@ -70,6 +70,7 @@ class EVChargerService {
 
     private let nrelAPIKey = "S8BQYZzqG6TBnADBFb60EYDUiLsRcxgJovLJ76Bg"
     private var cache: [String: [NRELStation]] = [:]
+    private var ocmCache: [String: [OCMStation]] = [:]
 
     /// Search for chargers within 1 mile of the entire route, sampling every ~10 miles
     func findChargersAlongRoute(_ route: MKRoute) async {
@@ -113,7 +114,10 @@ class EVChargerService {
         }
 
         print("EV Chargers: \(allChargers.count) stations within 1 mile of route (\(String(format: "%.0f", routeMiles)) mi, \(sampleCount) search points)")
-        chargers = allChargers
+
+        // Supplement with Open Charge Map speed data
+        let enriched = await enrichWithOCMSpeeds(chargers: allChargers, searchPoints: searchPoints)
+        chargers = enriched
         isLoading = false
     }
 
@@ -166,7 +170,7 @@ class EVChargerService {
         let dcFast = station.ev_dc_fast_num ?? 0
         let level2 = station.ev_level2_evse_num ?? 0
 
-        // Only show speed for DC Fast stations (Level 2 is always ~7-19 kW, not useful)
+        // Speed will be filled in by OCM enrichment; use network estimate as fallback for DC Fast
         let speed: Double? = dcFast > 0 ? networkMaxSpeed(network) : nil
 
         return EVCharger(
@@ -218,6 +222,95 @@ class EVChargerService {
             case "TESLA", "NACS": return "NACS/Tesla"
             default: return type
             }
+        }
+    }
+
+    // MARK: - Open Charge Map (speed supplement)
+
+    /// Fetch OCM stations near a point to get real kW data
+    private func fetchOCMStations(near point: CLLocationCoordinate2D, radiusMiles: Double) async -> [OCMStation] {
+        let cacheKey = "ocm_\(String(format: "%.2f", point.latitude)),\(String(format: "%.2f", point.longitude))"
+        if let cached = ocmCache[cacheKey] { return cached }
+
+        let radiusKm = radiusMiles * 1.60934
+        let urlStr = "https://api.openchargemap.io/v3/poi/?output=json&latitude=\(point.latitude)&longitude=\(point.longitude)&distance=\(radiusKm)&distanceunit=KM&maxresults=50&compact=true&verbose=false"
+
+        guard let url = URL(string: urlStr) else { return [] }
+
+        do {
+            var request = URLRequest(url: url)
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            let (data, _) = try await URLSession.shared.data(for: request)
+            let stations = try JSONDecoder().decode([OCMStation].self, from: data)
+            ocmCache[cacheKey] = stations
+            print("OCM: \(stations.count) stations near \(String(format: "%.3f", point.latitude)),\(String(format: "%.3f", point.longitude))")
+            return stations
+        } catch {
+            print("OCM fetch error: \(error)")
+            return []
+        }
+    }
+
+    /// Match NREL chargers with OCM data by proximity to get real kW speeds
+    private func enrichWithOCMSpeeds(chargers: [EVCharger], searchPoints: [CLLocationCoordinate2D]) async -> [EVCharger] {
+        // Fetch OCM data for a subset of search points (every other to reduce API calls)
+        var allOCM: [OCMStation] = []
+        var seenOCMIds = Set<Int>()
+
+        let ocmPoints = stride(from: 0, to: searchPoints.count, by: 3).map { searchPoints[$0] }
+        for point in ocmPoints {
+            let stations = await fetchOCMStations(near: point, radiusMiles: 2.0)
+            for s in stations {
+                if !seenOCMIds.contains(s.ID) {
+                    seenOCMIds.insert(s.ID)
+                    allOCM.append(s)
+                }
+            }
+        }
+
+        guard !allOCM.isEmpty else {
+            print("OCM: No data available, using NREL estimates")
+            return chargers
+        }
+
+        print("OCM: \(allOCM.count) unique stations for speed matching")
+
+        // Match each NREL charger to nearest OCM station within 200m
+        return chargers.map { charger in
+            let chargerLoc = CLLocation(latitude: charger.coordinate.latitude, longitude: charger.coordinate.longitude)
+            var bestMatch: OCMStation?
+            var bestDist = Double.greatestFiniteMagnitude
+
+            for ocm in allOCM {
+                guard let lat = ocm.AddressInfo?.Latitude, let lon = ocm.AddressInfo?.Longitude else { continue }
+                let dist = chargerLoc.distance(from: CLLocation(latitude: lat, longitude: lon))
+                if dist < bestDist && dist < 200 { // within 200 meters
+                    bestDist = dist
+                    bestMatch = ocm
+                }
+            }
+
+            guard let match = bestMatch else { return charger }
+
+            // Extract max kW from OCM connections
+            let maxKw = match.Connections?.compactMap { $0.PowerKW }.max()
+            guard let realSpeed = maxKw, realSpeed > 0 else { return charger }
+
+            // Return updated charger with real speed from OCM
+            return EVCharger(
+                id: charger.id,
+                name: charger.name,
+                network: charger.network,
+                coordinate: charger.coordinate,
+                address: charger.address,
+                connectors: charger.connectors,
+                speedKw: realSpeed,
+                hours: charger.hours,
+                pricing: charger.pricing,
+                stallCount: charger.stallCount,
+                level2Count: charger.level2Count,
+                dcFastCount: charger.dcFastCount
+            )
         }
     }
 
@@ -340,4 +433,23 @@ struct NRELStation: Decodable {
         access_days_time = try? c.decode(String.self, forKey: .access_days_time)
         ev_pricing = try? c.decode(String.self, forKey: .ev_pricing)
     }
+}
+
+// MARK: - Open Charge Map Models
+
+struct OCMStation: Decodable {
+    let ID: Int
+    let AddressInfo: OCMAddressInfo?
+    let Connections: [OCMConnection]?
+}
+
+struct OCMAddressInfo: Decodable {
+    let Latitude: Double?
+    let Longitude: Double?
+}
+
+struct OCMConnection: Decodable {
+    let PowerKW: Double?
+    let ConnectionTypeID: Int?
+    let Quantity: Int?
 }
