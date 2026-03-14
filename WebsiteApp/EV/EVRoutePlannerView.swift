@@ -14,7 +14,7 @@ struct EVRoutePlannerView: View {
     @State private var showingRouteDetail = false
     @State private var detailRoute: RouteResult?
     @State private var isRoundTrip = false
-    @State private var showChargers = true
+    @State private var showChargers = false
     @State private var panelExpanded = true
     @State private var selectedCharger: EVCharger?
     @State private var mapStyle: EVMapStyle = .standard
