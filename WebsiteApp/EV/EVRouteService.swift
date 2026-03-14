@@ -2,28 +2,41 @@ import Foundation
 import MapKit
 import Observation
 
+struct ChargingStop: Identifiable {
+    let id = UUID()
+    let distanceMiles: Double       // distance from origin where stop occurs
+    let coordinate: CLLocationCoordinate2D
+    let arrivalBatteryPct: Double   // battery % when arriving at charger
+    let departureBatteryPct: Double // battery % after charging (target 80%)
+    let energyToAddKwh: Double      // kWh to charge
+    let stopNumber: Int
+}
+
 struct RouteResult: Identifiable {
     let id = UUID()
     let route: MKRoute
-    let elevationGain: Double      // meters
-    let elevationLoss: Double      // meters
-    let energyKwh: Double          // total energy consumed
-    let batteryPctUsed: Double     // % of battery used
-    let efficiency: Double         // miles per kWh
-    let averageGrade: Double       // %
-    let peakGrade: Double          // %
+    let elevationGain: Double
+    let elevationLoss: Double
+    let energyKwh: Double           // total energy for full trip (no stops)
+    let batteryPctUsed: Double      // total % if no charging
+    let efficiency: Double
+    let averageGrade: Double
+    let peakGrade: Double
     let elevationProfile: [ElevationPoint]
-    let score: Double              // lower = better
+    let score: Double
+    let chargingStops: [ChargingStop]
+    let finalBatteryPct: Double     // battery % at destination (after charging stops)
 
     var distanceMiles: Double { route.distance * 0.000621371 }
     var durationMinutes: Double { route.expectedTravelTime / 60 }
-    var remainingBatteryPct: Double { max(0, 100 - batteryPctUsed) }
+    var remainingBatteryPct: Double { finalBatteryPct }
+    var needsCharging: Bool { !chargingStops.isEmpty }
 }
 
 struct ElevationPoint {
-    let distance: Double   // cumulative miles
-    let elevation: Double  // meters
-    let grade: Double      // percent
+    let distance: Double
+    let elevation: Double
+    let grade: Double
 }
 
 @Observable
@@ -33,6 +46,11 @@ class EVRouteService {
     var errorMessage: String?
 
     private let googleAPIKey = "AIzaSyBEjpKpb_xMnZgrkTBOKMefOdaqkmQHS-8"
+
+    // Charging parameters
+    private let minBatteryPct = 15.0    // never drop below 15%
+    private let chargeTargetPct = 80.0  // charge up to 80% at each stop
+    private let startBatteryPct = 100.0 // assume full charge at start
 
     func planRoute(from origin: CLLocationCoordinate2D,
                    to destination: CLLocationCoordinate2D,
@@ -52,18 +70,30 @@ class EVRouteService {
                 let profile = buildElevationProfile(points: points, elevations: elevations, totalDistance: route.distance)
                 let energy = estimateEnergy(profile: profile, route: route, vehicle: vehicle)
                 let score = computeScore(energy: energy, route: route)
+                let totalBatteryPct = (energy.totalKwh / vehicle.batteryKwh) * 100
+
+                // Calculate charging stops if needed
+                let chargingPlan = calculateChargingStops(
+                    profile: profile,
+                    points: points,
+                    route: route,
+                    vehicle: vehicle,
+                    totalEnergyKwh: energy.totalKwh
+                )
 
                 results.append(RouteResult(
                     route: route,
                     elevationGain: energy.gain,
                     elevationLoss: energy.loss,
                     energyKwh: energy.totalKwh,
-                    batteryPctUsed: (energy.totalKwh / vehicle.batteryKwh) * 100,
+                    batteryPctUsed: totalBatteryPct,
                     efficiency: (route.distance * 0.000621371) / max(energy.totalKwh, 0.01),
                     averageGrade: energy.avgGrade,
                     peakGrade: energy.peakGrade,
                     elevationProfile: profile,
-                    score: score
+                    score: score,
+                    chargingStops: chargingPlan.stops,
+                    finalBatteryPct: chargingPlan.finalBatteryPct
                 ))
             }
 
@@ -73,6 +103,92 @@ class EVRouteService {
         }
 
         isLoading = false
+    }
+
+    // MARK: - Charging Stop Calculation
+
+    private struct ChargingPlan {
+        let stops: [ChargingStop]
+        let finalBatteryPct: Double
+    }
+
+    private func calculateChargingStops(
+        profile: [ElevationPoint],
+        points: [CLLocationCoordinate2D],
+        route: MKRoute,
+        vehicle: EVVehicle,
+        totalEnergyKwh: Double
+    ) -> ChargingPlan {
+        let totalBatteryPct = (totalEnergyKwh / vehicle.batteryKwh) * 100
+
+        // If trip fits within battery with 15% remaining, no stops needed
+        if totalBatteryPct <= (startBatteryPct - minBatteryPct) {
+            return ChargingPlan(stops: [], finalBatteryPct: startBatteryPct - totalBatteryPct)
+        }
+
+        // Need charging stops — simulate the trip segment by segment
+        var currentBatteryPct = startBatteryPct
+        var stops: [ChargingStop] = []
+        var stopNumber = 1
+        let totalMiles = route.distance * 0.000621371
+
+        guard profile.count >= 2, points.count >= 2 else {
+            return ChargingPlan(stops: [], finalBatteryPct: max(0, startBatteryPct - totalBatteryPct))
+        }
+
+        // Calculate energy per segment as percentage of battery
+        let segmentCount = profile.count - 1
+        var segmentEnergyPcts: [Double] = []
+
+        for i in 1..<profile.count {
+            let segDistMiles = (profile[i].distance - profile[i-1].distance)
+            let elevDiff = profile[i].elevation - profile[i-1].elevation
+            let gradePct = abs(profile[i].grade)
+
+            // Base driving energy for this segment
+            var segEnergy = segDistMiles * vehicle.effKwhMi
+
+            if elevDiff > 0 {
+                let motorEff = max(0.60, 0.88 - gradePct * 0.015)
+                segEnergy += (vehicle.weightKg * 9.81 * elevDiff) / (3_600_000 * motorEff)
+            } else if elevDiff < 0 {
+                let regenPenalty = max(0.30, vehicle.regenEff - gradePct * 0.02)
+                segEnergy -= (vehicle.weightKg * 9.81 * abs(elevDiff)) / 3_600_000 * regenPenalty
+            }
+
+            let segPct = (max(0, segEnergy) / vehicle.batteryKwh) * 100
+            segmentEnergyPcts.append(segPct)
+        }
+
+        // Walk through segments, inserting charging stops when battery would drop below threshold
+        for i in 0..<segmentCount {
+            let energyNeeded = segmentEnergyPcts[i]
+
+            // Check if we'd drop below minimum after this segment
+            if currentBatteryPct - energyNeeded < minBatteryPct {
+                // Need to charge before this segment
+                let pointIdx = min(i, points.count - 1)
+                let arrivalPct = currentBatteryPct
+                let energyToAdd = (chargeTargetPct - arrivalPct) / 100.0 * vehicle.batteryKwh
+
+                stops.append(ChargingStop(
+                    distanceMiles: profile[i].distance,
+                    coordinate: points[pointIdx],
+                    arrivalBatteryPct: arrivalPct,
+                    departureBatteryPct: chargeTargetPct,
+                    energyToAddKwh: max(0, energyToAdd),
+                    stopNumber: stopNumber
+                ))
+
+                currentBatteryPct = chargeTargetPct
+                stopNumber += 1
+            }
+
+            currentBatteryPct -= energyNeeded
+            currentBatteryPct = max(0, currentBatteryPct)
+        }
+
+        return ChargingPlan(stops: stops, finalBatteryPct: max(0, currentBatteryPct))
     }
 
     // MARK: - MapKit Directions
@@ -148,7 +264,6 @@ class EVRouteService {
             allPoints.append(mapPoints[i].coordinate)
         }
 
-        // Calculate cumulative distances
         var cumDist: [Double] = [0]
         for i in 1..<allPoints.count {
             let loc1 = CLLocation(latitude: allPoints[i-1].latitude, longitude: allPoints[i-1].longitude)
@@ -161,7 +276,6 @@ class EVRouteService {
 
         for i in 0..<count {
             let targetDist = totalDist * Double(i) / Double(count - 1)
-            // Find the segment containing this distance
             var segIdx = 0
             while segIdx < cumDist.count - 1 && cumDist[segIdx + 1] < targetDist {
                 segIdx += 1
@@ -187,7 +301,6 @@ class EVRouteService {
                                         totalDistance: Double) -> [ElevationPoint] {
         guard points.count == elevations.count, points.count >= 3 else { return [] }
 
-        // 3-point moving average smoothing
         var smoothed = elevations
         for i in 1..<(elevations.count - 1) {
             smoothed[i] = (elevations[i-1] + elevations[i] + elevations[i+1]) / 3.0
@@ -241,12 +354,10 @@ class EVRouteService {
             peakGrade = max(peakGrade, gradePct)
 
             if elevDiff > 0 {
-                // Climbing: motor efficiency degrades with steeper grades
                 totalGain += elevDiff
                 let motorEff = max(0.60, 0.88 - gradePct * 0.015)
                 elevEnergy += (vehicle.weightKg * 9.81 * elevDiff) / (3_600_000 * motorEff)
             } else if elevDiff < 0 {
-                // Descending: regen recovery with grade-dependent penalty
                 totalLoss += abs(elevDiff)
                 let regenPenalty = max(0.30, vehicle.regenEff - gradePct * 0.02)
                 regenEnergy += (vehicle.weightKg * 9.81 * abs(elevDiff)) / 3_600_000 * regenPenalty

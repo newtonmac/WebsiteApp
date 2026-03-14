@@ -41,6 +41,14 @@ struct EVRouteDetailView: View {
                         .fill(EVTheme.border)
                         .frame(height: 1)
 
+                    // Charging plan (if needed)
+                    if route.needsCharging {
+                        Rectangle()
+                            .fill(EVTheme.border)
+                            .frame(height: 1)
+                        chargingPlanSection
+                    }
+
                     // Energy breakdown
                     energyBreakdownSection
 
@@ -121,8 +129,81 @@ struct EVRouteDetailView: View {
             // Peak grade
             if route.peakGrade > 8 {
                 warningItem("Contains steep grades up to \(String(format: "%.1f%%", route.peakGrade)) — increased energy use")
-            } else {
+            } else if !route.needsCharging {
                 checkItem("No significant drawbacks for this route", color: EVTheme.accentYellow)
+            }
+
+            // Charging needed
+            if route.needsCharging {
+                warningItem("Requires **\(route.chargingStops.count) charging stop\(route.chargingStops.count == 1 ? "" : "s")** — battery exceeds single-charge range")
+                checkItem("Arrives with **\(Int(route.finalBatteryPct))% battery** after charging", color: EVTheme.accentGreen)
+            }
+        }
+    }
+
+    // MARK: - Charging Plan
+
+    private var chargingPlanSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "bolt.circle.fill")
+                    .foregroundStyle(EVTheme.accentYellow)
+                Text("Charging Plan")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(EVTheme.textPrimary)
+            }
+
+            // Start
+            chargingTimelineRow(
+                icon: "circle.fill",
+                iconColor: EVTheme.accentGreen,
+                title: "Depart Origin",
+                subtitle: "Battery: 100%",
+                isLast: false
+            )
+
+            ForEach(route.chargingStops) { stop in
+                chargingTimelineRow(
+                    icon: "bolt.circle.fill",
+                    iconColor: EVTheme.accentYellow,
+                    title: "Charging Stop \(stop.stopNumber)",
+                    subtitle: "At mile \(String(format: "%.0f", stop.distanceMiles)) — Arrive \(Int(stop.arrivalBatteryPct))% → Charge to \(Int(stop.departureBatteryPct))% (+\(String(format: "%.1f", stop.energyToAddKwh)) kWh)",
+                    isLast: false
+                )
+            }
+
+            // Destination
+            chargingTimelineRow(
+                icon: "mappin.circle.fill",
+                iconColor: EVTheme.accentRed,
+                title: "Arrive Destination",
+                subtitle: "Battery: \(Int(route.finalBatteryPct))% remaining",
+                isLast: true
+            )
+        }
+    }
+
+    private func chargingTimelineRow(icon: String, iconColor: Color, title: String, subtitle: String, isLast: Bool) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(spacing: 0) {
+                Image(systemName: icon)
+                    .font(.system(size: 16))
+                    .foregroundStyle(iconColor)
+                if !isLast {
+                    Rectangle()
+                        .fill(EVTheme.border)
+                        .frame(width: 2, height: 30)
+                }
+            }
+            .frame(width: 20)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(EVTheme.textPrimary)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(EVTheme.textSecondary)
             }
         }
     }

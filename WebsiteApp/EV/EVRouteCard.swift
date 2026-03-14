@@ -75,10 +75,29 @@ struct EVRouteCard: View {
                 )
             }
 
+            // Charging stops indicator
+            if route.needsCharging {
+                HStack(spacing: 6) {
+                    Image(systemName: "bolt.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(EVTheme.accentYellow)
+                    Text("\(route.chargingStops.count) charging stop\(route.chargingStops.count == 1 ? "" : "s") needed")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(EVTheme.accentYellow)
+                    Spacer()
+                    Text("Arrives \(Int(route.finalBatteryPct))%")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(EVTheme.accentGreen)
+                }
+                .padding(8)
+                .background(EVTheme.accentYellow.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+
             // Battery bar
             BatteryBarView(
                 vehicleName: vehicle.displayName,
-                batteryPctUsed: route.batteryPctUsed
+                batteryPctUsed: 100 - route.finalBatteryPct
             )
         }
         .padding(14)

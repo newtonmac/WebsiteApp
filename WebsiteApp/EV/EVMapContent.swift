@@ -56,6 +56,23 @@ struct EVMapContent: View {
                 }
             }
 
+            // Charging stop markers (for selected route)
+            if let selected = selectedRoute {
+                ForEach(selected.chargingStops) { stop in
+                    Annotation("Charge Stop \(stop.stopNumber)", coordinate: stop.coordinate) {
+                        ZStack {
+                            Circle()
+                                .fill(EVTheme.accentYellow)
+                                .frame(width: 30, height: 30)
+                            Image(systemName: "bolt.fill")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(.white)
+                        }
+                        .shadow(color: EVTheme.accentYellow.opacity(0.5), radius: 4)
+                    }
+                }
+            }
+
             // Charger markers
             ForEach(chargers) { charger in
                 Annotation(charger.name, coordinate: charger.coordinate) {
