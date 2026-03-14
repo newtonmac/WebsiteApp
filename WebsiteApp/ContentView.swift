@@ -9,7 +9,17 @@ import SwiftUI
 
 struct ContentView: View {
     var body: some View {
-        OilPriceDashboardView()
+        TabView {
+            OilPriceDashboardView()
+                .tabItem {
+                    Label("Oil Tracker", systemImage: "drop.fill")
+                }
+
+            EVRoutePlannerView()
+                .tabItem {
+                    Label("EV Planner", systemImage: "bolt.car.fill")
+                }
+        }
     }
 }
 
