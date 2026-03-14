@@ -724,7 +724,7 @@
         .reset-view-btn {
             display: none;
             position: absolute;
-            bottom: 16px;
+            bottom: 150px;
             right: 10px;
             z-index: 1001;
             width: 36px;
@@ -741,6 +741,60 @@
         }
         .reset-view-btn:hover { background: #fff; }
         .reset-view-btn.visible { display: flex; }
+
+        /* Map controls — bottom-right */
+        .map-controls {
+            position: absolute; bottom: 24px; right: 10px; z-index: 1002;
+            display: flex; flex-direction: column; gap: 6px; align-items: center;
+        }
+        .map-ctrl-btn {
+            width: 36px; height: 36px; border-radius: 8px;
+            background: #ffffffee; border: 1px solid #d1d5db;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font-size: 18px; color: #374151; transition: background 0.15s;
+        }
+        .map-ctrl-btn:hover { background: #fff; }
+        .map-ctrl-btn svg { width: 18px; height: 18px; }
+        .zoom-group { display: flex; flex-direction: column; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.18); }
+        .zoom-group .map-ctrl-btn { border-radius: 0; box-shadow: none; }
+        .zoom-group .map-ctrl-btn:first-child { border-radius: 8px 8px 0 0; }
+        .zoom-group .map-ctrl-btn:last-child { border-radius: 0 0 8px 8px; border-top: 1px solid #e5e7eb; }
+
+        /* Layers button — bottom-left */
+        .layers-btn-wrap {
+            position: absolute; bottom: 24px; left: 10px; z-index: 1002;
+        }
+        .layers-btn {
+            width: 52px; height: 52px; border-radius: 8px; overflow: hidden;
+            border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+            cursor: pointer; position: relative; background: #ddd;
+        }
+        .layers-btn img {
+            width: 100%; height: 100%; object-fit: cover; display: block;
+        }
+        .layers-btn-label {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            background: rgba(0,0,0,0.55); color: #fff; font-size: 9px;
+            text-align: center; padding: 2px 0; font-weight: 600; letter-spacing: 0.3px;
+        }
+        /* Layers picker popup */
+        .layers-picker {
+            display: none; position: absolute; bottom: 60px; left: 0;
+            background: #fff; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+            padding: 10px; gap: 8px; z-index: 1003;
+        }
+        .layers-picker.open { display: flex; }
+        .layers-picker-item {
+            display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer;
+        }
+        .layers-picker-thumb {
+            width: 60px; height: 60px; border-radius: 8px; overflow: hidden;
+            border: 2.5px solid transparent; transition: border-color 0.15s;
+        }
+        .layers-picker-thumb.selected { border-color: #4285f4; }
+        .layers-picker-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .layers-picker-name { font-size: 10px; color: #374151; font-weight: 500; }
         @media (max-width: 768px) {
             .legend-toggle-btn { display: flex; }
         }
@@ -1131,6 +1185,26 @@
         <div id="map"></div>
         <button class="legend-toggle-btn" id="legendToggleBtn" title="Map legend">&#9776;</button>
         <button class="reset-view-btn" id="resetViewBtn" title="Reset map view">&#8634;</button>
+
+        <!-- Map controls — bottom-right -->
+        <div class="map-controls">
+            <button class="map-ctrl-btn" id="myLocationBtn" title="My location">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/><circle cx="12" cy="12" r="8" stroke-dasharray="2 2"/></svg>
+            </button>
+            <div class="zoom-group">
+                <button class="map-ctrl-btn" id="zoomInBtn" title="Zoom in">+</button>
+                <button class="map-ctrl-btn" id="zoomOutBtn" title="Zoom out">&minus;</button>
+            </div>
+        </div>
+
+        <!-- Layers — bottom-left -->
+        <div class="layers-btn-wrap">
+            <div class="layers-btn" id="layersBtn" title="Map layers">
+                <img src="https://maps.googleapis.com/maps/api/staticmap?center=34,-118&zoom=9&size=120x120&maptype=satellite&key=" alt="" id="layersThumb"/>
+                <div class="layers-btn-label">Layers</div>
+            </div>
+            <div class="layers-picker" id="layersPicker"></div>
+        </div>
         <div class="map-legend" id="mapLegend" style="display:none;">
             <div class="leg-row"><div class="leg-swatch" style="background:#34d399;"></div> EV Best Route</div>
             <div class="leg-row"><div class="leg-swatch" style="background:#60a5fa;"></div> Fastest Route</div>
@@ -1170,7 +1244,7 @@ function initApp() {
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: false,
-        zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_TOP }
+        zoomControl: false
     });
 
     // ─── Google Services ───
@@ -1205,6 +1279,66 @@ function initApp() {
             map.fitBounds(lastRouteBounds, 40);
         }
     });
+
+    // Zoom controls
+    document.getElementById('zoomInBtn').addEventListener('click', () => map.setZoom(map.getZoom() + 1));
+    document.getElementById('zoomOutBtn').addEventListener('click', () => map.setZoom(map.getZoom() - 1));
+
+    // My location button (on map)
+    document.getElementById('myLocationBtn').addEventListener('click', () => {
+        if (!navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(pos => {
+            const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            map.panTo(loc);
+            map.setZoom(15);
+            if (window._myLocMarker) window._myLocMarker.setMap(null);
+            window._myLocMarker = new google.maps.Marker({
+                position: loc, map,
+                icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#4285f4', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2.5 },
+                title: 'Your location'
+            });
+        }, () => {}, { enableHighAccuracy: true, timeout: 8000 });
+    });
+
+    // Layers button & picker
+    (function initLayers() {
+        const MAP_TYPES = [
+            { id: 'roadmap',   label: 'Map' },
+            { id: 'satellite', label: 'Satellite' },
+            { id: 'terrain',   label: 'Terrain' },
+            { id: 'hybrid',    label: 'Hybrid' },
+        ];
+        const picker = document.getElementById('layersPicker');
+        const layersBtn = document.getElementById('layersBtn');
+        MAP_TYPES.forEach(t => {
+            const item = document.createElement('div');
+            item.className = 'layers-picker-item';
+            const thumb = document.createElement('div');
+            thumb.className = 'layers-picker-thumb' + (t.id === 'roadmap' ? ' selected' : '');
+            thumb.dataset.typeId = t.id;
+            // Use colored placeholder squares instead of static map API images
+            const colors = { roadmap: '#e8e8e0', satellite: '#3a5a3a', terrain: '#c8d8c0', hybrid: '#2a4a2a' };
+            thumb.innerHTML = `<div style="width:100%;height:100%;background:${colors[t.id]};display:flex;align-items:center;justify-content:center;font-size:18px;">${t.id === 'satellite' || t.id === 'hybrid' ? '🛰' : t.id === 'terrain' ? '⛰' : '🗺'}</div>`;
+            const name = document.createElement('div');
+            name.className = 'layers-picker-name';
+            name.textContent = t.label;
+            item.appendChild(thumb);
+            item.appendChild(name);
+            item.addEventListener('click', () => {
+                map.setMapTypeId(t.id);
+                picker.querySelectorAll('.layers-picker-thumb').forEach(el => el.classList.remove('selected'));
+                thumb.classList.add('selected');
+                picker.classList.remove('open');
+            });
+            picker.appendChild(item);
+        });
+        layersBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            picker.classList.toggle('open');
+        });
+        document.addEventListener('click', () => picker.classList.remove('open'));
+        picker.addEventListener('click', e => e.stopPropagation());
+    })();
 
     // Charger toggle
     buildNetworkFilterChips();
@@ -3146,7 +3280,7 @@ window.addEventListener('resize', () => {
 
 <!-- Footer bar -->
 <div class="footer-bar">
-    <span>&copy; 2026 EV Route Planner &nbsp;·&nbsp; v1.12 &nbsp;·&nbsp; Updated Mar 14, 2026</span>
+    <span>&copy; 2026 EV Route Planner &nbsp;·&nbsp; v1.13 &nbsp;·&nbsp; Updated Mar 14, 2026</span>
     <button class="footer-link" data-modal="aboutModal">About</button>
     <button class="footer-link" data-modal="newsModal">News</button>
     <button class="footer-link" data-modal="legalModal">Disclaimer & Privacy</button>
