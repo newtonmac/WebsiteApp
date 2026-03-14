@@ -240,7 +240,11 @@ class EVRouteService {
             let (data, _) = try await URLSession.shared.data(from: url)
             let response = try JSONDecoder().decode(GoogleElevationResponse.self, from: data)
             if response.status == "OK" {
-                return response.results.map { $0.elevation }
+                let elevs = response.results.map { $0.elevation }
+                let minE = elevs.min() ?? 0
+                let maxE = elevs.max() ?? 0
+                print("Elevation API: \(elevs.count) points, range \(String(format: "%.0f", minE))m - \(String(format: "%.0f", maxE))m")
+                return elevs
             } else {
                 print("Elevation API error: \(response.status)")
             }

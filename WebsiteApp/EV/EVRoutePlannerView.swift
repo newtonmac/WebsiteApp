@@ -299,6 +299,11 @@ struct EVRoutePlannerView: View {
                             selectedRoute = route
                         }
                         fitMapToRoute(route)
+                        if showChargers {
+                            Task {
+                                await chargerService.findChargersAlongRoute(route.route)
+                            }
+                        }
                     }
                 )
             }

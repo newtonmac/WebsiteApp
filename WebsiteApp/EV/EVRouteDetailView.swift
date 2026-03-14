@@ -397,62 +397,127 @@ struct DetailRow: View {
 struct ElevationChartView: View {
     let profile: [ElevationPoint]
 
+    private var minElevFt: Double {
+        ((profile.map(\.elevation).min() ?? 0) * 3.28084) - 20
+    }
+    private var maxElevFt: Double {
+        ((profile.map(\.elevation).max() ?? 100) * 3.28084) + 20
+    }
+    private var elevRange: Double {
+        max(1, maxElevFt - minElevFt)
+    }
+    private var maxDist: Double {
+        profile.last?.distance ?? 1
+    }
+
     var body: some View {
         GeometryReader { geo in
-            let minElev = (profile.map(\.elevation).min() ?? 0) - 10
-            let maxElev = (profile.map(\.elevation).max() ?? 100) + 10
-            let elevRange = maxElev - minElev
-            let maxDist = profile.last?.distance ?? 1
+            let chartLeft: CGFloat = 45
+            let chartWidth = geo.size.width - chartLeft - 8
+            let chartHeight = geo.size.height - 20
 
-            Canvas { context, size in
-                guard profile.count >= 2 else { return }
+            ZStack(alignment: .topLeading) {
+                // Background
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(EVTheme.bgCard)
 
-                // Fill gradient
-                var fillPath = Path()
-                fillPath.move(to: CGPoint(x: 0, y: size.height))
-
-                for point in profile {
-                    let x = (point.distance / maxDist) * size.width
-                    let y = size.height - ((point.elevation - minElev) / elevRange) * size.height
-                    fillPath.addLine(to: CGPoint(x: x, y: y))
+                // Y-axis labels
+                VStack {
+                    Text("\(Int(maxElevFt)) ft")
+                        .font(.system(size: 8))
+                        .foregroundStyle(EVTheme.textSecondary)
+                    Spacer()
+                    Text("\(Int((maxElevFt + minElevFt) / 2)) ft")
+                        .font(.system(size: 8))
+                        .foregroundStyle(EVTheme.textSecondary)
+                    Spacer()
+                    Text("\(Int(minElevFt)) ft")
+                        .font(.system(size: 8))
+                        .foregroundStyle(EVTheme.textSecondary)
                 }
+                .frame(width: chartLeft - 4, height: chartHeight)
+                .padding(.top, 4)
 
-                fillPath.addLine(to: CGPoint(x: size.width, y: size.height))
-                fillPath.closeSubpath()
+                // Chart area
+                Canvas { context, size in
+                    guard profile.count >= 2 else { return }
 
-                context.fill(fillPath, with: .linearGradient(
-                    Gradient(colors: [EVTheme.accentGreen.opacity(0.3), EVTheme.accentGreen.opacity(0.02)]),
-                    startPoint: CGPoint(x: 0, y: 0),
-                    endPoint: CGPoint(x: 0, y: size.height)
-                ))
+                    let cWidth = chartWidth
+                    let cHeight = chartHeight
 
-                // Colored line segments by grade
-                for i in 1..<profile.count {
-                    let x1 = (profile[i-1].distance / maxDist) * size.width
-                    let y1 = size.height - ((profile[i-1].elevation - minElev) / elevRange) * size.height
-                    let x2 = (profile[i].distance / maxDist) * size.width
-                    let y2 = size.height - ((profile[i].elevation - minElev) / elevRange) * size.height
-
-                    var segPath = Path()
-                    segPath.move(to: CGPoint(x: x1, y: y1))
-                    segPath.addLine(to: CGPoint(x: x2, y: y2))
-
-                    let grade = profile[i].grade
-                    let color: Color
-                    if grade < -1 {
-                        color = EVTheme.accentGreen
-                    } else if grade < 1 {
-                        color = Color(hex: "#a3e635")
-                    } else if grade < 4 {
-                        color = EVTheme.accentYellow
-                    } else {
-                        color = EVTheme.accentRed
+                    // Grid lines
+                    for i in 0...4 {
+                        let y = cHeight * CGFloat(i) / 4.0
+                        var gridPath = Path()
+                        gridPath.move(to: CGPoint(x: 0, y: y))
+                        gridPath.addLine(to: CGPoint(x: cWidth, y: y))
+                        context.stroke(gridPath, with: .color(EVTheme.border.opacity(0.4)), lineWidth: 0.5)
                     }
 
-                    context.stroke(segPath, with: .color(color), lineWidth: 2.5)
+                    // Fill gradient under the line
+                    var fillPath = Path()
+                    fillPath.move(to: CGPoint(x: 0, y: cHeight))
+
+                    for point in profile {
+                        let x = (point.distance / maxDist) * cWidth
+                        let elevFt = point.elevation * 3.28084
+                        let y = cHeight - ((elevFt - minElevFt) / elevRange) * cHeight
+                        fillPath.addLine(to: CGPoint(x: x, y: y))
+                    }
+
+                    fillPath.addLine(to: CGPoint(x: cWidth, y: cHeight))
+                    fillPath.closeSubpath()
+
+                    context.fill(fillPath, with: .linearGradient(
+                        Gradient(colors: [EVTheme.accentGreen.opacity(0.25), EVTheme.accentGreen.opacity(0.02)]),
+                        startPoint: CGPoint(x: 0, y: 0),
+                        endPoint: CGPoint(x: 0, y: cHeight)
+                    ))
+
+                    // Colored line segments by grade
+                    for i in 1..<profile.count {
+                        let x1 = (profile[i-1].distance / maxDist) * cWidth
+                        let elevFt1 = profile[i-1].elevation * 3.28084
+                        let y1 = cHeight - ((elevFt1 - minElevFt) / elevRange) * cHeight
+                        let x2 = (profile[i].distance / maxDist) * cWidth
+                        let elevFt2 = profile[i].elevation * 3.28084
+                        let y2 = cHeight - ((elevFt2 - minElevFt) / elevRange) * cHeight
+
+                        var segPath = Path()
+                        segPath.move(to: CGPoint(x: x1, y: y1))
+                        segPath.addLine(to: CGPoint(x: x2, y: y2))
+
+                        let grade = profile[i].grade
+                        let color: Color
+                        if grade < -1 {
+                            color = EVTheme.accentGreen
+                        } else if grade < 1 {
+                            color = Color(hex: "#a3e635")
+                        } else if grade < 4 {
+                            color = EVTheme.accentYellow
+                        } else {
+                            color = EVTheme.accentRed
+                        }
+
+                        context.stroke(segPath, with: .color(color), lineWidth: 2.5)
+                    }
                 }
+                .frame(width: chartWidth, height: chartHeight)
+                .offset(x: chartLeft, y: 4)
+
+                // X-axis labels
+                HStack {
+                    Text("0 mi")
+                        .font(.system(size: 8))
+                        .foregroundStyle(EVTheme.textSecondary)
+                    Spacer()
+                    Text("\(String(format: "%.0f", maxDist)) mi")
+                        .font(.system(size: 8))
+                        .foregroundStyle(EVTheme.textSecondary)
+                }
+                .offset(x: chartLeft, y: chartHeight + 6)
+                .frame(width: chartWidth)
             }
         }
-        .background(EVTheme.bgCard)
     }
 }
