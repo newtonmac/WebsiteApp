@@ -81,7 +81,7 @@ struct EVMapContent: View {
                         selectedCharger = charger
                     } label: {
                         ChargerMarkerView(charger: charger)
-                            .frame(width: 44, height: 44)
+                            .frame(width: 50, height: 50)
                     }
                     .buttonStyle(.plain)
                 }
@@ -100,14 +100,39 @@ struct ChargerMarkerView: View {
     let charger: EVCharger
 
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 6)
-                .fill(networkColor)
-                .frame(width: 28, height: 22)
-                .shadow(color: networkColor.opacity(0.4), radius: 3)
-            Text(charger.network.abbreviation)
-                .font(.system(size: 9, weight: .bold))
-                .foregroundStyle(charger.network == .shell ? .black : .white)
+        VStack(spacing: 1) {
+            // Speed label
+            if let speed = charger.speedKw {
+                Text("\(Int(speed))kW")
+                    .font(.system(size: 7, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 3)
+                    .padding(.vertical, 1)
+                    .background(speed >= 150 ? EVTheme.accentGreen : EVTheme.accentYellow)
+                    .clipShape(RoundedRectangle(cornerRadius: 3))
+            }
+
+            // Network badge
+            ZStack {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(networkColor)
+                    .frame(width: 28, height: 22)
+                    .shadow(color: networkColor.opacity(0.4), radius: 3)
+                Text(charger.network.abbreviation)
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(charger.network == .shell ? .black : .white)
+            }
+            .overlay(alignment: .topTrailing) {
+                // Charger count badge
+                if charger.totalChargers > 0 {
+                    Text("\(charger.totalChargers)")
+                        .font(.system(size: 7, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(minWidth: 12, minHeight: 12)
+                        .background(Circle().fill(EVTheme.accentBlue))
+                        .offset(x: 6, y: -6)
+                }
+            }
         }
     }
 
@@ -158,41 +183,69 @@ struct ChargerDetailSheet: View {
             Divider()
                 .background(EVTheme.border)
 
-            // Details
-            HStack(spacing: 20) {
-                if !charger.connectors.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("CONNECTORS")
+            // Charger counts and speed
+            HStack(spacing: 0) {
+                if let dcFast = charger.dcFastCount, dcFast > 0 {
+                    VStack(spacing: 4) {
+                        Text("DC FAST")
                             .font(.system(size: 10, weight: .bold))
                             .foregroundStyle(EVTheme.textSecondary)
-                        Text(charger.connectors.joined(separator: ", "))
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(EVTheme.textPrimary)
+                        Text("\(dcFast)")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundStyle(EVTheme.accentGreen)
                     }
+                    .frame(maxWidth: .infinity)
                 }
 
-                Spacer()
-
-                if let stalls = charger.stallCount, stalls > 0 {
-                    VStack(alignment: .center, spacing: 4) {
-                        Text("STALLS")
+                if let l2 = charger.level2Count, l2 > 0 {
+                    VStack(spacing: 4) {
+                        Text("LEVEL 2")
                             .font(.system(size: 10, weight: .bold))
                             .foregroundStyle(EVTheme.textSecondary)
-                        Text("\(stalls)")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(EVTheme.textPrimary)
+                        Text("\(l2)")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundStyle(EVTheme.accentBlue)
                     }
+                    .frame(maxWidth: .infinity)
                 }
 
                 if let speed = charger.speedKw {
-                    VStack(alignment: .center, spacing: 4) {
-                        Text("SPEED")
+                    VStack(spacing: 4) {
+                        Text("MAX SPEED")
                             .font(.system(size: 10, weight: .bold))
                             .foregroundStyle(EVTheme.textSecondary)
                         Text("\(Int(speed)) kW")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(EVTheme.accentGreen)
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundStyle(speed >= 150 ? EVTheme.accentGreen : EVTheme.accentYellow)
                     }
+                    .frame(maxWidth: .infinity)
+                }
+
+                if let stalls = charger.stallCount, stalls > 0 {
+                    VStack(spacing: 4) {
+                        Text("TOTAL")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(EVTheme.textSecondary)
+                        Text("\(stalls)")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundStyle(EVTheme.textPrimary)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .padding(.vertical, 8)
+            .background(EVTheme.bgInput)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+
+            // Connectors
+            if !charger.connectors.isEmpty {
+                HStack(spacing: 6) {
+                    Image(systemName: "ev.plug.dc.ccs2")
+                        .font(.system(size: 13))
+                        .foregroundStyle(EVTheme.textSecondary)
+                    Text(charger.connectors.joined(separator: ", "))
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(EVTheme.textPrimary)
                 }
             }
 

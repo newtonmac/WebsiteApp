@@ -13,6 +13,12 @@ struct EVCharger: Identifiable, Hashable {
     let hours: String?
     let pricing: String?
     let stallCount: Int?
+    let level2Count: Int?
+    let dcFastCount: Int?
+
+    var totalChargers: Int {
+        (level2Count ?? 0) + (dcFastCount ?? 0)
+    }
 
     static func == (lhs: EVCharger, rhs: EVCharger) -> Bool {
         lhs.id == rhs.id
@@ -157,6 +163,11 @@ class EVChargerService {
     private func mapStationToCharger(_ station: NRELStation) -> EVCharger {
         let network = identifyNetwork(station.ev_network ?? "")
         let connectors = parseConnectors(station.ev_connector_types ?? [])
+        let dcFast = station.ev_dc_fast_num ?? 0
+        let level2 = station.ev_level2_evse_num ?? 0
+
+        // Estimate max speed based on network (NREL doesn't provide exact kW)
+        let speed: Double? = dcFast > 0 ? networkMaxSpeed(network) : (level2 > 0 ? 19.2 : nil)
 
         return EVCharger(
             id: "\(station.id)",
@@ -165,11 +176,25 @@ class EVChargerService {
             coordinate: CLLocationCoordinate2D(latitude: station.latitude, longitude: station.longitude),
             address: [station.street_address, station.city, station.state].compactMap { $0 }.joined(separator: ", "),
             connectors: connectors,
-            speedKw: station.ev_dc_fast_num.flatMap { $0 > 0 ? Double($0) * 50 : nil },
+            speedKw: speed,
             hours: station.access_days_time,
             pricing: station.ev_pricing,
-            stallCount: station.ev_dc_fast_num
+            stallCount: dcFast + level2,
+            level2Count: level2 > 0 ? level2 : nil,
+            dcFastCount: dcFast > 0 ? dcFast : nil
         )
+    }
+
+    private func networkMaxSpeed(_ network: ChargerNetwork) -> Double {
+        switch network {
+        case .tesla: return 250
+        case .electrifyAmerica: return 350
+        case .evgo: return 350
+        case .chargePoint: return 240
+        case .blink: return 150
+        case .evConnect: return 200
+        case .shell: return 150
+        }
     }
 
     private func identifyNetwork(_ networkStr: String) -> ChargerNetwork {
@@ -287,6 +312,7 @@ struct NRELStation: Decodable {
     let state: String?
     let ev_network: String?
     let ev_connector_types: [String]?
+    let ev_level2_evse_num: Int?
     let ev_dc_fast_num: Int?
     let access_days_time: String?
     let ev_pricing: String?
@@ -294,7 +320,7 @@ struct NRELStation: Decodable {
     enum CodingKeys: String, CodingKey {
         case id, latitude, longitude, city, state
         case station_name, street_address, ev_network
-        case ev_connector_types, ev_dc_fast_num
+        case ev_connector_types, ev_level2_evse_num, ev_dc_fast_num
         case access_days_time, ev_pricing
     }
 
@@ -309,6 +335,7 @@ struct NRELStation: Decodable {
         state = try? c.decode(String.self, forKey: .state)
         ev_network = try? c.decode(String.self, forKey: .ev_network)
         ev_connector_types = try? c.decode([String].self, forKey: .ev_connector_types)
+        ev_level2_evse_num = try? c.decode(Int.self, forKey: .ev_level2_evse_num)
         ev_dc_fast_num = try? c.decode(Int.self, forKey: .ev_dc_fast_num)
         access_days_time = try? c.decode(String.self, forKey: .access_days_time)
         ev_pricing = try? c.decode(String.self, forKey: .ev_pricing)
