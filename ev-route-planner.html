@@ -687,6 +687,27 @@
             color: #374151;
         }
         .legend-toggle-btn:hover { background: #fff; }
+        /* Reset-view button (bottom-right, same style as legend toggle) */
+        .reset-view-btn {
+            display: none;
+            position: absolute;
+            bottom: 16px;
+            right: 10px;
+            z-index: 1001;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: #ffffffee;
+            border: 1px solid #d1d5db;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #374151;
+        }
+        .reset-view-btn:hover { background: #fff; }
+        .reset-view-btn.visible { display: flex; }
         @media (max-width: 768px) {
             .legend-toggle-btn { display: flex; }
         }
@@ -1059,6 +1080,7 @@
     <div class="map-wrap">
         <div id="map"></div>
         <button class="legend-toggle-btn" id="legendToggleBtn" title="Map legend">&#9776;</button>
+        <button class="reset-view-btn" id="resetViewBtn" title="Reset map view">&#8634;</button>
         <div class="map-legend" id="mapLegend" style="display:none;">
             <div class="leg-row"><div class="leg-swatch" style="background:#34d399;"></div> EV Best Route</div>
             <div class="leg-row"><div class="leg-swatch" style="background:#60a5fa;"></div> Fastest Route</div>
@@ -1088,6 +1110,7 @@
 <script>
 // ─── App Init (async loading) ───
 let map, directionsService, elevationService, geocoder;
+let lastRouteBounds = null;
 
 function initApp() {
     // ─── Map Setup (Google Maps — light theme) ───
@@ -1124,6 +1147,13 @@ function initApp() {
     document.getElementById('legendToggleBtn').addEventListener('click', () => {
         const legend = document.getElementById('mapLegend');
         legend.classList.toggle('mobile-open');
+    });
+
+    // Reset map view button
+    document.getElementById('resetViewBtn').addEventListener('click', () => {
+        if (lastRouteBounds && !lastRouteBounds.isEmpty()) {
+            map.fitBounds(lastRouteBounds, 40);
+        }
     });
 
     // Charger toggle
@@ -2021,7 +2051,11 @@ function displayRoutes(routes) {
     const bounds = new google.maps.LatLngBounds();
     if (routes.length) routes[0].coords.forEach(c => bounds.extend({ lat: c[1], lng: c[0] }));
     if (isRoundTrip && returnRoutesData.length) returnRoutesData[0].coords.forEach(c => bounds.extend({ lat: c[1], lng: c[0] }));
-    if (!bounds.isEmpty()) map.fitBounds(bounds, 40);
+    if (!bounds.isEmpty()) {
+        map.fitBounds(bounds, 40);
+        lastRouteBounds = bounds;
+        document.getElementById('resetViewBtn').classList.add('visible');
+    }
 
     // Build route cards
     const container = document.getElementById('routeCards');
