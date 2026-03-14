@@ -20,6 +20,7 @@ struct EVRoutePlannerView: View {
     @State private var mapStyle: EVMapStyle = .standard
     @State private var selectedNetworks: Set<ChargerNetwork> = Set(ChargerNetwork.allCases)
     @State private var keyboardOffset: CGFloat = 0
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @GestureState private var dragOffset: CGFloat = 0
     @State private var mapCameraPosition: MapCameraPosition = .region(
         MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 32.72, longitude: -117.16),
@@ -110,25 +111,57 @@ struct EVRoutePlannerView: View {
 
                 if panelExpanded || dragOffset < -30 {
                     ScrollView {
-                        VStack(spacing: 14) {
-                            inputSection
-                            togglesSection
-                            vehicleSection
-                            planButton
+                        if verticalSizeClass == .compact {
+                            // Landscape: two-column layout
+                            HStack(alignment: .top, spacing: 14) {
+                                // Left column: inputs + vehicle + plan button
+                                VStack(spacing: 10) {
+                                    inputSection
+                                    vehicleSection
+                                    planButton
+                                }
+                                .frame(maxWidth: .infinity)
 
-                            if !routeService.routes.isEmpty {
-                                routeResultsSection
-                            }
+                                // Right column: toggles + networks + results
+                                VStack(spacing: 10) {
+                                    togglesSection
 
-                            if let error = routeService.errorMessage {
-                                Text(error)
-                                    .font(.caption)
-                                    .foregroundStyle(EVTheme.accentRed)
-                                    .padding(.horizontal)
+                                    if !routeService.routes.isEmpty {
+                                        routeResultsSection
+                                    }
+
+                                    if let error = routeService.errorMessage {
+                                        Text(error)
+                                            .font(.caption)
+                                            .foregroundStyle(EVTheme.accentRed)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity)
                             }
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 100)
+                        } else {
+                            // Portrait: single-column layout
+                            VStack(spacing: 14) {
+                                inputSection
+                                togglesSection
+                                vehicleSection
+                                planButton
+
+                                if !routeService.routes.isEmpty {
+                                    routeResultsSection
+                                }
+
+                                if let error = routeService.errorMessage {
+                                    Text(error)
+                                        .font(.caption)
+                                        .foregroundStyle(EVTheme.accentRed)
+                                        .padding(.horizontal)
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 100)
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 100)
                     }
                 }
             }
