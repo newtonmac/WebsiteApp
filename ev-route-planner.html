@@ -4,10 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EV Route Planner — Least Elevation Gain</title>
-    <script>(g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.googleapis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
-        key: "AIzaSyCvbijNp_WBn0pgnoVtXyAl1AMcZb7zrZ8",
-        v: "weekly"
-    });</script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -704,12 +700,7 @@
 // ─── App Init (async loading) ───
 let map, directionsService, elevationService, geocoder;
 
-async function initApp() {
-    // Load required libraries
-    await google.maps.importLibrary('maps');
-    await google.maps.importLibrary('places');
-    await google.maps.importLibrary('geometry');
-
+function initApp() {
     // ─── Map Setup (Google Maps — light theme) ───
     map = new google.maps.Map(document.getElementById('map'), {
         center: { lat: 32.72, lng: -117.16 },
@@ -739,8 +730,7 @@ async function initApp() {
     updateEvSpecs();
 }
 
-// Start the app
-initApp();
+// initApp() is called by Google Maps API callback
 
 // ─── EV Model Database ───
 // batteryKwh: usable battery capacity
@@ -1694,5 +1684,6 @@ window.addEventListener('resize', () => {
 
 </script>
 
+<script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCvbijNp_WBn0pgnoVtXyAl1AMcZb7zrZ8&libraries=places,geometry&loading=async&callback=initApp"></script>
 </body>
 </html>
