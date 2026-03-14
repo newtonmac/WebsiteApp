@@ -78,16 +78,16 @@ class EVChargerService {
         chargers = []
 
         let routeMiles = route.distance * 0.000621371
-        // Sample every ~10 miles, minimum 3 points, max 30
-        let sampleCount = max(3, min(30, Int(routeMiles / 10) + 1))
+        // Sample every ~5 miles, minimum 5 points, max 80
+        let sampleCount = max(5, min(80, Int(routeMiles / 5) + 1))
         let searchPoints = sampleRoutePoints(route: route, count: sampleCount)
-        let searchRadius = 1.5 // search 1.5mi from each point, filter to 1mi from route
+        let searchRadius = 3.0 // search 3mi from each point, filter to 2mi from route
 
         var allChargers: [EVCharger] = []
         var seenIds = Set<String>()
 
-        // Fetch in batches of 5 to avoid overwhelming the API
-        let batchSize = 5
+        // Fetch in batches of 8 for faster loading
+        let batchSize = 8
         for batchStart in stride(from: 0, to: searchPoints.count, by: batchSize) {
             let batchEnd = min(batchStart + batchSize, searchPoints.count)
             let batch = Array(searchPoints[batchStart..<batchEnd])
@@ -103,8 +103,8 @@ class EVChargerService {
                     for charger in results {
                         if !seenIds.contains(charger.id) {
                             seenIds.insert(charger.id)
-                            // Only keep chargers within 1 mile of the actual route path
-                            if self.isWithinMileOfRoute(charger.coordinate, route: route) {
+                            // Only keep chargers within 2 miles of the actual route path
+                            if self.isWithinMilesOfRoute(charger.coordinate, route: route, miles: 2.0) {
                                 allChargers.append(charger)
                             }
                         }
@@ -113,7 +113,7 @@ class EVChargerService {
             }
         }
 
-        print("EV Chargers: \(allChargers.count) stations within 1 mile of route (\(String(format: "%.0f", routeMiles)) mi, \(sampleCount) search points)")
+        print("EV Chargers: \(allChargers.count) stations within 2 miles of route (\(String(format: "%.0f", routeMiles)) mi, \(sampleCount) search points)")
 
         // Supplement with Open Charge Map speed data
         let enriched = await enrichWithOCMSpeeds(chargers: allChargers, searchPoints: searchPoints)
@@ -136,7 +136,7 @@ class EVChargerService {
             URLQueryItem(name: "longitude", value: "\(point.longitude)"),
             URLQueryItem(name: "radius", value: "\(radiusMiles)"),
             URLQueryItem(name: "fuel_type", value: "ELEC"),
-            URLQueryItem(name: "limit", value: "20"),
+            URLQueryItem(name: "limit", value: "50"),
             URLQueryItem(name: "status", value: "E")
         ]
 
@@ -257,7 +257,7 @@ class EVChargerService {
         var allOCM: [OCMStation] = []
         var seenOCMIds = Set<Int>()
 
-        let ocmPoints = stride(from: 0, to: searchPoints.count, by: 3).map { searchPoints[$0] }
+        let ocmPoints = stride(from: 0, to: searchPoints.count, by: 2).map { searchPoints[$0] }
         for point in ocmPoints {
             let stations = await fetchOCMStations(near: point, radiusMiles: 2.0)
             for s in stations {
@@ -359,20 +359,27 @@ class EVChargerService {
         return sampled
     }
 
-    /// Check if a coordinate is within 1 mile of any point on the route
-    private func isWithinMileOfRoute(_ coord: CLLocationCoordinate2D, route: MKRoute) -> Bool {
+    /// Check if a coordinate is within N miles of any point on the route
+    private func isWithinMilesOfRoute(_ coord: CLLocationCoordinate2D, route: MKRoute, miles: Double) -> Bool {
         let chargerLoc = CLLocation(latitude: coord.latitude, longitude: coord.longitude)
         let polyline = route.polyline
         let pointCount = polyline.pointCount
         let mapPoints = polyline.points()
-        let maxMeters = 1609.34 // 1 mile
+        let maxMeters = miles * 1609.34
 
-        // Check every few points along the polyline
-        let step = max(1, pointCount / 100)
+        // Sample at least 500 points along the polyline for accuracy
+        let step = max(1, pointCount / 500)
         for i in stride(from: 0, to: pointCount, by: step) {
             let routePoint = mapPoints[i].coordinate
             let routeLoc = CLLocation(latitude: routePoint.latitude, longitude: routePoint.longitude)
             if chargerLoc.distance(from: routeLoc) <= maxMeters {
+                return true
+            }
+        }
+        // Always check the last point
+        if pointCount > 0 {
+            let last = mapPoints[pointCount - 1].coordinate
+            if chargerLoc.distance(from: CLLocation(latitude: last.latitude, longitude: last.longitude)) <= maxMeters {
                 return true
             }
         }
