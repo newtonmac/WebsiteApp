@@ -525,19 +525,21 @@
         .pac-container {
             background: #252836 !important;
             border: 1px solid #2d3040 !important;
-            border-radius: 0 0 10px 10px;
+            border-radius: 0 0 10px 10px !important;
             box-shadow: 0 4px 16px rgba(0,0,0,0.4) !important;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            z-index: 100000 !important;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+            z-index: 999999 !important;
+            pointer-events: auto !important;
         }
         .pac-item {
             padding: 8px 12px !important;
             font-size: 13px !important;
             color: #e1e4e8 !important;
             border-top: 1px solid #2d3040 !important;
-            cursor: pointer;
+            cursor: pointer !important;
             line-height: 1.4 !important;
             background: #252836 !important;
+            pointer-events: auto !important;
         }
         .pac-item:hover, .pac-item-selected {
             background: #34d39922 !important;
@@ -549,6 +551,8 @@
         .pac-icon { display: none !important; }
         .pac-item span { color: #8b8fa3 !important; }
         .pac-matched { color: #34d399 !important; font-weight: 600 !important; }
+        /* Prevent map from stealing clicks over pac-container */
+        .pac-container::after { display: none !important; }
 
         /* ── Mobile ── */
         @media (max-width: 768px) {
@@ -891,6 +895,20 @@ const planBtn = document.getElementById('planBtn');
 const stopsContainer = document.getElementById('stopsContainer');
 
 // ─── Places Autocomplete ───
+
+// Fix: prevent sidebar scroll container from stealing pac-container clicks
+(function() {
+    // Capture phase listener ensures pac-container mousedown events
+    // aren't intercepted by underlying scroll containers
+    ['mousedown', 'touchstart'].forEach(evt => {
+        document.addEventListener(evt, function(e) {
+            if (e.target.closest('.pac-container')) {
+                e.stopPropagation();
+            }
+        }, true);
+    });
+})();
+
 function setupAutocomplete(input, setCoord) {
     const autocomplete = new google.maps.places.Autocomplete(input, {
         fields: ['geometry', 'formatted_address']
