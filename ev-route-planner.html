@@ -672,11 +672,21 @@
                 flex: 1;
             }
             .map-wrap {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                overflow: hidden;
+                opacity: 0;
+                pointer-events: none;
+            }
+            .map-wrap.mobile-show {
                 position: relative;
                 width: 100%;
-                height: 300px;
-                flex: none;
-                order: -1;
+                height: 280px;
+                overflow: visible;
+                opacity: 1;
+                pointer-events: auto;
+                border-radius: 10px;
             }
             .topbar { padding: 10px 16px; }
             .topbar h1 { font-size: 26px; }
@@ -872,6 +882,7 @@
         <div class="sidebar-section" id="routeResults" style="display:none;">
             <h2>Routes Found</h2>
             <div id="routeCards"></div>
+            <div id="mobileMapSlot"></div>
             <a id="gmapsLink" class="nav-btn gmaps-btn" href="#" target="_blank" rel="noopener" style="display:none;">
                 <svg viewBox="0 0 24 24" fill="none"><path d="M21 3L3 10.5l6.5 2L12 21l9-18z" fill="white"/></svg>
                 Start Driving — Google Maps
@@ -1731,6 +1742,7 @@ function displayRoutes(routes) {
 
     document.getElementById('routeResults').style.display = 'block';
     document.getElementById('mapLegend').style.display = 'block';
+    showMobileMap();
 }
 
 function selectReturnRoute(idx) {
@@ -2136,10 +2148,31 @@ function clearRoutes() {
     routesData = [];
     returnRoutesData = [];
     cachedReturnEstimates = [];
+    hideMobileMap();
 }
 function clearRouteLayers() {
     routeLayers.forEach(rl => rl.layer.setMap(null));
     routeLayers = [];
+}
+
+function showMobileMap() {
+    if (window.innerWidth > 768) return;
+    const mapWrap = document.querySelector('.map-wrap');
+    const slot = document.getElementById('mobileMapSlot');
+    if (mapWrap && slot) {
+        slot.appendChild(mapWrap);
+        mapWrap.classList.add('mobile-show');
+        google.maps.event.trigger(map, 'resize');
+    }
+}
+
+function hideMobileMap() {
+    const mapWrap = document.querySelector('.map-wrap');
+    const mainDiv = document.querySelector('.main');
+    if (mapWrap && mainDiv) {
+        mainDiv.appendChild(mapWrap);
+        mapWrap.classList.remove('mobile-show');
+    }
 }
 
 function showLoading(msg) {
