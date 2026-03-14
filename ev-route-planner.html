@@ -2816,16 +2816,15 @@ async function searchChargersAlongRoute(route) {
     chargerSearchDone = true;
 
     const sampled = route.sampled;
-    const fullCoords = route.coords || sampled; // full-resolution path for proximity checks
+    const fullCoords = route.coords || sampled;
 
-    // Build route path from FULL coords for accurate distance checking
-    // Sub-sample to ~500 points max for performance (enough for ~1mi resolution on 500mi routes)
+    // Build route path from FULL coords for accurate proximity checking
     const proxSample = samplePoints(fullCoords, Math.min(fullCoords.length, 1000));
     const routePath = proxSample.map(pt => new google.maps.LatLng(pt[1], pt[0]));
-    const MAX_DISTANCE_M = 8047; // 5 miles in meters — proximity filter
+    const MAX_DISTANCE_M = 8047; // 5 miles in meters
 
-    // Pick search points every ~20 miles along the route
-    const SEARCH_INTERVAL_MI = 20;
+    // Pick search points every ~15 miles along the route
+    const SEARCH_INTERVAL_MI = 15;
     const totalMi = route.distMi || 100;
     const numPoints = Math.max(3, Math.ceil(totalMi / SEARCH_INTERVAL_MI));
     const step = Math.max(1, Math.floor((sampled.length - 1) / numPoints));
@@ -2837,31 +2836,45 @@ async function searchChargersAlongRoute(route) {
         searchPoints.push(sampled[sampled.length - 1]);
     }
 
-    const SEARCH_RADIUS_MI = 15; // miles — overlap ensures full coverage
+    const SEARCH_RADIUS_MI = 25; // miles — generous overlap between search circles
     const seenStationIds = new Set();
     const showOnMap = document.getElementById('chargerCb').checked;
-    const networkFilter = CHARGER_QUERIES.map(n => n.nrelKey).join(',');
 
-    // Fetch chargers from NREL AFDC in batches to avoid hammering the API
+    console.log(`[EV Chargers] Searching ${searchPoints.length} points along ${totalMi.toFixed(0)}mi route, radius=${SEARCH_RADIUS_MI}mi`);
+
+    // Fetch chargers from NREL AFDC in batches
+    // No ev_network filter — we filter by NREL_NETWORK_MAP client-side to avoid URL encoding issues
     const BATCH_SIZE = 5;
+    let totalFromApi = 0;
+    let totalShown = 0;
+    let failedRequests = 0;
     for (let b = 0; b < searchPoints.length; b += BATCH_SIZE) {
         const batch = searchPoints.slice(b, b + BATCH_SIZE);
         const promises = batch.map(pt => {
             const url = `https://developer.nrel.gov/api/alt-fuel-stations/v1/nearest.json?api_key=${NREL_API_KEY}`
                 + `&fuel_type=ELEC&latitude=${pt[1]}&longitude=${pt[0]}`
-                + `&radius=${SEARCH_RADIUS_MI}&limit=50&status=E`
-                + `&ev_network=${encodeURIComponent(networkFilter)}`;
+                + `&radius=${SEARCH_RADIUS_MI}&limit=200&status=E&ev_level2_evse_num=1+`;
             return fetch(url).then(r => {
-                if (!r.ok) { console.warn('NREL search failed:', r.status, pt); return null; }
+                if (!r.ok) {
+                    console.warn(`[EV Chargers] NREL HTTP ${r.status} at [${pt[1].toFixed(3)},${pt[0].toFixed(3)}]`);
+                    failedRequests++;
+                    return null;
+                }
                 return r.json();
-            }).catch(e => { console.warn('NREL fetch error:', e, pt); return null; });
+            }).catch(e => {
+                console.warn('[EV Chargers] fetch error:', e.message);
+                failedRequests++;
+                return null;
+            });
         });
         const results = await Promise.all(promises);
 
         results.forEach(data => {
             if (!data || !data.fuel_stations) return;
+            totalFromApi += data.fuel_stations.length;
             data.fuel_stations.forEach(station => {
                 if (seenStationIds.has(station.id)) return;
+                // Client-side network filter — only show networks we support
                 const network = NREL_NETWORK_MAP[station.ev_network];
                 if (!network) return;
 
@@ -2876,6 +2889,7 @@ async function searchChargersAlongRoute(route) {
                 }
                 if (!withinRange) return;
                 seenStationIds.add(station.id);
+                totalShown++;
 
                 // Pre-cache NREL data so click popup loads instantly
                 const connectorKw = {};
@@ -2964,9 +2978,10 @@ async function searchChargersAlongRoute(route) {
 
         // Small delay between batches to be polite to the API
         if (b + BATCH_SIZE < searchPoints.length) {
-            await new Promise(r => setTimeout(r, 200));
+            await new Promise(r => setTimeout(r, 300));
         }
     }
+    console.log(`[EV Chargers] Done: ${totalFromApi} from API, ${totalShown} shown, ${failedRequests} failed requests`);
 }
 
 function toggleChargers(show) {
@@ -3074,7 +3089,7 @@ window.addEventListener('resize', () => {
 
 <!-- Footer bar -->
 <div class="footer-bar">
-    <span>&copy; 2026 EV Route Planner &nbsp;·&nbsp; v1.10 &nbsp;·&nbsp; Updated Mar 14, 2026</span>
+    <span>&copy; 2026 EV Route Planner &nbsp;·&nbsp; v1.11 &nbsp;·&nbsp; Updated Mar 14, 2026</span>
     <button class="footer-link" data-modal="aboutModal">About</button>
     <button class="footer-link" data-modal="newsModal">News</button>
     <button class="footer-link" data-modal="legalModal">Disclaimer & Privacy</button>
