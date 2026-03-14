@@ -875,9 +875,6 @@ function initApp() {
 
     // Initialize EV specs display
     updateEvSpecs();
-
-    // Auto-fetch GPS location on load
-    useMyLocation();
 }
 
 // initApp() is called by Google Maps API callback
@@ -889,6 +886,7 @@ function useMyLocation() {
         return;
     }
     const btn = document.getElementById('gpsBtn');
+    const input = document.getElementById('originInput');
     btn.classList.add('loading');
 
     navigator.geolocation.getCurrentPosition(
@@ -897,30 +895,35 @@ function useMyLocation() {
             btn.classList.add('active');
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
+
+            // Set coordinates and show them immediately as fallback
             setOrigin([lat, lng]);
-            // Reverse geocode to show address in the input
-            geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-                if (status === 'OK' && results[0]) {
-                    document.getElementById('originInput').value = results[0].formatted_address;
-                } else {
-                    document.getElementById('originInput').value = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+            input.value = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+            updatePlanBtn();
+
+            // Then try to reverse geocode for a readable address
+            if (geocoder) {
+                try {
+                    geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+                        if (status === 'OK' && results && results[0]) {
+                            input.value = results[0].formatted_address;
+                        }
+                    });
+                } catch(e) {
+                    console.warn('Reverse geocode failed:', e);
                 }
-                updatePlanBtn();
-            });
-            map.setCenter({ lat, lng });
-            map.setZoom(13);
+            }
+
+            try { map.setCenter({ lat, lng }); map.setZoom(13); } catch(e) {}
         },
         (error) => {
             btn.classList.remove('loading');
             console.warn('GPS error:', error.message);
-            // Don't alert on auto-fetch, only on manual click
-            if (error.code === 1) {
-                // Permission denied — user can still type address
-            } else {
+            if (error.code !== 1) {
                 alert('Could not get your location: ' + error.message);
             }
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 300000 }
     );
 }
 
