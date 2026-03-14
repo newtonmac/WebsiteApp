@@ -122,14 +122,15 @@ struct EVMapContent: View {
             MapCompass()
             MapScaleView()
         }
-        .overlay(alignment: isLandscape ? .leading : .bottomTrailing) {
+        .overlay(alignment: isLandscape ? .topLeading : .bottomTrailing) {
             if isLandscape {
-                // Landscape: left-side vertical stack, out of panel's way
-                VStack(spacing: 10) {
+                // Landscape: top-left horizontal row
+                HStack(spacing: 10) {
                     lookAroundButton
                     mapControlButtons
                 }
                 .padding(.leading, 12)
+                .padding(.top, 12)
             } else {
                 // Portrait: original bottom-right position
                 mapControlButtons
@@ -212,7 +213,8 @@ struct EVMapContent: View {
     }
 
     private var mapControlButtons: some View {
-        VStack(spacing: 0) {
+        let layout = isLandscape ? AnyLayout(HStackLayout(spacing: 0)) : AnyLayout(VStackLayout(spacing: 0))
+        return layout {
             Button {
                 withAnimation(.easeInOut(duration: 0.3)) {
                     cameraPosition = .camera(
@@ -231,7 +233,7 @@ struct EVMapContent: View {
                     .frame(width: 44, height: 44)
             }
 
-            Divider().frame(width: 34)
+            Divider().frame(width: isLandscape ? nil : 34, height: isLandscape ? 34 : nil)
 
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {
@@ -244,7 +246,7 @@ struct EVMapContent: View {
                     .frame(width: 44, height: 44)
             }
 
-            Divider().frame(width: 34)
+            Divider().frame(width: isLandscape ? nil : 34, height: isLandscape ? 34 : nil)
 
             Button {
                 cameraPosition = .userLocation(fallback: .automatic)
