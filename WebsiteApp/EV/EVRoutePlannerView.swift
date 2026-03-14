@@ -119,7 +119,7 @@ struct EVRoutePlannerView: View {
                             }
                         }
                         .padding(.horizontal, 20)
-                        .padding(.bottom, 60)
+                        .padding(.bottom, 100)
                     }
                 }
             }
