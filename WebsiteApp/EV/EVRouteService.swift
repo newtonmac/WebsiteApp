@@ -224,28 +224,39 @@ class EVRouteService {
     }
 
     private func fetchElevationChunk(_ points: [CLLocationCoordinate2D]) async -> [Double] {
-        let locations = points.map { "\($0.latitude),\($0.longitude)" }.joined(separator: "|")
+        // Use POST to avoid URL length limits and pipe encoding issues
+        let locations = points.map { ["lat": $0.latitude, "lng": $0.longitude] }
+        let body: [String: Any] = ["locations": locations]
 
-        // Build URL manually — URLComponents encodes | as %7C which Google rejects
-        let urlString = "https://maps.googleapis.com/maps/api/elevation/json?locations=\(locations)&key=\(googleAPIKey)"
-
+        let urlString = "https://maps.googleapis.com/maps/api/elevation/json?key=\(googleAPIKey)"
         guard let url = URL(string: urlString) else {
             print("Elevation API: invalid URL")
             return Array(repeating: 0, count: points.count)
         }
 
-        print("Elevation API request: \(points.count) points")
+        // Try POST first
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         do {
-            let (data, response) = try await URLSession.shared.data(from: url)
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        } catch {
+            print("Elevation API: JSON serialization error: \(error)")
+            return Array(repeating: 0, count: points.count)
+        }
+
+        print("Elevation API POST request: \(points.count) points")
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
 
             if let httpResponse = response as? HTTPURLResponse {
                 print("Elevation API HTTP \(httpResponse.statusCode)")
             }
 
-            // Debug: print first 300 chars of response
             if let raw = String(data: data, encoding: .utf8) {
-                print("Elevation API raw (first 300): \(String(raw.prefix(300)))")
+                print("Elevation API raw (first 500): \(String(raw.prefix(500)))")
             }
 
             let decoded = try JSONDecoder().decode(GoogleElevationResponse.self, from: data)
@@ -253,13 +264,55 @@ class EVRouteService {
                 let elevs = decoded.results.map { $0.elevation }
                 let minE = elevs.min() ?? 0
                 let maxE = elevs.max() ?? 0
-                print("Elevation API: \(elevs.count) points, range \(String(format: "%.1f", minE))m - \(String(format: "%.1f", maxE))m")
+                print("Elevation API OK: \(elevs.count) pts, \(String(format: "%.1f", minE))m - \(String(format: "%.1f", maxE))m")
                 return elevs
             } else {
                 print("Elevation API error status: \(decoded.status)")
+                // Fallback to GET with percent-encoded pipe
+                return await fetchElevationChunkGET(points)
             }
         } catch {
-            print("Elevation fetch error: \(error)")
+            print("Elevation POST error: \(error)")
+            return await fetchElevationChunkGET(points)
+        }
+    }
+
+    private func fetchElevationChunkGET(_ points: [CLLocationCoordinate2D]) async -> [Double] {
+        let locations = points.map { "\($0.latitude),\($0.longitude)" }.joined(separator: "|")
+
+        var components = URLComponents(string: "https://maps.googleapis.com/maps/api/elevation/json")!
+        components.queryItems = [
+            URLQueryItem(name: "locations", value: locations),
+            URLQueryItem(name: "key", value: googleAPIKey)
+        ]
+
+        // URLComponents encodes | as %7C — Google accepts %7C in GET requests
+        guard let url = components.url else {
+            print("Elevation GET: invalid URL")
+            return Array(repeating: 0, count: points.count)
+        }
+
+        print("Elevation GET fallback: \(points.count) points, URL length: \(url.absoluteString.count)")
+
+        do {
+            let (data, response) = try await URLSession.shared.data(from: url)
+            if let httpResponse = response as? HTTPURLResponse {
+                print("Elevation GET HTTP \(httpResponse.statusCode)")
+            }
+            if let raw = String(data: data, encoding: .utf8) {
+                print("Elevation GET raw (first 500): \(String(raw.prefix(500)))")
+            }
+
+            let decoded = try JSONDecoder().decode(GoogleElevationResponse.self, from: data)
+            if decoded.status == "OK" {
+                let elevs = decoded.results.map { $0.elevation }
+                print("Elevation GET OK: \(elevs.count) pts")
+                return elevs
+            } else {
+                print("Elevation GET error status: \(decoded.status)")
+            }
+        } catch {
+            print("Elevation GET error: \(error)")
         }
 
         return Array(repeating: 0, count: points.count)
