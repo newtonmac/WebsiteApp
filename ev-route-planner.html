@@ -2503,6 +2503,13 @@ function showMobileMap() {
         slot.appendChild(mapWrap);
         mapWrap.classList.add('mobile-show');
         google.maps.event.trigger(map, 'resize');
+        // Re-fit bounds after map becomes visible — fitBounds during hidden state gets wrong zoom
+        setTimeout(() => {
+            const bounds = new google.maps.LatLngBounds();
+            if (routesData.length) routesData[0].coords.forEach(c => bounds.extend({ lat: c[1], lng: c[0] }));
+            if (isRoundTrip && returnRoutesData.length) returnRoutesData[0].coords.forEach(c => bounds.extend({ lat: c[1], lng: c[0] }));
+            if (!bounds.isEmpty()) map.fitBounds(bounds, 20);
+        }, 100);
     }
 }
 
