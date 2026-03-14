@@ -793,7 +793,7 @@
                 <svg viewBox="0 0 24 24" fill="none"><path d="M21 3L3 10.5l6.5 2L12 21l9-18z" fill="white"/></svg>
                 Start Driving — Apple Maps
             </a>
-            <a id="wazeLink" class="nav-btn waze-btn" href="#" target="_blank" rel="noopener" style="display:none;">
+            <a id="wazeLink" class="nav-btn waze-btn" href="#" rel="noopener" style="display:none;">
                 <svg viewBox="0 0 24 24" fill="none"><path d="M21 3L3 10.5l6.5 2L12 21l9-18z" fill="white"/></svg>
                 Start Driving — Waze
             </a>
@@ -882,6 +882,27 @@ function initApp() {
     document.getElementById('roundTripCb').addEventListener('change', () => {
         planBtn.textContent = document.getElementById('roundTripCb').checked
             ? 'Plan Round Trip' : 'Plan EV-Efficient Route';
+    });
+
+    // Waze: try deep link, hide button if app not installed
+    document.getElementById('wazeLink').addEventListener('click', function(e) {
+        e.preventDefault();
+        const dest = this.dataset.wazeDest;
+        if (!dest) return;
+
+        const wazeUrl = `waze://?ll=${dest}&navigate=yes`;
+        const start = Date.now();
+
+        // Try opening the app
+        window.location.href = wazeUrl;
+
+        // If we're still here after 2s, app isn't installed
+        setTimeout(() => {
+            if (Date.now() - start < 3000) {
+                this.style.display = 'none';
+                this.dataset.hidden = '1';
+            }
+        }, 2000);
     });
 
     // Initialize EV specs display
@@ -1839,10 +1860,13 @@ function updateMapLinks(route) {
     amapsLink.href = `https://maps.apple.com/?daddr=${dest}&dirflg=d&t=m`;
     amapsLink.style.display = 'flex';
 
-    // ── Waze URL ──
-    // navigate=yes starts turn-by-turn immediately
-    wazeLink.href = `https://waze.com/ul?ll=${finalDest[0]},${finalDest[1]}&navigate=yes`;
-    wazeLink.style.display = 'flex';
+    // ── Waze ──
+    // Only show if not already hidden (user doesn't have Waze)
+    if (!wazeLink.dataset.hidden) {
+        wazeLink.dataset.wazeDest = `${finalDest[0]},${finalDest[1]}`;
+        wazeLink.href = '#';
+        wazeLink.style.display = 'flex';
+    }
 
     // ── Share links (Email, Text, Copy) ──
     const gmapsUrl = gmapsLink.href;
