@@ -17,8 +17,7 @@ struct EVRoutePlannerView: View {
     @State private var showChargers = true
     @State private var panelExpanded = true
     @State private var selectedCharger: EVCharger?
-    @State private var keyboardHeight: CGFloat = 0
-    @State private var keyboardUp = false
+    @State private var keyboardVisible = false
     @GestureState private var dragOffset: CGFloat = 0
     @State private var mapCameraPosition: MapCameraPosition = .region(
         MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 32.72, longitude: -117.16),
@@ -32,16 +31,7 @@ struct EVRoutePlannerView: View {
         let screenH = UIScreen.main.bounds.height
         let target = panelExpanded ? screenH * expandedFraction : screenH * collapsedFraction
         let dragged = target - dragOffset
-        let base = max(screenH * collapsedFraction, min(screenH * 0.75, dragged))
-        // When keyboard is actively showing, expand panel by keyboard height
-        if keyboardHeight > 0 {
-            return min(screenH * 0.85, base + keyboardHeight)
-        }
-        // Keep panel raised while in input mode (between field taps) even if keyboard momentarily hides
-        if keyboardUp {
-            return min(screenH * 0.85, base + 100)
-        }
-        return base
+        return max(screenH * collapsedFraction, min(screenH * 0.75, dragged))
     }
 
     var body: some View {
@@ -145,7 +135,6 @@ struct EVRoutePlannerView: View {
             }
             .animation(.spring(response: 0.3, dampingFraction: 0.8), value: panelExpanded)
         }
-        .ignoresSafeArea(edges: .bottom)
         .preferredColorScheme(.dark)
         .sheet(isPresented: $showingVehiclePicker) {
             EVVehiclePickerView(selectedVehicle: $selectedVehicle)
@@ -160,20 +149,15 @@ struct EVRoutePlannerView: View {
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
         }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
-            if let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                    keyboardHeight = frame.height
-                    keyboardUp = true
-                    panelExpanded = true
-                }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                keyboardVisible = true
+                panelExpanded = true
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                keyboardHeight = 0
-                // Keep keyboardUp = true so panel stays raised between field transitions.
-                // It gets reset to false only when Plan Route is tapped.
+                keyboardVisible = false
             }
         }
     }
@@ -277,9 +261,6 @@ struct EVRoutePlannerView: View {
     private var planButton: some View {
         Button {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                keyboardUp = false
-            }
             Task { await planRoute() }
         } label: {
             HStack {
