@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDisplayName</key>
-	<string>EV Routes</string>
+	<string>EV Route Planner</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
