@@ -15,10 +15,22 @@ struct EVRoutePlannerView: View {
     @State private var detailRoute: RouteResult?
     @State private var isRoundTrip = false
     @State private var showChargers = true
+    @State private var panelExpanded = true
+    @GestureState private var dragOffset: CGFloat = 0
     @State private var mapCameraPosition: MapCameraPosition = .region(
         MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 32.72, longitude: -117.16),
                           span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5))
     )
+
+    private let expandedFraction: CGFloat = 0.40
+    private let collapsedFraction: CGFloat = 0.10
+
+    private var panelHeight: CGFloat {
+        let screenH = UIScreen.main.bounds.height
+        let target = panelExpanded ? screenH * expandedFraction : screenH * collapsedFraction
+        let dragged = target - dragOffset
+        return max(screenH * collapsedFraction, min(screenH * 0.75, dragged))
+    }
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -37,60 +49,86 @@ struct EVRoutePlannerView: View {
 
             // Bottom panel
             VStack(spacing: 0) {
-                // Top bar
-                HStack(alignment: .center) {
-                    Text("EV Route Planner")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [EVTheme.accentGreen, EVTheme.accentBlue],
-                                startPoint: .leading,
-                                endPoint: .trailing
+                // Drag handle area
+                VStack(spacing: 6) {
+                    RoundedRectangle(cornerRadius: 2.5)
+                        .fill(EVTheme.textSecondary.opacity(0.5))
+                        .frame(width: 36, height: 5)
+                        .padding(.top, 10)
+
+                    HStack(alignment: .center) {
+                        Text("EV Route Planner")
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [EVTheme.accentGreen, EVTheme.accentBlue],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
                             )
-                        )
-                    Spacer()
-                    Text("Least Elevation Gain")
-                        .font(.system(size: 11))
-                        .foregroundStyle(EVTheme.textSecondary)
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 10)
-
-                RoundedRectangle(cornerRadius: 2.5)
-                    .fill(EVTheme.border)
-                    .frame(width: 36, height: 5)
-                    .padding(.bottom, 8)
-
-                ScrollView {
-                    VStack(spacing: 14) {
-                        inputSection
-                        togglesSection
-                        vehicleSection
-                        planButton
-
-                        if !routeService.routes.isEmpty {
-                            routeResultsSection
-                        }
-
-                        if let error = routeService.errorMessage {
-                            Text(error)
-                                .font(.caption)
-                                .foregroundStyle(EVTheme.accentRed)
-                                .padding(.horizontal)
-                        }
+                        Spacer()
+                        Image(systemName: panelExpanded ? "chevron.down" : "chevron.up")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(EVTheme.textSecondary)
                     }
                     .padding(.horizontal, 20)
-                    .padding(.bottom, 60)
+                    .padding(.bottom, 8)
+                }
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture()
+                        .updating($dragOffset) { value, state, _ in
+                            state = value.translation.height
+                        }
+                        .onEnded { value in
+                            let threshold: CGFloat = 50
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                if value.translation.height > threshold {
+                                    panelExpanded = false
+                                } else if value.translation.height < -threshold {
+                                    panelExpanded = true
+                                }
+                            }
+                        }
+                )
+                .onTapGesture {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        panelExpanded.toggle()
+                    }
+                }
+
+                if panelExpanded || dragOffset < -30 {
+                    ScrollView {
+                        VStack(spacing: 14) {
+                            inputSection
+                            togglesSection
+                            vehicleSection
+                            planButton
+
+                            if !routeService.routes.isEmpty {
+                                routeResultsSection
+                            }
+
+                            if let error = routeService.errorMessage {
+                                Text(error)
+                                    .font(.caption)
+                                    .foregroundStyle(EVTheme.accentRed)
+                                    .padding(.horizontal)
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 60)
+                    }
                 }
             }
+            .frame(height: panelHeight)
             .background(EVTheme.bgCard)
             .clipShape(.rect(topLeadingRadius: 20, topTrailingRadius: 20))
             .overlay(alignment: .top) {
                 UnevenRoundedRectangle(topLeadingRadius: 20, topTrailingRadius: 20)
                     .stroke(EVTheme.border, lineWidth: 1)
             }
-            .frame(maxHeight: UIScreen.main.bounds.height * 0.40)
+            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: panelExpanded)
         }
         .ignoresSafeArea(edges: .bottom)
         .preferredColorScheme(.dark)
