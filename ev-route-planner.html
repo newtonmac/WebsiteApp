@@ -547,6 +547,9 @@
         .ri-pros li { color: #34d399; margin-bottom: 4px; }
         .ri-cons li { color: #fbbf24; margin-bottom: 4px; }
         .ri-pros li span, .ri-cons li span { color: #c0c4d0; }
+        .ri-elev-chart { margin-top: 12px; padding-top: 10px; border-top: 1px solid #2d3040; }
+        .ri-elev-chart strong { font-size: 12px; color: #8b8fa3; display: block; margin-bottom: 6px; }
+        .ri-elev-chart canvas { width: 100%; height: 120px; border-radius: 8px; background: #0f1117; }
         .ri-legend { margin-top: 12px; padding-top: 10px; border-top: 1px solid #2d3040; font-size: 12px; color: #8b8fa3; }
         .ri-legend-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
         .ri-legend-swatch { width: 20px; height: 3px; border-radius: 2px; }
@@ -1881,6 +1884,10 @@ function showRouteInfoPopup(route, trip, idx, allRoutes, allTrips, fastestDur) {
             <ul class="ri-cons" style="list-style:none; padding:0;">
                 ${cons.map(c => `<li>&#9888; <span>${c}</span></li>`).join('')}
             </ul>
+            <div class="ri-elev-chart">
+                <strong>Elevation Profile</strong>
+                <canvas class="ri-elev-canvas"></canvas>
+            </div>
             <div class="ri-legend">
                 <strong>Map Colors</strong>
                 <div class="ri-legend-row"><div class="ri-legend-swatch" style="background:#22c55e;"></div> Green segments = downhill (battery recovers via regen braking)</div>
@@ -1894,6 +1901,88 @@ function showRouteInfoPopup(route, trip, idx, allRoutes, allTrips, fastestDur) {
     popup.addEventListener('click', (e) => { if (e.target === popup) popup.remove(); });
     popup.querySelector('.ri-close').addEventListener('click', () => popup.remove());
     document.body.appendChild(popup);
+
+    // Draw mini elevation chart in popup
+    drawMiniElevChart(popup.querySelector('.ri-elev-canvas'), route, lineColor);
+}
+
+function drawMiniElevChart(canvas, route, color) {
+    const elev = route.elevations;
+    if (!elev || !elev.length) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width;
+    const H = canvas.height;
+    const pad = { top: 14, right: 12, bottom: 22, left: 40 };
+    const plotW = W - pad.left - pad.right;
+    const plotH = H - pad.top - pad.bottom;
+
+    let minE = elev[0], maxE = elev[0];
+    for (let i = 1; i < elev.length; i++) {
+        if (elev[i] < minE) minE = elev[i];
+        if (elev[i] > maxE) maxE = elev[i];
+    }
+    minE -= 10; maxE += 10;
+    const rangeE = maxE - minE || 1;
+
+    // Grid lines and Y labels
+    ctx.strokeStyle = '#2d3040';
+    ctx.lineWidth = 1;
+    const gridLines = 4;
+    for (let i = 0; i <= gridLines; i++) {
+        const y = pad.top + (plotH / gridLines) * i;
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(pad.left + plotW, y);
+        ctx.stroke();
+        const val = maxE - (rangeE / gridLines) * i;
+        ctx.fillStyle = '#8b8fa3';
+        ctx.font = `${10 * dpr}px -apple-system, sans-serif`;
+        ctx.textAlign = 'right';
+        ctx.fillText(Math.round(val) + 'm', pad.left - 6, y + 4);
+    }
+
+    // X axis distance labels
+    ctx.textAlign = 'center';
+    const totalDist = route.distMi;
+    for (let i = 0; i <= 4; i++) {
+        const x = pad.left + (plotW / 4) * i;
+        ctx.fillText((totalDist / 4 * i).toFixed(1) + ' mi', x, H - 4);
+    }
+
+    // Gradient fill using route color
+    const gradient = ctx.createLinearGradient(0, pad.top, 0, pad.top + plotH);
+    gradient.addColorStop(0, color + '44');
+    gradient.addColorStop(1, color + '00');
+
+    ctx.beginPath();
+    ctx.moveTo(pad.left, pad.top + plotH);
+    for (let i = 0; i < elev.length; i++) {
+        const x = pad.left + (i / (elev.length - 1)) * plotW;
+        const y = pad.top + plotH - ((elev[i] - minE) / rangeE) * plotH;
+        ctx.lineTo(x, y);
+    }
+    ctx.lineTo(pad.left + plotW, pad.top + plotH);
+    ctx.closePath();
+    ctx.fillStyle = gradient;
+    ctx.fill();
+
+    // Elevation line
+    ctx.beginPath();
+    for (let i = 0; i < elev.length; i++) {
+        const x = pad.left + (i / (elev.length - 1)) * plotW;
+        const y = pad.top + plotH - ((elev[i] - minE) / rangeE) * plotH;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2 * dpr;
+    ctx.stroke();
 }
 
 function displayRoutes(routes) {
@@ -2430,7 +2519,7 @@ function searchChargersAlongRoute(route) {
 
     // Build route path as LatLng array for distance checking
     const routePath = sampled.map(pt => new google.maps.LatLng(pt[1], pt[0]));
-    const MAX_DISTANCE_M = 3219; // 2 miles in meters
+    const MAX_DISTANCE_M = 2414; // 1.5 miles in meters
 
     // Pick search points along the route
     const step = Math.max(1, Math.floor(sampled.length / 8));
@@ -2452,14 +2541,14 @@ function searchChargersAlongRoute(route) {
             placesService.textSearch({
                 query: network.query,
                 location: loc,
-                radius: 3219, // 2 miles
+                radius: 2414, // 1.5 miles
                 type: 'electric_vehicle_charging_station'
             }, (results, status) => {
                 if (status !== google.maps.places.PlacesServiceStatus.OK || !results) return;
 
                 results.forEach(place => {
                     if (seenPlaceIds.has(place.place_id)) return;
-                    // Only show chargers within 5 miles of the route
+                    // Only show chargers within 1.5 miles of the route
                     const placePos = place.geometry.location;
                     let withinRange = false;
                     for (let k = 0; k < routePath.length; k++) {
@@ -2619,7 +2708,7 @@ window.addEventListener('resize', () => {
 
 <!-- Footer bar -->
 <div class="footer-bar">
-    <span>&copy; 2026 EV Route Planner &nbsp;·&nbsp; v1.0 &nbsp;·&nbsp; Updated Mar 14, 2026</span>
+    <span>&copy; 2026 EV Route Planner &nbsp;·&nbsp; v1.02 &nbsp;·&nbsp; Updated Mar 14, 2026</span>
     <button class="footer-link" data-modal="aboutModal">About</button>
     <button class="footer-link" data-modal="newsModal">News</button>
     <button class="footer-link" data-modal="legalModal">Disclaimer & Privacy</button>
