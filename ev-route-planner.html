@@ -342,6 +342,39 @@
             text-shadow: 0 1px 2px #0008;
         }
 
+        /* charging stop badge on route cards */
+        .rc-charge-badge {
+            background: #f59e0b22;
+            color: #f59e0b;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 6px;
+            text-align: center;
+            margin: 6px 0 2px;
+            border: 1px solid #f59e0b44;
+        }
+
+        /* charging stop banner in EV explanation panel */
+        .charge-stop-banner {
+            background: linear-gradient(135deg, #f59e0b18, #ef444418);
+            border: 1px solid #f59e0b44;
+            border-radius: 10px;
+            padding: 12px 14px;
+            margin: 10px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .charge-stop-banner strong {
+            color: #f59e0b;
+            font-size: 14px;
+        }
+        .charge-stop-detail {
+            font-size: 12px;
+            color: #8b8fa3;
+        }
+
         .swap-btn {
             display: none;
         }
@@ -1379,15 +1412,49 @@ function estimateTripEnergy(route, ev) {
     const totalEnergy = baseEnergy + elevEnergy - regenEnergy;
     const batteryPct = (totalEnergy / ev.batteryKwh) * 100;
 
+    // ── Charging stop calculation ──
+    // Reserve: always keep 15% battery. Charge to 80% at DC fast chargers.
+    const RESERVE_PCT = 15;
+    const CHARGE_TARGET_PCT = 80;
+    const reserveKwh = ev.batteryKwh * (RESERVE_PCT / 100);
+    const firstLegUsable = ev.batteryKwh * ((100 - RESERVE_PCT) / 100);       // 85% of battery
+    const chargeLegUsable = ev.batteryKwh * ((CHARGE_TARGET_PCT - RESERVE_PCT) / 100); // 65% of battery
+
+    let chargingStops = 0;
+    let arrivalPct = 0;
+    let totalChargeTimeMin = 0;
+
+    const safeTotal = Math.max(0, totalEnergy);
+
+    if (safeTotal <= firstLegUsable) {
+        // No charging needed — arrive with battery to spare
+        chargingStops = 0;
+        arrivalPct = 100 - (safeTotal / ev.batteryKwh) * 100;
+    } else {
+        // Need charging stops
+        chargingStops = Math.ceil((safeTotal - firstLegUsable) / chargeLegUsable);
+        const totalAvailable = firstLegUsable + chargingStops * chargeLegUsable;
+        const energyLeftover = totalAvailable - safeTotal;
+        arrivalPct = RESERVE_PCT + (energyLeftover / ev.batteryKwh) * 100;
+
+        // Estimate ~30 min per DC fast charge session (15% → 80%)
+        totalChargeTimeMin = chargingStops * 30;
+    }
+
     return {
         baseEnergy,
         elevEnergy,
         regenEnergy,
-        totalEnergy: Math.max(0, totalEnergy),
+        totalEnergy: safeTotal,
         batteryPct: Math.min(100, Math.max(0, batteryPct)),
         remainingPct: Math.max(0, 100 - batteryPct),
         efficiency: route.distMi / Math.max(0.1, totalEnergy), // mi/kWh
-        avgGradePct
+        avgGradePct,
+        chargingStops,
+        arrivalPct: Math.max(RESERVE_PCT, Math.min(100, arrivalPct)),
+        totalChargeTimeMin,
+        reservePct: RESERVE_PCT,
+        chargeTargetPct: CHARGE_TARGET_PCT
     };
 }
 
@@ -1819,20 +1886,26 @@ function buildRouteCards(routes, tripEstimates, container, legPrefix, selectFn) 
 
         const energyClass = trip.totalEnergy === bestEnergy ? 'good' : (trip.totalEnergy > bestEnergy * 1.3 ? 'warn' : '');
         const timeClass = r.durMin === fastestDur ? 'good' : (r.durMin > fastestDur * 1.3 ? 'warn' : '');
-        const battClass = trip.remainingPct > 30 ? 'good' : (trip.remainingPct > 15 ? 'warn' : 'warn');
+        const arrPct = Math.round(trip.arrivalPct);
+        const battClass = arrPct > 30 ? 'good' : (arrPct > 15 ? 'warn' : 'warn');
 
         const maxScore = Math.max(...routes.map(x => x.score)) || 1;
         const minScore = Math.min(...routes.map(x => x.score));
         const scoreNorm = maxScore === minScore ? 100 : 100 - ((r.score - minScore) / (maxScore - minScore) * 100);
         const barColor = scoreNorm > 70 ? '#34d399' : (scoreNorm > 40 ? '#fbbf24' : '#ef4444');
 
+        const chargeStopHtml = trip.chargingStops > 0
+            ? `<div class="rc-charge-badge">${trip.chargingStops} charge stop${trip.chargingStops > 1 ? 's' : ''} needed</div>`
+            : '';
+
         card.innerHTML = `
             <div class="rc-header">${badge} <span class="rc-name">${r.distMi.toFixed(1)} mi</span><button class="rc-info-btn" title="Route info">i</button></div>
             <div class="rc-stats">
                 <div class="rc-stat"><div class="val ${timeClass}">${formatDuration(r.durMin)}</div><div class="lbl">Time</div></div>
                 <div class="rc-stat"><div class="val ${energyClass}">${trip.totalEnergy.toFixed(1)}</div><div class="lbl">kWh</div></div>
-                <div class="rc-stat"><div class="val ${battClass}">${Math.round(trip.remainingPct)}%</div><div class="lbl">Batt Left</div></div>
+                <div class="rc-stat"><div class="val ${battClass}">${arrPct}%</div><div class="lbl">Arrival</div></div>
             </div>
+            ${chargeStopHtml}
             <div class="score-bar"><div class="score-bar-fill" style="width:${scoreNorm}%; background:${barColor};"></div></div>
         `;
 
@@ -1863,8 +1936,10 @@ function showRouteInfoPopup(route, trip, idx, allRoutes, allTrips, fastestDur) {
     if (trip.regenEnergy > 0.5) {
         pros.push(`Recovers <strong>${trip.regenEnergy.toFixed(1)} kWh</strong> through regenerative braking on downhill sections`);
     }
-    if (trip.remainingPct > 50) {
-        pros.push(`Arrives with <strong>${Math.round(trip.remainingPct)}% battery</strong> remaining — plenty of margin`);
+    if (trip.chargingStops === 0 && trip.arrivalPct > 50) {
+        pros.push(`Arrives with <strong>${Math.round(trip.arrivalPct)}% battery</strong> remaining — no charging needed`);
+    } else if (trip.chargingStops === 0 && trip.arrivalPct > 30) {
+        pros.push(`Arrives with <strong>${Math.round(trip.arrivalPct)}% battery</strong> remaining — no charging needed`);
     }
     if (!isBest && route.distMi < bestRoute.distMi) {
         pros.push(`<strong>Shorter distance</strong> — ${route.distMi.toFixed(1)} mi vs ${bestRoute.distMi.toFixed(1)} mi`);
@@ -1897,8 +1972,13 @@ function showRouteInfoPopup(route, trip, idx, allRoutes, allTrips, fastestDur) {
         }
         if (peakGrade > 5) cons.push(`Has <strong>steep sections</strong> (up to ~${Math.round(peakGrade)}% grade) that will spike energy use`);
     }
-    if (trip.remainingPct < 20) {
-        cons.push(`Arrives with only <strong>${Math.round(trip.remainingPct)}% battery</strong> — plan a charging stop`);
+    if (trip.chargingStops > 0) {
+        cons.push(`Requires <strong>${trip.chargingStops} charging stop${trip.chargingStops > 1 ? 's' : ''}</strong> (~${trip.totalChargeTimeMin} min) — exceeds single-charge range`);
+        if (!isBest && trip.chargingStops > bestTrip.chargingStops) {
+            cons.push(`Needs <strong>${trip.chargingStops - bestTrip.chargingStops} more stop${(trip.chargingStops - bestTrip.chargingStops) > 1 ? 's' : ''}</strong> than the EV Best route`);
+        }
+    } else if (trip.arrivalPct < 20) {
+        cons.push(`Arrives with only <strong>${Math.round(trip.arrivalPct)}% battery</strong> — cutting it close`);
     }
 
     // Fallback if no pros/cons generated
@@ -2094,9 +2174,28 @@ function displayRoutes(routes) {
         const totalEnergy = outTrip.totalEnergy + retTrip.totalEnergy;
         const totalDist = routes[0].distMi + returnRoutesData[0].distMi;
         const totalTime = routes[0].durMin + returnRoutesData[0].durMin;
-        const totalBattPct = (totalEnergy / ev.batteryKwh) * 100;
-        const remainPct = Math.max(0, 100 - totalBattPct);
-        const battClass = remainPct > 30 ? 'good' : (remainPct > 15 ? 'warn' : 'warn');
+
+        // Calculate charging stops for the full round trip
+        const RESERVE_PCT = 15;
+        const CHARGE_TARGET_PCT = 80;
+        const rtFirstUsable = ev.batteryKwh * ((100 - RESERVE_PCT) / 100);
+        const rtChargeUsable = ev.batteryKwh * ((CHARGE_TARGET_PCT - RESERVE_PCT) / 100);
+        let rtStops = 0;
+        let rtArrivalPct = 0;
+        if (totalEnergy <= rtFirstUsable) {
+            rtStops = 0;
+            rtArrivalPct = 100 - (totalEnergy / ev.batteryKwh) * 100;
+        } else {
+            rtStops = Math.ceil((totalEnergy - rtFirstUsable) / rtChargeUsable);
+            const rtAvailable = rtFirstUsable + rtStops * rtChargeUsable;
+            rtArrivalPct = RESERVE_PCT + ((rtAvailable - totalEnergy) / ev.batteryKwh) * 100;
+        }
+        rtArrivalPct = Math.max(RESERVE_PCT, Math.min(100, rtArrivalPct));
+        const battClass = rtArrivalPct > 30 ? 'good' : (rtArrivalPct > 15 ? 'warn' : 'warn');
+
+        const rtChargeHtml = rtStops > 0
+            ? `<div class="rc-charge-badge" style="margin:8px 14px 0;">${rtStops} charge stop${rtStops > 1 ? 's' : ''} needed &bull; ~${rtStops * 30} min charging</div>`
+            : '';
 
         const summary = document.createElement('div');
         summary.className = 'round-trip-summary';
@@ -2106,8 +2205,9 @@ function displayRoutes(routes) {
                 <div class="rt-stat"><div class="val">${totalDist.toFixed(1)} mi</div><div class="lbl">Distance</div></div>
                 <div class="rt-stat"><div class="val">${formatDuration(totalTime)}</div><div class="lbl">Time</div></div>
                 <div class="rt-stat"><div class="val">${totalEnergy.toFixed(1)}</div><div class="lbl">kWh</div></div>
-                <div class="rt-stat"><div class="val ${battClass}">${Math.round(remainPct)}%</div><div class="lbl">Batt Left</div></div>
+                <div class="rt-stat"><div class="val ${battClass}">${Math.round(rtArrivalPct)}%</div><div class="lbl">Arrival</div></div>
             </div>
+            ${rtChargeHtml}
         `;
         container.appendChild(summary);
     }
@@ -2224,20 +2324,31 @@ function showEvExplanation(route, allRoutes) {
     // Net elevation (start vs end)
     const netElev = route.elevations.length ? route.elevations[route.elevations.length - 1] - route.elevations[0] : 0;
 
-    // Battery bar color
-    const barColor = trip.remainingPct > 30 ? '#34d399' : (trip.remainingPct > 15 ? '#fbbf24' : '#ef4444');
-    const pctClass = trip.remainingPct > 30 ? 'good' : (trip.remainingPct > 15 ? 'warn' : 'warn');
+    // Battery bar color — use arrival % (accounts for charging stops)
+    const arrPct = Math.round(trip.arrivalPct);
+    const barColor = arrPct > 30 ? '#34d399' : (arrPct > 15 ? '#fbbf24' : '#ef4444');
+    const pctClass = arrPct > 30 ? 'good' : (arrPct > 15 ? 'warn' : 'warn');
 
     let html = `<h3>${ev.name}</h3>`;
 
+    // Charging stops banner (if needed)
+    if (trip.chargingStops > 0) {
+        html += `<div class="charge-stop-banner">`;
+        html += `<strong>${trip.chargingStops} charging stop${trip.chargingStops > 1 ? 's' : ''} required</strong>`;
+        html += `<span class="charge-stop-detail">Charge to ${trip.chargeTargetPct}% at each stop &bull; ~${trip.totalChargeTimeMin} min total charging</span>`;
+        html += `<span class="charge-stop-detail">Arrive with ~${arrPct}% battery (${trip.reservePct}% minimum reserve)</span>`;
+        html += `</div>`;
+    }
+
     // Battery visualization
     html += `<div class="battery-bar-wrap">`;
-    html += `<div class="battery-bar-label"><span class="bl-car">${ev.batteryKwh} kWh battery</span><span class="bl-pct ${pctClass}">${Math.round(trip.remainingPct)}% remaining</span></div>`;
+    html += `<div class="battery-bar-label"><span class="bl-car">${ev.batteryKwh} kWh battery</span><span class="bl-pct ${pctClass}">${arrPct}% at arrival</span></div>`;
     html += `<div class="battery-bar">`;
+    const barUsedPct = trip.chargingStops > 0 ? (100 - arrPct) : Math.min(100, trip.batteryPct);
     html += `<div class="battery-bar-fill" style="width:100%; background:${barColor};">`;
-    html += `<div class="battery-bar-used" style="width:${Math.min(100, trip.batteryPct)}%;"></div>`;
+    html += `<div class="battery-bar-used" style="width:${barUsedPct}%;"></div>`;
     html += `</div>`;
-    html += `<div class="battery-bar-text">${trip.totalEnergy.toFixed(1)} kWh used of ${ev.batteryKwh} kWh</div>`;
+    html += `<div class="battery-bar-text">${trip.totalEnergy.toFixed(1)} kWh total energy needed${trip.chargingStops > 0 ? ' (across ' + (trip.chargingStops + 1) + ' legs)' : ''}</div>`;
     html += `</div></div>`;
 
     // Energy breakdown
@@ -2262,10 +2373,14 @@ function showEvExplanation(route, allRoutes) {
 
     // Tip
     html += `<div class="ev-tip">`;
-    if (trip.batteryPct > 90) {
-        html += `This trip uses most of your ${ev.name}'s battery. Consider charging stops along the way.`;
+    if (trip.chargingStops > 0) {
+        html += `This trip exceeds your ${ev.name}'s single-charge range. `;
+        html += `You'll need <strong>${trip.chargingStops} DC fast charging stop${trip.chargingStops > 1 ? 's' : ''}</strong> (~${trip.totalChargeTimeMin} min total). `;
+        html += `Plan to charge from ${trip.reservePct}% to ${trip.chargeTargetPct}% at each stop. `;
+        html += `You'll arrive with ~${arrPct}% battery remaining.`;
     } else if (trip.batteryPct > 70) {
-        html += `This trip uses a significant portion of your battery. Start with a full charge.`;
+        html += `This trip uses a significant portion of your battery. Start with a full charge. `;
+        html += `You'll arrive with ~${arrPct}% battery.`;
     } else if (isBest) {
         html += `This route minimizes climbing to save battery. `;
         if (trip.regenEnergy > 0.5) {
