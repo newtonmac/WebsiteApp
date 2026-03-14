@@ -109,15 +109,26 @@ struct ChargerMarkerView: View {
                     .foregroundStyle(charger.network == .shell ? .black : .white)
             }
             .overlay(alignment: .topTrailing) {
-                // Charger count badge
-                if charger.totalChargers > 0 {
-                    Text("\(charger.totalChargers)")
-                        .font(.system(size: 7, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(minWidth: 12, minHeight: 12)
-                        .background(Circle().fill(EVTheme.accentBlue))
-                        .offset(x: 6, y: -6)
+                // Rating badge if available
+                if let rating = charger.rating, rating > 0 {
+                    HStack(spacing: 1) {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 5))
+                        Text(String(format: "%.1f", rating))
+                            .font(.system(size: 6, weight: .bold))
+                    }
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 3)
+                    .padding(.vertical, 1)
+                    .background(Capsule().fill(Color.black.opacity(0.7)))
+                    .offset(x: 10, y: -8)
                 }
+            }
+            // Open/closed indicator
+            if let isOpen = charger.isOpen {
+                Circle()
+                    .fill(isOpen ? EVTheme.accentGreen : EVTheme.accentRed)
+                    .frame(width: 5, height: 5)
             }
         }
     }
@@ -127,92 +138,174 @@ struct ChargerMarkerView: View {
     }
 }
 
-// MARK: - Charger Detail Sheet
+// MARK: - Charger Detail Sheet (Two-Layer)
 
 struct ChargerDetailSheet: View {
     let charger: EVCharger
+    let chargerService: EVChargerService
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            // Header
-            HStack(spacing: 10) {
-                Circle()
-                    .fill(Color(hex: charger.network.color))
-                    .frame(width: 14, height: 14)
-                Text(charger.name)
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(EVTheme.textPrimary)
-                    .lineLimit(2)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                // Header
+                HStack(spacing: 10) {
+                    Circle()
+                        .fill(Color(hex: charger.network.color))
+                        .frame(width: 14, height: 14)
+                    Text(charger.name)
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(EVTheme.textPrimary)
+                        .lineLimit(2)
+                }
+                .padding(.top, 8)
+
+                // Network
+                HStack(spacing: 6) {
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Color(hex: charger.network.color))
+                    Text(charger.network.rawValue)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Color(hex: charger.network.color))
+                }
+
+                // Address
+                HStack(spacing: 6) {
+                    Image(systemName: "mappin.circle.fill")
+                        .font(.system(size: 13))
+                        .foregroundStyle(EVTheme.textSecondary)
+                    Text(charger.address)
+                        .font(.system(size: 14))
+                        .foregroundStyle(EVTheme.textSecondary)
+                }
+
+                // Google Places info row (rating, reviews, open status)
+                placesInfoRow
+
+                Divider()
+                    .background(EVTheme.border)
+
+                // NREL technical details (async loaded)
+                nrelDetailsSection
+
+                // Navigate button
+                Button {
+                    let placemark = MKPlacemark(coordinate: charger.coordinate)
+                    let mapItem = MKMapItem(placemark: placemark)
+                    mapItem.name = charger.name
+                    mapItem.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving])
+                } label: {
+                    HStack {
+                        Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
+                        Text("Navigate to Charger")
+                            .fontWeight(.semibold)
+                    }
+                    .font(.system(size: 15))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        LinearGradient(colors: [Color(hex: charger.network.color), Color(hex: charger.network.color).opacity(0.7)],
+                                       startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
+                    .foregroundStyle(charger.network == .shell ? .black : .white)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                }
             }
-            .padding(.top, 8)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 30)
+        }
+        .background(EVTheme.bgCard)
+        .preferredColorScheme(.dark)
+        .task {
+            await chargerService.loadNRELDetails(for: charger)
+        }
+    }
 
-            // Network
-            HStack(spacing: 6) {
-                Image(systemName: "bolt.fill")
-                    .font(.system(size: 13))
-                    .foregroundStyle(Color(hex: charger.network.color))
-                Text(charger.network.rawValue)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Color(hex: charger.network.color))
+    // MARK: - Google Places Info
+
+    private var placesInfoRow: some View {
+        HStack(spacing: 16) {
+            // Rating
+            if let rating = charger.rating {
+                HStack(spacing: 4) {
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 12))
+                        .foregroundStyle(EVTheme.accentYellow)
+                    Text(String(format: "%.1f", rating))
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(EVTheme.textPrimary)
+                    if let count = charger.reviewCount {
+                        Text("(\(count))")
+                            .font(.system(size: 12))
+                            .foregroundStyle(EVTheme.textSecondary)
+                    }
+                }
             }
 
-            // Address
-            HStack(spacing: 6) {
-                Image(systemName: "mappin.circle.fill")
-                    .font(.system(size: 13))
-                    .foregroundStyle(EVTheme.textSecondary)
-                Text(charger.address)
-                    .font(.system(size: 14))
-                    .foregroundStyle(EVTheme.textSecondary)
+            // Open/closed status
+            if let isOpen = charger.isOpen {
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(isOpen ? EVTheme.accentGreen : EVTheme.accentRed)
+                        .frame(width: 8, height: 8)
+                    Text(isOpen ? "Open Now" : "Closed")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(isOpen ? EVTheme.accentGreen : EVTheme.accentRed)
+                }
             }
+        }
+    }
 
-            Divider()
-                .background(EVTheme.border)
+    // MARK: - NREL Details Section
 
-            // Charger counts and speed
+    @ViewBuilder
+    private var nrelDetailsSection: some View {
+        if let details = charger.nrelDetails {
+            // Stall counts
             HStack(spacing: 0) {
-                if let dcFast = charger.dcFastCount, dcFast > 0 {
+                if details.dcFastCount > 0 {
                     VStack(spacing: 4) {
                         Text("DC FAST")
                             .font(.system(size: 10, weight: .bold))
                             .foregroundStyle(EVTheme.textSecondary)
-                        Text("\(dcFast)")
+                        Text("\(details.dcFastCount)")
                             .font(.system(size: 20, weight: .bold))
                             .foregroundStyle(EVTheme.accentGreen)
                     }
                     .frame(maxWidth: .infinity)
                 }
 
-                if let l2 = charger.level2Count, l2 > 0 {
+                if details.level2Count > 0 {
                     VStack(spacing: 4) {
                         Text("LEVEL 2")
                             .font(.system(size: 10, weight: .bold))
                             .foregroundStyle(EVTheme.textSecondary)
-                        Text("\(l2)")
+                        Text("\(details.level2Count)")
                             .font(.system(size: 20, weight: .bold))
                             .foregroundStyle(EVTheme.accentBlue)
                     }
                     .frame(maxWidth: .infinity)
                 }
 
-                if let speed = charger.speedKw {
+                if details.level1Count > 0 {
                     VStack(spacing: 4) {
-                        Text("MAX SPEED")
+                        Text("LEVEL 1")
                             .font(.system(size: 10, weight: .bold))
                             .foregroundStyle(EVTheme.textSecondary)
-                        Text("\(Int(speed)) kW")
+                        Text("\(details.level1Count)")
                             .font(.system(size: 20, weight: .bold))
-                            .foregroundStyle(speed >= 150 ? EVTheme.accentGreen : EVTheme.accentYellow)
+                            .foregroundStyle(EVTheme.textPrimary)
                     }
                     .frame(maxWidth: .infinity)
                 }
 
-                if let stalls = charger.stallCount, stalls > 0 {
+                let total = details.dcFastCount + details.level2Count + details.level1Count
+                if total > 0 {
                     VStack(spacing: 4) {
                         Text("TOTAL")
                             .font(.system(size: 10, weight: .bold))
                             .foregroundStyle(EVTheme.textSecondary)
-                        Text("\(stalls)")
+                        Text("\(total)")
                             .font(.system(size: 20, weight: .bold))
                             .foregroundStyle(EVTheme.textPrimary)
                     }
@@ -223,20 +316,28 @@ struct ChargerDetailSheet: View {
             .background(EVTheme.bgInput)
             .clipShape(RoundedRectangle(cornerRadius: 10))
 
-            // Connectors
-            if !charger.connectors.isEmpty {
-                HStack(spacing: 6) {
-                    Image(systemName: "ev.plug.dc.ccs2")
-                        .font(.system(size: 13))
-                        .foregroundStyle(EVTheme.textSecondary)
-                    Text(charger.connectors.joined(separator: ", "))
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(EVTheme.textPrimary)
+            // Connectors with kW
+            if !details.connectors.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "ev.plug.dc.ccs2")
+                            .font(.system(size: 13))
+                            .foregroundStyle(EVTheme.textSecondary)
+                        Text("CONNECTORS")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(EVTheme.textSecondary)
+                    }
+                    ForEach(details.connectors, id: \.type) { connector in
+                        Text(connector.displayString)
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(EVTheme.textPrimary)
+                            .padding(.leading, 20)
+                    }
                 }
             }
 
             // Hours
-            if let hours = charger.hours {
+            if let hours = details.hours {
                 HStack(spacing: 6) {
                     Image(systemName: "clock.fill")
                         .font(.system(size: 13))
@@ -249,7 +350,7 @@ struct ChargerDetailSheet: View {
             }
 
             // Pricing
-            if let pricing = charger.pricing, !pricing.isEmpty {
+            if let pricing = details.pricing, !pricing.isEmpty {
                 HStack(spacing: 6) {
                     Image(systemName: "dollarsign.circle.fill")
                         .font(.system(size: 13))
@@ -260,34 +361,30 @@ struct ChargerDetailSheet: View {
                         .lineLimit(4)
                 }
             }
-
-            // Navigate button
-            Button {
-                let placemark = MKPlacemark(coordinate: charger.coordinate)
-                let mapItem = MKMapItem(placemark: placemark)
-                mapItem.name = charger.name
-                mapItem.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving])
-            } label: {
-                HStack {
-                    Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
-                    Text("Navigate to Charger")
-                        .fontWeight(.semibold)
-                }
-                .font(.system(size: 15))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(
-                    LinearGradient(colors: [Color(hex: charger.network.color), Color(hex: charger.network.color).opacity(0.7)],
-                                   startPoint: .topLeading, endPoint: .bottomTrailing)
-                )
-                .foregroundStyle(charger.network == .shell ? .black : .white)
-                .clipShape(RoundedRectangle(cornerRadius: 14))
+        } else if chargerService.nrelLoadingIds.contains(charger.id) {
+            // Loading state
+            HStack(spacing: 10) {
+                ProgressView()
+                    .tint(EVTheme.textSecondary)
+                Text("Loading charger details...")
+                    .font(.system(size: 13))
+                    .foregroundStyle(EVTheme.textSecondary)
             }
-
-            Spacer()
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(EVTheme.bgInput)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+        } else if chargerService.nrelErrorIds.contains(charger.id) {
+            // Error / no NREL data
+            HStack(spacing: 6) {
+                Image(systemName: "info.circle")
+                    .font(.system(size: 13))
+                    .foregroundStyle(EVTheme.textSecondary)
+                Text("Technical details not available")
+                    .font(.system(size: 13))
+                    .foregroundStyle(EVTheme.textSecondary)
+            }
+            .padding(.vertical, 8)
         }
-        .padding(.horizontal, 20)
-        .background(EVTheme.bgCard)
-        .preferredColorScheme(.dark)
     }
 }

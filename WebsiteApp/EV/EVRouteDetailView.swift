@@ -345,8 +345,8 @@ struct EVRouteDetailView: View {
                             .font(.caption)
                             .foregroundStyle(EVTheme.textSecondary)
                             .lineLimit(1)
-                        if !charger.connectors.isEmpty {
-                            Text(charger.connectors.joined(separator: " • "))
+                        if let details = charger.nrelDetails, !details.connectors.isEmpty {
+                            Text(details.connectors.map(\.type).joined(separator: " • "))
                                 .font(.caption2)
                                 .foregroundStyle(EVTheme.textSecondary)
                         }
