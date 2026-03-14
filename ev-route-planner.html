@@ -396,6 +396,13 @@
         }
         .amaps-btn:hover { box-shadow: 0 6px 24px #00000066; }
 
+        .waze-btn {
+            background: linear-gradient(135deg, #33ccff, #05b0f0);
+            box-shadow: 0 4px 16px #33ccff44;
+            margin-top: 8px;
+        }
+        .waze-btn:hover { box-shadow: 0 6px 24px #33ccff66; }
+
         .share-row {
             display: flex;
             gap: 8px;
@@ -786,6 +793,10 @@
                 <svg viewBox="0 0 24 24" fill="none"><path d="M21 3L3 10.5l6.5 2L12 21l9-18z" fill="white"/></svg>
                 Start Driving — Apple Maps
             </a>
+            <a id="wazeLink" class="nav-btn waze-btn" href="#" rel="noopener" style="display:none;">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M21 3L3 10.5l6.5 2L12 21l9-18z" fill="white"/></svg>
+                Start Driving — Waze
+            </a>
             <div id="evExplain" class="ev-explain" style="display:none;"></div>
             <div class="share-row" id="shareRow" style="display:none;">
                 <a id="shareEmail" class="share-btn" href="#" target="_blank">
@@ -871,6 +882,27 @@ function initApp() {
     document.getElementById('roundTripCb').addEventListener('change', () => {
         planBtn.textContent = document.getElementById('roundTripCb').checked
             ? 'Plan Round Trip' : 'Plan EV-Efficient Route';
+    });
+
+    // Waze: try deep link, hide button if app not installed
+    document.getElementById('wazeLink').addEventListener('click', function(e) {
+        e.preventDefault();
+        const dest = this.dataset.wazeDest;
+        if (!dest) return;
+
+        const wazeUrl = `waze://?ll=${dest}&navigate=yes`;
+        const start = Date.now();
+
+        // Try opening the app
+        window.location.href = wazeUrl;
+
+        // If we're still here after 2s, app isn't installed
+        setTimeout(() => {
+            if (Date.now() - start < 3000) {
+                this.style.display = 'none';
+                this.dataset.hidden = '1';
+            }
+        }, 2000);
     });
 
     // Initialize EV specs display
@@ -1794,9 +1826,12 @@ function updateMapLinks(route) {
     const gmapsLink = document.getElementById('gmapsLink');
     const amapsLink = document.getElementById('amapsLink');
 
+    const wazeLink = document.getElementById('wazeLink');
+
     if (!originCoord || !destCoord) {
         gmapsLink.style.display = 'none';
         amapsLink.style.display = 'none';
+        wazeLink.style.display = 'none';
         return;
     }
 
@@ -1824,6 +1859,14 @@ function updateMapLinks(route) {
     // "Go" button for immediate turn-by-turn navigation.
     amapsLink.href = `https://maps.apple.com/?daddr=${dest}&dirflg=d&t=m`;
     amapsLink.style.display = 'flex';
+
+    // ── Waze ──
+    // Only show if not already hidden (user doesn't have Waze)
+    if (!wazeLink.dataset.hidden) {
+        wazeLink.dataset.wazeDest = `${finalDest[0]},${finalDest[1]}`;
+        wazeLink.href = '#';
+        wazeLink.style.display = 'flex';
+    }
 
     // ── Share links (Email, Text, Copy) ──
     const gmapsUrl = gmapsLink.href;
@@ -1992,6 +2035,7 @@ function clearRoutes() {
     document.getElementById('mapLegend').style.display = 'none';
     document.getElementById('gmapsLink').style.display = 'none';
     document.getElementById('amapsLink').style.display = 'none';
+    document.getElementById('wazeLink').style.display = 'none';
     document.getElementById('shareRow').style.display = 'none';
     routesData = [];
     returnRoutesData = [];
