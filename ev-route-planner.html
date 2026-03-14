@@ -810,6 +810,7 @@
                     <optgroup label="Volkswagen">
                         <option value="id4_pro">VW ID.4 Pro S</option>
                         <option value="id4_std">VW ID.4 Standard</option>
+                        <option value="egolf">VW e-Golf</option>
                     </optgroup>
                     <optgroup label="Ford">
                         <option value="mache_ext">Mustang Mach-E Extended</option>
@@ -825,11 +826,16 @@
                         <option value="ix_50">BMW iX xDrive50</option>
                         <option value="eqs_450">Mercedes EQS 450+</option>
                     </optgroup>
+                    <optgroup label="Lucid">
+                        <option value="lucid_air_gt">Lucid Air Grand Touring</option>
+                        <option value="lucid_air_pure">Lucid Air Pure</option>
+                        <option value="lucid_air_touring">Lucid Air Touring</option>
+                        <option value="lucid_gravity">Lucid Gravity Grand Touring</option>
+                    </optgroup>
                     <optgroup label="Other">
                         <option value="bolt_ev">Chevrolet Bolt EV</option>
                         <option value="leaf_plus">Nissan Leaf Plus</option>
                         <option value="polestar2_lr">Polestar 2 Long Range</option>
-                        <option value="lucid_air">Lucid Air Grand Touring</option>
                     </optgroup>
                 </select>
                 <div class="ev-car-specs" id="evCarSpecs"></div>
@@ -1036,6 +1042,7 @@ const evModels = {
     // Volkswagen
     id4_pro:      { name: 'VW ID.4 Pro S',                 batteryKwh: 82,  effKwhMi: 0.32, weightKg: 2124, regenEff: 0.55, epaMiles: 275 },
     id4_std:      { name: 'VW ID.4 Standard',              batteryKwh: 62,  effKwhMi: 0.30, weightKg: 1984, regenEff: 0.55, epaMiles: 209 },
+    egolf:        { name: 'VW e-Golf',                      batteryKwh: 35.8,effKwhMi: 0.26, weightKg: 1615, regenEff: 0.50, epaMiles: 125 },
     // Ford
     mache_ext:    { name: 'Mustang Mach-E Extended',       batteryKwh: 91,  effKwhMi: 0.33, weightKg: 2100, regenEff: 0.55, epaMiles: 312 },
     f150_ext:     { name: 'F-150 Lightning Extended',      batteryKwh: 131, effKwhMi: 0.50, weightKg: 2950, regenEff: 0.50, epaMiles: 320 },
@@ -1051,7 +1058,11 @@ const evModels = {
     bolt_ev:      { name: 'Chevrolet Bolt EV',             batteryKwh: 65,  effKwhMi: 0.28, weightKg: 1616, regenEff: 0.55, epaMiles: 259 },
     leaf_plus:    { name: 'Nissan Leaf Plus',               batteryKwh: 60,  effKwhMi: 0.30, weightKg: 1670, regenEff: 0.50, epaMiles: 212 },
     polestar2_lr: { name: 'Polestar 2 Long Range',         batteryKwh: 78,  effKwhMi: 0.29, weightKg: 2040, regenEff: 0.60, epaMiles: 295 },
-    lucid_air:    { name: 'Lucid Air Grand Touring',       batteryKwh: 112, effKwhMi: 0.26, weightKg: 2360, regenEff: 0.65, epaMiles: 516 },
+    // Lucid
+    lucid_air_gt: { name: 'Lucid Air Grand Touring',       batteryKwh: 112, effKwhMi: 0.26, weightKg: 2360, regenEff: 0.65, epaMiles: 516 },
+    lucid_air_pure:{ name: 'Lucid Air Pure',               batteryKwh: 88,  effKwhMi: 0.27, weightKg: 2200, regenEff: 0.65, epaMiles: 419 },
+    lucid_air_touring:{ name: 'Lucid Air Touring',         batteryKwh: 92,  effKwhMi: 0.27, weightKg: 2250, regenEff: 0.65, epaMiles: 425 },
+    lucid_gravity: { name: 'Lucid Gravity Grand Touring',  batteryKwh: 113, effKwhMi: 0.32, weightKg: 2800, regenEff: 0.60, epaMiles: 450 },
 };
 
 function getSelectedEV() {
@@ -2116,6 +2127,14 @@ function hideLoading() {
     document.getElementById('loadingOverlay').classList.add('hidden');
 }
 
+// ─── Feedback form toggle ───
+document.getElementById('toggleFeedback').addEventListener('click', function() {
+    const form = document.getElementById('feedbackForm');
+    const showing = form.style.display !== 'none';
+    form.style.display = showing ? 'none' : 'block';
+    this.textContent = showing ? 'Rate & Send Suggestions' : 'Hide Feedback Form';
+});
+
 // ─── Resize handling for elevation chart (debounced) ───
 let resizeTimer = null;
 window.addEventListener('resize', () => {
@@ -2135,10 +2154,13 @@ window.addEventListener('resize', () => {
         <p>EV Route Planner was built by an EV owner who wanted a better way to plan trips. After experiencing range anxiety firsthand and realizing that elevation plays a huge role in battery consumption, I set out to build a tool that factors in terrain — not just distance — when planning routes.</p>
         <p>The idea is simple: two routes can be the same distance, but the one that climbs a mountain will drain your battery far more than the one that takes a gentler path. This app analyzes elevation profiles, calculates grade-aware energy consumption for your specific vehicle, and helps you pick the route that saves the most battery — so you can drive with confidence instead of worry.</p>
         <p>This is a free community project, built for EV drivers by an EV driver. If you find it useful or have ideas to make it better, I'd love to hear from you.</p>
-        <a href="https://forms.gle/oyGmGkqfpThZSbuC6" target="_blank" rel="noopener" class="feedback-btn">
+        <button class="feedback-btn" id="toggleFeedback" type="button">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             Rate & Send Suggestions
-        </a>
+        </button>
+        <div id="feedbackForm" style="display:none; margin-top: 16px;">
+            <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSe8e8kb48PVZXjvalrvtL1-WiBHEc-tHkcnPohigUOx43zV2g/viewform?embedded=true" width="100%" height="600" frameborder="0" marginheight="0" marginwidth="0" style="border-radius: 10px; background: #fff;">Loading…</iframe>
+        </div>
     </div>
     <div class="disclaimer">
         <p><strong>Disclaimer:</strong> EV Route Planner is a free community project provided "as is" without warranty of any kind, express or implied. Route suggestions, energy estimates, and battery calculations are approximations based on general vehicle specifications and elevation data. Actual energy consumption varies based on driving conditions, weather, speed, vehicle load, tire pressure, HVAC usage, and other factors. Always rely on your vehicle's built-in range and energy indicators for critical decisions. The developers assume no liability for any damages, losses, or inconveniences arising from the use of this tool, including but not limited to running out of charge, missed destinations, or inaccurate route information.</p>
