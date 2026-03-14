@@ -6,48 +6,80 @@ struct EVVehiclePickerView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                ForEach(EVDatabase.groupedByBrand, id: \.brand) { group in
-                    Section(group.brand) {
-                        ForEach(group.vehicles) { vehicle in
-                            Button {
-                                selectedVehicle = vehicle
-                                dismiss()
-                            } label: {
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(vehicle.model)
-                                            .font(.subheadline.weight(.semibold))
-                                            .foregroundStyle(.primary)
+            ScrollView {
+                VStack(spacing: 16) {
+                    ForEach(EVDatabase.groupedByBrand, id: \.brand) { group in
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(group.brand.uppercased())
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(EVTheme.textSecondary)
+                                .tracking(1)
+                                .padding(.horizontal, 16)
 
-                                        HStack(spacing: 12) {
-                                            specBadge("\(Int(vehicle.batteryKwh)) kWh")
-                                            specBadge("\(vehicle.epaMiles) mi")
-                                            specBadge("\(String(format: "%.2f", vehicle.effKwhMi)) kWh/mi")
+                            VStack(spacing: 0) {
+                                ForEach(group.vehicles) { vehicle in
+                                    Button {
+                                        selectedVehicle = vehicle
+                                        dismiss()
+                                    } label: {
+                                        HStack {
+                                            VStack(alignment: .leading, spacing: 4) {
+                                                Text(vehicle.model)
+                                                    .font(.subheadline.weight(.semibold))
+                                                    .foregroundStyle(EVTheme.textPrimary)
+
+                                                HStack(spacing: 8) {
+                                                    specBadge("\(Int(vehicle.batteryKwh)) kWh")
+                                                    specBadge("\(vehicle.epaMiles) mi")
+                                                    specBadge("\(String(format: "%.2f", vehicle.effKwhMi)) kWh/mi")
+                                                }
+                                            }
+
+                                            Spacer()
+
+                                            if vehicle.id == selectedVehicle.id {
+                                                Image(systemName: "checkmark.circle.fill")
+                                                    .foregroundStyle(EVTheme.accentGreen)
+                                            }
                                         }
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 12)
+                                        .contentShape(Rectangle())
                                     }
 
-                                    Spacer()
-
-                                    if vehicle.id == selectedVehicle.id {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .foregroundStyle(.green)
+                                    if vehicle.id != group.vehicles.last?.id {
+                                        Rectangle()
+                                            .fill(EVTheme.border)
+                                            .frame(height: 1)
+                                            .padding(.leading, 16)
                                     }
                                 }
-                                .contentShape(Rectangle())
                             }
+                            .background(EVTheme.bgInput)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(EVTheme.border, lineWidth: 1)
+                            )
+                            .padding(.horizontal, 16)
                         }
                     }
                 }
+                .padding(.vertical, 16)
             }
+            .background(EVTheme.bgPrimary)
             .navigationTitle("Select Vehicle")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(EVTheme.bgCard, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
+                        .foregroundStyle(EVTheme.accentGreen)
                 }
             }
         }
+        .preferredColorScheme(.dark)
     }
 
     private func specBadge(_ text: String) -> some View {
@@ -55,8 +87,8 @@ struct EVVehiclePickerView: View {
             .font(.caption2)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
-            .background(Color.gray.opacity(0.15))
-            .clipShape(RoundedRectangle(cornerRadius: 4))
-            .foregroundStyle(.secondary)
+            .background(EVTheme.border)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .foregroundStyle(EVTheme.textSecondary)
     }
 }

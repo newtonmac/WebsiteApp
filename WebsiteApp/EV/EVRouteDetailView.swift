@@ -9,30 +9,147 @@ struct EVRouteDetailView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 20) {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Title
+                    HStack {
+                        Text(route.route.name.isEmpty ? "Route" : route.route.name)
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(EVTheme.accentGreen)
+                        Text("— \(String(format: "%.1f mi", route.distanceMiles))")
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(EVTheme.textPrimary)
+                    }
+
+                    // Route analysis checkmarks
+                    routeAnalysisSection
+
+                    Rectangle()
+                        .fill(EVTheme.border)
+                        .frame(height: 1)
+
                     // Elevation Profile
                     elevationProfileSection
 
-                    // Energy Breakdown
+                    Rectangle()
+                        .fill(EVTheme.border)
+                        .frame(height: 1)
+
+                    // Map Colors legend
+                    mapColorsLegend
+
+                    Rectangle()
+                        .fill(EVTheme.border)
+                        .frame(height: 1)
+
+                    // Energy breakdown
                     energyBreakdownSection
 
-                    // Route Stats
-                    routeStatsSection
-
-                    // Chargers Along Route
+                    // Chargers
                     if !chargers.isEmpty {
+                        Rectangle()
+                            .fill(EVTheme.border)
+                            .frame(height: 1)
                         chargersSection
                     }
                 }
                 .padding(20)
             }
-            .navigationTitle("Route Details")
+            .background(EVTheme.bgPrimary)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(EVTheme.bgCard, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(EVTheme.textSecondary)
+                            .frame(width: 28, height: 28)
+                            .background(EVTheme.bgInput)
+                            .clipShape(Circle())
+                    }
                 }
             }
+        }
+        .preferredColorScheme(.dark)
+    }
+
+    // MARK: - Route Analysis (checkmark bullets)
+
+    private var routeAnalysisSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Energy efficiency
+            if route.batteryPctUsed < 50 {
+                checkItem("Uses the **least battery** — the most energy-efficient path", color: EVTheme.accentGreen)
+            } else if route.batteryPctUsed < 80 {
+                checkItem("Moderate battery usage — \(String(format: "%.0f%%", route.batteryPctUsed)) consumed", color: EVTheme.accentYellow)
+            } else {
+                checkItem("High battery usage — \(String(format: "%.0f%%", route.batteryPctUsed)) consumed", color: EVTheme.accentRed)
+            }
+
+            // Climbing
+            let elevFt = Int(route.elevationGain * 3.28084)
+            let elevM = Int(route.elevationGain)
+            if elevFt < 500 {
+                checkItem("**Low climbing** — only +\(elevM)m (+\(elevFt)ft) elevation gain", color: EVTheme.accentGreen)
+            } else if elevFt < 2000 {
+                checkItem("Moderate climbing — +\(elevM)m (+\(elevFt)ft) elevation gain", color: EVTheme.accentYellow)
+            } else {
+                checkItem("Significant climbing — +\(elevM)m (+\(elevFt)ft) elevation gain", color: EVTheme.accentOrange)
+            }
+
+            // Regen
+            let regenKwh = route.elevationLoss > 0
+                ? (vehicle.weightKg * 9.81 * route.elevationLoss) / 3_600_000 * vehicle.regenEff
+                : 0
+            if regenKwh > 0.5 {
+                checkItem("Recovers **\(String(format: "%.1f kWh", regenKwh))** through regenerative braking on downhill sections", color: EVTheme.accentGreen)
+            }
+
+            // Battery remaining
+            let remaining = route.remainingBatteryPct
+            if remaining > 50 {
+                checkItem("Arrives with **\(Int(remaining))% battery** remaining — plenty of margin", color: EVTheme.accentGreen)
+            } else if remaining > 20 {
+                checkItem("Arrives with **\(Int(remaining))% battery** remaining", color: EVTheme.accentYellow)
+            } else {
+                checkItem("Arrives with only **\(Int(remaining))% battery** — consider charging stops", color: EVTheme.accentRed)
+            }
+
+            // Peak grade
+            if route.peakGrade > 8 {
+                warningItem("Contains steep grades up to \(String(format: "%.1f%%", route.peakGrade)) — increased energy use")
+            } else {
+                checkItem("No significant drawbacks for this route", color: EVTheme.accentYellow)
+            }
+        }
+    }
+
+    private func checkItem(_ text: LocalizedStringKey, color: Color) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "checkmark")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(color)
+                .frame(width: 16)
+                .padding(.top, 2)
+            Text(text)
+                .font(.subheadline)
+                .foregroundStyle(EVTheme.textPrimary)
+        }
+    }
+
+    private func warningItem(_ text: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 12))
+                .foregroundStyle(EVTheme.accentYellow)
+                .frame(width: 16)
+                .padding(.top, 2)
+            Text(text)
+                .font(.subheadline)
+                .foregroundStyle(EVTheme.textPrimary)
         }
     }
 
@@ -40,79 +157,92 @@ struct EVRouteDetailView: View {
 
     private var elevationProfileSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("ELEVATION PROFILE")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+            Text("Elevation Profile")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(EVTheme.textPrimary)
 
             if !route.elevationProfile.isEmpty {
                 ElevationChartView(profile: route.elevationProfile)
-                    .frame(height: 150)
+                    .frame(height: 160)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
-            }
 
-            HStack {
-                Label("\(Int(route.elevationGain * 3.28084)) ft gain", systemImage: "arrow.up.right")
+                HStack {
+                    Label("\(Int(route.elevationGain * 3.28084)) ft gain", systemImage: "arrow.up.right")
+                        .font(.caption)
+                        .foregroundStyle(EVTheme.accentGreen)
+                    Spacer()
+                    Label("\(Int(route.elevationLoss * 3.28084)) ft loss", systemImage: "arrow.down.right")
+                        .font(.caption)
+                        .foregroundStyle(EVTheme.accentRed)
+                    Spacer()
+                    Label("\(String(format: "%.1f%%", route.peakGrade)) peak", systemImage: "mountain.2.fill")
+                        .font(.caption)
+                        .foregroundStyle(EVTheme.accentYellow)
+                }
+            } else {
+                Text("No elevation data available")
                     .font(.caption)
-                    .foregroundStyle(.green)
-                Spacer()
-                Label("\(Int(route.elevationLoss * 3.28084)) ft loss", systemImage: "arrow.down.right")
-                    .font(.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(EVTheme.textSecondary)
             }
         }
-        .padding(14)
-        .background(.thinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
+    }
+
+    // MARK: - Map Colors Legend
+
+    private var mapColorsLegend: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Map Colors")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(EVTheme.textPrimary)
+
+            legendRow(color: EVTheme.accentGreen, text: "Green segments = downhill (battery recovers via regen braking)")
+            legendRow(color: Color(hex: "#a3e635"), text: "Yellow-green = flat (low energy use)")
+            legendRow(color: EVTheme.accentYellow, text: "Yellow/orange = moderate uphill")
+            legendRow(color: EVTheme.accentRed, text: "Red segments = steep uphill (high energy drain)")
+        }
+    }
+
+    private func legendRow(color: Color, text: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(color)
+                .frame(width: 24, height: 4)
+                .padding(.top, 7)
+            Text(text)
+                .font(.caption)
+                .foregroundStyle(EVTheme.textSecondary)
+        }
     }
 
     // MARK: - Energy Breakdown
 
     private var energyBreakdownSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("ENERGY BREAKDOWN")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+            Text("Energy Details")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(EVTheme.textPrimary)
 
             DetailRow(label: "Total Energy", value: String(format: "%.1f kWh", route.energyKwh))
             DetailRow(label: "Battery Used", value: String(format: "%.0f%%", route.batteryPctUsed),
-                      valueColor: route.batteryPctUsed > 80 ? .red : route.batteryPctUsed > 60 ? .yellow : .green)
-            DetailRow(label: "Remaining Battery", value: String(format: "%.0f%%", route.remainingBatteryPct))
+                      valueColor: route.batteryPctUsed > 80 ? EVTheme.accentRed : route.batteryPctUsed > 60 ? EVTheme.accentYellow : EVTheme.accentGreen)
             DetailRow(label: "Efficiency", value: String(format: "%.1f mi/kWh", route.efficiency))
+            DetailRow(label: "Distance", value: String(format: "%.1f miles", route.distanceMiles))
+            DetailRow(label: "Est. Time", value: formatDuration(route.durationMinutes))
+            DetailRow(label: "Avg Grade", value: String(format: "%.1f%%", route.averageGrade))
+            DetailRow(label: "Peak Grade", value: String(format: "%.1f%%", route.peakGrade),
+                      valueColor: route.peakGrade > 8 ? EVTheme.accentRed : route.peakGrade > 5 ? EVTheme.accentYellow : EVTheme.accentGreen)
 
             BatteryBarView(vehicleName: vehicle.displayName, batteryPctUsed: route.batteryPctUsed)
         }
-        .padding(14)
-        .background(.thinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-    }
-
-    // MARK: - Route Stats
-
-    private var routeStatsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("ROUTE STATS")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-
-            DetailRow(label: "Distance", value: String(format: "%.1f miles", route.distanceMiles))
-            DetailRow(label: "Est. Time", value: formatDuration(route.durationMinutes))
-            DetailRow(label: "Route Name", value: route.route.name)
-            DetailRow(label: "Avg Grade", value: String(format: "%.1f%%", route.averageGrade))
-            DetailRow(label: "Peak Grade", value: String(format: "%.1f%%", route.peakGrade),
-                      valueColor: route.peakGrade > 8 ? .red : route.peakGrade > 5 ? .yellow : .green)
-        }
-        .padding(14)
-        .background(.thinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 
     // MARK: - Chargers
 
     private var chargersSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("CHARGERS ALONG ROUTE (\(chargers.count))")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+            Text("Chargers Along Route (\(chargers.count))")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(EVTheme.textPrimary)
 
             ForEach(chargers) { charger in
                 HStack(spacing: 10) {
@@ -128,23 +258,28 @@ struct EVRouteDetailView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(charger.name)
                             .font(.subheadline.weight(.medium))
+                            .foregroundStyle(EVTheme.textPrimary)
                             .lineLimit(1)
                         Text(charger.address)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(EVTheme.textSecondary)
                             .lineLimit(1)
                         if !charger.connectors.isEmpty {
                             Text(charger.connectors.joined(separator: " • "))
                                 .font(.caption2)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(EVTheme.textSecondary)
                         }
                     }
                 }
+                .padding(.vertical, 4)
+
+                if charger.id != chargers.last?.id {
+                    Rectangle()
+                        .fill(EVTheme.border)
+                        .frame(height: 1)
+                }
             }
         }
-        .padding(14)
-        .background(.thinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 
     // MARK: - Helpers
@@ -157,12 +292,12 @@ struct EVRouteDetailView: View {
 
     private func networkColor(_ network: ChargerNetwork) -> Color {
         switch network {
-        case .tesla: return Color(red: 0.89, green: 0.10, blue: 0.22)
-        case .electrifyAmerica: return Color(red: 0, green: 0.45, blue: 0.81)
-        case .evgo: return Color(red: 0, green: 0.67, blue: 0.94)
-        case .chargePoint: return Color(red: 0.28, green: 0.72, blue: 0.30)
+        case .tesla: return Color(hex: "#e31937")
+        case .electrifyAmerica: return Color(hex: "#0072ce")
+        case .evgo: return Color(hex: "#00aaef")
+        case .chargePoint: return Color(hex: "#48b84e")
         case .blink: return Color.orange
-        case .evConnect: return Color(red: 0.36, green: 0.75, blue: 0.08)
+        case .evConnect: return Color(hex: "#5cbf14")
         }
     }
 }
@@ -170,13 +305,13 @@ struct EVRouteDetailView: View {
 struct DetailRow: View {
     let label: String
     let value: String
-    var valueColor: Color = .primary
+    var valueColor: Color = EVTheme.textPrimary
 
     var body: some View {
         HStack {
             Text(label)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(EVTheme.textSecondary)
             Spacer()
             Text(value)
                 .font(.subheadline.weight(.semibold))
@@ -198,7 +333,7 @@ struct ElevationChartView: View {
             Canvas { context, size in
                 guard profile.count >= 2 else { return }
 
-                // Fill
+                // Fill gradient
                 var fillPath = Path()
                 fillPath.move(to: CGPoint(x: 0, y: size.height))
 
@@ -212,25 +347,38 @@ struct ElevationChartView: View {
                 fillPath.closeSubpath()
 
                 context.fill(fillPath, with: .linearGradient(
-                    Gradient(colors: [.green.opacity(0.4), .green.opacity(0.05)]),
+                    Gradient(colors: [EVTheme.accentGreen.opacity(0.3), EVTheme.accentGreen.opacity(0.02)]),
                     startPoint: CGPoint(x: 0, y: 0),
                     endPoint: CGPoint(x: 0, y: size.height)
                 ))
 
-                // Line
-                var linePath = Path()
-                for (i, point) in profile.enumerated() {
-                    let x = (point.distance / maxDist) * size.width
-                    let y = size.height - ((point.elevation - minElev) / elevRange) * size.height
-                    if i == 0 {
-                        linePath.move(to: CGPoint(x: x, y: y))
-                    } else {
-                        linePath.addLine(to: CGPoint(x: x, y: y))
-                    }
-                }
+                // Colored line segments by grade
+                for i in 1..<profile.count {
+                    let x1 = (profile[i-1].distance / maxDist) * size.width
+                    let y1 = size.height - ((profile[i-1].elevation - minElev) / elevRange) * size.height
+                    let x2 = (profile[i].distance / maxDist) * size.width
+                    let y2 = size.height - ((profile[i].elevation - minElev) / elevRange) * size.height
 
-                context.stroke(linePath, with: .color(.green), lineWidth: 2)
+                    var segPath = Path()
+                    segPath.move(to: CGPoint(x: x1, y: y1))
+                    segPath.addLine(to: CGPoint(x: x2, y: y2))
+
+                    let grade = profile[i].grade
+                    let color: Color
+                    if grade < -1 {
+                        color = EVTheme.accentGreen
+                    } else if grade < 1 {
+                        color = Color(hex: "#a3e635")
+                    } else if grade < 4 {
+                        color = EVTheme.accentYellow
+                    } else {
+                        color = EVTheme.accentRed
+                    }
+
+                    context.stroke(segPath, with: .color(color), lineWidth: 2.5)
+                }
             }
         }
+        .background(EVTheme.bgCard)
     }
 }

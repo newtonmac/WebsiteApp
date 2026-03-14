@@ -11,14 +11,19 @@ struct EVMapContent: View {
 
     var body: some View {
         Map(position: $cameraPosition) {
-            // Route polylines
+            // Route polylines — alternatives first, selected on top
             ForEach(routes) { route in
                 let isSelected = route.id == selectedRoute?.id
-                MapPolyline(route.route.polyline)
-                    .stroke(
-                        isSelected ? Color.blue : Color.gray.opacity(0.5),
-                        lineWidth: isSelected ? 5 : 3
-                    )
+                if !isSelected {
+                    MapPolyline(route.route.polyline)
+                        .stroke(Color.gray.opacity(0.4), lineWidth: 3)
+                }
+            }
+
+            // Selected route on top
+            if let selected = selectedRoute {
+                MapPolyline(selected.route.polyline)
+                    .stroke(EVTheme.accentBlue, lineWidth: 5)
             }
 
             // Origin marker
@@ -26,13 +31,13 @@ struct EVMapContent: View {
                 Annotation("Start", coordinate: origin) {
                     ZStack {
                         Circle()
-                            .fill(.green)
+                            .fill(EVTheme.accentGreen)
                             .frame(width: 28, height: 28)
                         Circle()
                             .fill(.white)
-                            .frame(width: 12, height: 12)
+                            .frame(width: 10, height: 10)
                     }
-                    .shadow(radius: 3)
+                    .shadow(color: EVTheme.accentGreen.opacity(0.4), radius: 4)
                 }
             }
 
@@ -41,13 +46,13 @@ struct EVMapContent: View {
                 Annotation("End", coordinate: destination) {
                     ZStack {
                         Circle()
-                            .fill(.red)
+                            .fill(EVTheme.accentRed)
                             .frame(width: 28, height: 28)
                         Circle()
                             .fill(.white)
-                            .frame(width: 12, height: 12)
+                            .frame(width: 10, height: 10)
                     }
-                    .shadow(radius: 3)
+                    .shadow(color: EVTheme.accentRed.opacity(0.4), radius: 4)
                 }
             }
 
@@ -58,7 +63,7 @@ struct EVMapContent: View {
                 }
             }
         }
-        .mapStyle(.standard(elevation: .realistic))
+        .mapStyle(.standard(elevation: .realistic, pointsOfInterest: .excludingAll))
         .mapControls {
             MapCompass()
             MapScaleView()
@@ -75,21 +80,21 @@ struct ChargerMarkerView: View {
             RoundedRectangle(cornerRadius: 6)
                 .fill(networkColor)
                 .frame(width: 28, height: 22)
+                .shadow(color: networkColor.opacity(0.4), radius: 3)
             Text(charger.network.abbreviation)
                 .font(.system(size: 9, weight: .bold))
                 .foregroundStyle(.white)
         }
-        .shadow(radius: 2)
     }
 
     private var networkColor: Color {
         switch charger.network {
-        case .tesla: return Color(red: 0.89, green: 0.10, blue: 0.22)
-        case .electrifyAmerica: return Color(red: 0, green: 0.45, blue: 0.81)
-        case .evgo: return Color(red: 0, green: 0.67, blue: 0.94)
-        case .chargePoint: return Color(red: 0.28, green: 0.72, blue: 0.30)
+        case .tesla: return Color(hex: "#e31937")
+        case .electrifyAmerica: return Color(hex: "#0072ce")
+        case .evgo: return Color(hex: "#00aaef")
+        case .chargePoint: return Color(hex: "#48b84e")
         case .blink: return Color.orange
-        case .evConnect: return Color(red: 0.36, green: 0.75, blue: 0.08)
+        case .evConnect: return Color(hex: "#5cbf14")
         }
     }
 }

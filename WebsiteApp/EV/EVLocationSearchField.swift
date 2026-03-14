@@ -1,10 +1,12 @@
 import SwiftUI
 import MapKit
+import CoreLocation
 
 struct EVLocationSearchField: View {
     @Binding var text: String
     let placeholder: String
     @Binding var coordinate: CLLocationCoordinate2D?
+    var showGPSButton: Bool = false
 
     @State private var searchCompleter = LocationSearchCompleter()
     @State private var isShowingSuggestions = false
@@ -12,20 +14,34 @@ struct EVLocationSearchField: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            TextField(placeholder, text: $text)
-                .textFieldStyle(.roundedBorder)
-                .focused($isFocused)
-                .onChange(of: text) { _, newValue in
-                    searchCompleter.search(query: newValue)
-                    isShowingSuggestions = !newValue.isEmpty && isFocused
-                }
-                .onChange(of: isFocused) { _, focused in
-                    if !focused {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                            isShowingSuggestions = false
+            HStack(spacing: 6) {
+                TextField(placeholder, text: $text)
+                    .font(.system(size: 14))
+                    .padding(10)
+                    .background(EVTheme.bgInput)
+                    .foregroundStyle(EVTheme.textPrimary)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(isFocused ? EVTheme.accentGreen : EVTheme.border, lineWidth: 1)
+                    )
+                    .focused($isFocused)
+                    .onChange(of: text) { _, newValue in
+                        searchCompleter.search(query: newValue)
+                        isShowingSuggestions = !newValue.isEmpty && isFocused
+                    }
+                    .onChange(of: isFocused) { _, focused in
+                        if !focused {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                isShowingSuggestions = false
+                            }
                         }
                     }
+
+                if showGPSButton {
+                    GPSButton(text: $text, coordinate: $coordinate)
                 }
+            }
 
             if isShowingSuggestions && !searchCompleter.results.isEmpty {
                 VStack(alignment: .leading, spacing: 0) {
@@ -36,23 +52,29 @@ struct EVLocationSearchField: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(suggestion.title)
                                     .font(.subheadline)
-                                    .foregroundStyle(.primary)
+                                    .foregroundStyle(EVTheme.textPrimary)
                                 if !suggestion.subtitle.isEmpty {
                                     Text(suggestion.subtitle)
                                         .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(EVTheme.textSecondary)
                                 }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.vertical, 8)
                             .padding(.horizontal, 12)
                         }
-                        Divider()
+                        Rectangle()
+                            .fill(EVTheme.border)
+                            .frame(height: 1)
                     }
                 }
-                .background(.ultraThinMaterial)
+                .background(EVTheme.bgInput)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
-                .shadow(radius: 4)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(EVTheme.border, lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.3), radius: 4)
             }
         }
     }
@@ -70,6 +92,90 @@ struct EVLocationSearchField: View {
                 coordinate = item.placemark.coordinate
             }
         }
+    }
+}
+
+struct GPSButton: View {
+    @Binding var text: String
+    @Binding var coordinate: CLLocationCoordinate2D?
+    @State private var locationManager = GPSLocationManager()
+    @State private var isLoading = false
+
+    var body: some View {
+        Button {
+            requestLocation()
+        } label: {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(EVTheme.bgInput)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(isLoading ? EVTheme.accentGreen : EVTheme.border, lineWidth: 1)
+                    )
+                if isLoading {
+                    ProgressView()
+                        .tint(EVTheme.accentGreen)
+                        .scaleEffect(0.7)
+                } else {
+                    Image(systemName: "location.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(EVTheme.accentBlue)
+                }
+            }
+            .frame(width: 40, height: 40)
+        }
+    }
+
+    private func requestLocation() {
+        isLoading = true
+        locationManager.requestLocation { result in
+            isLoading = false
+            switch result {
+            case .success(let location):
+                coordinate = location.coordinate
+                // Reverse geocode
+                let geocoder = CLGeocoder()
+                geocoder.reverseGeocodeLocation(location) { placemarks, _ in
+                    if let placemark = placemarks?.first {
+                        let parts = [placemark.name, placemark.locality, placemark.administrativeArea]
+                        text = parts.compactMap { $0 }.joined(separator: ", ")
+                    } else {
+                        text = "\(String(format: "%.4f", location.coordinate.latitude)), \(String(format: "%.4f", location.coordinate.longitude))"
+                    }
+                }
+            case .failure:
+                break
+            }
+        }
+    }
+}
+
+class GPSLocationManager: NSObject, CLLocationManagerDelegate {
+    private let manager = CLLocationManager()
+    private var completion: ((Result<CLLocation, Error>) -> Void)?
+
+    override init() {
+        super.init()
+        manager.delegate = self
+        manager.desiredAccuracy = kCLLocationAccuracyBest
+    }
+
+    func requestLocation(completion: @escaping (Result<CLLocation, Error>) -> Void) {
+        self.completion = completion
+        manager.requestWhenInUseAuthorization()
+        manager.requestLocation()
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        if let location = locations.first {
+            completion?(.success(location))
+            completion = nil
+        }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        completion?(.failure(error))
+        completion = nil
     }
 }
 

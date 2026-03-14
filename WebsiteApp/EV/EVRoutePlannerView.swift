@@ -12,67 +12,93 @@ struct EVRoutePlannerView: View {
     @State private var selectedRoute: RouteResult?
     @State private var showingVehiclePicker = false
     @State private var showingRouteDetail = false
+    @State private var detailRoute: RouteResult?
+    @State private var isRoundTrip = false
+    @State private var showChargers = true
     @State private var mapCameraPosition: MapCameraPosition = .region(
         MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 32.72, longitude: -117.16),
                           span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5))
     )
 
     var body: some View {
-        NavigationStack {
-            ZStack(alignment: .bottom) {
-                // Map
-                EVMapContent(
-                    cameraPosition: $mapCameraPosition,
-                    routes: routeService.routes,
-                    selectedRoute: selectedRoute,
-                    chargers: chargerService.chargers,
-                    origin: originCoord,
-                    destination: destinationCoord
-                )
-                .ignoresSafeArea(edges: .top)
+        ZStack(alignment: .bottom) {
+            EVTheme.bgPrimary.ignoresSafeArea()
 
-                // Bottom panel
-                VStack(spacing: 0) {
-                    // Drag handle
-                    RoundedRectangle(cornerRadius: 2.5)
-                        .fill(Color.gray.opacity(0.5))
-                        .frame(width: 36, height: 5)
-                        .padding(.top, 8)
+            // Map
+            EVMapContent(
+                cameraPosition: $mapCameraPosition,
+                routes: routeService.routes,
+                selectedRoute: selectedRoute,
+                chargers: showChargers ? chargerService.chargers : [],
+                origin: originCoord,
+                destination: destinationCoord
+            )
+            .ignoresSafeArea(edges: .top)
 
-                    ScrollView {
-                        VStack(spacing: 16) {
-                            inputSection
-                            vehicleSection
-                            planButton
-                            if !routeService.routes.isEmpty {
-                                routeResultsSection
-                            }
-                            if let error = routeService.errorMessage {
-                                Text(error)
-                                    .font(.caption)
-                                    .foregroundStyle(.red)
-                                    .padding(.horizontal)
-                            }
+            // Bottom panel
+            VStack(spacing: 0) {
+                // Top bar
+                HStack(alignment: .center) {
+                    Text("EV Route Planner")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [EVTheme.accentGreen, EVTheme.accentBlue],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                    Spacer()
+                    Text("Least Elevation Gain")
+                        .font(.system(size: 11))
+                        .foregroundStyle(EVTheme.textSecondary)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 10)
+
+                RoundedRectangle(cornerRadius: 2.5)
+                    .fill(EVTheme.border)
+                    .frame(width: 36, height: 5)
+                    .padding(.bottom, 8)
+
+                ScrollView {
+                    VStack(spacing: 14) {
+                        inputSection
+                        togglesSection
+                        vehicleSection
+                        planButton
+
+                        if !routeService.routes.isEmpty {
+                            routeResultsSection
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 12)
-                        .padding(.bottom, 32)
+
+                        if let error = routeService.errorMessage {
+                            Text(error)
+                                .font(.caption)
+                                .foregroundStyle(EVTheme.accentRed)
+                                .padding(.horizontal)
+                        }
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 32)
                 }
-                .background(.ultraThinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 20))
-                .frame(maxHeight: UIScreen.main.bounds.height * 0.55)
             }
-            .navigationTitle("EV Route Planner")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-            .sheet(isPresented: $showingVehiclePicker) {
-                EVVehiclePickerView(selectedVehicle: $selectedVehicle)
-            }
-            .sheet(isPresented: $showingRouteDetail) {
-                if let route = selectedRoute {
-                    EVRouteDetailView(route: route, vehicle: selectedVehicle, chargers: chargerService.chargers)
-                }
+            .background(EVTheme.bgCard)
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .overlay(
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(EVTheme.border, lineWidth: 1)
+            )
+            .frame(maxHeight: UIScreen.main.bounds.height * 0.55)
+        }
+        .preferredColorScheme(.dark)
+        .sheet(isPresented: $showingVehiclePicker) {
+            EVVehiclePickerView(selectedVehicle: $selectedVehicle)
+        }
+        .sheet(isPresented: $showingRouteDetail) {
+            if let route = detailRoute {
+                EVRouteDetailView(route: route, vehicle: selectedVehicle, chargers: chargerService.chargers)
             }
         }
     }
@@ -83,18 +109,19 @@ struct EVRoutePlannerView: View {
         VStack(spacing: 10) {
             HStack(spacing: 8) {
                 Circle()
-                    .fill(.green)
+                    .fill(EVTheme.accentGreen)
                     .frame(width: 10, height: 10)
                 EVLocationSearchField(
                     text: $originText,
                     placeholder: "Origin",
-                    coordinate: $originCoord
+                    coordinate: $originCoord,
+                    showGPSButton: true
                 )
             }
 
             HStack(spacing: 8) {
                 Circle()
-                    .fill(.red)
+                    .fill(EVTheme.accentRed)
                     .frame(width: 10, height: 10)
                 EVLocationSearchField(
                     text: $destinationText,
@@ -102,6 +129,26 @@ struct EVRoutePlannerView: View {
                     coordinate: $destinationCoord
                 )
             }
+        }
+    }
+
+    // MARK: - Toggles Section
+
+    private var togglesSection: some View {
+        VStack(spacing: 10) {
+            // Round trip toggle
+            EVToggleRow(
+                label: "Round Trip",
+                icon: "arrow.triangle.2.circlepath",
+                isOn: $isRoundTrip
+            )
+
+            // Show chargers toggle
+            EVToggleRow(
+                label: "Show EV Chargers",
+                icon: "bolt.fill",
+                isOn: $showChargers
+            )
         }
     }
 
@@ -115,7 +162,7 @@ struct EVRoutePlannerView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(selectedVehicle.displayName)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(EVTheme.textPrimary)
                     HStack(spacing: 8) {
                         Text(selectedVehicle.batteryDescription)
                         Text("•")
@@ -124,16 +171,20 @@ struct EVRoutePlannerView: View {
                         Text("\(String(format: "%.2f", selectedVehicle.effKwhMi)) kWh/mi")
                     }
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(EVTheme.textSecondary)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(EVTheme.textSecondary)
             }
             .padding(12)
-            .background(.thinMaterial)
+            .background(EVTheme.bgInput)
             .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(EVTheme.border, lineWidth: 1)
+            )
         }
     }
 
@@ -155,7 +206,13 @@ struct EVRoutePlannerView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
-            .background(canPlan ? Color.green : Color.gray.opacity(0.3))
+            .background(
+                canPlan
+                ? LinearGradient(colors: [EVTheme.btnGradientStart, EVTheme.btnGradientEnd],
+                                 startPoint: .topLeading, endPoint: .bottomTrailing)
+                : LinearGradient(colors: [EVTheme.border, EVTheme.border],
+                                 startPoint: .leading, endPoint: .trailing)
+            )
             .foregroundStyle(.white)
             .clipShape(RoundedRectangle(cornerRadius: 14))
         }
@@ -175,17 +232,17 @@ struct EVRoutePlannerView: View {
                     route: route,
                     vehicle: selectedVehicle,
                     isBest: index == 0,
-                    isSelected: selectedRoute?.id == route.id
+                    isSelected: selectedRoute?.id == route.id,
+                    onInfoTap: {
+                        detailRoute = route
+                        showingRouteDetail = true
+                    }
                 )
                 .onTapGesture {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         selectedRoute = route
                     }
                     fitMapToRoute(route)
-                }
-                .onLongPressGesture {
-                    selectedRoute = route
-                    showingRouteDetail = true
                 }
             }
 
@@ -199,7 +256,6 @@ struct EVRoutePlannerView: View {
 
     private func navigationButtons(for route: RouteResult) -> some View {
         VStack(spacing: 8) {
-            // Google Maps
             if let url = googleMapsURL(for: route) {
                 Link(destination: url) {
                     HStack {
@@ -209,13 +265,16 @@ struct EVRoutePlannerView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(Color.blue)
+                    .background(
+                        LinearGradient(colors: [Color(hex: "#4285F4"), Color(hex: "#1a73e8")],
+                                       startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
                     .foregroundStyle(.white)
                     .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .shadow(color: Color(hex: "#4285F4").opacity(0.3), radius: 8, y: 4)
                 }
             }
 
-            // Apple Maps
             if let url = appleMapsURL(for: route) {
                 Link(destination: url) {
                     HStack {
@@ -225,9 +284,31 @@ struct EVRoutePlannerView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(Color(white: 0.25))
+                    .background(
+                        LinearGradient(colors: [Color(hex: "#555555"), Color(hex: "#333333")],
+                                       startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
                     .foregroundStyle(.white)
                     .clipShape(RoundedRectangle(cornerRadius: 14))
+                }
+            }
+
+            if let url = wazeURL(for: route) {
+                Link(destination: url) {
+                    HStack {
+                        Image(systemName: "car.fill")
+                        Text("Open in Waze")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        LinearGradient(colors: [Color(hex: "#33ccff"), Color(hex: "#05b0f0")],
+                                       startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .shadow(color: Color(hex: "#33ccff").opacity(0.3), radius: 8, y: 4)
                 }
             }
         }
@@ -243,7 +324,9 @@ struct EVRoutePlannerView: View {
         if let best = routeService.routes.first {
             selectedRoute = best
             fitMapToRoute(best)
-            await chargerService.findChargersAlongRoute(best.route)
+            if showChargers {
+                await chargerService.findChargersAlongRoute(best.route)
+            }
         }
     }
 
@@ -265,5 +348,51 @@ struct EVRoutePlannerView: View {
         guard let origin = originCoord, let dest = destinationCoord else { return nil }
         let urlStr = "https://maps.apple.com/?saddr=\(origin.latitude),\(origin.longitude)&daddr=\(dest.latitude),\(dest.longitude)&dirflg=d"
         return URL(string: urlStr)
+    }
+
+    private func wazeURL(for route: RouteResult) -> URL? {
+        guard let dest = destinationCoord else { return nil }
+        let urlStr = "https://www.waze.com/ul?ll=\(dest.latitude),\(dest.longitude)&navigate=yes"
+        return URL(string: urlStr)
+    }
+}
+
+// MARK: - Toggle Row (matches web app style)
+
+struct EVToggleRow: View {
+    let label: String
+    let icon: String
+    @Binding var isOn: Bool
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 14))
+                .foregroundStyle(isOn ? EVTheme.accentGreen : EVTheme.textSecondary)
+                .frame(width: 20)
+
+            Text(label)
+                .font(.system(size: 13))
+                .foregroundStyle(EVTheme.textSecondary)
+
+            Spacer()
+
+            // Custom toggle switch matching web app style
+            ZStack(alignment: isOn ? .trailing : .leading) {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(isOn ? EVTheme.accentGreen.opacity(0.25) : EVTheme.border)
+                    .frame(width: 36, height: 20)
+
+                Circle()
+                    .fill(isOn ? EVTheme.accentGreen : EVTheme.textSecondary)
+                    .frame(width: 16, height: 16)
+                    .padding(.horizontal, 2)
+            }
+            .animation(.easeInOut(duration: 0.2), value: isOn)
+            .onTapGesture {
+                isOn.toggle()
+            }
+        }
+        .padding(.vertical, 4)
     }
 }
