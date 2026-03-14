@@ -310,6 +310,7 @@ struct EVRoutePlannerView: View {
 
             if let route = selectedRoute {
                 navigationButtons(for: route)
+                energyBreakdownCard(for: route)
             }
         }
     }
@@ -374,6 +375,155 @@ struct EVRoutePlannerView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Energy Breakdown Card
+
+    private func energyBreakdownCard(for route: RouteResult) -> some View {
+        let vehicle = selectedVehicle
+        let baseDriving = route.distanceMiles * vehicle.effKwhMi
+        let elevGainFt = Int(route.elevationGain * 3.28084)
+        let elevGainM = Int(route.elevationGain)
+        let climbingKwh = route.elevationGain > 0
+            ? (vehicle.weightKg * 9.81 * route.elevationGain) / (3_600_000 * 0.85)
+            : 0
+        let regenKwh = route.elevationLoss > 0
+            ? (vehicle.weightKg * 9.81 * route.elevationLoss) / 3_600_000 * vehicle.regenEff
+            : 0
+        let netElevM = route.elevationGain - route.elevationLoss
+        let netElevFt = Int(netElevM * 3.28084)
+        let remaining = route.remainingBatteryPct
+
+        return VStack(alignment: .leading, spacing: 12) {
+            // Vehicle title
+            Text(vehicle.displayName.uppercased())
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(EVTheme.accentGreen)
+
+            // Battery bar
+            HStack {
+                Text("\(Int(vehicle.batteryKwh)) kWh battery")
+                    .font(.system(size: 13))
+                    .foregroundStyle(EVTheme.textSecondary)
+                Spacer()
+                Text("\(Int(remaining))% remaining")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(remaining > 40 ? EVTheme.accentGreen : remaining > 20 ? EVTheme.accentYellow : EVTheme.accentRed)
+            }
+
+            // Battery usage bar
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(EVTheme.border)
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(EVTheme.accentBlue)
+                        .frame(width: geo.size.width * min(1, route.batteryPctUsed / 100))
+                    Text("\(String(format: "%.1f", route.energyKwh)) kWh used of \(Int(vehicle.batteryKwh)) kWh")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .frame(height: 22)
+
+            // Energy details
+            energyRow(label: "Base driving", value: String(format: "%.1f kWh", baseDriving), color: EVTheme.textPrimary)
+
+            energyRow(
+                label: "Climbing (+\(elevGainM)m / +\(elevGainFt)ft ~\(String(format: "%.1f", route.averageGrade))% avg grade)",
+                value: String(format: "+%.1f kWh", climbingKwh),
+                color: EVTheme.accentYellow
+            )
+
+            energyRow(
+                label: "Regen braking (-\(Int(route.elevationLoss))m)",
+                value: String(format: "-%.1f kWh", regenKwh),
+                color: EVTheme.accentGreen
+            )
+
+            Rectangle()
+                .fill(EVTheme.border)
+                .frame(height: 1)
+
+            energyRow(
+                label: "Total energy",
+                value: "\(String(format: "%.1f", route.energyKwh)) kWh (\(Int(route.batteryPctUsed))% of battery)",
+                color: EVTheme.textPrimary,
+                bold: true
+            )
+
+            energyRow(
+                label: "Trip efficiency",
+                value: String(format: "%.1f mi/kWh", route.efficiency),
+                color: EVTheme.textPrimary
+            )
+
+            energyRow(
+                label: "Net elevation",
+                value: "\(netElevM >= 0 ? "+" : "")\(Int(netElevM))m (\(netElevFt >= 0 ? "+" : "")\(netElevFt)ft)",
+                color: EVTheme.textSecondary
+            )
+
+            // Summary text
+            summaryText(for: route, climbingKwh: climbingKwh, regenKwh: regenKwh)
+        }
+        .padding(14)
+        .background(EVTheme.bgInput)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(EVTheme.border, lineWidth: 1)
+        )
+    }
+
+    private func energyRow(label: String, value: String, color: Color, bold: Bool = false) -> some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 13, weight: bold ? .semibold : .regular))
+                .foregroundStyle(EVTheme.textSecondary)
+            Spacer()
+            Text(value)
+                .font(.system(size: 13, weight: bold ? .bold : .semibold))
+                .foregroundStyle(color)
+        }
+    }
+
+    private func summaryText(for route: RouteResult, climbingKwh: Double, regenKwh: Double) -> some View {
+        let vehicle = selectedVehicle
+        var lines: [String] = []
+
+        if route.elevationGain < route.elevationLoss {
+            lines.append("This route minimizes climbing to save battery.")
+        } else if route.elevationGain > 200 {
+            lines.append("This route has significant climbing that increases energy use.")
+        }
+
+        if regenKwh > 0.5 {
+            lines.append("Regen braking recovers \(String(format: "%.1f", regenKwh)) kWh on downhill sections.")
+        }
+
+        if route.remainingBatteryPct > 40 {
+            lines.append("Your \(vehicle.displayName) should handle this trip comfortably.")
+        } else if route.remainingBatteryPct > 15 {
+            lines.append("Your \(vehicle.displayName) can complete this trip but consider charging options.")
+        } else if route.needsCharging {
+            lines.append("This trip requires \(route.chargingStops.count) charging stop\(route.chargingStops.count == 1 ? "" : "s").")
+        }
+
+        return Text(lines.joined(separator: " "))
+            .font(.system(size: 12))
+            .foregroundStyle(EVTheme.textSecondary)
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(EVTheme.accentGreen.opacity(0.08))
+            .overlay(
+                Rectangle()
+                    .fill(EVTheme.accentGreen)
+                    .frame(width: 3),
+                alignment: .leading
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 
     // MARK: - Actions
