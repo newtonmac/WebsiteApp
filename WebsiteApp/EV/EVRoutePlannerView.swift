@@ -31,9 +31,13 @@ struct EVRoutePlannerView: View {
 
     private var panelHeight: CGFloat {
         let screenH = UIScreen.main.bounds.height
-        let target = panelExpanded ? screenH * expandedFraction : screenH * collapsedFraction
+        let screenW = UIScreen.main.bounds.width
+        let isLandscape = screenW > screenH
+        let expandFraction: CGFloat = isLandscape ? 0.65 : expandedFraction
+        let collapseFraction: CGFloat = isLandscape ? 0.15 : collapsedFraction
+        let target = panelExpanded ? screenH * expandFraction : screenH * collapseFraction
         let dragged = target - dragOffset
-        return max(screenH * collapsedFraction, min(screenH * 0.75, dragged))
+        return max(screenH * collapseFraction, min(screenH * 0.85, dragged))
     }
 
     var body: some View {
