@@ -156,6 +156,77 @@
         }
         .remove-stop-btn:hover { border-color: #ef4444; background: #ef444422; }
 
+        .round-trip-toggle {
+            margin-bottom: 12px;
+        }
+        .toggle-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: #8b8fa3;
+            cursor: pointer;
+            user-select: none;
+        }
+        .toggle-label input { display: none; }
+        .toggle-switch {
+            width: 36px;
+            height: 20px;
+            background: #2d3040;
+            border-radius: 10px;
+            position: relative;
+            transition: background 0.2s;
+        }
+        .toggle-switch::after {
+            content: '';
+            width: 16px;
+            height: 16px;
+            background: #8b8fa3;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: all 0.2s;
+        }
+        .toggle-label input:checked + .toggle-switch {
+            background: #34d39944;
+        }
+        .toggle-label input:checked + .toggle-switch::after {
+            left: 18px;
+            background: #34d399;
+        }
+
+        .leg-header {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #34d399;
+            margin: 12px 0 6px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid #2d3040;
+        }
+        .leg-header.return { color: #60a5fa; }
+        .round-trip-summary {
+            background: #252836;
+            border-radius: 10px;
+            padding: 12px;
+            margin-top: 12px;
+            border: 1px solid #2d3040;
+        }
+        .round-trip-summary h4 {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #8b8fa3;
+            margin-bottom: 8px;
+        }
+        .rt-stats {
+            display: flex;
+            justify-content: space-between;
+        }
+        .rt-stat .val { font-size: 16px; font-weight: 700; color: #e1e4e8; }
+        .rt-stat .lbl { font-size: 11px; color: #8b8fa3; }
+
         .add-stop-btn {
             display: block;
             width: 100%;
@@ -620,6 +691,13 @@
                 <label>Destination</label>
                 <input type="text" id="destInput" placeholder="Enter destination address..." />
             </div>
+            <div class="round-trip-toggle">
+                <label class="toggle-label" for="roundTripCb">
+                    <input type="checkbox" id="roundTripCb" />
+                    <span class="toggle-switch"></span>
+                    Round Trip
+                </label>
+            </div>
             <div id="stopsContainer"></div>
             <button class="add-stop-btn" id="addStopBtn" type="button">+ Add Another Destination</button>
             <div class="ev-select-group">
@@ -762,6 +840,10 @@ function initApp() {
     planBtn.addEventListener('click', planRoutes);
     document.getElementById('shareCopy').addEventListener('click', handleCopyLink);
     document.getElementById('gpsBtn').addEventListener('click', useMyLocation);
+    document.getElementById('roundTripCb').addEventListener('change', () => {
+        planBtn.textContent = document.getElementById('roundTripCb').checked
+            ? 'Plan Round Trip' : 'Plan EV-Efficient Route';
+    });
 
     // Initialize EV specs display
     updateEvSpecs();
@@ -1137,97 +1219,99 @@ function updatePlanBtn() {
 }
 
 // ─── Route Planning ───
+let isRoundTrip = false;
+let returnRoutesData = [];
+let cachedReturnEstimates = [];
+
+async function fetchAndProcessRoutes(originLL, destinationLL, waypoints, allowAlts) {
+    const request = {
+        origin: originLL,
+        destination: destinationLL,
+        waypoints,
+        travelMode: google.maps.TravelMode.DRIVING,
+        provideRouteAlternatives: allowAlts,
+        unitSystem: google.maps.UnitSystem.IMPERIAL
+    };
+
+    const result = await new Promise((resolve, reject) => {
+        directionsService.route(request, (res, status) => {
+            if (status === 'OK') resolve(res);
+            else reject(new Error('Directions failed: ' + status));
+        });
+    });
+
+    if (!result.routes.length) throw new Error('No routes found');
+
+    const processed = [];
+    for (let i = 0; i < result.routes.length; i++) {
+        const route = result.routes[i];
+        const path = route.overview_path;
+        const coords = path.map(p => [p.lng(), p.lat()]);
+        let totalDistM = 0, totalDurS = 0;
+        route.legs.forEach(leg => {
+            totalDistM += leg.distance.value;
+            totalDurS += leg.duration.value;
+        });
+        const sampled = samplePoints(coords, 80);
+        processed.push({
+            index: i, coords, sampled,
+            elevations: [], gain: 0, loss: 0,
+            distMi: (totalDistM / 1000) * 0.621371,
+            durMin: totalDurS / 60, score: 0
+        });
+    }
+
+    const elevResults = await Promise.all(
+        processed.map(r => fetchElevations(r.sampled))
+    );
+    processed.forEach((r, i) => {
+        r.elevations = elevResults[i];
+        const { gain, loss } = calcElevation(elevResults[i]);
+        r.gain = gain;
+        r.loss = loss;
+    });
+
+    scoreRoutes(processed);
+    processed.sort((a, b) => a.score - b.score);
+    return processed;
+}
+
 async function planRoutes() {
     if (!originCoord || !destCoord) return;
     if (!stops.every(s => s.coord !== null)) return;
 
+    isRoundTrip = document.getElementById('roundTripCb').checked;
     showLoading('Fetching routes...');
     clearRoutes();
     document.getElementById('emptyState').style.display = 'none';
+    returnRoutesData = [];
+    cachedReturnEstimates = [];
 
     try {
         const origin = new google.maps.LatLng(originCoord[0], originCoord[1]);
-        // Build ordered list: destination first, then additional stops
         const allDests = [destCoord, ...stops.filter(s => s.coord).map(s => s.coord)];
         const finalDest = allDests[allDests.length - 1];
         const destination = new google.maps.LatLng(finalDest[0], finalDest[1]);
-        // All points except the last become waypoints
         const waypoints = allDests.slice(0, -1).map(c => ({
             location: new google.maps.LatLng(c[0], c[1]),
             stopover: true
         }));
 
-        // 1) Get routes from Google Directions API
-        const request = {
-            origin,
-            destination,
-            waypoints,
-            travelMode: google.maps.TravelMode.DRIVING,
-            provideRouteAlternatives: stops.length === 0,
-            unitSystem: google.maps.UnitSystem.IMPERIAL
-        };
+        // 1) Outbound leg
+        setLoadingMsg('Planning outbound route...');
+        const outbound = await fetchAndProcessRoutes(origin, destination, waypoints, stops.length === 0);
+        routesData = outbound;
 
-        const result = await new Promise((resolve, reject) => {
-            directionsService.route(request, (res, status) => {
-                if (status === 'OK') resolve(res);
-                else reject(new Error('Directions failed: ' + status));
-            });
-        });
-
-        if (!result.routes.length) throw new Error('No routes found');
-
-        setLoadingMsg('Sampling elevation data...');
-
-        // 2) Convert Google routes to our format and get elevations
-        const routes = result.routes;
-        const processedRoutes = [];
-
-        for (let i = 0; i < routes.length; i++) {
-            const route = routes[i];
-            const path = route.overview_path;
-            const coords = path.map(p => [p.lng(), p.lat()]);
-
-            let totalDistM = 0, totalDurS = 0;
-            route.legs.forEach(leg => {
-                totalDistM += leg.distance.value;
-                totalDurS += leg.duration.value;
-            });
-
-            const sampled = samplePoints(coords, 80);
-
-            processedRoutes.push({
-                index: i,
-                coords,
-                sampled,
-                elevations: [],
-                gain: 0, loss: 0,
-                distMi: (totalDistM / 1000) * 0.621371,
-                durMin: totalDurS / 60,
-                score: 0
-            });
+        // 2) Return leg (if round trip)
+        if (isRoundTrip) {
+            setLoadingMsg('Planning return route...');
+            // Return goes directly from final destination back to origin
+            // No waypoints — let Google find the independently best return route
+            const returnRoutes = await fetchAndProcessRoutes(destination, origin, [], true);
+            returnRoutesData = returnRoutes;
         }
 
-        // 3) Get elevations using Google Elevation API (in parallel)
-        const elevResults = await Promise.all(
-            processedRoutes.map(r => fetchElevations(r.sampled))
-        );
-
-        processedRoutes.forEach((r, i) => {
-            r.elevations = elevResults[i];
-            const { gain, loss } = calcElevation(elevResults[i]);
-            r.gain = gain;
-            r.loss = loss;
-        });
-
-        routesData = processedRoutes;
-
-        // 4) Score routes — balance elevation gain vs time
-        scoreRoutes(routesData);
-
-        // Sort by score (lower = better)
-        routesData.sort((a, b) => a.score - b.score);
-
-        // 5) Display
+        // 3) Display
         displayRoutes(routesData);
         selectRoute(0);
         hideLoading();
@@ -1314,26 +1398,32 @@ function scoreRoutes(routes) {
         const tripEnergy = energies[i].totalEnergy;
         const timeRatio = (r.durMin - fastestDur) / fastestDur;
 
-        // Grade steepness penalty — penalize routes with steep uphill segments
-        // even if total elevation gain is similar, steep bursts drain the battery more
+        // Grade steepness penalty — steep climbs drain battery disproportionately
+        // Motor efficiency drops significantly on steep grades, avoid them
         let steepPenalty = 0;
+        let maxGrade = 0;
         if (r.elevations.length >= 2 && r.sampled.length >= 2) {
             const segDistM = (r.distMi * 1609.34) / (r.sampled.length - 1);
             for (let j = 1; j < r.elevations.length; j++) {
                 const rise = r.elevations[j] - r.elevations[j-1];
                 if (rise > 0) {
                     const gradePct = (rise / segDistM) * 100;
-                    // Exponential penalty for steep grades (>5%)
-                    if (gradePct > 5) {
-                        steepPenalty += Math.pow(gradePct - 5, 1.5) * 0.01;
+                    maxGrade = Math.max(maxGrade, gradePct);
+                    // Aggressive penalty for steep grades (>4%)
+                    if (gradePct > 4) {
+                        steepPenalty += Math.pow(gradePct - 4, 2) * 0.02;
                     }
                 }
             }
+            // Extra penalty if route has any very steep section (>8%)
+            if (maxGrade > 8) {
+                steepPenalty += (maxGrade - 8) * 0.5;
+            }
         }
 
-        // Time penalty — only penalize when >30% longer than fastest
-        const timePenalty = timeRatio > 0.3
-            ? (timeRatio - 0.3) * tripEnergy * 2
+        // Time penalty — only penalize when >25% longer than fastest
+        const timePenalty = timeRatio > 0.25
+            ? (timeRatio - 0.25) * tripEnergy * 2.5
             : 0;
 
         // Score = energy (primary) + steep grade penalty + time penalty
@@ -1345,43 +1435,15 @@ function scoreRoutes(routes) {
 const routeColors = ['#34d399', '#60a5fa', '#6b7280', '#fbbf24'];
 const routeLabels = ['EV Best', 'Route 2', 'Route 3', 'Route 4'];
 
-function displayRoutes(routes) {
-    clearRouteLayers();
-
-    // Draw routes on map (draw non-selected first so best is on top)
-    for (let i = routes.length - 1; i >= 0; i--) {
-        const r = routes[i];
-        const path = r.coords.map(c => ({ lat: c[1], lng: c[0] }));
-        const color = i === 0 ? '#34d399' : (i === 1 ? '#60a5fa' : '#6b7280');
-        const weight = i === 0 ? 5 : 3;
-        const opacity = i === 0 ? 0.9 : 0.5;
-        const polyline = new google.maps.Polyline({
-            path, strokeColor: color, strokeWeight: weight, strokeOpacity: opacity, map, zIndex: i === 0 ? 10 : 1
-        });
-        routeLayers.push({ idx: i, layer: polyline });
-    }
-
-    // Fit map to best route
-    if (routes.length) {
-        const bounds = new google.maps.LatLngBounds();
-        routes[0].coords.forEach(c => bounds.extend({ lat: c[1], lng: c[0] }));
-        map.fitBounds(bounds, 40);
-    }
-
-    // Build route cards
-    const container = document.getElementById('routeCards');
-    container.innerHTML = '';
-
-    const ev = getSelectedEV();
+function buildRouteCards(routes, tripEstimates, container, legPrefix, selectFn) {
     const fastestDur = Math.min(...routes.map(r => r.durMin));
-    cachedTripEstimates = routes.map(r => estimateTripEnergy(r, ev));
-    const tripEstimates = cachedTripEstimates;
     const bestEnergy = Math.min(...tripEstimates.map(t => t.totalEnergy));
 
     routes.forEach((r, i) => {
         const card = document.createElement('div');
         card.className = 'route-card' + (i === 0 ? ' selected best' : '');
         card.dataset.idx = i;
+        card.dataset.leg = legPrefix;
         const trip = tripEstimates[i];
 
         const badge = i === 0 ? '<span class="rc-badge badge-best">EV Best</span>'
@@ -1392,7 +1454,6 @@ function displayRoutes(routes) {
         const timeClass = r.durMin === fastestDur ? 'good' : (r.durMin > fastestDur * 1.3 ? 'warn' : '');
         const battClass = trip.remainingPct > 30 ? 'good' : (trip.remainingPct > 15 ? 'warn' : 'warn');
 
-        // Score bar — normalized 0-100
         const maxScore = Math.max(...routes.map(x => x.score)) || 1;
         const minScore = Math.min(...routes.map(x => x.score));
         const scoreNorm = maxScore === minScore ? 100 : 100 - ((r.score - minScore) / (maxScore - minScore) * 100);
@@ -1408,12 +1469,123 @@ function displayRoutes(routes) {
             <div class="score-bar"><div class="score-bar-fill" style="width:${scoreNorm}%; background:${barColor};"></div></div>
         `;
 
-        card.addEventListener('click', () => selectRoute(i));
+        card.addEventListener('click', () => selectFn(i));
         container.appendChild(card);
     });
+}
+
+function displayRoutes(routes) {
+    clearRouteLayers();
+
+    // Draw outbound routes on map
+    for (let i = routes.length - 1; i >= 0; i--) {
+        const r = routes[i];
+        const path = r.coords.map(c => ({ lat: c[1], lng: c[0] }));
+        const color = i === 0 ? '#34d399' : (i === 1 ? '#60a5fa' : '#6b7280');
+        const weight = i === 0 ? 5 : 3;
+        const opacity = i === 0 ? 0.9 : 0.5;
+        const polyline = new google.maps.Polyline({
+            path, strokeColor: color, strokeWeight: weight, strokeOpacity: opacity, map, zIndex: i === 0 ? 10 : 1
+        });
+        routeLayers.push({ idx: i, leg: 'out', layer: polyline });
+    }
+
+    // Draw return routes on map (if round trip)
+    if (isRoundTrip && returnRoutesData.length) {
+        for (let i = returnRoutesData.length - 1; i >= 0; i--) {
+            const r = returnRoutesData[i];
+            const path = r.coords.map(c => ({ lat: c[1], lng: c[0] }));
+            const color = i === 0 ? '#60a5fa' : '#6b7280';
+            const weight = i === 0 ? 5 : 3;
+            const opacity = i === 0 ? 0.7 : 0.3;
+            const polyline = new google.maps.Polyline({
+                path, strokeColor: color, strokeWeight: weight, strokeOpacity: opacity, map, zIndex: i === 0 ? 8 : 0,
+                strokePattern: [{ icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.7, scale: 3 }, offset: '0', repeat: '15px' }]
+            });
+            routeLayers.push({ idx: i, leg: 'ret', layer: polyline });
+        }
+    }
+
+    // Fit map to all routes
+    const bounds = new google.maps.LatLngBounds();
+    if (routes.length) routes[0].coords.forEach(c => bounds.extend({ lat: c[1], lng: c[0] }));
+    if (isRoundTrip && returnRoutesData.length) returnRoutesData[0].coords.forEach(c => bounds.extend({ lat: c[1], lng: c[0] }));
+    if (!bounds.isEmpty()) map.fitBounds(bounds, 40);
+
+    // Build route cards
+    const container = document.getElementById('routeCards');
+    container.innerHTML = '';
+    const ev = getSelectedEV();
+
+    // Outbound cards
+    if (isRoundTrip) {
+        const header = document.createElement('div');
+        header.className = 'leg-header';
+        header.textContent = 'Outbound';
+        container.appendChild(header);
+    }
+    cachedTripEstimates = routes.map(r => estimateTripEnergy(r, ev));
+    buildRouteCards(routes, cachedTripEstimates, container, 'out', selectRoute);
+
+    // Return cards
+    if (isRoundTrip && returnRoutesData.length) {
+        const header = document.createElement('div');
+        header.className = 'leg-header return';
+        header.textContent = 'Return';
+        container.appendChild(header);
+
+        cachedReturnEstimates = returnRoutesData.map(r => estimateTripEnergy(r, ev));
+        buildRouteCards(returnRoutesData, cachedReturnEstimates, container, 'ret', selectReturnRoute);
+
+        // Round trip summary
+        const outTrip = cachedTripEstimates[0];
+        const retTrip = cachedReturnEstimates[0];
+        const totalEnergy = outTrip.totalEnergy + retTrip.totalEnergy;
+        const totalDist = routes[0].distMi + returnRoutesData[0].distMi;
+        const totalTime = routes[0].durMin + returnRoutesData[0].durMin;
+        const totalBattPct = (totalEnergy / ev.batteryKwh) * 100;
+        const remainPct = Math.max(0, 100 - totalBattPct);
+        const battClass = remainPct > 30 ? 'good' : (remainPct > 15 ? 'warn' : 'warn');
+
+        const summary = document.createElement('div');
+        summary.className = 'round-trip-summary';
+        summary.innerHTML = `
+            <h4>Round Trip Total</h4>
+            <div class="rt-stats">
+                <div class="rt-stat"><div class="val">${totalDist.toFixed(1)} mi</div><div class="lbl">Distance</div></div>
+                <div class="rt-stat"><div class="val">${formatDuration(totalTime)}</div><div class="lbl">Time</div></div>
+                <div class="rt-stat"><div class="val">${totalEnergy.toFixed(1)}</div><div class="lbl">kWh</div></div>
+                <div class="rt-stat"><div class="val ${battClass}">${Math.round(remainPct)}%</div><div class="lbl">Batt Left</div></div>
+            </div>
+        `;
+        container.appendChild(summary);
+    }
 
     document.getElementById('routeResults').style.display = 'block';
     document.getElementById('mapLegend').style.display = 'block';
+}
+
+function selectReturnRoute(idx) {
+    // Update return card selection
+    document.querySelectorAll('.route-card[data-leg="ret"]').forEach((c, i) => {
+        c.classList.toggle('selected', i === idx);
+    });
+
+    // Update return route line styling
+    routeLayers.filter(rl => rl.leg === 'ret').forEach(rl => {
+        const isSelected = rl.idx === idx;
+        rl.layer.setOptions({
+            strokeOpacity: isSelected ? 0.7 : 0.25,
+            strokeWeight: isSelected ? 5 : 3,
+            zIndex: isSelected ? 8 : 0
+        });
+    });
+
+    // Draw elevation chart for return route
+    drawElevColorOverlay(returnRoutesData[idx]);
+    drawElevationChart(returnRoutesData[idx]);
+    document.getElementById('elevSection').style.display = 'block';
+    showEvExplanation(returnRoutesData[idx], returnRoutesData);
 }
 
 let elevColorLines = [];
@@ -1421,13 +1593,13 @@ let elevColorLines = [];
 function selectRoute(idx) {
     selectedRouteIdx = idx;
 
-    // Update card styles
-    document.querySelectorAll('.route-card').forEach((c, i) => {
+    // Update outbound card styles
+    document.querySelectorAll('.route-card[data-leg="out"]').forEach((c, i) => {
         c.classList.toggle('selected', i === idx);
     });
 
-    // Bring selected route to front on map
-    routeLayers.forEach(rl => {
+    // Bring selected outbound route to front on map
+    routeLayers.filter(rl => rl.leg === 'out').forEach(rl => {
         const isSelected = rl.idx === idx;
         rl.layer.setOptions({
             strokeOpacity: isSelected ? 0.9 : 0.35,
@@ -1781,6 +1953,8 @@ function clearRoutes() {
     document.getElementById('amapsLink').style.display = 'none';
     document.getElementById('shareRow').style.display = 'none';
     routesData = [];
+    returnRoutesData = [];
+    cachedReturnEstimates = [];
 }
 function clearRouteLayers() {
     routeLayers.forEach(rl => rl.layer.setMap(null));
