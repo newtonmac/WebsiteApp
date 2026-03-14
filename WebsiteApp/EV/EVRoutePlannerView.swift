@@ -234,67 +234,70 @@ struct EVRoutePlannerView: View {
     // MARK: - Network Filter
 
     private var networkFilterSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Networks")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(EVTheme.textSecondary)
-                Spacer()
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        if selectedNetworks.count == ChargerNetwork.allCases.count {
-                            selectedNetworks.removeAll()
-                        } else {
-                            selectedNetworks = Set(ChargerNetwork.allCases)
-                        }
-                    }
-                } label: {
-                    Text(selectedNetworks.count == ChargerNetwork.allCases.count ? "None" : "All")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(EVTheme.accentBlue)
-                }
-            }
-
-            // Wrap chips in a flowing layout
-            FlowLayout(spacing: 6) {
-                ForEach(ChargerNetwork.allCases, id: \.self) { network in
-                    let isSelected = selectedNetworks.contains(network)
+        GeometryReader { geo in
+            let isLandscape = geo.size.width > geo.size.height
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Networks")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(EVTheme.textSecondary)
+                    Spacer()
                     Button {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            if isSelected {
-                                selectedNetworks.remove(network)
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            if selectedNetworks.count == ChargerNetwork.allCases.count {
+                                selectedNetworks.removeAll()
                             } else {
-                                selectedNetworks.insert(network)
+                                selectedNetworks = Set(ChargerNetwork.allCases)
                             }
                         }
                     } label: {
-                        HStack(spacing: 4) {
-                            Circle()
-                                .fill(Color(hex: network.color))
-                                .frame(width: 8, height: 8)
-                            Text(network.abbreviation)
-                                .font(.system(size: 11, weight: .bold))
+                        Text(selectedNetworks.count == ChargerNetwork.allCases.count ? "None" : "All")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(EVTheme.accentBlue)
+                    }
+                }
+
+                FlowLayout(spacing: 6) {
+                    ForEach(ChargerNetwork.allCases, id: \.self) { network in
+                        let isSelected = selectedNetworks.contains(network)
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                if isSelected {
+                                    selectedNetworks.remove(network)
+                                } else {
+                                    selectedNetworks.insert(network)
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: isLandscape ? 6 : 2) {
+                                NetworkIconView(network: network, size: 16)
+                                if isLandscape {
+                                    Text(network.shortName)
+                                        .font(.system(size: 11, weight: .bold))
+                                }
+                            }
+                            .padding(.horizontal, isLandscape ? 10 : 6)
+                            .padding(.vertical, 6)
+                            .background(isSelected ? Color(hex: network.color).opacity(0.2) : EVTheme.bgInput)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(isSelected ? Color(hex: network.color) : EVTheme.border, lineWidth: 1)
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .foregroundStyle(isSelected ? Color(hex: network.color) : EVTheme.textSecondary)
                         }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(isSelected ? Color(hex: network.color).opacity(0.2) : EVTheme.bgInput)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(isSelected ? Color(hex: network.color) : EVTheme.border, lineWidth: 1)
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .foregroundStyle(isSelected ? Color(hex: network.color) : EVTheme.textSecondary)
                     }
                 }
             }
+            .padding(10)
+            .background(EVTheme.bgInput)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(EVTheme.border, lineWidth: 1)
+            )
         }
-        .padding(10)
-        .background(EVTheme.bgInput)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(EVTheme.border, lineWidth: 1)
-        )
+        .frame(height: 80)
     }
 
     // MARK: - Vehicle Section
@@ -743,6 +746,103 @@ struct EVToggleRow: View {
             }
         }
         .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Network Icon View (Mini brand logos drawn with SwiftUI)
+
+struct NetworkIconView: View {
+    let network: ChargerNetwork
+    let size: CGFloat
+
+    var body: some View {
+        let brandColor = Color(hex: network.color)
+        Canvas { context, canvasSize in
+            let s = canvasSize.width
+            switch network {
+            case .tesla:
+                // Stylized Tesla "T" – wide top bar + center stem
+                var top = Path()
+                top.move(to: CGPoint(x: s * 0.1, y: s * 0.12))
+                top.addLine(to: CGPoint(x: s * 0.5, y: s * 0.28))
+                top.addLine(to: CGPoint(x: s * 0.9, y: s * 0.12))
+                top.addLine(to: CGPoint(x: s * 0.5, y: s * 0.22))
+                top.closeSubpath()
+                context.fill(top, with: .color(brandColor))
+                var stem = Path()
+                stem.move(to: CGPoint(x: s * 0.42, y: s * 0.25))
+                stem.addLine(to: CGPoint(x: s * 0.5, y: s * 0.92))
+                stem.addLine(to: CGPoint(x: s * 0.58, y: s * 0.25))
+                stem.closeSubpath()
+                context.fill(stem, with: .color(brandColor))
+
+            case .electrifyAmerica:
+                // Bold lightning bolt
+                var bolt = Path()
+                bolt.move(to: CGPoint(x: s * 0.6, y: s * 0.05))
+                bolt.addLine(to: CGPoint(x: s * 0.2, y: s * 0.52))
+                bolt.addLine(to: CGPoint(x: s * 0.48, y: s * 0.48))
+                bolt.addLine(to: CGPoint(x: s * 0.38, y: s * 0.95))
+                bolt.addLine(to: CGPoint(x: s * 0.82, y: s * 0.42))
+                bolt.addLine(to: CGPoint(x: s * 0.52, y: s * 0.46))
+                bolt.closeSubpath()
+                context.fill(bolt, with: .color(brandColor))
+
+            case .evgo:
+                // "ev" text-style with a plug dot
+                let font = Font.system(size: s * 0.52, weight: .black)
+                context.draw(
+                    Text("ev").font(font).foregroundStyle(brandColor),
+                    at: CGPoint(x: s * 0.48, y: s * 0.42)
+                )
+                let dot = Path(ellipseIn: CGRect(x: s * 0.7, y: s * 0.65, width: s * 0.2, height: s * 0.2))
+                context.fill(dot, with: .color(brandColor))
+
+            case .chargePoint:
+                // Circle with inner plug pin
+                let outer = Path(ellipseIn: CGRect(x: s * 0.08, y: s * 0.08, width: s * 0.84, height: s * 0.84))
+                context.stroke(outer, with: .color(brandColor), lineWidth: s * 0.1)
+                let pin = Path(ellipseIn: CGRect(x: s * 0.32, y: s * 0.32, width: s * 0.36, height: s * 0.36))
+                context.fill(pin, with: .color(brandColor))
+
+            case .blink:
+                // Blink "eye" shape – two arcs
+                var eye = Path()
+                eye.move(to: CGPoint(x: s * 0.08, y: s * 0.5))
+                eye.addQuadCurve(to: CGPoint(x: s * 0.92, y: s * 0.5),
+                                 control: CGPoint(x: s * 0.5, y: s * 0.05))
+                eye.addQuadCurve(to: CGPoint(x: s * 0.08, y: s * 0.5),
+                                 control: CGPoint(x: s * 0.5, y: s * 0.95))
+                eye.closeSubpath()
+                context.fill(eye, with: .color(brandColor))
+                let pupil = Path(ellipseIn: CGRect(x: s * 0.35, y: s * 0.35, width: s * 0.3, height: s * 0.3))
+                context.fill(pupil, with: .color(.black.opacity(0.85)))
+
+            case .evConnect:
+                // Plug with two prongs
+                var plug = Path()
+                plug.addRoundedRect(in: CGRect(x: s * 0.25, y: s * 0.45, width: s * 0.5, height: s * 0.45), cornerSize: CGSize(width: s * 0.08, height: s * 0.08))
+                context.fill(plug, with: .color(brandColor))
+                let prong1 = Path(CGRect(x: s * 0.32, y: s * 0.15, width: s * 0.1, height: s * 0.35))
+                let prong2 = Path(CGRect(x: s * 0.58, y: s * 0.15, width: s * 0.1, height: s * 0.35))
+                context.fill(prong1, with: .color(brandColor))
+                context.fill(prong2, with: .color(brandColor))
+
+            case .shell:
+                // Simplified shell/pecten shape – fan of lines from bottom
+                let center = CGPoint(x: s * 0.5, y: s * 0.88)
+                for i in 0..<7 {
+                    let angle = Double.pi * (0.15 + Double(i) * 0.1)
+                    let endX = s * 0.5 + cos(angle) * s * 0.42
+                    let endY = s * 0.88 - sin(angle) * s * 0.72
+                    var ray = Path()
+                    ray.move(to: center)
+                    ray.addLine(to: CGPoint(x: endX, y: endY))
+                    context.stroke(ray, with: .color(brandColor), lineWidth: s * 0.07)
+                }
+            }
+        }
+        .frame(width: size, height: size)
     }
 }
 

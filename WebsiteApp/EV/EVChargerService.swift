@@ -50,6 +50,18 @@ enum ChargerNetwork: String, CaseIterable {
         }
     }
 
+    var shortName: String {
+        switch self {
+        case .tesla: return "Tesla"
+        case .electrifyAmerica: return "Electrify America"
+        case .evgo: return "EVgo"
+        case .chargePoint: return "ChargePoint"
+        case .blink: return "Blink"
+        case .evConnect: return "EV Connect"
+        case .shell: return "Shell"
+        }
+    }
+
     var color: String {
         switch self {
         case .tesla: return "#e31937"
