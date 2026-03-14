@@ -2127,12 +2127,19 @@ function hideLoading() {
     document.getElementById('loadingOverlay').classList.add('hidden');
 }
 
-// ─── Feedback form toggle ───
-document.getElementById('toggleFeedback').addEventListener('click', function() {
-    const form = document.getElementById('feedbackForm');
-    const showing = form.style.display !== 'none';
-    form.style.display = showing ? 'none' : 'block';
-    this.textContent = showing ? 'Rate & Send Suggestions' : 'Hide Feedback Form';
+// ─── Feedback form toggle (defer until DOM ready) ───
+document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('toggleFeedback');
+    if (btn) {
+        btn.addEventListener('click', function() {
+            const form = document.getElementById('feedbackForm');
+            const showing = form.style.display !== 'none';
+            form.style.display = showing ? 'none' : 'block';
+            this.innerHTML = showing
+                ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Rate &amp; Send Suggestions'
+                : 'Hide Feedback Form';
+        });
+    }
 });
 
 // ─── Resize handling for elevation chart (debounced) ───
