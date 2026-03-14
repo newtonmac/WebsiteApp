@@ -2802,9 +2802,12 @@ async function searchChargersAlongRoute(route) {
     chargerSearchDone = true;
 
     const sampled = route.sampled;
+    const fullCoords = route.coords || sampled; // full-resolution path for proximity checks
 
-    // Build route path as LatLng array for distance checking
-    const routePath = sampled.map(pt => new google.maps.LatLng(pt[1], pt[0]));
+    // Build route path from FULL coords for accurate distance checking
+    // Sub-sample to ~500 points max for performance (enough for ~1mi resolution on 500mi routes)
+    const proxSample = samplePoints(fullCoords, Math.min(fullCoords.length, 500));
+    const routePath = proxSample.map(pt => new google.maps.LatLng(pt[1], pt[0]));
     const MAX_DISTANCE_M = 8047; // 5 miles in meters — proximity filter
 
     // Pick search points every ~20 miles along the route
@@ -2833,9 +2836,11 @@ async function searchChargersAlongRoute(route) {
             const url = `https://developer.nrel.gov/api/alt-fuel-stations/v1/nearest.json?api_key=${NREL_API_KEY}`
                 + `&fuel_type=ELEC&latitude=${pt[1]}&longitude=${pt[0]}`
                 + `&radius=${SEARCH_RADIUS_MI}&limit=50&status=E`
-                + `&ev_network=${encodeURIComponent(networkFilter)}`
-                + `&ev_charging_level=dc_fast,2`;
-            return fetch(url).then(r => r.ok ? r.json() : null).catch(() => null);
+                + `&ev_network=${encodeURIComponent(networkFilter)}`;
+            return fetch(url).then(r => {
+                if (!r.ok) { console.warn('NREL search failed:', r.status, pt); return null; }
+                return r.json();
+            }).catch(e => { console.warn('NREL fetch error:', e, pt); return null; });
         });
         const results = await Promise.all(promises);
 
