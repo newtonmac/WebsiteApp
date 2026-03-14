@@ -115,10 +115,89 @@ class EVChargerService {
 
         print("EV Chargers: \(allChargers.count) stations within 2 miles of route (\(String(format: "%.0f", routeMiles)) mi, \(sampleCount) search points)")
 
+        // Distribute evenly along route to prevent clustering at start/end
+        let distributed = distributeEvenly(allChargers, alongRoute: route, maxPerSegmentMile: 3)
+
+        print("EV Chargers: \(distributed.count) after even distribution")
+
         // Supplement with Open Charge Map speed data
-        let enriched = await enrichWithOCMSpeeds(chargers: allChargers, searchPoints: searchPoints)
+        let enriched = await enrichWithOCMSpeeds(chargers: distributed, searchPoints: searchPoints)
         chargers = enriched
         isLoading = false
+    }
+
+    // MARK: - Even Distribution
+
+    /// Divide route into segments and cap chargers per segment to avoid clustering
+    private func distributeEvenly(_ chargers: [EVCharger], alongRoute route: MKRoute, maxPerSegmentMile: Int) -> [EVCharger] {
+        let routeMiles = route.distance * 0.000621371
+        guard routeMiles > 0, !chargers.isEmpty else { return chargers }
+
+        // Create segments of ~10 miles each
+        let segmentMiles = 10.0
+        let segmentCount = max(1, Int(ceil(routeMiles / segmentMiles)))
+        let maxPerSegment = maxPerSegmentMile * Int(segmentMiles)
+
+        // Sample segment boundary points along the route
+        let segmentPoints = sampleRoutePoints(route: route, count: segmentCount + 1)
+
+        // Assign each charger to its nearest segment
+        var segments: [[EVCharger]] = Array(repeating: [], count: segmentCount)
+
+        for charger in chargers {
+            let chargerLoc = CLLocation(latitude: charger.coordinate.latitude, longitude: charger.coordinate.longitude)
+            var bestSegment = 0
+            var bestDist = Double.greatestFiniteMagnitude
+
+            for i in 0..<segmentCount {
+                // Use midpoint of segment
+                let midLat = (segmentPoints[i].latitude + segmentPoints[min(i + 1, segmentPoints.count - 1)].latitude) / 2
+                let midLon = (segmentPoints[i].longitude + segmentPoints[min(i + 1, segmentPoints.count - 1)].longitude) / 2
+                let dist = chargerLoc.distance(from: CLLocation(latitude: midLat, longitude: midLon))
+                if dist < bestDist {
+                    bestDist = dist
+                    bestSegment = i
+                }
+            }
+            segments[bestSegment].append(charger)
+        }
+
+        // Cap each segment, prioritizing DC fast chargers and major networks
+        var result: [EVCharger] = []
+        for segment in segments {
+            if segment.count <= maxPerSegment {
+                result.append(contentsOf: segment)
+            } else {
+                // Sort: DC fast first, then by network priority (Tesla, EA, EVgo first)
+                let sorted = segment.sorted { a, b in
+                    let aScore = chargerPriority(a)
+                    let bScore = chargerPriority(b)
+                    return aScore > bScore
+                }
+                result.append(contentsOf: sorted.prefix(maxPerSegment))
+            }
+        }
+
+        return result
+    }
+
+    /// Priority score for charger selection when capping segments
+    private func chargerPriority(_ charger: EVCharger) -> Int {
+        var score = 0
+        // Prefer DC fast
+        if let dc = charger.dcFastCount, dc > 0 { score += 50 }
+        // Prefer higher speed
+        if let speed = charger.speedKw { score += Int(speed / 10) }
+        // Prefer major networks
+        switch charger.network {
+        case .tesla, .electrifyAmerica: score += 30
+        case .evgo: score += 20
+        case .chargePoint: score += 15
+        default: score += 5
+        }
+        // Prefer more stalls
+        score += charger.totalChargers
+        return score
     }
 
     // MARK: - NREL AFDC API

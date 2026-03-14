@@ -18,6 +18,7 @@ struct EVRoutePlannerView: View {
     @State private var panelExpanded = true
     @State private var selectedCharger: EVCharger?
     @State private var mapStyle: EVMapStyle = .standard
+    @State private var selectedNetworks: Set<ChargerNetwork> = Set(ChargerNetwork.allCases)
     @State private var keyboardOffset: CGFloat = 0
     @GestureState private var dragOffset: CGFloat = 0
     @State private var mapCameraPosition: MapCameraPosition = .region(
@@ -42,7 +43,7 @@ struct EVRoutePlannerView: View {
                 cameraPosition: $mapCameraPosition,
                 routes: routeService.routes,
                 selectedRoute: selectedRoute,
-                chargers: showChargers ? chargerService.chargers : [],
+                chargers: showChargers ? chargerService.chargers.filter { selectedNetworks.contains($0.network) } : [],
                 origin: originCoord,
                 destination: destinationCoord,
                 selectedCharger: $selectedCharger,
@@ -222,7 +223,78 @@ struct EVRoutePlannerView: View {
                     }
                 }
             }
+
+            // Network filter chips
+            if showChargers {
+                networkFilterSection
+            }
         }
+    }
+
+    // MARK: - Network Filter
+
+    private var networkFilterSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Networks")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(EVTheme.textSecondary)
+                Spacer()
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        if selectedNetworks.count == ChargerNetwork.allCases.count {
+                            selectedNetworks.removeAll()
+                        } else {
+                            selectedNetworks = Set(ChargerNetwork.allCases)
+                        }
+                    }
+                } label: {
+                    Text(selectedNetworks.count == ChargerNetwork.allCases.count ? "None" : "All")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(EVTheme.accentBlue)
+                }
+            }
+
+            // Wrap chips in a flowing layout
+            FlowLayout(spacing: 6) {
+                ForEach(ChargerNetwork.allCases, id: \.self) { network in
+                    let isSelected = selectedNetworks.contains(network)
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            if isSelected {
+                                selectedNetworks.remove(network)
+                            } else {
+                                selectedNetworks.insert(network)
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(Color(hex: network.color))
+                                .frame(width: 8, height: 8)
+                            Text(network.abbreviation)
+                                .font(.system(size: 11, weight: .bold))
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(isSelected ? Color(hex: network.color).opacity(0.2) : EVTheme.bgInput)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(isSelected ? Color(hex: network.color) : EVTheme.border, lineWidth: 1)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .foregroundStyle(isSelected ? Color(hex: network.color) : EVTheme.textSecondary)
+                    }
+                }
+            }
+        }
+        .padding(10)
+        .background(EVTheme.bgInput)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(EVTheme.border, lineWidth: 1)
+        )
     }
 
     // MARK: - Vehicle Section
@@ -671,5 +743,49 @@ struct EVToggleRow: View {
             }
         }
         .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Flow Layout for Network Chips
+
+struct FlowLayout: Layout {
+    var spacing: CGFloat = 6
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let maxWidth = proposal.width ?? .infinity
+        var currentX: CGFloat = 0
+        var currentY: CGFloat = 0
+        var lineHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if currentX + size.width > maxWidth && currentX > 0 {
+                currentX = 0
+                currentY += lineHeight + spacing
+                lineHeight = 0
+            }
+            currentX += size.width + spacing
+            lineHeight = max(lineHeight, size.height)
+        }
+
+        return CGSize(width: maxWidth, height: currentY + lineHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var currentX: CGFloat = bounds.minX
+        var currentY: CGFloat = bounds.minY
+        var lineHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if currentX + size.width > bounds.maxX && currentX > bounds.minX {
+                currentX = bounds.minX
+                currentY += lineHeight + spacing
+                lineHeight = 0
+            }
+            subview.place(at: CGPoint(x: currentX, y: currentY), proposal: .unspecified)
+            currentX += size.width + spacing
+            lineHeight = max(lineHeight, size.height)
+        }
     }
 }
