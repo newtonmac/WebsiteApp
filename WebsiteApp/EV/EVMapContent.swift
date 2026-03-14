@@ -101,18 +101,6 @@ struct ChargerMarkerView: View {
 
     var body: some View {
         VStack(spacing: 1) {
-            // Speed label
-            if let speed = charger.speedKw {
-                Text("\(Int(speed))kW")
-                    .font(.system(size: 7, weight: .bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 3)
-                    .padding(.vertical, 1)
-                    .background(speed >= 150 ? EVTheme.accentGreen : EVTheme.accentYellow)
-                    .clipShape(RoundedRectangle(cornerRadius: 3))
-            }
-
-            // Network badge
             ZStack {
                 RoundedRectangle(cornerRadius: 6)
                     .fill(networkColor)

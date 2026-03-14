@@ -166,8 +166,8 @@ class EVChargerService {
         let dcFast = station.ev_dc_fast_num ?? 0
         let level2 = station.ev_level2_evse_num ?? 0
 
-        // Estimate max speed based on network (NREL doesn't provide exact kW)
-        let speed: Double? = dcFast > 0 ? networkMaxSpeed(network) : (level2 > 0 ? 19.2 : nil)
+        // Only show speed for DC Fast stations (Level 2 is always ~7-19 kW, not useful)
+        let speed: Double? = dcFast > 0 ? networkMaxSpeed(network) : nil
 
         return EVCharger(
             id: "\(station.id)",
