@@ -44,17 +44,6 @@ enum ChargerNetwork: String, CaseIterable {
         case .evConnect: return "#5cbf14"
         }
     }
-
-    var nrelNetworkName: String {
-        switch self {
-        case .tesla: return "Tesla"
-        case .electrifyAmerica: return "Electrify America"
-        case .evgo: return "eVgo"
-        case .chargePoint: return "ChargePoint"
-        case .blink: return "Blink"
-        case .evConnect: return "EV Connect"
-        }
-    }
 }
 
 @Observable
@@ -65,31 +54,48 @@ class EVChargerService {
     private let nrelAPIKey = "S8BQYZzqG6TBnADBFb60EYDUiLsRcxgJovLJ76Bg"
     private var cache: [String: [NRELStation]] = [:]
 
-    func findChargersAlongRoute(_ route: MKRoute, radiusMiles: Double = 3.0) async {
+    /// Search for chargers within 1 mile of the entire route, sampling every ~10 miles
+    func findChargersAlongRoute(_ route: MKRoute) async {
         isLoading = true
         chargers = []
 
-        let searchPoints = sampleSearchPoints(route: route, count: 6)
+        let routeMiles = route.distance * 0.000621371
+        // Sample every ~10 miles, minimum 3 points, max 30
+        let sampleCount = max(3, min(30, Int(routeMiles / 10) + 1))
+        let searchPoints = sampleRoutePoints(route: route, count: sampleCount)
+        let searchRadius = 1.5 // search 1.5mi from each point, filter to 1mi from route
+
         var allChargers: [EVCharger] = []
         var seenIds = Set<String>()
 
-        await withTaskGroup(of: [EVCharger].self) { group in
-            for point in searchPoints {
-                group.addTask {
-                    await self.fetchNRELChargers(near: point, radiusMiles: radiusMiles)
-                }
-            }
+        // Fetch in batches of 5 to avoid overwhelming the API
+        let batchSize = 5
+        for batchStart in stride(from: 0, to: searchPoints.count, by: batchSize) {
+            let batchEnd = min(batchStart + batchSize, searchPoints.count)
+            let batch = Array(searchPoints[batchStart..<batchEnd])
 
-            for await results in group {
-                for charger in results {
-                    if !seenIds.contains(charger.id) {
-                        seenIds.insert(charger.id)
-                        allChargers.append(charger)
+            await withTaskGroup(of: [EVCharger].self) { group in
+                for point in batch {
+                    group.addTask {
+                        await self.fetchNRELChargers(near: point, radiusMiles: searchRadius)
+                    }
+                }
+
+                for await results in group {
+                    for charger in results {
+                        if !seenIds.contains(charger.id) {
+                            seenIds.insert(charger.id)
+                            // Only keep chargers within 1 mile of the actual route path
+                            if self.isWithinMileOfRoute(charger.coordinate, route: route) {
+                                allChargers.append(charger)
+                            }
+                        }
                     }
                 }
             }
         }
 
+        print("EV Chargers: \(allChargers.count) stations within 1 mile of route (\(String(format: "%.0f", routeMiles)) mi, \(sampleCount) search points)")
         chargers = allChargers
         isLoading = false
     }
@@ -97,7 +103,7 @@ class EVChargerService {
     // MARK: - NREL AFDC API
 
     private func fetchNRELChargers(near point: CLLocationCoordinate2D, radiusMiles: Double) async -> [EVCharger] {
-        let cacheKey = "\(String(format: "%.4f", point.latitude)),\(String(format: "%.4f", point.longitude))"
+        let cacheKey = "\(String(format: "%.3f", point.latitude)),\(String(format: "%.3f", point.longitude))"
         if let cached = cache[cacheKey] {
             return cached.map { mapStationToCharger($0) }
         }
@@ -118,7 +124,6 @@ class EVChargerService {
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
             let response = try JSONDecoder().decode(NRELResponse.self, from: data)
-            print("NREL: Found \(response.fuel_stations.count) stations near \(String(format: "%.4f", point.latitude)),\(String(format: "%.4f", point.longitude))")
             cache[cacheKey] = response.fuel_stations
             return response.fuel_stations.map { mapStationToCharger($0) }
         } catch {
@@ -153,7 +158,7 @@ class EVChargerService {
         if lower.contains("chargepoint") { return .chargePoint }
         if lower.contains("blink") { return .blink }
         if lower.contains("ev connect") { return .evConnect }
-        return .chargePoint // default
+        return .chargePoint
     }
 
     private func parseConnectors(_ types: [String]) -> [String] {
@@ -168,33 +173,61 @@ class EVChargerService {
         }
     }
 
-    // MARK: - Helpers
+    // MARK: - Route Sampling
 
-    private func sampleSearchPoints(route: MKRoute, count: Int) -> [CLLocationCoordinate2D] {
+    /// Evenly sample points along the route polyline
+    private func sampleRoutePoints(route: MKRoute, count: Int) -> [CLLocationCoordinate2D] {
         let polyline = route.polyline
         let pointCount = polyline.pointCount
-        guard pointCount > 1 else { return [] }
+        guard pointCount > 1, count > 0 else { return [] }
 
         let mapPoints = polyline.points()
-        var points: [CLLocationCoordinate2D] = []
 
-        for i in 0..<count {
-            let idx = Int(Double(i) / Double(count - 1) * Double(pointCount - 1))
-            points.append(mapPoints[min(idx, pointCount - 1)].coordinate)
+        // Build cumulative distance array
+        var cumDist: [Double] = [0]
+        for i in 1..<pointCount {
+            let p1 = mapPoints[i-1].coordinate
+            let p2 = mapPoints[i].coordinate
+            let d = CLLocation(latitude: p1.latitude, longitude: p1.longitude)
+                .distance(from: CLLocation(latitude: p2.latitude, longitude: p2.longitude))
+            cumDist.append(cumDist.last! + d)
         }
 
-        return points
+        let totalDist = cumDist.last ?? 1
+        var sampled: [CLLocationCoordinate2D] = []
+
+        for i in 0..<count {
+            let targetDist = totalDist * Double(i) / Double(max(1, count - 1))
+            var segIdx = 0
+            while segIdx < cumDist.count - 1 && cumDist[segIdx + 1] < targetDist {
+                segIdx += 1
+            }
+            if segIdx >= pointCount - 1 {
+                sampled.append(mapPoints[pointCount - 1].coordinate)
+                continue
+            }
+            let segLen = cumDist[segIdx + 1] - cumDist[segIdx]
+            let t = segLen > 0 ? (targetDist - cumDist[segIdx]) / segLen : 0
+            let p1 = mapPoints[segIdx].coordinate
+            let p2 = mapPoints[segIdx + 1].coordinate
+            let lat = p1.latitude + t * (p2.latitude - p1.latitude)
+            let lon = p1.longitude + t * (p2.longitude - p1.longitude)
+            sampled.append(CLLocationCoordinate2D(latitude: lat, longitude: lon))
+        }
+
+        return sampled
     }
 
-    private func isChargerNearRoute(_ coord: CLLocationCoordinate2D, route: MKRoute, maxDistanceMiles: Double) -> Bool {
+    /// Check if a coordinate is within 1 mile of any point on the route
+    private func isWithinMileOfRoute(_ coord: CLLocationCoordinate2D, route: MKRoute) -> Bool {
         let chargerLoc = CLLocation(latitude: coord.latitude, longitude: coord.longitude)
         let polyline = route.polyline
         let pointCount = polyline.pointCount
         let mapPoints = polyline.points()
-        let maxMeters = maxDistanceMiles * 1609.34
+        let maxMeters = 1609.34 // 1 mile
 
-        // Check every 10th point for performance
-        let step = max(1, pointCount / 50)
+        // Check every few points along the polyline
+        let step = max(1, pointCount / 100)
         for i in stride(from: 0, to: pointCount, by: step) {
             let routePoint = mapPoints[i].coordinate
             let routeLoc = CLLocation(latitude: routePoint.latitude, longitude: routePoint.longitude)
