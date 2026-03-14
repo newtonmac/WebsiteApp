@@ -27,19 +27,19 @@ struct EVRouteCard: View {
 
             // Stats grid
             HStack(spacing: 0) {
-                StatItem(
+                EVStatItem(
                     value: String(format: "%.1f", route.distanceMiles),
                     unit: "mi",
                     label: "DISTANCE"
                 )
                 Spacer()
-                StatItem(
+                EVStatItem(
                     value: formatDuration(route.durationMinutes),
                     unit: "",
                     label: "TIME"
                 )
                 Spacer()
-                StatItem(
+                EVStatItem(
                     value: String(format: "%.1f", route.elevationGain * 3.28084),
                     unit: "ft",
                     label: "ELEV GAIN"
@@ -50,21 +50,21 @@ struct EVRouteCard: View {
 
             // Energy stats
             HStack(spacing: 0) {
-                StatItem(
+                EVStatItem(
                     value: String(format: "%.1f", route.energyKwh),
                     unit: "kWh",
                     label: "ENERGY",
                     valueColor: .primary
                 )
                 Spacer()
-                StatItem(
+                EVStatItem(
                     value: String(format: "%.0f%%", route.batteryPctUsed),
                     unit: "",
                     label: "BATTERY USED",
                     valueColor: batteryColor
                 )
                 Spacer()
-                StatItem(
+                EVStatItem(
                     value: String(format: "%.1f", route.efficiency),
                     unit: "mi/kWh",
                     label: "EFFICIENCY",
@@ -100,7 +100,7 @@ struct EVRouteCard: View {
     }
 }
 
-struct StatItem: View {
+struct EVStatItem: View {
     let value: String
     let unit: String
     let label: String
