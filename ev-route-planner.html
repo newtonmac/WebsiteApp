@@ -1060,7 +1060,10 @@ function fitMarkers() {
 // ─── Multi-stop management ───
 const stopColors = ['#a78bfa', '#f472b6', '#fbbf24', '#fb923c', '#38bdf8', '#c084fc', '#4ade80', '#f87171'];
 
+const MAX_STOPS = 5;
+
 function addStop() {
+    if (stops.length >= MAX_STOPS) return;
     const id = stopIdCounter++;
     const colorIdx = stops.length % stopColors.length;
     const color = stopColors[colorIdx];
@@ -1094,6 +1097,7 @@ function addStop() {
     row.querySelector('.remove-stop-btn').addEventListener('click', () => removeStop(id));
     renumberStops();
     updatePlanBtn();
+    updateAddStopBtn();
 }
 
 function removeStop(id) {
@@ -1107,6 +1111,11 @@ function removeStop(id) {
     renumberStops();
     fitMarkers();
     updatePlanBtn();
+    updateAddStopBtn();
+}
+
+function updateAddStopBtn() {
+    document.getElementById('addStopBtn').style.display = stops.length >= MAX_STOPS ? 'none' : 'block';
 }
 
 function renumberStops() {
