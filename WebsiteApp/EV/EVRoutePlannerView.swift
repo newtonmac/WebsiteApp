@@ -81,18 +81,18 @@ struct EVRoutePlannerView: View {
                         }
                     }
                     .padding(.horizontal, 20)
-                    .padding(.bottom, 32)
+                    .padding(.bottom, 60)
                 }
             }
             .background(EVTheme.bgCard)
             .clipShape(.rect(topLeadingRadius: 20, topTrailingRadius: 20))
-            .overlay(
+            .overlay(alignment: .top) {
                 UnevenRoundedRectangle(topLeadingRadius: 20, topTrailingRadius: 20)
                     .stroke(EVTheme.border, lineWidth: 1)
-            )
+            }
             .frame(maxHeight: UIScreen.main.bounds.height * 0.55)
-            .ignoresSafeArea(edges: .bottom)
         }
+        .ignoresSafeArea(edges: .bottom)
         .preferredColorScheme(.dark)
         .sheet(isPresented: $showingVehiclePicker) {
             EVVehiclePickerView(selectedVehicle: $selectedVehicle)
