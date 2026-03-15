@@ -1,11 +1,52 @@
 import SwiftUI
 import CoreLocation
 
+struct NearbyCharger: Identifiable {
+    let id: String
+    let charger: EVCharger
+    let distanceMiles: Double
+}
+
+struct StopChargers: Identifiable {
+    let id: UUID
+    let stop: ChargingStop
+    let chargers: [NearbyCharger]
+}
+
 struct EVRouteDetailView: View {
     let route: RouteResult
     let vehicle: EVVehicle
     let chargers: [EVCharger]
     @Environment(\.dismiss) private var dismiss
+
+    private let groupedChargers: [StopChargers]
+
+    init(route: RouteResult, vehicle: EVVehicle, chargers: [EVCharger]) {
+        self.route = route
+        self.vehicle = vehicle
+        self.chargers = chargers
+
+        let radiusMeters: Double = 20 * 1609.34
+        var groups: [StopChargers] = []
+
+        for stop in route.chargingStops {
+            let stopLocation = CLLocation(latitude: stop.coordinate.latitude, longitude: stop.coordinate.longitude)
+            var nearby: [NearbyCharger] = []
+
+            for charger in chargers {
+                let chargerLocation = CLLocation(latitude: charger.coordinate.latitude, longitude: charger.coordinate.longitude)
+                let dist = stopLocation.distance(from: chargerLocation)
+                if dist <= radiusMeters {
+                    nearby.append(NearbyCharger(id: charger.id, charger: charger, distanceMiles: dist / 1609.34))
+                }
+            }
+
+            nearby.sort { $0.distanceMiles < $1.distanceMiles }
+            groups.append(StopChargers(id: stop.id, stop: stop, chargers: nearby))
+        }
+
+        self.groupedChargers = groups
+    }
 
     var body: some View {
         NavigationStack {
@@ -332,37 +373,33 @@ struct EVRouteDetailView: View {
     // MARK: - Chargers
 
     private var chargersSection: some View {
-        let nearbyRadius: Double = 20 // miles
-
-        return VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 16) {
             if route.needsCharging {
-                ForEach(route.chargingStops) { stop in
-                    let nearby = chargersNear(stop: stop, radiusMiles: nearbyRadius)
-
+                ForEach(groupedChargers) { group in
                     VStack(alignment: .leading, spacing: 10) {
                         HStack(spacing: 6) {
                             Image(systemName: "bolt.circle.fill")
                                 .foregroundStyle(EVTheme.accentYellow)
                                 .font(.subheadline)
-                            Text("Chargers Near Stop \(stop.stopNumber)")
+                            Text("Chargers Near Stop \(group.stop.stopNumber)")
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(EVTheme.textPrimary)
                             Spacer()
-                            Text("Mile \(String(format: "%.0f", stop.distanceMiles))")
+                            Text("Mile \(String(format: "%.0f", group.stop.distanceMiles))")
                                 .font(.caption)
                                 .foregroundStyle(EVTheme.textSecondary)
                         }
 
-                        if nearby.isEmpty {
-                            Text("No chargers found within \(Int(nearbyRadius)) miles")
+                        if group.chargers.isEmpty {
+                            Text("No chargers found within 20 miles")
                                 .font(.caption)
                                 .foregroundStyle(EVTheme.textSecondary)
                                 .padding(.vertical, 4)
                         } else {
-                            ForEach(nearby) { charger in
-                                chargerRow(charger: charger, stopCoordinate: stop.coordinate)
+                            ForEach(group.chargers) { nearby in
+                                chargerRow(charger: nearby.charger, distanceMiles: nearby.distanceMiles)
 
-                                if charger.id != nearby.last?.id {
+                                if nearby.id != group.chargers.last?.id {
                                     Rectangle()
                                         .fill(EVTheme.border)
                                         .frame(height: 1)
@@ -371,7 +408,7 @@ struct EVRouteDetailView: View {
                         }
                     }
 
-                    if stop.id != route.chargingStops.last?.id {
+                    if group.id != groupedChargers.last?.id {
                         Rectangle()
                             .fill(EVTheme.border.opacity(0.5))
                             .frame(height: 1)
@@ -384,7 +421,7 @@ struct EVRouteDetailView: View {
                     .foregroundStyle(EVTheme.textPrimary)
 
                 ForEach(chargers) { charger in
-                    chargerRow(charger: charger, stopCoordinate: nil)
+                    chargerRow(charger: charger, distanceMiles: nil)
 
                     if charger.id != chargers.last?.id {
                         Rectangle()
@@ -396,23 +433,7 @@ struct EVRouteDetailView: View {
         }
     }
 
-    private func chargersNear(stop: ChargingStop, radiusMiles: Double) -> [EVCharger] {
-        let stopLocation = CLLocation(latitude: stop.coordinate.latitude, longitude: stop.coordinate.longitude)
-        let radiusMeters = radiusMiles * 1609.34
-
-        return chargers
-            .filter { charger in
-                let chargerLocation = CLLocation(latitude: charger.coordinate.latitude, longitude: charger.coordinate.longitude)
-                return stopLocation.distance(from: chargerLocation) <= radiusMeters
-            }
-            .sorted { a, b in
-                let locA = CLLocation(latitude: a.coordinate.latitude, longitude: a.coordinate.longitude)
-                let locB = CLLocation(latitude: b.coordinate.latitude, longitude: b.coordinate.longitude)
-                return stopLocation.distance(from: locA) < stopLocation.distance(from: locB)
-            }
-    }
-
-    private func chargerRow(charger: EVCharger, stopCoordinate: CLLocationCoordinate2D?) -> some View {
+    private func chargerRow(charger: EVCharger, distanceMiles: Double?) -> some View {
         HStack(spacing: 10) {
             ZStack {
                 RoundedRectangle(cornerRadius: 6)
@@ -433,10 +454,7 @@ struct EVRouteDetailView: View {
                         .font(.caption)
                         .foregroundStyle(EVTheme.textSecondary)
                         .lineLimit(1)
-                    if let coord = stopCoordinate {
-                        let dist = CLLocation(latitude: coord.latitude, longitude: coord.longitude)
-                            .distance(from: CLLocation(latitude: charger.coordinate.latitude, longitude: charger.coordinate.longitude))
-                        let miles = dist / 1609.34
+                    if let miles = distanceMiles {
                         Text("• \(String(format: "%.1f mi", miles))")
                             .font(.caption)
                             .foregroundStyle(EVTheme.accentGreen)
