@@ -18,6 +18,7 @@ struct EVRouteDetailView: View {
     let vehicle: EVVehicle
     let chargers: [EVCharger]
     @Environment(\.dismiss) private var dismiss
+    private let settings = EVSettingsManager.shared
 
     private let groupedChargers: [StopChargers]
 
@@ -61,7 +62,7 @@ struct EVRouteDetailView: View {
                         Text(route.routeName.isEmpty ? "Route" : route.routeName)
                             .font(.title3.weight(.bold))
                             .foregroundStyle(EVTheme.accentGreen)
-                        Text("— \(String(format: "%.1f mi", route.distanceMiles))")
+                        Text("— \(settings.distanceString(route.distanceMiles))")
                             .font(.title3.weight(.bold))
                             .foregroundStyle(EVTheme.textPrimary)
                     }
@@ -232,7 +233,7 @@ struct EVRouteDetailView: View {
                 icon: "circle.fill",
                 iconColor: EVTheme.accentGreen,
                 title: "Depart Origin",
-                subtitle: "Battery: 100%",
+                subtitle: "Battery: \(Int(settings.startChargePct))%",
                 isLast: false
             )
 
@@ -248,11 +249,12 @@ struct EVRouteDetailView: View {
 
                 let price = pricePerKwhForStop(stop)
                 let cost = stop.energyToAddKwh * price
+                let stopDist = settings.distanceString(stop.distanceMiles)
                 chargingTimelineRow(
                     icon: "bolt.circle.fill",
                     iconColor: EVTheme.accentYellow,
                     title: "Charging Stop \(stop.stopNumber)",
-                    subtitle: "At mile \(String(format: "%.0f", stop.distanceMiles)) — Arrive \(Int(stop.arrivalBatteryPct))% → Charge to \(Int(stop.departureBatteryPct))% (+\(String(format: "%.1f", stop.energyToAddKwh)) kWh) — Est. \(String(format: "$%.2f", cost)) @ \(String(format: "$%.2f", price))/kWh",
+                    subtitle: "At \(stopDist) — Arrive \(Int(stop.arrivalBatteryPct))% → Charge to \(Int(stop.departureBatteryPct))% (+\(String(format: "%.1f", stop.energyToAddKwh)) kWh) — Est. \(String(format: "$%.2f", cost)) @ \(String(format: "$%.2f", price))/kWh",
                     isLast: false
                 )
             }
@@ -356,7 +358,7 @@ struct EVRouteDetailView: View {
                         Text("Distance")
                             .font(.system(size: 9))
                             .foregroundStyle(EVTheme.textSecondary)
-                        Text(String(format: "%.1f mi", distanceMiles))
+                        Text(settings.distanceString(distanceMiles))
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(EVTheme.textPrimary)
                     }
@@ -374,7 +376,7 @@ struct EVRouteDetailView: View {
                         Text("Efficiency")
                             .font(.system(size: 9))
                             .foregroundStyle(EVTheme.textSecondary)
-                        Text(String(format: "%.1f mi/kWh", efficiency))
+                        Text(settings.efficiencyInverse(miPerKwh: efficiency))
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(effColor)
                     }
@@ -389,8 +391,8 @@ struct EVRouteDetailView: View {
                     }
                 }
 
-                // kWh/mi sub-detail
-                Text(String(format: "%.3f kWh/mi • +%d/-%d ft", kwhPerMile, gainFt, lossFt))
+                // kWh/unit sub-detail
+                Text("\(settings.efficiencyString(kwhPerMile: kwhPerMile)) • +\(gainFt)/-\(lossFt) ft")
                     .font(.system(size: 10))
                     .foregroundStyle(EVTheme.textSecondary)
             }
@@ -539,12 +541,12 @@ struct EVRouteDetailView: View {
 
             DetailRow(label: "Arrival Battery", value: String(format: "%.0f%%", arrivalPct),
                       valueColor: arrivalColor)
-            DetailRow(label: "Efficiency", value: String(format: "%.1f mi/kWh", route.efficiency))
-            DetailRow(label: "kWh/mile", value: String(format: "%.3f kWh/mi", route.energyKwh / max(0.1, route.distanceMiles)),
+            DetailRow(label: "Efficiency", value: settings.efficiencyInverse(miPerKwh: route.efficiency))
+            DetailRow(label: "Energy/\(settings.distanceUnit)", value: settings.efficiencyString(kwhPerMile: route.energyKwh / max(0.1, route.distanceMiles)),
                       valueColor: EVTheme.textSecondary)
-            DetailRow(label: "Est. Electricity Cost", value: String(format: "$%.2f", route.energyKwh * 0.16),
+            DetailRow(label: "Est. Electricity Cost", value: String(format: "$%.2f (@ $%.2f/kWh)", route.energyKwh * settings.electricityCostPerKwh, settings.electricityCostPerKwh),
                       valueColor: EVTheme.accentGreen)
-            DetailRow(label: "Distance", value: String(format: "%.1f miles", route.distanceMiles))
+            DetailRow(label: "Distance", value: settings.distanceString(route.distanceMiles))
             DetailRow(label: "Est. Time", value: formatDuration(route.durationMinutes))
             DetailRow(label: "Avg Grade", value: String(format: "%.1f%%", route.averageGrade))
             DetailRow(label: "Peak Grade", value: String(format: "%.1f%%", route.peakGrade),
@@ -569,7 +571,7 @@ struct EVRouteDetailView: View {
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(EVTheme.textPrimary)
                             Spacer()
-                            Text("Mile \(String(format: "%.0f", group.stop.distanceMiles))")
+                            Text(settings.distanceString(group.stop.distanceMiles))
                                 .font(.caption)
                                 .foregroundStyle(EVTheme.textSecondary)
                         }
@@ -639,7 +641,7 @@ struct EVRouteDetailView: View {
                         .foregroundStyle(EVTheme.textSecondary)
                         .lineLimit(1)
                     if let miles = distanceMiles {
-                        Text("• \(String(format: "%.1f mi", miles))")
+                        Text("• \(settings.distanceString(miles))")
                             .font(.caption)
                             .foregroundStyle(EVTheme.accentGreen)
                     }
@@ -718,11 +720,12 @@ struct ElevationChartView: View {
         let drivetrainEff = 0.88
         let g = 9.81
 
-        var batteryPcts: [Double] = [100.0]
-        var currentPct = 100.0
+        let startPct = EVSettingsManager.shared.startChargePct
+        let chargeTargetPct = EVSettingsManager.shared.chargeTargetPct
+        var batteryPcts: [Double] = [startPct]
+        var currentPct = startPct
 
         let stopDistances = chargingStops.map { $0.distanceMiles }
-        let chargeTargetPct = 80.0
 
         for i in 1..<profile.count {
             let segDistMiles = profile[i].distance - profile[i - 1].distance

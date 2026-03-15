@@ -7,6 +7,7 @@ struct EVRouteCard: View {
     let isSelected: Bool
     var onInfoTap: (() -> Void)? = nil
     var onCardTap: (() -> Void)? = nil
+    private let settings = EVSettingsManager.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -30,7 +31,7 @@ struct EVRouteCard: View {
                         .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
 
-                Text(String(format: "%.1f mi", route.distanceMiles))
+                Text(settings.distanceString(route.distanceMiles))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(EVTheme.textPrimary)
 

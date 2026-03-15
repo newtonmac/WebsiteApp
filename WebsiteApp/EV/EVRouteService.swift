@@ -126,21 +126,34 @@ class EVRouteService {
 
     private let googleAPIKey = "AIzaSyBEjpKpb_xMnZgrkTBOKMefOdaqkmQHS-8"
 
-    // Charging parameters
-    private let minBatteryPct = 15.0    // never drop below 15%
-    private let chargeTargetPct = 80.0  // charge up to 80% at each stop
-    private let startBatteryPct = 100.0 // assume full charge at start
+    // Charging parameters (defaults, overridden by settings)
+    private var minBatteryPct = 15.0
+    private var chargeTargetPct = 80.0
+    private var startBatteryPct = 100.0
 
     func planRoute(from origin: CLLocationCoordinate2D,
                    to destination: CLLocationCoordinate2D,
                    stops: [CLLocationCoordinate2D] = [],
-                   vehicle: EVVehicle) async {
+                   vehicle: EVVehicle,
+                   startBattery: Double = 100,
+                   minBattery: Double = 15,
+                   chargeTarget: Double = 80,
+                   avoidHighways: Bool = false,
+                   avoidTolls: Bool = false) async {
         isLoading = true
         errorMessage = nil
         routes = []
 
+        // Apply settings
+        self.startBatteryPct = startBattery
+        self.minBatteryPct = minBattery
+        self.chargeTargetPct = chargeTarget
+
         do {
-            let mkRoutes = try await fetchDirections(from: origin, to: destination, stops: stops)
+            let mkRoutes = try await fetchDirections(
+                from: origin, to: destination, stops: stops,
+                avoidHighways: avoidHighways, avoidTolls: avoidTolls
+            )
             var results: [RouteResult] = []
 
             for route in mkRoutes {
@@ -304,12 +317,16 @@ class EVRouteService {
 
     private func fetchDirections(from origin: CLLocationCoordinate2D,
                                   to destination: CLLocationCoordinate2D,
-                                  stops: [CLLocationCoordinate2D]) async throws -> [MKRoute] {
+                                  stops: [CLLocationCoordinate2D],
+                                  avoidHighways: Bool = false,
+                                  avoidTolls: Bool = false) async throws -> [MKRoute] {
         let request = MKDirections.Request()
         request.source = MKMapItem(placemark: MKPlacemark(coordinate: origin))
         request.destination = MKMapItem(placemark: MKPlacemark(coordinate: destination))
         request.transportType = .automobile
         request.requestsAlternateRoutes = true
+        if avoidHighways { request.highwayPreference = .avoid }
+        if avoidTolls { request.tollPreference = .avoid }
 
         let directions = MKDirections(request: request)
         let response = try await directions.calculate()

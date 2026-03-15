@@ -2,6 +2,7 @@ import SwiftUI
 import MapKit
 
 struct EVRoutePlannerView: View {
+    @StateObject private var settings = EVSettingsManager.shared
     @State private var routeService = EVRouteService()
     @State private var chargerService = EVChargerService()
     @State private var selectedVehicle: EVVehicle = EVDatabase.vehicles[0]
@@ -12,6 +13,7 @@ struct EVRoutePlannerView: View {
     @State private var selectedRoute: RouteResult?
     @State private var showingVehiclePicker = false
     @State private var showingRouteDetail: RouteResult?
+    @State private var showingSettings = false
     @State private var isRoundTrip = false
     @State private var showChargers = false
     @State private var panelExpanded = true
@@ -32,21 +34,27 @@ struct EVRoutePlannerView: View {
 
     private var mapChargers: [EVCharger] {
         guard showChargers else { return [] }
-        let networkFiltered = chargerService.chargers.filter { selectedNetworks.contains($0.network) }
+        var filtered = chargerService.chargers.filter { selectedNetworks.contains($0.network) }
 
-        // If a route with charging stops is selected, only show chargers within 15 miles of stops
+        // Filter by preferred minimum charger speed
+        let minSpeed = settings.preferredChargerSpeedKw
+        if minSpeed > 0 {
+            filtered = filtered.filter { ($0.speedKw ?? 0) >= minSpeed }
+        }
+
+        // If a route with charging stops is selected, only show chargers within detour distance of stops
         if let route = selectedRoute, route.needsCharging {
-            let radiusMeters: Double = 50 * 1609.34
+            let radiusMeters = settings.maxDetourMiles * 1609.34
             let stopLocations = route.chargingStops.map {
                 CLLocation(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude)
             }
-            return networkFiltered.filter { charger in
+            return filtered.filter { charger in
                 let chargerLoc = CLLocation(latitude: charger.coordinate.latitude, longitude: charger.coordinate.longitude)
                 return stopLocations.contains { $0.distance(from: chargerLoc) <= radiusMeters }
             }
         }
 
-        return networkFiltered
+        return filtered
     }
 
     private var panelHeight: CGFloat {
@@ -96,6 +104,14 @@ struct EVRoutePlannerView: View {
                                 )
                             )
                         Spacer()
+                        Button {
+                            showingSettings = true
+                        } label: {
+                            Image(systemName: "gearshape")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(EVTheme.textSecondary)
+                        }
+                        .padding(.trailing, 8)
                         Image(systemName: panelExpanded ? "chevron.down" : "chevron.up")
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(EVTheme.textSecondary)
@@ -212,6 +228,21 @@ struct EVRoutePlannerView: View {
         }
         .sheet(item: $summaryPDFItem) { item in
             PDFShareSheet(pdfData: item.data, fileName: "EV_Route_Summary.pdf")
+        }
+        .sheet(isPresented: $showingSettings) {
+            EVSettingsView()
+                .presentationDragIndicator(.visible)
+        }
+        .onAppear {
+            // Restore saved vehicle
+            if let saved = settings.lastVehicle {
+                selectedVehicle = saved
+            }
+            // Restore saved default networks
+            selectedNetworks = settings.defaultNetworks
+        }
+        .onChange(of: selectedVehicle) { _, newVehicle in
+            settings.lastVehicleId = newVehicle.id
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { notification in
             if let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
@@ -574,6 +605,8 @@ struct EVRoutePlannerView: View {
         let netElevM = route.elevationGain - route.elevationLoss
         let netElevFt = Int(netElevM * 3.28084)
         let remaining = route.remainingBatteryPct
+        let costPerKwh = settings.electricityCostPerKwh
+        let distStr = settings.distanceString(route.distanceMiles)
 
         return VStack(alignment: .leading, spacing: 12) {
             // Vehicle title
@@ -609,7 +642,7 @@ struct EVRoutePlannerView: View {
             .frame(height: 22)
 
             // Energy details
-            energyRow(label: "Base driving", value: String(format: "%.1f kWh", baseDriving), color: EVTheme.textPrimary)
+            energyRow(label: "Base driving (\(distStr))", value: String(format: "%.1f kWh", baseDriving), color: EVTheme.textPrimary)
 
             energyRow(
                 label: "Climbing (+\(elevGainM)m / +\(elevGainFt)ft ~\(String(format: "%.1f", route.averageGrade))% avg grade)",
@@ -636,13 +669,13 @@ struct EVRoutePlannerView: View {
 
             energyRow(
                 label: "Trip efficiency",
-                value: String(format: "%.1f mi/kWh (%.3f kWh/mi)", route.efficiency, route.energyKwh / max(0.1, route.distanceMiles)),
+                value: "\(settings.efficiencyInverse(miPerKwh: route.efficiency)) (\(settings.efficiencyString(kwhPerMile: route.energyKwh / max(0.1, route.distanceMiles))))",
                 color: EVTheme.textPrimary
             )
 
             energyRow(
                 label: "Est. electricity cost",
-                value: String(format: "$%.2f (@ $0.16/kWh)", route.energyKwh * 0.16),
+                value: String(format: "$%.2f (@ $%.2f/kWh)", route.energyKwh * costPerKwh, costPerKwh),
                 color: EVTheme.accentGreen
             )
 
@@ -772,7 +805,14 @@ struct EVRoutePlannerView: View {
     private func planRoute() async {
         guard let origin = originCoord, let dest = destinationCoord else { return }
 
-        await routeService.planRoute(from: origin, to: dest, vehicle: selectedVehicle)
+        await routeService.planRoute(
+            from: origin, to: dest, vehicle: selectedVehicle,
+            startBattery: settings.startChargePct,
+            minBattery: settings.minArrivalPct,
+            chargeTarget: settings.chargeTargetPct,
+            avoidHighways: settings.avoidHighways,
+            avoidTolls: settings.avoidTolls
+        )
 
         if let best = routeService.routes.first {
             selectedRoute = best
