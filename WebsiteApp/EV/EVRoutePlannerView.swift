@@ -11,8 +11,7 @@ struct EVRoutePlannerView: View {
     @State private var destinationCoord: CLLocationCoordinate2D?
     @State private var selectedRoute: RouteResult?
     @State private var showingVehiclePicker = false
-    @State private var showingRouteDetail = false
-    @State private var detailRoute: RouteResult?
+    @State private var showingRouteDetail: RouteResult?
     @State private var isRoundTrip = false
     @State private var showChargers = false
     @State private var panelExpanded = true
@@ -203,10 +202,8 @@ struct EVRoutePlannerView: View {
         .sheet(isPresented: $showingVehiclePicker) {
             EVVehiclePickerView(selectedVehicle: $selectedVehicle)
         }
-        .sheet(isPresented: $showingRouteDetail) {
-            if let route = detailRoute {
-                EVRouteDetailView(route: route, vehicle: selectedVehicle, chargers: chargerService.chargers)
-            }
+        .sheet(item: $showingRouteDetail) { route in
+            EVRouteDetailView(route: route, vehicle: selectedVehicle, chargers: chargerService.chargers)
         }
         .sheet(item: $selectedCharger) { charger in
             ChargerDetailSheet(charger: charger)
@@ -449,8 +446,7 @@ struct EVRoutePlannerView: View {
                     isBest: index == 0,
                     isSelected: selectedRoute?.id == route.id,
                     onInfoTap: {
-                        detailRoute = route
-                        showingRouteDetail = true
+                        showingRouteDetail = route
                     },
                     onCardTap: {
                         withAnimation(.easeInOut(duration: 0.2)) {
