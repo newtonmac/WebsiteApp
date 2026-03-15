@@ -129,8 +129,8 @@ class EVChargerService {
         chargers = []
 
         let routeMiles = route.distance * 0.000621371
-        // Sample every ~15 miles, min 3 points, max 25 — balances coverage vs API calls
-        let sampleCount = max(3, min(25, Int(routeMiles / 15) + 2))
+        // Sample every ~10 miles, min 3 points, max 40 — balances coverage vs API calls
+        let sampleCount = max(3, min(40, Int(routeMiles / 10) + 2))
         let searchPoints = sampleRoutePoints(route: route, count: sampleCount)
         let searchRadius = 5.0 // wider radius with fewer points
 
