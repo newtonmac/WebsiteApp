@@ -36,7 +36,7 @@ struct EVRoutePlannerView: View {
 
         // If a route with charging stops is selected, only show chargers within 15 miles of stops
         if let route = selectedRoute, route.needsCharging {
-            let radiusMeters: Double = 15 * 1609.34
+            let radiusMeters: Double = 50 * 1609.34
             let stopLocations = route.chargingStops.map {
                 CLLocation(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude)
             }

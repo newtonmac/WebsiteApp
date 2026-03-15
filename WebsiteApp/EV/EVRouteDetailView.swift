@@ -26,7 +26,7 @@ struct EVRouteDetailView: View {
         self.vehicle = vehicle
         self.chargers = chargers
 
-        let radiusMeters: Double = 15 * 1609.34
+        let radiusMeters: Double = 50 * 1609.34
         let maxPerStop = 5
         var groups: [StopChargers] = []
 
@@ -395,7 +395,7 @@ struct EVRouteDetailView: View {
                         }
 
                         if group.chargers.isEmpty {
-                            Text("No chargers found within 15 miles")
+                            Text("No chargers found within 50 miles")
                                 .font(.caption)
                                 .foregroundStyle(EVTheme.textSecondary)
                                 .padding(.vertical, 4)
