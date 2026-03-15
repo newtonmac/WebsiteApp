@@ -5,19 +5,19 @@ import CoreLocation
 /// Generates a professional PDF report for an EV route with graphs and section breakdowns.
 struct EVRoutePDFGenerator {
 
-    // MARK: - Colors (matching EVTheme, as CGColor)
+    // MARK: - Colors (print-friendly light theme)
 
-    private static let bgPrimary = UIColor(red: 15/255, green: 17/255, blue: 23/255, alpha: 1)
-    private static let bgCard = UIColor(red: 26/255, green: 29/255, blue: 40/255, alpha: 1)
-    private static let bgInput = UIColor(red: 37/255, green: 40/255, blue: 54/255, alpha: 1)
-    private static let border = UIColor(red: 45/255, green: 48/255, blue: 64/255, alpha: 1)
-    private static let textPrimary = UIColor(red: 225/255, green: 228/255, blue: 232/255, alpha: 1)
-    private static let textSecondary = UIColor(red: 139/255, green: 143/255, blue: 163/255, alpha: 1)
-    private static let accentGreen = UIColor(red: 52/255, green: 211/255, blue: 153/255, alpha: 1)
-    private static let accentBlue = UIColor(red: 96/255, green: 165/255, blue: 250/255, alpha: 1)
-    private static let accentRed = UIColor(red: 239/255, green: 68/255, blue: 68/255, alpha: 1)
-    private static let accentYellow = UIColor(red: 251/255, green: 191/255, blue: 36/255, alpha: 1)
-    private static let accentOrange = UIColor(red: 249/255, green: 115/255, blue: 22/255, alpha: 1)
+    private static let bgPrimary = UIColor.white
+    private static let bgCard = UIColor(red: 245/255, green: 247/255, blue: 250/255, alpha: 1)
+    private static let bgInput = UIColor(red: 235/255, green: 238/255, blue: 243/255, alpha: 1)
+    private static let border = UIColor(red: 210/255, green: 214/255, blue: 222/255, alpha: 1)
+    private static let textPrimary = UIColor(red: 30/255, green: 32/255, blue: 38/255, alpha: 1)
+    private static let textSecondary = UIColor(red: 100/255, green: 105/255, blue: 120/255, alpha: 1)
+    private static let accentGreen = UIColor(red: 22/255, green: 163/255, blue: 74/255, alpha: 1)
+    private static let accentBlue = UIColor(red: 37/255, green: 99/255, blue: 235/255, alpha: 1)
+    private static let accentRed = UIColor(red: 220/255, green: 38/255, blue: 38/255, alpha: 1)
+    private static let accentYellow = UIColor(red: 202/255, green: 138/255, blue: 4/255, alpha: 1)
+    private static let accentOrange = UIColor(red: 234/255, green: 88/255, blue: 12/255, alpha: 1)
 
     // MARK: - Fonts
 
@@ -369,7 +369,7 @@ struct EVRoutePDFGenerator {
         context.fillEllipse(in: iconRect)
 
         // Bolt symbol drawn manually
-        context.setFillColor(bgPrimary.cgColor)
+        context.setFillColor(UIColor.white.cgColor)
         let boltPath = CGMutablePath()
         let cx = iconRect.midX
         let cy = iconRect.midY
