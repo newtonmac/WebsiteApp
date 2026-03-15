@@ -39,12 +39,26 @@ struct SplashScreen: View {
             Color.black.ignoresSafeArea()
 
             VStack(spacing: 16) {
-                if let uiImage = UIImage(named: "AppIcon") {
+                if let iconName = Bundle.main.object(forInfoDictionaryKey: "CFBundleIcons") as? [String: Any],
+                   let primaryIcon = iconName["CFBundlePrimaryIcon"] as? [String: Any],
+                   let iconFiles = primaryIcon["CFBundleIconFiles"] as? [String],
+                   let lastIcon = iconFiles.last,
+                   let uiImage = UIImage(named: lastIcon) {
                     Image(uiImage: uiImage)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 120, height: 120)
                         .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+                } else if let uiImage = UIImage(named: "AppIcon60x60") ?? UIImage(named: "AppIcon76x76") {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 120, height: 120)
+                        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+                } else {
+                    Image(systemName: "bolt.car.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(.green)
                 }
 
                 Text("EV Route Planner")
