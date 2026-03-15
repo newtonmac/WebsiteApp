@@ -610,8 +610,14 @@ struct EVRoutePlannerView: View {
 
             energyRow(
                 label: "Trip efficiency",
-                value: String(format: "%.1f mi/kWh", route.efficiency),
+                value: String(format: "%.1f mi/kWh (%.3f kWh/mi)", route.efficiency, route.energyKwh / max(0.1, route.distanceMiles)),
                 color: EVTheme.textPrimary
+            )
+
+            energyRow(
+                label: "Est. electricity cost",
+                value: String(format: "$%.2f (@ $0.16/kWh)", route.energyKwh * 0.16),
+                color: EVTheme.accentGreen
             )
 
             energyRow(
@@ -710,7 +716,12 @@ struct EVRoutePlannerView: View {
             }
 
             if !route.elevationProfile.isEmpty {
-                ElevationChartView(profile: route.elevationProfile, vehicle: selectedVehicle, chargingStops: route.chargingStops)
+                ElevationChartView(
+                    profile: route.elevationProfile,
+                    vehicle: selectedVehicle,
+                    chargingStops: route.chargingStops,
+                    avgSpeedMps: (route.distanceMiles * 1609.34) / max(1, route.durationMinutes * 60)
+                )
                     .frame(height: 160)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
             } else {

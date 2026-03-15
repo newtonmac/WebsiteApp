@@ -180,27 +180,16 @@ class EVRouteService {
             return ChargingPlan(stops: [], finalBatteryPct: max(0, startBatteryPct - totalBatteryPct))
         }
 
-        // Calculate energy per segment as percentage of battery
+        // Physics-based energy per segment using speed + aero + rolling + grade
         let segmentCount = profile.count - 1
         var segmentEnergyPcts: [Double] = []
+        let avgSpeedMps = route.distance / max(1, route.expectedTravelTime)
 
         for i in 1..<profile.count {
-            let segDistMiles = (profile[i].distance - profile[i-1].distance)
-            let elevDiff = profile[i].elevation - profile[i-1].elevation
-            let gradePct = abs(profile[i].grade)
-
-            // Base driving energy for this segment
-            var segEnergy = segDistMiles * vehicle.effKwhMi
-
-            if elevDiff > 0 {
-                let motorEff = max(0.60, 0.88 - gradePct * 0.015)
-                segEnergy += (vehicle.weightKg * 9.81 * elevDiff) / (3_600_000 * motorEff)
-            } else if elevDiff < 0 {
-                let regenPenalty = max(0.30, vehicle.regenEff - gradePct * 0.02)
-                segEnergy -= (vehicle.weightKg * 9.81 * abs(elevDiff)) / 3_600_000 * regenPenalty
-            }
-
-            let segPct = (max(0, segEnergy) / vehicle.batteryKwh) * 100
+            let segKwh = segmentEnergy(
+                profile: profile, index: i, vehicle: vehicle, avgSpeedMps: avgSpeedMps
+            )
+            let segPct = (max(0, segKwh) / vehicle.batteryKwh) * 100
             segmentEnergyPcts.append(segPct)
         }
 
@@ -441,35 +430,74 @@ class EVRouteService {
         let peakGrade: Double
     }
 
-    private func estimateEnergy(profile: [ElevationPoint], route: MKRoute, vehicle: EVVehicle) -> EnergyResult {
-        let distMiles = route.distance * 0.000621371
-        let baseEnergy = distMiles * vehicle.effKwhMi
+    // MARK: - Per-Segment Physics Energy
 
-        var elevEnergy = 0.0
-        var regenEnergy = 0.0
+    /// Compute energy (kWh) for a single segment using physics:
+    ///   F_roll  = Crr × m × g × cos(θ)
+    ///   F_aero  = 0.5 × ρ × Cd × A × v²
+    ///   F_grade = m × g × sin(θ)
+    ///
+    /// Speed comes from MKRoute.expectedTravelTime (Apple uses speed limits),
+    /// adjusted per-segment for steep grades.
+    private func segmentEnergy(
+        profile: [ElevationPoint], index i: Int,
+        vehicle: EVVehicle, avgSpeedMps: Double
+    ) -> Double {
+        let airDensity = 1.225 // kg/m³
+        let drivetrainEff = 0.88
+        let g = 9.81
+
+        let segDistMiles = profile[i].distance - profile[i - 1].distance
+        let segDistMeters = segDistMiles * 1609.34
+        let gradePct = profile[i].grade
+        let theta = atan(gradePct / 100.0)
+
+        // Adjust speed for steep grades
+        let gradeSpeedFactor: Double
+        if gradePct > 6 { gradeSpeedFactor = 0.75 }
+        else if gradePct > 3 { gradeSpeedFactor = 0.88 }
+        else if gradePct < -6 { gradeSpeedFactor = 0.90 }
+        else { gradeSpeedFactor = 1.0 }
+        let segSpeed = avgSpeedMps * gradeSpeedFactor
+
+        let fRoll = vehicle.rollingResistance * vehicle.weightKg * g * cos(theta)
+        let fAero = 0.5 * airDensity * vehicle.dragCoeff * vehicle.frontalArea * segSpeed * segSpeed
+        let fGrade = vehicle.weightKg * g * sin(theta)
+        let fTotal = fRoll + fAero + fGrade
+
+        let segEnergyJoules = fTotal * segDistMeters
+
+        if segEnergyJoules > 0 {
+            return segEnergyJoules / (3_600_000 * drivetrainEff)
+        } else {
+            return segEnergyJoules / 3_600_000 * vehicle.regenEff
+        }
+    }
+
+    /// Physics-based total energy estimation for a route.
+    private func estimateEnergy(profile: [ElevationPoint], route: MKRoute, vehicle: EVVehicle) -> EnergyResult {
+        let avgSpeedMps = route.distance / max(1, route.expectedTravelTime)
+
+        var totalEnergy = 0.0
         var totalGain = 0.0
         var totalLoss = 0.0
         var grades: [Double] = []
         var peakGrade = 0.0
 
         for i in 1..<profile.count {
-            let elevDiff = profile[i].elevation - profile[i-1].elevation
-            let gradePct = abs(profile[i].grade)
-            grades.append(gradePct)
-            peakGrade = max(peakGrade, gradePct)
+            let elevDiff = profile[i].elevation - profile[i - 1].elevation
+            let absGrade = abs(profile[i].grade)
+            grades.append(absGrade)
+            peakGrade = max(peakGrade, absGrade)
+            if elevDiff > 0 { totalGain += elevDiff }
+            else if elevDiff < 0 { totalLoss += abs(elevDiff) }
 
-            if elevDiff > 0 {
-                totalGain += elevDiff
-                let motorEff = max(0.60, 0.88 - gradePct * 0.015)
-                elevEnergy += (vehicle.weightKg * 9.81 * elevDiff) / (3_600_000 * motorEff)
-            } else if elevDiff < 0 {
-                totalLoss += abs(elevDiff)
-                let regenPenalty = max(0.30, vehicle.regenEff - gradePct * 0.02)
-                regenEnergy += (vehicle.weightKg * 9.81 * abs(elevDiff)) / 3_600_000 * regenPenalty
-            }
+            totalEnergy += segmentEnergy(
+                profile: profile, index: i, vehicle: vehicle, avgSpeedMps: avgSpeedMps
+            )
         }
 
-        let totalKwh = max(0.1, baseEnergy + elevEnergy - regenEnergy)
+        let totalKwh = max(0.1, totalEnergy)
         let avgGrade = grades.isEmpty ? 0 : grades.reduce(0, +) / Double(grades.count)
 
         return EnergyResult(totalKwh: totalKwh, gain: totalGain, loss: totalLoss, avgGrade: avgGrade, peakGrade: peakGrade)

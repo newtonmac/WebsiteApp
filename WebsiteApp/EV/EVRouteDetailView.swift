@@ -336,7 +336,12 @@ struct EVRouteDetailView: View {
                 .foregroundStyle(EVTheme.textPrimary)
 
             if !route.elevationProfile.isEmpty {
-                ElevationChartView(profile: route.elevationProfile, vehicle: vehicle, chargingStops: route.chargingStops)
+                ElevationChartView(
+                    profile: route.elevationProfile,
+                    vehicle: vehicle,
+                    chargingStops: route.chargingStops,
+                    avgSpeedMps: (route.distanceMiles * 1609.34) / max(1, route.durationMinutes * 60)
+                )
                     .frame(height: 160)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
 
@@ -436,6 +441,10 @@ struct EVRouteDetailView: View {
             DetailRow(label: "Arrival Battery", value: String(format: "%.0f%%", arrivalPct),
                       valueColor: arrivalColor)
             DetailRow(label: "Efficiency", value: String(format: "%.1f mi/kWh", route.efficiency))
+            DetailRow(label: "kWh/mile", value: String(format: "%.3f kWh/mi", route.energyKwh / max(0.1, route.distanceMiles)),
+                      valueColor: EVTheme.textSecondary)
+            DetailRow(label: "Est. Electricity Cost", value: String(format: "$%.2f", route.energyKwh * 0.16),
+                      valueColor: EVTheme.accentGreen)
             DetailRow(label: "Distance", value: String(format: "%.1f miles", route.distanceMiles))
             DetailRow(label: "Est. Time", value: formatDuration(route.durationMinutes))
             DetailRow(label: "Avg Grade", value: String(format: "%.1f%%", route.averageGrade))
@@ -586,6 +595,7 @@ struct ElevationChartView: View {
     let profile: [ElevationPoint]
     var vehicle: EVVehicle? = nil
     var chargingStops: [ChargingStop] = []
+    var avgSpeedMps: Double = 26.8 // ~60 mph default if no route available
 
     private var minElevFt: Double {
         ((profile.map(\.elevation).min() ?? 0) * 3.28084) - 20
@@ -600,34 +610,49 @@ struct ElevationChartView: View {
         profile.last?.distance ?? 1
     }
 
-    /// Calculate battery % at each profile point using the same physics model as EVRouteService
+    /// Calculate battery % at each point using physics-based model matching EVRouteService:
+    /// F_roll + F_aero + F_grade per segment, speed from MKRoute (speed limits).
     private var batteryProfile: [Double] {
         guard let vehicle = vehicle, profile.count >= 2 else { return [] }
+
+        let airDensity = 1.225
+        let drivetrainEff = 0.88
+        let g = 9.81
 
         var batteryPcts: [Double] = [100.0]
         var currentPct = 100.0
 
-        // Build a set of charging stop distances for quick lookup
         let stopDistances = chargingStops.map { $0.distanceMiles }
         let chargeTargetPct = 80.0
 
         for i in 1..<profile.count {
-            let elevDiff = profile[i].elevation - profile[i - 1].elevation
             let segDistMiles = profile[i].distance - profile[i - 1].distance
-            let gradePct = abs(profile[i].grade)
+            let segDistMeters = segDistMiles * 1609.34
+            let gradePct = profile[i].grade
+            let theta = atan(gradePct / 100.0)
 
-            // Base driving energy
-            var segEnergy = segDistMiles * vehicle.effKwhMi
+            // Speed adjusted for grade
+            let gradeSpeedFactor: Double
+            if gradePct > 6 { gradeSpeedFactor = 0.75 }
+            else if gradePct > 3 { gradeSpeedFactor = 0.88 }
+            else if gradePct < -6 { gradeSpeedFactor = 0.90 }
+            else { gradeSpeedFactor = 1.0 }
+            let segSpeed = avgSpeedMps * gradeSpeedFactor
 
-            if elevDiff > 0 {
-                let motorEff = max(0.60, 0.88 - gradePct * 0.015)
-                segEnergy += (vehicle.weightKg * 9.81 * elevDiff) / (3_600_000 * motorEff)
-            } else if elevDiff < 0 {
-                let regenPenalty = max(0.30, vehicle.regenEff - gradePct * 0.02)
-                segEnergy -= (vehicle.weightKg * 9.81 * abs(elevDiff)) / 3_600_000 * regenPenalty
+            let fRoll = vehicle.rollingResistance * vehicle.weightKg * g * cos(theta)
+            let fAero = 0.5 * airDensity * vehicle.dragCoeff * vehicle.frontalArea * segSpeed * segSpeed
+            let fGrade = vehicle.weightKg * g * sin(theta)
+            let fTotal = fRoll + fAero + fGrade
+
+            let segEnergyJoules = fTotal * segDistMeters
+            let segEnergyKwh: Double
+            if segEnergyJoules > 0 {
+                segEnergyKwh = segEnergyJoules / (3_600_000 * drivetrainEff)
+            } else {
+                segEnergyKwh = segEnergyJoules / 3_600_000 * vehicle.regenEff
             }
 
-            let segPct = (max(0, segEnergy) / vehicle.batteryKwh) * 100
+            let segPct = (max(0, segEnergyKwh) / vehicle.batteryKwh) * 100
 
             // Check if a charging stop occurs before this segment
             for stopDist in stopDistances {
