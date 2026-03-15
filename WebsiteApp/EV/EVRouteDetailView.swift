@@ -298,14 +298,25 @@ struct EVRouteDetailView: View {
     // MARK: - Energy Breakdown
 
     private var energyBreakdownSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let energyAdded = route.chargingStops.reduce(0.0) { $0 + $1.energyToAddKwh }
+        let arrivalPct = route.finalBatteryPct
+        let arrivalColor = arrivalPct < 20 ? EVTheme.accentRed : arrivalPct < 40 ? EVTheme.accentYellow : EVTheme.accentGreen
+
+        return VStack(alignment: .leading, spacing: 12) {
             Text("Energy Details")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(EVTheme.textPrimary)
 
             DetailRow(label: "Total Energy", value: String(format: "%.1f kWh", route.energyKwh))
-            DetailRow(label: "Battery Used", value: String(format: "%.0f%%", route.batteryPctUsed),
-                      valueColor: route.batteryPctUsed > 80 ? EVTheme.accentRed : route.batteryPctUsed > 60 ? EVTheme.accentYellow : EVTheme.accentGreen)
+
+            if route.needsCharging {
+                DetailRow(label: "Energy Added", value: String(format: "+%.1f kWh", energyAdded),
+                          valueColor: EVTheme.accentGreen)
+                DetailRow(label: "Charging Stops", value: "\(route.chargingStops.count)")
+            }
+
+            DetailRow(label: "Arrival Battery", value: String(format: "%.0f%%", arrivalPct),
+                      valueColor: arrivalColor)
             DetailRow(label: "Efficiency", value: String(format: "%.1f mi/kWh", route.efficiency))
             DetailRow(label: "Distance", value: String(format: "%.1f miles", route.distanceMiles))
             DetailRow(label: "Est. Time", value: formatDuration(route.durationMinutes))
@@ -313,7 +324,7 @@ struct EVRouteDetailView: View {
             DetailRow(label: "Peak Grade", value: String(format: "%.1f%%", route.peakGrade),
                       valueColor: route.peakGrade > 8 ? EVTheme.accentRed : route.peakGrade > 5 ? EVTheme.accentYellow : EVTheme.accentGreen)
 
-            BatteryBarView(vehicleName: vehicle.displayName, batteryPctUsed: route.batteryPctUsed)
+            BatteryBarView(vehicleName: vehicle.displayName, batteryPctUsed: 100 - route.finalBatteryPct)
         }
     }
 
