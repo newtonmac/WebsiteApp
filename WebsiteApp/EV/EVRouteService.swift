@@ -176,8 +176,6 @@ class EVRouteService {
         var currentBatteryPct = startBatteryPct
         var stops: [ChargingStop] = []
         var stopNumber = 1
-        let totalMiles = route.distance * 0.000621371
-
         guard profile.count >= 2, points.count >= 2 else {
             return ChargingPlan(stops: [], finalBatteryPct: max(0, startBatteryPct - totalBatteryPct))
         }

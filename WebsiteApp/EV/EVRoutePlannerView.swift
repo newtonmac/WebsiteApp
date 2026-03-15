@@ -279,9 +279,9 @@ struct EVRoutePlannerView: View {
                 )
             }
             .onChange(of: showChargers) { _, isOn in
-                if isOn, let route = selectedRoute, chargerService.chargers.isEmpty {
+                if isOn, let route = selectedRoute, let mkRoute = route.route, chargerService.chargers.isEmpty {
                     Task {
-                        await chargerService.findChargersAlongRoute(route.route)
+                        await chargerService.findChargersAlongRoute(mkRoute)
                     }
                 }
             }
@@ -453,9 +453,9 @@ struct EVRoutePlannerView: View {
                             selectedRoute = route
                         }
                         fitMapToRoute(route)
-                        if showChargers {
+                        if showChargers, let mkRoute = route.route {
                             Task {
-                                await chargerService.findChargersAlongRoute(route.route)
+                                await chargerService.findChargersAlongRoute(mkRoute)
                             }
                         }
                     }
@@ -740,7 +740,9 @@ struct EVRoutePlannerView: View {
         if let best = routeService.routes.first {
             selectedRoute = best
             fitMapToRoute(best)
-            await chargerService.findChargersAlongRoute(best.route)
+            if let mkRoute = best.route {
+                await chargerService.findChargersAlongRoute(mkRoute)
+            }
         }
     }
 
