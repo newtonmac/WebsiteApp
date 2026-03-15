@@ -18,6 +18,8 @@ struct EVRoutePlannerView: View {
     @State private var panelExpanded = true
     @State private var selectedCharger: EVCharger?
     @State private var mapStyle: EVMapStyle = .standard
+    @State private var showingSummarySheet = false
+    @State private var summaryPDFData: Data?
     @State private var selectedNetworks: Set<ChargerNetwork> = Set(ChargerNetwork.allCases)
     @State private var keyboardOffset: CGFloat = 0
     @Environment(\.verticalSizeClass) private var verticalSizeClass
@@ -211,6 +213,11 @@ struct EVRoutePlannerView: View {
             ChargerDetailSheet(charger: charger)
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showingSummarySheet) {
+            if let pdfData = summaryPDFData {
+                PDFShareSheet(pdfData: pdfData, fileName: "EV_Route_Summary.pdf")
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { notification in
             if let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
@@ -528,6 +535,33 @@ struct EVRoutePlannerView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 14))
                     .shadow(color: Color(hex: "#33ccff").opacity(0.3), radius: 8, y: 4)
                 }
+            }
+
+            Button {
+                let pdfData = EVRoutePDFGenerator.generatePDF(
+                    route: route,
+                    vehicle: selectedVehicle,
+                    origin: originText,
+                    destination: destinationText,
+                    chargers: chargerService.chargers
+                )
+                summaryPDFData = pdfData
+                showingSummarySheet = true
+            } label: {
+                HStack {
+                    Image(systemName: "doc.text.fill")
+                    Text("Summary")
+                        .fontWeight(.semibold)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(
+                    LinearGradient(colors: [Color(hex: "#8b5cf6"), Color(hex: "#6d28d9")],
+                                   startPoint: .topLeading, endPoint: .bottomTrailing)
+                )
+                .foregroundStyle(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .shadow(color: Color(hex: "#8b5cf6").opacity(0.3), radius: 8, y: 4)
             }
         }
     }
@@ -964,4 +998,21 @@ struct FlowLayout: Layout {
             lineHeight = max(lineHeight, size.height)
         }
     }
+}
+
+// MARK: - PDF Share Sheet
+
+struct PDFShareSheet: UIViewControllerRepresentable {
+    let pdfData: Data
+    let fileName: String
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let tempDir = FileManager.default.temporaryDirectory
+        let fileURL = tempDir.appendingPathComponent(fileName)
+        try? pdfData.write(to: fileURL)
+        let controller = UIActivityViewController(activityItems: [fileURL], applicationActivities: nil)
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
