@@ -135,16 +135,7 @@ struct EVRouteCard: View {
     }
 
     private var batteryColor: Color {
-        let remaining = route.remainingBatteryPct
-        if remaining < 20 { return EVTheme.accentRed }
-        if remaining < 40 { return EVTheme.accentYellow }
-        return EVTheme.accentGreen
-    }
-
-    private func formatDuration(_ minutes: Double) -> String {
-        let hrs = Int(minutes) / 60
-        let mins = Int(minutes) % 60
-        return hrs > 0 ? "\(hrs)h \(mins)m" : "\(mins)m"
+        batteryLevelColor(route.remainingBatteryPct)
     }
 }
 
@@ -219,10 +210,7 @@ struct BatteryBarView: View {
     }
 
     private var remainingColor: Color {
-        let remaining = 100 - batteryPctUsed
-        if remaining < 20 { return EVTheme.accentRed }
-        if remaining < 40 { return EVTheme.accentYellow }
-        return EVTheme.accentGreen
+        batteryLevelColor(100 - batteryPctUsed)
     }
 }
 

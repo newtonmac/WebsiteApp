@@ -372,13 +372,13 @@ struct EVRoutePlannerView: View {
                             }
                             .padding(.horizontal, isLandscape ? 10 : 6)
                             .padding(.vertical, 6)
-                            .background(isSelected ? Color(hex: network.color).opacity(0.2) : EVTheme.bgInput)
+                            .background(isSelected ? network.colorValue.opacity(0.2) : EVTheme.bgInput)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8)
-                                    .stroke(isSelected ? Color(hex: network.color) : EVTheme.border, lineWidth: 1)
+                                    .stroke(isSelected ? network.colorValue : EVTheme.border, lineWidth: 1)
                             )
                             .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .foregroundStyle(isSelected ? Color(hex: network.color) : EVTheme.textSecondary)
+                            .foregroundStyle(isSelected ? network.colorValue : EVTheme.textSecondary)
                         }
                     }
                 }
@@ -594,16 +594,16 @@ struct EVRoutePlannerView: View {
     private func energyBreakdownCard(for route: RouteResult) -> some View {
         let vehicle = selectedVehicle
         let baseDriving = route.distanceMiles * vehicle.effKwhMi
-        let elevGainFt = Int(route.elevationGain * 3.28084)
+        let elevGainFt = metersToFeet(route.elevationGain)
         let elevGainM = Int(route.elevationGain)
         let climbingKwh = route.elevationGain > 0
-            ? (vehicle.weightKg * 9.81 * route.elevationGain) / (3_600_000 * 0.85)
+            ? (vehicle.weightKg * EVConstants.gravity * route.elevationGain) / (EVConstants.joulesPerKwh * 0.85)
             : 0
         let regenKwh = route.elevationLoss > 0
-            ? (vehicle.weightKg * 9.81 * route.elevationLoss) / 3_600_000 * vehicle.regenEff
+            ? (vehicle.weightKg * EVConstants.gravity * route.elevationLoss) / EVConstants.joulesPerKwh * vehicle.regenEff
             : 0
         let netElevM = route.elevationGain - route.elevationLoss
-        let netElevFt = Int(netElevM * 3.28084)
+        let netElevFt = metersToFeet(netElevM)
         let remaining = route.remainingBatteryPct
         let costPerKwh = settings.electricityCostPerKwh
         let distStr = settings.distanceString(route.distanceMiles)
@@ -823,12 +823,6 @@ struct EVRoutePlannerView: View {
         )
     }
 
-    private func formatDuration(_ minutes: Double) -> String {
-        let hrs = Int(minutes) / 60
-        let mins = Int(minutes) % 60
-        return hrs > 0 ? "\(hrs)h \(mins)m" : "\(mins)m"
-    }
-
     // MARK: - Actions
 
     private func planRoute() async {
@@ -929,7 +923,7 @@ struct NetworkIconView: View {
     let size: CGFloat
 
     var body: some View {
-        let brandColor = Color(hex: network.color)
+        let brandColor = network.colorValue
         Canvas { context, canvasSize in
             let s = canvasSize.width
             switch network {

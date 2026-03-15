@@ -596,12 +596,8 @@ class EVRouteService {
         profile: [ElevationPoint], index i: Int,
         vehicle: EVVehicle, avgSpeedMps: Double
     ) -> Double {
-        let airDensity = 1.225 // kg/m³
-        let drivetrainEff = 0.88
-        let g = 9.81
-
         let segDistMiles = profile[i].distance - profile[i - 1].distance
-        let segDistMeters = segDistMiles * 1609.34
+        let segDistMeters = segDistMiles * EVConstants.metersPerMile
         let gradePct = profile[i].grade
         let theta = atan(gradePct / 100.0)
 
@@ -613,17 +609,17 @@ class EVRouteService {
         else { gradeSpeedFactor = 1.0 }
         let segSpeed = avgSpeedMps * gradeSpeedFactor
 
-        let fRoll = vehicle.rollingResistance * vehicle.weightKg * g * cos(theta)
-        let fAero = 0.5 * airDensity * vehicle.dragCoeff * vehicle.frontalArea * segSpeed * segSpeed
-        let fGrade = vehicle.weightKg * g * sin(theta)
+        let fRoll = vehicle.rollingResistance * vehicle.weightKg * EVConstants.gravity * cos(theta)
+        let fAero = 0.5 * EVConstants.airDensity * vehicle.dragCoeff * vehicle.frontalArea * segSpeed * segSpeed
+        let fGrade = vehicle.weightKg * EVConstants.gravity * sin(theta)
         let fTotal = fRoll + fAero + fGrade
 
         let segEnergyJoules = fTotal * segDistMeters
 
         if segEnergyJoules > 0 {
-            return segEnergyJoules / (3_600_000 * drivetrainEff)
+            return segEnergyJoules / (EVConstants.joulesPerKwh * EVConstants.drivetrainEfficiency)
         } else {
-            return segEnergyJoules / 3_600_000 * vehicle.regenEff
+            return segEnergyJoules / EVConstants.joulesPerKwh * vehicle.regenEff
         }
     }
 

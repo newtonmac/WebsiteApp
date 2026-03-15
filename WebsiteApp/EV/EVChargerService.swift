@@ -503,32 +503,6 @@ class EVChargerService {
         return sampled
     }
 
-    /// Check if a coordinate is within N miles of any point on the route
-    private func isWithinMilesOfRoute(_ coord: CLLocationCoordinate2D, route: MKRoute, miles: Double) -> Bool {
-        let chargerLoc = CLLocation(latitude: coord.latitude, longitude: coord.longitude)
-        let polyline = route.polyline
-        let pointCount = polyline.pointCount
-        let mapPoints = polyline.points()
-        let maxMeters = miles * 1609.34
-
-        // Sample at least 500 points along the polyline for accuracy
-        let step = max(1, pointCount / 500)
-        for i in stride(from: 0, to: pointCount, by: step) {
-            let routePoint = mapPoints[i].coordinate
-            let routeLoc = CLLocation(latitude: routePoint.latitude, longitude: routePoint.longitude)
-            if chargerLoc.distance(from: routeLoc) <= maxMeters {
-                return true
-            }
-        }
-        // Always check the last point
-        if pointCount > 0 {
-            let last = mapPoints[pointCount - 1].coordinate
-            if chargerLoc.distance(from: CLLocation(latitude: last.latitude, longitude: last.longitude)) <= maxMeters {
-                return true
-            }
-        }
-        return false
-    }
 }
 
 // MARK: - NREL API Models

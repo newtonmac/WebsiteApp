@@ -292,7 +292,7 @@ struct ChargerMarkerView: View {
     }
 
     private var networkColor: Color {
-        Color(hex: charger.network.color)
+        charger.network.colorValue
     }
 }
 
@@ -306,7 +306,7 @@ struct ChargerDetailSheet: View {
             // Header
             HStack(spacing: 10) {
                 Circle()
-                    .fill(Color(hex: charger.network.color))
+                    .fill(charger.network.colorValue)
                     .frame(width: 14, height: 14)
                 Text(charger.name)
                     .font(.system(size: 18, weight: .bold))
@@ -319,10 +319,10 @@ struct ChargerDetailSheet: View {
             HStack(spacing: 6) {
                 Image(systemName: "bolt.fill")
                     .font(.system(size: 13))
-                    .foregroundStyle(Color(hex: charger.network.color))
+                    .foregroundStyle(charger.network.colorValue)
                 Text(charger.network.rawValue)
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Color(hex: charger.network.color))
+                    .foregroundStyle(charger.network.colorValue)
             }
 
             // Address
@@ -455,7 +455,7 @@ struct ChargerDetailSheet: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
                 .background(
-                    LinearGradient(colors: [Color(hex: charger.network.color), Color(hex: charger.network.color).opacity(0.7)],
+                    LinearGradient(colors: [charger.network.colorValue, charger.network.colorValue.opacity(0.7)],
                                    startPoint: .topLeading, endPoint: .bottomTrailing)
                 )
                 .foregroundStyle(charger.network == .shell ? .black : .white)

@@ -149,10 +149,10 @@ struct EVRoutePDFGenerator {
         currentY = drawCard(context: context, x: margin, y: currentY, width: contentWidth) { cardX, cardY, cardW in
             var y = cardY
             y = drawKeyValue(context: context, key: "Elevation Gain",
-                             value: String(format: "+%.0f m (+%d ft)", route.elevationGain, Int(route.elevationGain * 3.28084)),
+                             value: String(format: "+%.0f m (+%d ft)", route.elevationGain, metersToFeet(route.elevationGain)),
                              x: cardX, y: y, width: cardW, valueColor: accentOrange)
             y = drawKeyValue(context: context, key: "Elevation Loss",
-                             value: String(format: "-%.0f m (-%d ft)", route.elevationLoss, Int(route.elevationLoss * 3.28084)),
+                             value: String(format: "-%.0f m (-%d ft)", route.elevationLoss, metersToFeet(route.elevationLoss)),
                              x: cardX, y: y, width: cardW, valueColor: accentGreen)
             y = drawKeyValue(context: context, key: "Avg Grade", value: String(format: "%.1f%%", route.averageGrade),
                              x: cardX, y: y, width: cardW)
@@ -165,7 +165,7 @@ struct EVRoutePDFGenerator {
 
         // Regen estimate
         let regenKwh = route.elevationLoss > 0
-            ? (vehicle.weightKg * 9.81 * route.elevationLoss) / 3_600_000 * vehicle.regenEff
+            ? (vehicle.weightKg * EVConstants.gravity * route.elevationLoss) / EVConstants.joulesPerKwh * vehicle.regenEff
             : 0
         if regenKwh > 0.5 {
             ensureSpace(30)
@@ -221,7 +221,7 @@ struct EVRoutePDFGenerator {
 
             // Total cost estimate
             let totalCost = route.chargingStops.reduce(0.0) { total, stop in
-                let nearest = nearestCharger(to: stop, from: chargers)
+                let nearest = nearestCharger(to: stop.coordinate, from: chargers)
                 let price = nearest?.pricePerKwh ?? ChargerNetwork.electrifyAmerica.defaultPricePerKwh
                 return total + stop.energyToAddKwh * price
             }
@@ -235,7 +235,7 @@ struct EVRoutePDFGenerator {
 
             for stop in route.chargingStops {
                 ensureSpace(120)
-                let nearest = nearestCharger(to: stop, from: chargers)
+                let nearest = nearestCharger(to: stop.coordinate, from: chargers)
                 let price = nearest?.pricePerKwh ?? ChargerNetwork.electrifyAmerica.defaultPricePerKwh
                 let cost = stop.energyToAddKwh * price
 
@@ -255,9 +255,9 @@ struct EVRoutePDFGenerator {
                     y -= 2
 
                     let netElev = stop.sectionElevationGain - stop.sectionElevationLoss
-                    let netFt = Int(netElev * 3.28084)
+                    let netFt = Int(netElev * EVConstants.feetPerMeter)
                     y = drawText(context: context,
-                                 text: "Elevation: \(netFt > 0 ? "+" : "")\(netFt) ft (+\(Int(stop.sectionElevationGain * 3.28084))/-\(Int(stop.sectionElevationLoss * 3.28084)) ft)",
+                                 text: "Elevation: \(netFt > 0 ? "+" : "")\(netFt) ft (+\(Int(stop.sectionElevationGain * EVConstants.feetPerMeter))/-\(Int(stop.sectionElevationLoss * EVConstants.feetPerMeter)) ft)",
                                  x: cardX, y: y, width: cardW,
                                  font: font(9), color: textSecondary)
                     y -= 6
@@ -297,9 +297,9 @@ struct EVRoutePDFGenerator {
                                  font: font(10, weight: .medium), color: textPrimary)
                     y -= 2
                     let netElev = finalSec.elevationGain - finalSec.elevationLoss
-                    let netFt = Int(netElev * 3.28084)
+                    let netFt = Int(netElev * EVConstants.feetPerMeter)
                     y = drawText(context: context,
-                                 text: "Elevation: \(netFt > 0 ? "+" : "")\(netFt) ft (+\(Int(finalSec.elevationGain * 3.28084))/-\(Int(finalSec.elevationLoss * 3.28084)) ft)",
+                                 text: "Elevation: \(netFt > 0 ? "+" : "")\(netFt) ft (+\(Int(finalSec.elevationGain * EVConstants.feetPerMeter))/-\(Int(finalSec.elevationLoss * EVConstants.feetPerMeter)) ft)",
                                  x: cardX, y: y, width: cardW,
                                  font: font(9), color: textSecondary)
                     y -= 4
@@ -321,7 +321,7 @@ struct EVRoutePDFGenerator {
 
         let baseDriving = route.distanceMiles * vehicle.effKwhMi
         let climbingKwh = route.elevationGain > 0
-            ? (vehicle.weightKg * 9.81 * route.elevationGain) / (3_600_000 * 0.85)
+            ? (vehicle.weightKg * EVConstants.gravity * route.elevationGain) / (EVConstants.joulesPerKwh * 0.85)
             : 0
 
         let breakdownItems: [(String, Double, UIColor)] = [
@@ -540,7 +540,7 @@ struct EVRoutePDFGenerator {
         let chartY = graphRect.minY + 20
         let chartH = graphRect.height - 35
 
-        let elevations = profile.map { $0.elevation * 3.28084 }  // to feet
+        let elevations = profile.map { $0.elevation * EVConstants.feetPerMeter }  // to feet
         let minElev = (elevations.min() ?? 0) - 20
         let maxElev = (elevations.max() ?? 100) + 20
         let elevRange = max(1, maxElev - minElev)
@@ -573,7 +573,7 @@ struct EVRoutePDFGenerator {
         fillPath.move(to: CGPoint(x: chartX, y: chartY))
         for point in profile {
             let px = chartX + (point.distance / maxDist) * chartW
-            let py = chartY + ((point.elevation * 3.28084 - minElev) / elevRange) * chartH
+            let py = chartY + ((point.elevation * EVConstants.feetPerMeter - minElev) / elevRange) * chartH
             fillPath.addLine(to: CGPoint(x: px, y: py))
         }
         fillPath.addLine(to: CGPoint(x: chartX + chartW, y: chartY))
@@ -593,9 +593,9 @@ struct EVRoutePDFGenerator {
         // Grade-colored line segments
         for i in 1..<profile.count {
             let x1 = chartX + (profile[i-1].distance / maxDist) * chartW
-            let y1 = chartY + ((profile[i-1].elevation * 3.28084 - minElev) / elevRange) * chartH
+            let y1 = chartY + ((profile[i-1].elevation * EVConstants.feetPerMeter - minElev) / elevRange) * chartH
             let x2 = chartX + (profile[i].distance / maxDist) * chartW
-            let y2 = chartY + ((profile[i].elevation * 3.28084 - minElev) / elevRange) * chartH
+            let y2 = chartY + ((profile[i].elevation * EVConstants.feetPerMeter - minElev) / elevRange) * chartH
 
             let grade = profile[i].grade
             let color: UIColor
@@ -662,8 +662,11 @@ struct EVRoutePDFGenerator {
     ) -> CGFloat {
         guard profile.count >= 2 else { return y }
 
-        let battPcts = computeBatteryProfile(profile: profile, vehicle: vehicle,
-                                              chargingStops: chargingStops, avgSpeedMps: avgSpeedMps)
+        let battPcts = computeBatteryProfile(
+                    profile: profile, vehicle: vehicle, chargingStops: chargingStops,
+                    avgSpeedMps: avgSpeedMps,
+                    startPct: EVSettingsManager.shared.startChargePct,
+                    chargeTargetPct: EVSettingsManager.shared.chargeTargetPct)
         guard battPcts.count == profile.count else { return y }
 
         let graphRect = CGRect(x: x, y: y - height, width: width, height: height)
@@ -818,89 +821,12 @@ struct EVRoutePDFGenerator {
         return currentY
     }
 
-    // MARK: - Battery Profile Calculation (matches ElevationChartView)
-
-    private static func computeBatteryProfile(
-        profile: [ElevationPoint], vehicle: EVVehicle,
-        chargingStops: [ChargingStop], avgSpeedMps: Double
-    ) -> [Double] {
-        let airDensity = 1.225
-        let drivetrainEff = 0.88
-        let g = 9.81
-
-        var batteryPcts: [Double] = [100.0]
-        var currentPct = 100.0
-        let stopDistances = chargingStops.map { $0.distanceMiles }
-        let chargeTargetPct = 80.0
-
-        for i in 1..<profile.count {
-            let segDistMiles = profile[i].distance - profile[i - 1].distance
-            let segDistMeters = segDistMiles * 1609.34
-            let gradePct = profile[i].grade
-            let theta = atan(gradePct / 100.0)
-
-            let gradeSpeedFactor: Double
-            if gradePct > 6 { gradeSpeedFactor = 0.75 }
-            else if gradePct > 3 { gradeSpeedFactor = 0.88 }
-            else if gradePct < -6 { gradeSpeedFactor = 0.90 }
-            else { gradeSpeedFactor = 1.0 }
-            let segSpeed = avgSpeedMps * gradeSpeedFactor
-
-            let fRoll = vehicle.rollingResistance * vehicle.weightKg * g * cos(theta)
-            let fAero = 0.5 * airDensity * vehicle.dragCoeff * vehicle.frontalArea * segSpeed * segSpeed
-            let fGrade = vehicle.weightKg * g * sin(theta)
-            let fTotal = fRoll + fAero + fGrade
-
-            let segEnergyJoules = fTotal * segDistMeters
-            let segEnergyKwh: Double
-            if segEnergyJoules > 0 {
-                segEnergyKwh = segEnergyJoules / (3_600_000 * drivetrainEff)
-            } else {
-                segEnergyKwh = segEnergyJoules / 3_600_000 * vehicle.regenEff
-            }
-
-            let segPct = (max(0, segEnergyKwh) / vehicle.batteryKwh) * 100
-
-            for stopDist in stopDistances {
-                if stopDist > profile[i - 1].distance && stopDist <= profile[i].distance {
-                    currentPct = chargeTargetPct
-                }
-            }
-
-            currentPct -= segPct
-            currentPct = max(0, min(100, currentPct))
-            batteryPcts.append(currentPct)
-        }
-
-        return batteryPcts
-    }
-
     // MARK: - Utilities
-
-    private static func formatDuration(_ minutes: Double) -> String {
-        let hrs = Int(minutes) / 60
-        let mins = Int(minutes) % 60
-        return hrs > 0 ? "\(hrs)h \(mins)m" : "\(mins)m"
-    }
 
     private static func formatDate(_ date: Date) -> String {
         let f = DateFormatter()
         f.dateStyle = .medium
         f.timeStyle = .short
         return f.string(from: date)
-    }
-
-    private static func nearestCharger(to stop: ChargingStop, from chargers: [EVCharger]) -> EVCharger? {
-        let stopLoc = CLLocation(latitude: stop.coordinate.latitude, longitude: stop.coordinate.longitude)
-        var best: EVCharger?
-        var bestDist = Double.greatestFiniteMagnitude
-        for charger in chargers {
-            let dist = stopLoc.distance(from: CLLocation(latitude: charger.coordinate.latitude, longitude: charger.coordinate.longitude))
-            if dist < bestDist {
-                bestDist = dist
-                best = charger
-            }
-        }
-        return best
     }
 }

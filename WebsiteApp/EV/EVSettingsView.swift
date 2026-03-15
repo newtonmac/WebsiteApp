@@ -179,13 +179,13 @@ struct EVSettingsView: View {
                             }
                             .padding(.horizontal, 10)
                             .padding(.vertical, 7)
-                            .background(isSelected ? Color(hex: network.color).opacity(0.2) : EVTheme.bgPrimary)
+                            .background(isSelected ? network.colorValue.opacity(0.2) : EVTheme.bgPrimary)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8)
-                                    .stroke(isSelected ? Color(hex: network.color) : EVTheme.border, lineWidth: 1)
+                                    .stroke(isSelected ? network.colorValue : EVTheme.border, lineWidth: 1)
                             )
                             .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .foregroundStyle(isSelected ? Color(hex: network.color) : EVTheme.textSecondary)
+                            .foregroundStyle(isSelected ? network.colorValue : EVTheme.textSecondary)
                         }
                     }
                 }

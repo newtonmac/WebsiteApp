@@ -145,7 +145,7 @@ struct EVRouteDetailView: View {
             }
 
             // Climbing
-            let elevFt = Int(route.elevationGain * 3.28084)
+            let elevFt = metersToFeet(route.elevationGain)
             let elevM = Int(route.elevationGain)
             if elevFt < 500 {
                 checkItem("**Low climbing** — only +\(elevM)m (+\(elevFt)ft) elevation gain", color: EVTheme.accentGreen)
@@ -157,7 +157,7 @@ struct EVRouteDetailView: View {
 
             // Regen
             let regenKwh = route.elevationLoss > 0
-                ? (vehicle.weightKg * 9.81 * route.elevationLoss) / 3_600_000 * vehicle.regenEff
+                ? (vehicle.weightKg * EVConstants.gravity * route.elevationLoss) / EVConstants.joulesPerKwh * vehicle.regenEff
                 : 0
             if regenKwh > 0.5 {
                 checkItem("Recovers **\(String(format: "%.1f kWh", regenKwh))** through regenerative braking on downhill sections", color: EVTheme.accentGreen)
@@ -192,19 +192,8 @@ struct EVRouteDetailView: View {
 
     /// Find the nearest charger to a charging stop and return its price per kWh
     private func pricePerKwhForStop(_ stop: ChargingStop) -> Double {
-        let stopLoc = CLLocation(latitude: stop.coordinate.latitude, longitude: stop.coordinate.longitude)
-        var bestCharger: EVCharger?
-        var bestDist = Double.greatestFiniteMagnitude
-
-        for charger in chargers {
-            let dist = stopLoc.distance(from: CLLocation(latitude: charger.coordinate.latitude, longitude: charger.coordinate.longitude))
-            if dist < bestDist {
-                bestDist = dist
-                bestCharger = charger
-            }
-        }
-
-        return bestCharger?.pricePerKwh ?? ChargerNetwork.electrifyAmerica.defaultPricePerKwh
+        nearestCharger(to: stop.coordinate, from: chargers)?.pricePerKwh
+            ?? ChargerNetwork.electrifyAmerica.defaultPricePerKwh
     }
 
     /// Total estimated charging cost for all stops
@@ -327,8 +316,8 @@ struct EVRouteDetailView: View {
     private func sectionStatsRow(label: String, distanceMiles: Double, energyKwh: Double, elevationGain: Double, elevationLoss: Double) -> some View {
         let efficiency = energyKwh > 0 ? distanceMiles / energyKwh : 0
         let kwhPerMile = distanceMiles > 0 ? energyKwh / distanceMiles : 0
-        let gainFt = Int(elevationGain * 3.28084)
-        let lossFt = Int(elevationLoss * 3.28084)
+        let gainFt = metersToFeet(elevationGain)
+        let lossFt = metersToFeet(elevationLoss)
         let netElevFt = gainFt - lossFt
         let elevColor = netElevFt > 200 ? EVTheme.accentRed : netElevFt < -200 ? EVTheme.accentGreen : EVTheme.accentYellow
         let effColor = efficiency > 3.5 ? EVTheme.accentGreen : efficiency > 2.5 ? EVTheme.accentYellow : EVTheme.accentRed
@@ -448,11 +437,11 @@ struct EVRouteDetailView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 10))
 
                 HStack {
-                    Label("\(Int(route.elevationGain * 3.28084)) ft gain", systemImage: "arrow.up.right")
+                    Label("\(metersToFeet(route.elevationGain)) ft gain", systemImage: "arrow.up.right")
                         .font(.caption)
                         .foregroundStyle(EVTheme.accentGreen)
                     Spacer()
-                    Label("\(Int(route.elevationLoss * 3.28084)) ft loss", systemImage: "arrow.down.right")
+                    Label("\(metersToFeet(route.elevationLoss)) ft loss", systemImage: "arrow.down.right")
                         .font(.caption)
                         .foregroundStyle(EVTheme.accentRed)
                     Spacer()
@@ -523,7 +512,7 @@ struct EVRouteDetailView: View {
     private var energyBreakdownSection: some View {
         let energyAdded = route.chargingStops.reduce(0.0) { $0 + $1.energyToAddKwh }
         let arrivalPct = route.finalBatteryPct
-        let arrivalColor = arrivalPct < 20 ? EVTheme.accentRed : arrivalPct < 40 ? EVTheme.accentYellow : EVTheme.accentGreen
+        let arrivalColor = batteryLevelColor(arrivalPct)
 
         return VStack(alignment: .leading, spacing: 12) {
             Text("Energy Details")
@@ -670,14 +659,8 @@ struct EVRouteDetailView: View {
 
     // MARK: - Helpers
 
-    private func formatDuration(_ minutes: Double) -> String {
-        let hrs = Int(minutes) / 60
-        let mins = Int(minutes) % 60
-        return hrs > 0 ? "\(hrs)h \(mins)m" : "\(mins)m"
-    }
-
     private func networkColor(_ network: ChargerNetwork) -> Color {
-        Color(hex: network.color)
+        network.colorValue
     }
 }
 
@@ -706,10 +689,10 @@ struct ElevationChartView: View {
     var avgSpeedMps: Double = 26.8 // ~60 mph default if no route available
 
     private var minElevFt: Double {
-        ((profile.map(\.elevation).min() ?? 0) * 3.28084) - 20
+        ((profile.map(\.elevation).min() ?? 0) * EVConstants.feetPerMeter) - 20
     }
     private var maxElevFt: Double {
-        ((profile.map(\.elevation).max() ?? 100) * 3.28084) + 20
+        ((profile.map(\.elevation).max() ?? 100) * EVConstants.feetPerMeter) + 20
     }
     private var elevRange: Double {
         max(1, maxElevFt - minElevFt)
@@ -718,64 +701,17 @@ struct ElevationChartView: View {
         profile.last?.distance ?? 1
     }
 
-    /// Calculate battery % at each point using physics-based model matching EVRouteService:
-    /// F_roll + F_aero + F_grade per segment, speed from MKRoute (speed limits).
+    /// Calculate battery % at each point using shared physics-based model.
     private var batteryProfile: [Double] {
-        guard let vehicle = vehicle, profile.count >= 2 else { return [] }
-
-        let airDensity = 1.225
-        let drivetrainEff = 0.88
-        let g = 9.81
-
-        let startPct = EVSettingsManager.shared.startChargePct
-        let chargeTargetPct = EVSettingsManager.shared.chargeTargetPct
-        var batteryPcts: [Double] = [startPct]
-        var currentPct = startPct
-
-        let stopDistances = chargingStops.map { $0.distanceMiles }
-
-        for i in 1..<profile.count {
-            let segDistMiles = profile[i].distance - profile[i - 1].distance
-            let segDistMeters = segDistMiles * 1609.34
-            let gradePct = profile[i].grade
-            let theta = atan(gradePct / 100.0)
-
-            // Speed adjusted for grade
-            let gradeSpeedFactor: Double
-            if gradePct > 6 { gradeSpeedFactor = 0.75 }
-            else if gradePct > 3 { gradeSpeedFactor = 0.88 }
-            else if gradePct < -6 { gradeSpeedFactor = 0.90 }
-            else { gradeSpeedFactor = 1.0 }
-            let segSpeed = avgSpeedMps * gradeSpeedFactor
-
-            let fRoll = vehicle.rollingResistance * vehicle.weightKg * g * cos(theta)
-            let fAero = 0.5 * airDensity * vehicle.dragCoeff * vehicle.frontalArea * segSpeed * segSpeed
-            let fGrade = vehicle.weightKg * g * sin(theta)
-            let fTotal = fRoll + fAero + fGrade
-
-            let segEnergyJoules = fTotal * segDistMeters
-            let segEnergyKwh: Double
-            if segEnergyJoules > 0 {
-                segEnergyKwh = segEnergyJoules / (3_600_000 * drivetrainEff)
-            } else {
-                segEnergyKwh = segEnergyJoules / 3_600_000 * vehicle.regenEff
-            }
-
-            let segPct = (max(0, segEnergyKwh) / vehicle.batteryKwh) * 100
-
-            // Check if a charging stop occurs before this segment
-            for stopDist in stopDistances {
-                if stopDist > profile[i - 1].distance && stopDist <= profile[i].distance {
-                    currentPct = chargeTargetPct
-                }
-            }
-
-            currentPct -= segPct
-            currentPct = max(0, min(100, currentPct))
-            batteryPcts.append(currentPct)
-        }
-
-        return batteryPcts
+        guard let vehicle = vehicle else { return [] }
+        return computeBatteryProfile(
+            profile: profile,
+            vehicle: vehicle,
+            chargingStops: chargingStops,
+            avgSpeedMps: avgSpeedMps,
+            startPct: EVSettingsManager.shared.startChargePct,
+            chargeTargetPct: EVSettingsManager.shared.chargeTargetPct
+        )
     }
 
     var body: some View {
@@ -852,7 +788,7 @@ struct ElevationChartView: View {
 
                     for point in profile {
                         let x = (point.distance / maxDist) * cWidth
-                        let elevFt = point.elevation * 3.28084
+                        let elevFt = point.elevation * EVConstants.feetPerMeter
                         let y = cHeight - ((elevFt - minElevFt) / elevRange) * cHeight
                         fillPath.addLine(to: CGPoint(x: x, y: y))
                     }
@@ -869,10 +805,10 @@ struct ElevationChartView: View {
                     // Colored elevation line segments by grade
                     for i in 1..<profile.count {
                         let x1 = (profile[i-1].distance / maxDist) * cWidth
-                        let elevFt1 = profile[i-1].elevation * 3.28084
+                        let elevFt1 = profile[i-1].elevation * EVConstants.feetPerMeter
                         let y1 = cHeight - ((elevFt1 - minElevFt) / elevRange) * cHeight
                         let x2 = (profile[i].distance / maxDist) * cWidth
-                        let elevFt2 = profile[i].elevation * 3.28084
+                        let elevFt2 = profile[i].elevation * EVConstants.feetPerMeter
                         let y2 = cHeight - ((elevFt2 - minElevFt) / elevRange) * cHeight
 
                         var segPath = Path()
@@ -926,15 +862,7 @@ struct ElevationChartView: View {
                             battPath.move(to: CGPoint(x: x1, y: y1))
                             battPath.addLine(to: CGPoint(x: x2, y: y2))
 
-                            let battColor: Color
-                            let pct = battPcts[i]
-                            if pct < 15 {
-                                battColor = EVTheme.accentRed
-                            } else if pct < 30 {
-                                battColor = EVTheme.accentYellow
-                            } else {
-                                battColor = EVTheme.accentBlue
-                            }
+                            let battColor = batteryChartColor(battPcts[i])
 
                             context.stroke(battPath, with: .color(battColor), lineWidth: 2)
                         }
