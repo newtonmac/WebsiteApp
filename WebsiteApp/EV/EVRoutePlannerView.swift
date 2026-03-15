@@ -538,15 +538,19 @@ struct EVRoutePlannerView: View {
             }
 
             Button {
-                let pdfData = EVRoutePDFGenerator.generatePDF(
-                    route: route,
-                    vehicle: selectedVehicle,
-                    origin: originText,
-                    destination: destinationText,
-                    chargers: chargerService.chargers
-                )
-                summaryPDFData = pdfData
-                showingSummarySheet = true
+                Task.detached {
+                    let pdfData = EVRoutePDFGenerator.generatePDF(
+                        route: route,
+                        vehicle: selectedVehicle,
+                        origin: originText,
+                        destination: destinationText,
+                        chargers: chargerService.chargers
+                    )
+                    await MainActor.run {
+                        summaryPDFData = pdfData
+                        showingSummarySheet = true
+                    }
+                }
             } label: {
                 HStack {
                     Image(systemName: "doc.text.fill")
