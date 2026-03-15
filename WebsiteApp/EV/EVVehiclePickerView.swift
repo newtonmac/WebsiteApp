@@ -29,9 +29,9 @@ struct EVVehiclePickerView: View {
                                                     .foregroundStyle(EVTheme.textPrimary)
 
                                                 HStack(spacing: 8) {
-                                                    specBadge("\(Int(vehicle.batteryKwh)) kWh")
-                                                    specBadge("\(vehicle.epaMiles) mi")
-                                                    specBadge("\(String(format: "%.2f", vehicle.effKwhMi)) kWh/mi")
+                                                    specBadge(vehicle.batteryDescription)
+                                                    specBadge(vehicle.rangeDescription)
+                                                    specBadge(vehicle.efficiencyDescription)
                                                 }
                                             }
 

@@ -10,6 +10,7 @@ struct ChargingStop: Identifiable {
     let departureBatteryPct: Double // battery % after charging (target 80%)
     let energyToAddKwh: Double      // kWh to charge
     let stopNumber: Int
+    let estimatedChargeMinutes: Double  // estimated time to charge
 
     // Per-section stats (section = previous stop/origin → this stop)
     let sectionDistanceMiles: Double    // miles for this leg
@@ -47,7 +48,7 @@ struct RouteResult: Identifiable {
     let route: MKRoute?
     let routeName: String
     let distanceMiles: Double
-    let durationMinutes: Double
+    let durationMinutes: Double      // driving time only
     let elevationGain: Double
     let elevationLoss: Double
     let energyKwh: Double           // total energy for full trip (no stops)
@@ -63,6 +64,16 @@ struct RouteResult: Identifiable {
 
     var remainingBatteryPct: Double { finalBatteryPct }
     var needsCharging: Bool { !chargingStops.isEmpty }
+
+    /// Total charging time across all stops
+    var totalChargingMinutes: Double {
+        chargingStops.reduce(0) { $0 + $1.estimatedChargeMinutes }
+    }
+
+    /// Total trip time = driving + charging stops
+    var totalTripMinutes: Double {
+        durationMinutes + totalChargingMinutes
+    }
 
     /// Standard init from a real MKRoute
     init(route: MKRoute, elevationGain: Double, elevationLoss: Double, energyKwh: Double,
@@ -139,7 +150,9 @@ class EVRouteService {
                    minBattery: Double = 15,
                    chargeTarget: Double = 80,
                    avoidHighways: Bool = false,
-                   avoidTolls: Bool = false) async {
+                   avoidTolls: Bool = false,
+                   preferredChargerSpeedKw: Double = 150,
+                   preferredStopMinutes: Double = 30) async {
         isLoading = true
         errorMessage = nil
         routes = []
@@ -170,7 +183,9 @@ class EVRouteService {
                     points: points,
                     route: route,
                     vehicle: vehicle,
-                    totalEnergyKwh: energy.totalKwh
+                    totalEnergyKwh: energy.totalKwh,
+                    preferredChargerSpeedKw: preferredChargerSpeedKw,
+                    minStopMinutes: preferredStopMinutes
                 )
 
                 results.append(RouteResult(
@@ -206,12 +221,49 @@ class EVRouteService {
         let finalSection: FinalSection?
     }
 
+    /// Estimate DC fast charging time in minutes using a realistic charging curve.
+    /// Charging slows as battery fills: ~peak rate up to 50%, ~60% rate from 50-80%, ~30% rate above 80%.
+    /// minStopMinutes is the minimum time at a stop (parking, plugging in, etc.)
+    private func estimateChargeTime(
+        fromPct: Double, toPct: Double,
+        batteryKwh: Double, peakChargeKw: Double,
+        minStopMinutes: Double
+    ) -> Double {
+        guard toPct > fromPct, peakChargeKw > 0 else { return minStopMinutes }
+
+        var totalMinutes = 0.0
+        // Break into 3 charging rate bands
+        let bands: [(upperPct: Double, rateFactor: Double)] = [
+            (50, 1.0),   // up to 50%: full speed
+            (80, 0.60),  // 50-80%: 60% of peak
+            (100, 0.30)  // 80-100%: 30% of peak
+        ]
+
+        var currentPct = fromPct
+        for band in bands {
+            guard currentPct < toPct else { break }
+            let bandEnd = min(toPct, band.upperPct)
+            guard bandEnd > currentPct else { continue }
+
+            let pctRange = bandEnd - currentPct
+            let kwhToAdd = (pctRange / 100.0) * batteryKwh
+            let effectiveKw = peakChargeKw * band.rateFactor
+            totalMinutes += (kwhToAdd / effectiveKw) * 60.0
+            currentPct = bandEnd
+        }
+
+        // Enforce minimum stop duration (walk to charger, plug in, pay, etc.)
+        return max(totalMinutes, minStopMinutes)
+    }
+
     private func calculateChargingStops(
         profile: [ElevationPoint],
         points: [CLLocationCoordinate2D],
         route: MKRoute,
         vehicle: EVVehicle,
-        totalEnergyKwh: Double
+        totalEnergyKwh: Double,
+        preferredChargerSpeedKw: Double = 150,
+        minStopMinutes: Double = 10
     ) -> ChargingPlan {
         let totalBatteryPct = (totalEnergyKwh / vehicle.batteryKwh) * 100
 
@@ -275,6 +327,13 @@ class EVRouteService {
                 // Compute per-section stats for the section ending at this stop
                 let leg = sectionStats(from: sectionStartSegment, to: i, startDist: sectionStartDistance, endDist: profile[i].distance)
 
+                let chargeMinutes = estimateChargeTime(
+                    fromPct: arrivalPct, toPct: chargeTargetPct,
+                    batteryKwh: vehicle.batteryKwh,
+                    peakChargeKw: preferredChargerSpeedKw,
+                    minStopMinutes: minStopMinutes
+                )
+
                 stops.append(ChargingStop(
                     distanceMiles: profile[i].distance,
                     coordinate: points[pointIdx],
@@ -282,6 +341,7 @@ class EVRouteService {
                     departureBatteryPct: chargeTargetPct,
                     energyToAddKwh: max(0, energyToAdd),
                     stopNumber: stopNumber,
+                    estimatedChargeMinutes: chargeMinutes,
                     sectionDistanceMiles: leg.distance,
                     sectionEnergyKwh: leg.energy,
                     sectionElevationGain: leg.gain,

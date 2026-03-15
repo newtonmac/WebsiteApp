@@ -31,7 +31,7 @@ final class EVSettingsManager: ObservableObject {
     /// Maximum detour distance (miles) to reach a charger
     @AppStorage("ev_maxDetourMiles") var maxDetourMiles: Double = 15
 
-    /// Preferred charging stop duration in minutes (informational)
+    /// Minimum charging stop duration in minutes (includes parking, plugging in, etc.)
     @AppStorage("ev_preferredStopMinutes") var preferredStopMinutes: Double = 30
 
     // MARK: - Display

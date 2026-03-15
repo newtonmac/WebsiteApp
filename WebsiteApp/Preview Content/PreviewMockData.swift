@@ -129,6 +129,7 @@ enum PreviewMock {
             departureBatteryPct: 80.0,
             energyToAddKwh: 46.5,
             stopNumber: 1,
+            estimatedChargeMinutes: 28,
             sectionDistanceMiles: 62.0,
             sectionEnergyKwh: 18.6,
             sectionElevationGain: 220,

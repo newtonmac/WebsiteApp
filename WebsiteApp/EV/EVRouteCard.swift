@@ -56,11 +56,19 @@ struct EVRouteCard: View {
 
             // Stats row
             HStack(spacing: 0) {
-                EVStatItem(
-                    value: formatDuration(route.durationMinutes),
-                    unit: "",
-                    label: "TIME"
-                )
+                if route.needsCharging {
+                    EVStatItem(
+                        value: formatDuration(route.totalTripMinutes),
+                        unit: "",
+                        label: "TOTAL TIME"
+                    )
+                } else {
+                    EVStatItem(
+                        value: formatDuration(route.durationMinutes),
+                        unit: "",
+                        label: "DRIVE TIME"
+                    )
+                }
                 Spacer()
                 EVStatItem(
                     value: String(format: "%.1f", route.energyKwh),
@@ -78,17 +86,28 @@ struct EVRouteCard: View {
 
             // Charging stops indicator
             if route.needsCharging {
-                HStack(spacing: 6) {
-                    Image(systemName: "bolt.circle.fill")
-                        .font(.system(size: 14))
-                        .foregroundStyle(EVTheme.accentYellow)
-                    Text("\(route.chargingStops.count) charging stop\(route.chargingStops.count == 1 ? "" : "s") needed")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(EVTheme.accentYellow)
-                    Spacer()
-                    Text("Arrives \(Int(route.finalBatteryPct))%")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(EVTheme.accentGreen)
+                VStack(spacing: 4) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "bolt.circle.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(EVTheme.accentYellow)
+                        Text("\(route.chargingStops.count) charging stop\(route.chargingStops.count == 1 ? "" : "s") needed")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(EVTheme.accentYellow)
+                        Spacer()
+                        Text("Arrives \(Int(route.finalBatteryPct))%")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(EVTheme.accentGreen)
+                    }
+                    HStack(spacing: 6) {
+                        Image(systemName: "clock")
+                            .font(.system(size: 11))
+                            .foregroundStyle(EVTheme.textSecondary)
+                        Text("Drive \(formatDuration(route.durationMinutes)) + \(formatDuration(route.totalChargingMinutes)) charging")
+                            .font(.system(size: 11))
+                            .foregroundStyle(EVTheme.textSecondary)
+                        Spacer()
+                    }
                 }
                 .padding(8)
                 .background(EVTheme.accentYellow.opacity(0.1))

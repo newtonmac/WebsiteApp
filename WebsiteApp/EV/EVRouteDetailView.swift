@@ -250,10 +250,11 @@ struct EVRouteDetailView: View {
                 let price = pricePerKwhForStop(stop)
                 let cost = stop.energyToAddKwh * price
                 let stopDist = settings.distanceString(stop.distanceMiles)
+                let chargeTime = formatDuration(stop.estimatedChargeMinutes)
                 chargingTimelineRow(
                     icon: "bolt.circle.fill",
                     iconColor: EVTheme.accentYellow,
-                    title: "Charging Stop \(stop.stopNumber)",
+                    title: "Charging Stop \(stop.stopNumber) (~\(chargeTime))",
                     subtitle: "At \(stopDist) — Arrive \(Int(stop.arrivalBatteryPct))% → Charge to \(Int(stop.departureBatteryPct))% (+\(String(format: "%.1f", stop.energyToAddKwh)) kWh) — Est. \(String(format: "$%.2f", cost)) @ \(String(format: "$%.2f", price))/kWh",
                     isLast: false
                 )
@@ -547,7 +548,13 @@ struct EVRouteDetailView: View {
             DetailRow(label: "Est. Electricity Cost", value: String(format: "$%.2f (@ $%.2f/kWh)", route.energyKwh * settings.electricityCostPerKwh, settings.electricityCostPerKwh),
                       valueColor: EVTheme.accentGreen)
             DetailRow(label: "Distance", value: settings.distanceString(route.distanceMiles))
-            DetailRow(label: "Est. Time", value: formatDuration(route.durationMinutes))
+            DetailRow(label: "Drive Time", value: formatDuration(route.durationMinutes))
+            if route.needsCharging {
+                DetailRow(label: "Charging Time", value: formatDuration(route.totalChargingMinutes),
+                          valueColor: EVTheme.accentYellow)
+                DetailRow(label: "Total Trip Time", value: formatDuration(route.totalTripMinutes),
+                          valueColor: EVTheme.accentBlue)
+            }
             DetailRow(label: "Avg Grade", value: String(format: "%.1f%%", route.averageGrade))
             DetailRow(label: "Peak Grade", value: String(format: "%.1f%%", route.peakGrade),
                       valueColor: route.peakGrade > 8 ? EVTheme.accentRed : route.peakGrade > 5 ? EVTheme.accentYellow : EVTheme.accentGreen)

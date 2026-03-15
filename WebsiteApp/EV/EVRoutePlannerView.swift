@@ -410,7 +410,7 @@ struct EVRoutePlannerView: View {
                         Text("•")
                         Text(selectedVehicle.rangeDescription)
                         Text("•")
-                        Text("\(String(format: "%.2f", selectedVehicle.effKwhMi)) kWh/mi")
+                        Text(selectedVehicle.efficiencyDescription)
                     }
                     .font(.caption)
                     .foregroundStyle(EVTheme.textSecondary)
@@ -685,6 +685,29 @@ struct EVRoutePlannerView: View {
                 color: EVTheme.textSecondary
             )
 
+            if route.needsCharging {
+                Rectangle()
+                    .fill(EVTheme.border)
+                    .frame(height: 1)
+
+                energyRow(
+                    label: "Drive time",
+                    value: formatDuration(route.durationMinutes),
+                    color: EVTheme.textPrimary
+                )
+                energyRow(
+                    label: "Charging time (\(route.chargingStops.count) stop\(route.chargingStops.count == 1 ? "" : "s"))",
+                    value: formatDuration(route.totalChargingMinutes),
+                    color: EVTheme.accentYellow
+                )
+                energyRow(
+                    label: "Total trip time",
+                    value: formatDuration(route.totalTripMinutes),
+                    color: EVTheme.accentBlue,
+                    bold: true
+                )
+            }
+
             // Summary text
             summaryText(for: route, climbingKwh: climbingKwh, regenKwh: regenKwh)
         }
@@ -800,6 +823,12 @@ struct EVRoutePlannerView: View {
         )
     }
 
+    private func formatDuration(_ minutes: Double) -> String {
+        let hrs = Int(minutes) / 60
+        let mins = Int(minutes) % 60
+        return hrs > 0 ? "\(hrs)h \(mins)m" : "\(mins)m"
+    }
+
     // MARK: - Actions
 
     private func planRoute() async {
@@ -811,7 +840,9 @@ struct EVRoutePlannerView: View {
             minBattery: settings.minArrivalPct,
             chargeTarget: settings.chargeTargetPct,
             avoidHighways: settings.avoidHighways,
-            avoidTolls: settings.avoidTolls
+            avoidTolls: settings.avoidTolls,
+            preferredChargerSpeedKw: max(50, settings.preferredChargerSpeedKw),
+            preferredStopMinutes: settings.preferredStopMinutes
         )
 
         if let best = routeService.routes.first {

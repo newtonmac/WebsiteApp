@@ -14,8 +14,23 @@ struct EVVehicle: Identifiable, Hashable {
     let rollingResistance: Double // tire rolling resistance coefficient (Crr)
 
     var displayName: String { "\(brand) \(model)" }
-    var rangeDescription: String { "\(epaMiles) mi EPA" }
     var batteryDescription: String { "\(Int(batteryKwh)) kWh" }
+
+    /// Range description respecting the user's distance unit preference
+    var rangeDescription: String {
+        let settings = EVSettingsManager.shared
+        if settings.useMiles {
+            return "\(epaMiles) mi EPA"
+        } else {
+            return "\(Int(Double(epaMiles) * 1.60934)) km EPA"
+        }
+    }
+
+    /// Efficiency description respecting the user's distance unit preference
+    var efficiencyDescription: String {
+        let settings = EVSettingsManager.shared
+        return settings.efficiencyString(kwhPerMile: effKwhMi)
+    }
 }
 
 enum EVDatabase {

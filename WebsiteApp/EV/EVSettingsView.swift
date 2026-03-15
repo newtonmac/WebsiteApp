@@ -120,12 +120,12 @@ struct EVSettingsView: View {
                 Divider().overlay(EVTheme.border)
 
                 SettingsSliderRow(
-                    label: "Preferred Stop Duration",
+                    label: "Min. Stop Duration",
                     value: $settings.preferredStopMinutes,
                     range: 10...120,
                     step: 5,
                     unit: " min",
-                    description: "Target time at each charging stop"
+                    description: "Minimum time at each stop (park, plug in, wait). Used to calculate total trip time."
                 )
             }
         }
