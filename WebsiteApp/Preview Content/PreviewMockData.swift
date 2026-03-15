@@ -128,7 +128,11 @@ enum PreviewMock {
             arrivalBatteryPct: 18.0,
             departureBatteryPct: 80.0,
             energyToAddKwh: 46.5,
-            stopNumber: 1
+            stopNumber: 1,
+            sectionDistanceMiles: 62.0,
+            sectionEnergyKwh: 18.6,
+            sectionElevationGain: 220,
+            sectionElevationLoss: 180
         )
     ]
 
@@ -151,7 +155,8 @@ enum PreviewMock {
         elevationProfile: elevationProfile,
         score: 26.5,
         chargingStops: chargingStops,
-        finalBatteryPct: 36.8
+        finalBatteryPct: 36.8,
+        finalSection: FinalSection(distanceMiles: 58.5, energyKwh: 13.8, elevationGain: 120, elevationLoss: 130)
     )
 
     /// Short trip: no charging needed

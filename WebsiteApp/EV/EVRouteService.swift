@@ -10,6 +10,36 @@ struct ChargingStop: Identifiable {
     let departureBatteryPct: Double // battery % after charging (target 80%)
     let energyToAddKwh: Double      // kWh to charge
     let stopNumber: Int
+
+    // Per-section stats (section = previous stop/origin → this stop)
+    let sectionDistanceMiles: Double    // miles for this leg
+    let sectionEnergyKwh: Double        // energy consumed on this leg
+    let sectionElevationGain: Double    // meters gained on this leg
+    let sectionElevationLoss: Double    // meters lost on this leg
+
+    var sectionEfficiency: Double {     // mi/kWh for this leg
+        sectionEnergyKwh > 0 ? sectionDistanceMiles / sectionEnergyKwh : 0
+    }
+
+    var sectionKwhPerMile: Double {     // kWh/mi for this leg
+        sectionDistanceMiles > 0 ? sectionEnergyKwh / sectionDistanceMiles : 0
+    }
+}
+
+/// Stats for the final section (last stop → destination)
+struct FinalSection {
+    let distanceMiles: Double
+    let energyKwh: Double
+    let elevationGain: Double
+    let elevationLoss: Double
+
+    var efficiency: Double {
+        energyKwh > 0 ? distanceMiles / energyKwh : 0
+    }
+
+    var kwhPerMile: Double {
+        distanceMiles > 0 ? energyKwh / distanceMiles : 0
+    }
 }
 
 struct RouteResult: Identifiable {
@@ -29,6 +59,7 @@ struct RouteResult: Identifiable {
     let score: Double
     let chargingStops: [ChargingStop]
     let finalBatteryPct: Double     // battery % at destination (after charging stops)
+    let finalSection: FinalSection?         // stats for last stop → destination
 
     var remainingBatteryPct: Double { finalBatteryPct }
     var needsCharging: Bool { !chargingStops.isEmpty }
@@ -37,7 +68,7 @@ struct RouteResult: Identifiable {
     init(route: MKRoute, elevationGain: Double, elevationLoss: Double, energyKwh: Double,
          batteryPctUsed: Double, efficiency: Double, averageGrade: Double, peakGrade: Double,
          elevationProfile: [ElevationPoint], score: Double, chargingStops: [ChargingStop],
-         finalBatteryPct: Double) {
+         finalBatteryPct: Double, finalSection: FinalSection? = nil) {
         self.route = route
         self.routeName = route.name
         self.distanceMiles = route.distance * 0.000621371
@@ -53,6 +84,7 @@ struct RouteResult: Identifiable {
         self.score = score
         self.chargingStops = chargingStops
         self.finalBatteryPct = finalBatteryPct
+        self.finalSection = finalSection
     }
 
     /// Preview init without MKRoute
@@ -60,7 +92,7 @@ struct RouteResult: Identifiable {
          elevationGain: Double, elevationLoss: Double, energyKwh: Double,
          batteryPctUsed: Double, efficiency: Double, averageGrade: Double, peakGrade: Double,
          elevationProfile: [ElevationPoint], score: Double, chargingStops: [ChargingStop],
-         finalBatteryPct: Double) {
+         finalBatteryPct: Double, finalSection: FinalSection? = nil) {
         self.route = nil
         self.routeName = routeName
         self.distanceMiles = distanceMiles
@@ -76,6 +108,7 @@ struct RouteResult: Identifiable {
         self.score = score
         self.chargingStops = chargingStops
         self.finalBatteryPct = finalBatteryPct
+        self.finalSection = finalSection
     }
 }
 
@@ -139,7 +172,8 @@ class EVRouteService {
                     elevationProfile: profile,
                     score: score,
                     chargingStops: chargingPlan.stops,
-                    finalBatteryPct: chargingPlan.finalBatteryPct
+                    finalBatteryPct: chargingPlan.finalBatteryPct,
+                    finalSection: chargingPlan.finalSection
                 ))
             }
 
@@ -156,6 +190,7 @@ class EVRouteService {
     private struct ChargingPlan {
         let stops: [ChargingStop]
         let finalBatteryPct: Double
+        let finalSection: FinalSection?
     }
 
     private func calculateChargingStops(
@@ -169,7 +204,7 @@ class EVRouteService {
 
         // If trip fits within battery with 15% remaining, no stops needed
         if totalBatteryPct <= (startBatteryPct - minBatteryPct) {
-            return ChargingPlan(stops: [], finalBatteryPct: startBatteryPct - totalBatteryPct)
+            return ChargingPlan(stops: [], finalBatteryPct: startBatteryPct - totalBatteryPct, finalSection: nil)
         }
 
         // Need charging stops — simulate the trip segment by segment
@@ -177,11 +212,12 @@ class EVRouteService {
         var stops: [ChargingStop] = []
         var stopNumber = 1
         guard profile.count >= 2, points.count >= 2 else {
-            return ChargingPlan(stops: [], finalBatteryPct: max(0, startBatteryPct - totalBatteryPct))
+            return ChargingPlan(stops: [], finalBatteryPct: max(0, startBatteryPct - totalBatteryPct), finalSection: nil)
         }
 
-        // Physics-based energy per segment using speed + aero + rolling + grade
+        // Pre-compute per-segment energy (kWh) and store for leg aggregation
         let segmentCount = profile.count - 1
+        var segmentEnergyKwh: [Double] = []
         var segmentEnergyPcts: [Double] = []
         let avgSpeedMps = route.distance / max(1, route.expectedTravelTime)
 
@@ -189,8 +225,27 @@ class EVRouteService {
             let segKwh = segmentEnergy(
                 profile: profile, index: i, vehicle: vehicle, avgSpeedMps: avgSpeedMps
             )
-            let segPct = (max(0, segKwh) / vehicle.batteryKwh) * 100
-            segmentEnergyPcts.append(segPct)
+            let clampedKwh = max(0, segKwh)
+            segmentEnergyKwh.append(clampedKwh)
+            segmentEnergyPcts.append((clampedKwh / vehicle.batteryKwh) * 100)
+        }
+
+        // Track per-section accumulators (section = previous stop/origin → current stop)
+        var sectionStartSegment = 0
+        var sectionStartDistance = 0.0
+
+        /// Aggregate section stats from segStart..<segEnd
+        func sectionStats(from segStart: Int, to segEnd: Int, startDist: Double, endDist: Double) -> (distance: Double, energy: Double, gain: Double, loss: Double) {
+            var energy = 0.0
+            var gain = 0.0
+            var loss = 0.0
+            for s in segStart..<segEnd {
+                energy += segmentEnergyKwh[s]
+                let elevDiff = profile[s + 1].elevation - profile[s].elevation
+                if elevDiff > 0 { gain += elevDiff }
+                else { loss += abs(elevDiff) }
+            }
+            return (endDist - startDist, energy, gain, loss)
         }
 
         // Walk through segments, inserting charging stops when battery would drop below threshold
@@ -204,14 +259,25 @@ class EVRouteService {
                 let arrivalPct = currentBatteryPct
                 let energyToAdd = (chargeTargetPct - arrivalPct) / 100.0 * vehicle.batteryKwh
 
+                // Compute per-section stats for the section ending at this stop
+                let leg = sectionStats(from: sectionStartSegment, to: i, startDist: sectionStartDistance, endDist: profile[i].distance)
+
                 stops.append(ChargingStop(
                     distanceMiles: profile[i].distance,
                     coordinate: points[pointIdx],
                     arrivalBatteryPct: arrivalPct,
                     departureBatteryPct: chargeTargetPct,
                     energyToAddKwh: max(0, energyToAdd),
-                    stopNumber: stopNumber
+                    stopNumber: stopNumber,
+                    sectionDistanceMiles: leg.distance,
+                    sectionEnergyKwh: leg.energy,
+                    sectionElevationGain: leg.gain,
+                    sectionElevationLoss: leg.loss
                 ))
+
+                // Reset section accumulators
+                sectionStartSegment = i
+                sectionStartDistance = profile[i].distance
 
                 currentBatteryPct = chargeTargetPct
                 stopNumber += 1
@@ -221,7 +287,17 @@ class EVRouteService {
             currentBatteryPct = max(0, currentBatteryPct)
         }
 
-        return ChargingPlan(stops: stops, finalBatteryPct: max(0, currentBatteryPct))
+        // Compute final section stats (last stop → destination)
+        let totalDist = profile.last?.distance ?? 0
+        let fSec = sectionStats(from: sectionStartSegment, to: segmentCount, startDist: sectionStartDistance, endDist: totalDist)
+        let finalSection = FinalSection(
+            distanceMiles: fSec.distance,
+            energyKwh: fSec.energy,
+            elevationGain: fSec.gain,
+            elevationLoss: fSec.loss
+        )
+
+        return ChargingPlan(stops: stops, finalBatteryPct: max(0, currentBatteryPct), finalSection: finalSection)
     }
 
     // MARK: - MapKit Directions

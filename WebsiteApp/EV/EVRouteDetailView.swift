@@ -237,6 +237,15 @@ struct EVRouteDetailView: View {
             )
 
             ForEach(route.chargingStops) { stop in
+                // Section stats before this stop
+                sectionStatsRow(
+                    label: "Section \(stop.stopNumber)",
+                    distanceMiles: stop.sectionDistanceMiles,
+                    energyKwh: stop.sectionEnergyKwh,
+                    elevationGain: stop.sectionElevationGain,
+                    elevationLoss: stop.sectionElevationLoss
+                )
+
                 let price = pricePerKwhForStop(stop)
                 let cost = stop.energyToAddKwh * price
                 chargingTimelineRow(
@@ -245,6 +254,17 @@ struct EVRouteDetailView: View {
                     title: "Charging Stop \(stop.stopNumber)",
                     subtitle: "At mile \(String(format: "%.0f", stop.distanceMiles)) — Arrive \(Int(stop.arrivalBatteryPct))% → Charge to \(Int(stop.departureBatteryPct))% (+\(String(format: "%.1f", stop.energyToAddKwh)) kWh) — Est. \(String(format: "$%.2f", cost)) @ \(String(format: "$%.2f", price))/kWh",
                     isLast: false
+                )
+            }
+
+            // Final section stats (last stop → destination)
+            if let finalSec = route.finalSection {
+                sectionStatsRow(
+                    label: "Section \(route.chargingStops.count + 1)",
+                    distanceMiles: finalSec.distanceMiles,
+                    energyKwh: finalSec.energyKwh,
+                    elevationGain: finalSec.elevationGain,
+                    elevationLoss: finalSec.elevationLoss
                 )
             }
 
@@ -298,6 +318,85 @@ struct EVRouteDetailView: View {
                     .font(.caption)
                     .foregroundStyle(EVTheme.textSecondary)
             }
+        }
+    }
+
+    private func sectionStatsRow(label: String, distanceMiles: Double, energyKwh: Double, elevationGain: Double, elevationLoss: Double) -> some View {
+        let efficiency = energyKwh > 0 ? distanceMiles / energyKwh : 0
+        let kwhPerMile = distanceMiles > 0 ? energyKwh / distanceMiles : 0
+        let gainFt = Int(elevationGain * 3.28084)
+        let lossFt = Int(elevationLoss * 3.28084)
+        let netElevFt = gainFt - lossFt
+        let elevColor = netElevFt > 200 ? EVTheme.accentRed : netElevFt < -200 ? EVTheme.accentGreen : EVTheme.accentYellow
+        let effColor = efficiency > 3.5 ? EVTheme.accentGreen : efficiency > 2.5 ? EVTheme.accentYellow : EVTheme.accentRed
+
+        return HStack(alignment: .top, spacing: 12) {
+            // Timeline connector
+            VStack(spacing: 0) {
+                Rectangle()
+                    .fill(EVTheme.border)
+                    .frame(width: 2, height: 8)
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(EVTheme.bgInput)
+                    .frame(width: 8, height: 8)
+                Rectangle()
+                    .fill(EVTheme.border)
+                    .frame(width: 2, height: 8)
+            }
+            .frame(width: 20)
+
+            // Section stats card
+            VStack(alignment: .leading, spacing: 6) {
+                Text(label)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(EVTheme.textPrimary)
+
+                HStack(spacing: 16) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Distance")
+                            .font(.system(size: 9))
+                            .foregroundStyle(EVTheme.textSecondary)
+                        Text(String(format: "%.1f mi", distanceMiles))
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(EVTheme.textPrimary)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Energy")
+                            .font(.system(size: 9))
+                            .foregroundStyle(EVTheme.textSecondary)
+                        Text(String(format: "%.1f kWh", energyKwh))
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(EVTheme.textPrimary)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Efficiency")
+                            .font(.system(size: 9))
+                            .foregroundStyle(EVTheme.textSecondary)
+                        Text(String(format: "%.1f mi/kWh", efficiency))
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(effColor)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Elevation")
+                            .font(.system(size: 9))
+                            .foregroundStyle(EVTheme.textSecondary)
+                        Text("\(netElevFt > 0 ? "+" : "")\(netElevFt) ft")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(elevColor)
+                    }
+                }
+
+                // kWh/mi sub-detail
+                Text(String(format: "%.3f kWh/mi • +%d/-%d ft", kwhPerMile, gainFt, lossFt))
+                    .font(.system(size: 10))
+                    .foregroundStyle(EVTheme.textSecondary)
+            }
+            .padding(8)
+            .background(EVTheme.bgInput.opacity(0.5))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
         }
     }
 
