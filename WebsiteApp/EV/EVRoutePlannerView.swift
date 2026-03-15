@@ -30,6 +30,25 @@ struct EVRoutePlannerView: View {
     private let expandedFraction: CGFloat = 0.50
     private let collapsedFraction: CGFloat = 0.10
 
+    private var mapChargers: [EVCharger] {
+        guard showChargers else { return [] }
+        let networkFiltered = chargerService.chargers.filter { selectedNetworks.contains($0.network) }
+
+        // If a route with charging stops is selected, only show chargers within 15 miles of stops
+        if let route = selectedRoute, route.needsCharging {
+            let radiusMeters: Double = 15 * 1609.34
+            let stopLocations = route.chargingStops.map {
+                CLLocation(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude)
+            }
+            return networkFiltered.filter { charger in
+                let chargerLoc = CLLocation(latitude: charger.coordinate.latitude, longitude: charger.coordinate.longitude)
+                return stopLocations.contains { $0.distance(from: chargerLoc) <= radiusMeters }
+            }
+        }
+
+        return networkFiltered
+    }
+
     private var panelHeight: CGFloat {
         let screenH = UIScreen.main.bounds.height
         let screenW = UIScreen.main.bounds.width
@@ -48,7 +67,7 @@ struct EVRoutePlannerView: View {
                 cameraPosition: $mapCameraPosition,
                 routes: routeService.routes,
                 selectedRoute: selectedRoute,
-                chargers: showChargers ? chargerService.chargers.filter { selectedNetworks.contains($0.network) } : [],
+                chargers: mapChargers,
                 origin: originCoord,
                 destination: destinationCoord,
                 selectedCharger: $selectedCharger,
