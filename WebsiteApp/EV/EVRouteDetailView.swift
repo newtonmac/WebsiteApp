@@ -256,6 +256,23 @@ struct EVRouteDetailView: View {
                 subtitle: "Battery: \(Int(route.finalBatteryPct))% remaining",
                 isLast: true
             )
+
+            // Pricing disclaimer
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .top, spacing: 6) {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 11))
+                        .foregroundStyle(EVTheme.textSecondary)
+                        .padding(.top, 1)
+                    Text("Cost estimates use average DC fast charging rates per network (e.g. Tesla Supercharger ~$0.35/kWh, Electrify America ~$0.48/kWh). Actual prices vary by location, membership, time of day, and state regulations. Where available, station-reported pricing from the NREL Alternative Fuels Station Locator is used instead.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(EVTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(10)
+            .background(EVTheme.bgInput.opacity(0.6))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
         }
     }
 
