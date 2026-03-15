@@ -12,7 +12,7 @@ struct EVSettingsView: View {
                     routePreferencesSection
                     chargingNetworksSection
                     displaySection
-                    appInfoSection
+                    // appInfoSection — hidden until site is ready
                     resetSection
                 }
                 .padding(.horizontal, 16)
