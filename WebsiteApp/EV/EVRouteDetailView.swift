@@ -336,7 +336,7 @@ struct EVRouteDetailView: View {
                 .foregroundStyle(EVTheme.textPrimary)
 
             if !route.elevationProfile.isEmpty {
-                ElevationChartView(profile: route.elevationProfile)
+                ElevationChartView(profile: route.elevationProfile, vehicle: vehicle, chargingStops: route.chargingStops)
                     .frame(height: 160)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
 
@@ -352,6 +352,29 @@ struct EVRouteDetailView: View {
                     Label("\(String(format: "%.1f%%", route.peakGrade)) peak", systemImage: "mountain.2.fill")
                         .font(.caption)
                         .foregroundStyle(EVTheme.accentYellow)
+                }
+
+                // Battery overlay legend
+                HStack(spacing: 12) {
+                    HStack(spacing: 4) {
+                        RoundedRectangle(cornerRadius: 1)
+                            .fill(EVTheme.accentBlue)
+                            .frame(width: 14, height: 3)
+                        Text("Battery %")
+                            .font(.system(size: 10))
+                            .foregroundStyle(EVTheme.accentBlue)
+                    }
+                    if route.needsCharging {
+                        HStack(spacing: 4) {
+                            RoundedRectangle(cornerRadius: 1)
+                                .stroke(EVTheme.accentYellow.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [3, 2]))
+                                .frame(width: 14, height: 3)
+                            Text("Charging stop")
+                                .font(.system(size: 10))
+                                .foregroundStyle(EVTheme.accentYellow)
+                        }
+                    }
+                    Spacer()
                 }
             } else {
                 Text("No elevation data available")
@@ -561,6 +584,8 @@ struct DetailRow: View {
 
 struct ElevationChartView: View {
     let profile: [ElevationPoint]
+    var vehicle: EVVehicle? = nil
+    var chargingStops: [ChargingStop] = []
 
     private var minElevFt: Double {
         ((profile.map(\.elevation).min() ?? 0) * 3.28084) - 20
@@ -575,10 +600,58 @@ struct ElevationChartView: View {
         profile.last?.distance ?? 1
     }
 
+    /// Calculate battery % at each profile point using the same physics model as EVRouteService
+    private var batteryProfile: [Double] {
+        guard let vehicle = vehicle, profile.count >= 2 else { return [] }
+
+        var batteryPcts: [Double] = [100.0]
+        var currentPct = 100.0
+
+        // Build a set of charging stop distances for quick lookup
+        let stopDistances = chargingStops.map { $0.distanceMiles }
+        let chargeTargetPct = 80.0
+
+        for i in 1..<profile.count {
+            let elevDiff = profile[i].elevation - profile[i - 1].elevation
+            let segDistMiles = profile[i].distance - profile[i - 1].distance
+            let gradePct = abs(profile[i].grade)
+
+            // Base driving energy
+            var segEnergy = segDistMiles * vehicle.effKwhMi
+
+            if elevDiff > 0 {
+                let motorEff = max(0.60, 0.88 - gradePct * 0.015)
+                segEnergy += (vehicle.weightKg * 9.81 * elevDiff) / (3_600_000 * motorEff)
+            } else if elevDiff < 0 {
+                let regenPenalty = max(0.30, vehicle.regenEff - gradePct * 0.02)
+                segEnergy -= (vehicle.weightKg * 9.81 * abs(elevDiff)) / 3_600_000 * regenPenalty
+            }
+
+            let segPct = (max(0, segEnergy) / vehicle.batteryKwh) * 100
+
+            // Check if a charging stop occurs before this segment
+            for stopDist in stopDistances {
+                if stopDist > profile[i - 1].distance && stopDist <= profile[i].distance {
+                    currentPct = chargeTargetPct
+                }
+            }
+
+            currentPct -= segPct
+            currentPct = max(0, min(100, currentPct))
+            batteryPcts.append(currentPct)
+        }
+
+        return batteryPcts
+    }
+
     var body: some View {
+        let battPcts = batteryProfile
+        let hasBattery = !battPcts.isEmpty
+        let chartRight: CGFloat = hasBattery ? 35 : 8
+
         GeometryReader { geo in
             let chartLeft: CGFloat = 45
-            let chartWidth = geo.size.width - chartLeft - 8
+            let chartWidth = geo.size.width - chartLeft - chartRight
             let chartHeight = geo.size.height - 20
 
             ZStack(alignment: .topLeading) {
@@ -586,7 +659,7 @@ struct ElevationChartView: View {
                 RoundedRectangle(cornerRadius: 10)
                     .fill(EVTheme.bgCard)
 
-                // Y-axis labels
+                // Left Y-axis labels (elevation)
                 VStack {
                     Text("\(Int(maxElevFt)) ft")
                         .font(.system(size: 8))
@@ -602,6 +675,26 @@ struct ElevationChartView: View {
                 }
                 .frame(width: chartLeft - 4, height: chartHeight)
                 .padding(.top, 4)
+
+                // Right Y-axis labels (battery %)
+                if hasBattery {
+                    VStack {
+                        Text("100%")
+                            .font(.system(size: 8))
+                            .foregroundStyle(EVTheme.accentBlue)
+                        Spacer()
+                        Text("50%")
+                            .font(.system(size: 8))
+                            .foregroundStyle(EVTheme.accentBlue)
+                        Spacer()
+                        Text("0%")
+                            .font(.system(size: 8))
+                            .foregroundStyle(EVTheme.accentBlue)
+                    }
+                    .frame(width: chartRight - 4, height: chartHeight)
+                    .padding(.top, 4)
+                    .offset(x: chartLeft + chartWidth + 4)
+                }
 
                 // Chart area
                 Canvas { context, size in
@@ -619,7 +712,7 @@ struct ElevationChartView: View {
                         context.stroke(gridPath, with: .color(EVTheme.border.opacity(0.4)), lineWidth: 0.5)
                     }
 
-                    // Fill gradient under the line
+                    // Fill gradient under the elevation line
                     var fillPath = Path()
                     fillPath.move(to: CGPoint(x: 0, y: cHeight))
 
@@ -639,7 +732,7 @@ struct ElevationChartView: View {
                         endPoint: CGPoint(x: 0, y: cHeight)
                     ))
 
-                    // Colored line segments by grade
+                    // Colored elevation line segments by grade
                     for i in 1..<profile.count {
                         let x1 = (profile[i-1].distance / maxDist) * cWidth
                         let elevFt1 = profile[i-1].elevation * 3.28084
@@ -665,6 +758,62 @@ struct ElevationChartView: View {
                         }
 
                         context.stroke(segPath, with: .color(color), lineWidth: 2.5)
+                    }
+
+                    // Battery consumption overlay line
+                    if hasBattery, battPcts.count == profile.count {
+                        // Battery fill gradient (subtle blue under the battery line)
+                        var battFill = Path()
+                        battFill.move(to: CGPoint(x: 0, y: cHeight))
+
+                        for i in 0..<battPcts.count {
+                            let x = (profile[i].distance / maxDist) * cWidth
+                            let y = cHeight - (battPcts[i] / 100.0) * cHeight
+                            battFill.addLine(to: CGPoint(x: x, y: y))
+                        }
+
+                        battFill.addLine(to: CGPoint(x: cWidth, y: cHeight))
+                        battFill.closeSubpath()
+
+                        context.fill(battFill, with: .linearGradient(
+                            Gradient(colors: [EVTheme.accentBlue.opacity(0.15), EVTheme.accentBlue.opacity(0.02)]),
+                            startPoint: CGPoint(x: 0, y: 0),
+                            endPoint: CGPoint(x: 0, y: cHeight)
+                        ))
+
+                        // Battery line — color changes based on battery level
+                        for i in 1..<battPcts.count {
+                            let x1 = (profile[i-1].distance / maxDist) * cWidth
+                            let y1 = cHeight - (battPcts[i-1] / 100.0) * cHeight
+                            let x2 = (profile[i].distance / maxDist) * cWidth
+                            let y2 = cHeight - (battPcts[i] / 100.0) * cHeight
+
+                            var battPath = Path()
+                            battPath.move(to: CGPoint(x: x1, y: y1))
+                            battPath.addLine(to: CGPoint(x: x2, y: y2))
+
+                            let battColor: Color
+                            let pct = battPcts[i]
+                            if pct < 15 {
+                                battColor = EVTheme.accentRed
+                            } else if pct < 30 {
+                                battColor = EVTheme.accentYellow
+                            } else {
+                                battColor = EVTheme.accentBlue
+                            }
+
+                            context.stroke(battPath, with: .color(battColor), lineWidth: 2)
+                        }
+
+                        // Charging stop indicators (vertical dashed lines where battery jumps)
+                        for stop in chargingStops {
+                            let x = (stop.distanceMiles / maxDist) * cWidth
+                            var dashPath = Path()
+                            dashPath.move(to: CGPoint(x: x, y: 0))
+                            dashPath.addLine(to: CGPoint(x: x, y: cHeight))
+                            context.stroke(dashPath, with: .color(EVTheme.accentYellow.opacity(0.5)),
+                                         style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                        }
                     }
                 }
                 .frame(width: chartWidth, height: chartHeight)

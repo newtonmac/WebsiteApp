@@ -710,7 +710,7 @@ struct EVRoutePlannerView: View {
             }
 
             if !route.elevationProfile.isEmpty {
-                ElevationChartView(profile: route.elevationProfile)
+                ElevationChartView(profile: route.elevationProfile, vehicle: selectedVehicle, chargingStops: route.chargingStops)
                     .frame(height: 160)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
             } else {
