@@ -472,6 +472,7 @@ struct ChargerDetailSheet: View {
 
 // MARK: - Previews
 
+#if DEBUG
 #Preview("Charger Detail — Tesla") {
     ChargerDetailSheet(charger: PreviewMock.chargers[0])
 }
@@ -479,3 +480,4 @@ struct ChargerDetailSheet: View {
 #Preview("Charger Detail — Electrify America") {
     ChargerDetailSheet(charger: PreviewMock.chargers[1])
 }
+#endif

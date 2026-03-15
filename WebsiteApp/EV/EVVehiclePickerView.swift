@@ -93,6 +93,8 @@ struct EVVehiclePickerView: View {
     }
 }
 
+#if DEBUG
 #Preview("Vehicle Picker") {
     EVVehiclePickerView(selectedVehicle: .constant(PreviewMock.vehicle))
 }
+#endif

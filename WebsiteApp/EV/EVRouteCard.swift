@@ -216,6 +216,7 @@ struct BatteryBarView: View {
 
 // MARK: - Previews
 
+#if DEBUG
 #Preview("Route Card — Best (Charging)") {
     VStack(spacing: 12) {
         EVRouteCard(
@@ -247,3 +248,4 @@ struct BatteryBarView: View {
     .background(EVTheme.bgPrimary)
     .preferredColorScheme(.dark)
 }
+#endif

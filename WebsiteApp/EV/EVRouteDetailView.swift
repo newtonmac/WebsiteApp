@@ -900,6 +900,7 @@ struct ElevationChartView: View {
 
 // MARK: - Previews
 
+#if DEBUG
 #Preview("Route Detail — Charging Needed") {
     EVRouteDetailView(
         route: PreviewMock.longTripRoute,
@@ -915,3 +916,4 @@ struct ElevationChartView: View {
         chargers: PreviewMock.chargers
     )
 }
+#endif
