@@ -122,56 +122,64 @@ class EVChargerService {
     private var cache: [String: [NRELStation]] = [:]
     private var ocmCache: [String: [OCMStation]] = [:]
 
-    /// Search for chargers within 1 mile of the entire route, sampling every ~10 miles
+    /// Search for chargers along the route, sampling every ~15 miles with a 5-mile search radius.
+    /// Uses concurrent fetches with a timeout to prevent stalling.
     func findChargersAlongRoute(_ route: MKRoute) async {
         isLoading = true
         chargers = []
 
         let routeMiles = route.distance * 0.000621371
-        // Sample every ~5 miles, minimum 5 points, max 80
-        let sampleCount = max(5, min(80, Int(routeMiles / 5) + 1))
+        // Sample every ~15 miles, min 3 points, max 25 — balances coverage vs API calls
+        let sampleCount = max(3, min(25, Int(routeMiles / 15) + 2))
         let searchPoints = sampleRoutePoints(route: route, count: sampleCount)
-        let searchRadius = 3.0 // search 3mi from each point, filter to 2mi from route
+        let searchRadius = 5.0 // wider radius with fewer points
 
         var allChargers: [EVCharger] = []
         var seenIds = Set<String>()
 
-        // Fetch in batches of 8 for faster loading
-        let batchSize = 8
-        for batchStart in stride(from: 0, to: searchPoints.count, by: batchSize) {
-            let batchEnd = min(batchStart + batchSize, searchPoints.count)
-            let batch = Array(searchPoints[batchStart..<batchEnd])
+        // Pre-build a sampled route path for fast proximity checks
+        let routeCheckPoints = sampleRoutePoints(route: route, count: min(200, max(50, Int(routeMiles))))
 
-            await withTaskGroup(of: [EVCharger].self) { group in
-                for point in batch {
-                    group.addTask {
-                        await self.fetchNRELChargers(near: point, radiusMiles: searchRadius)
-                    }
+        // Fetch all points concurrently in one task group with a 15-second timeout
+        let fetchedChargers: [EVCharger] = await withTaskGroup(of: [EVCharger].self) { group in
+            for point in searchPoints {
+                group.addTask {
+                    await self.fetchNRELChargers(near: point, radiusMiles: searchRadius)
                 }
+            }
 
-                for await results in group {
-                    for charger in results {
-                        if !seenIds.contains(charger.id) {
-                            seenIds.insert(charger.id)
-                            // Only keep chargers within 2 miles of the actual route path
-                            if self.isWithinMilesOfRoute(charger.coordinate, route: route, miles: 2.0) {
-                                allChargers.append(charger)
-                            }
-                        }
-                    }
-                }
+            var results: [EVCharger] = []
+            for await batch in group {
+                results.append(contentsOf: batch)
+            }
+            return results
+        }
+
+        // Deduplicate and filter to within 2 miles of route using pre-sampled points
+        let maxMeters = 2.0 * 1609.34
+        for charger in fetchedChargers {
+            guard !seenIds.contains(charger.id) else { continue }
+            seenIds.insert(charger.id)
+
+            let chargerLoc = CLLocation(latitude: charger.coordinate.latitude, longitude: charger.coordinate.longitude)
+            let isNearRoute = routeCheckPoints.contains { pt in
+                chargerLoc.distance(from: CLLocation(latitude: pt.latitude, longitude: pt.longitude)) <= maxMeters
+            }
+            if isNearRoute {
+                allChargers.append(charger)
             }
         }
 
-        print("EV Chargers: \(allChargers.count) stations within 2 miles of route (\(String(format: "%.0f", routeMiles)) mi, \(sampleCount) search points)")
+        print("EV Chargers: \(allChargers.count) stations within 2mi of route (\(String(format: "%.0f", routeMiles))mi, \(sampleCount) search points)")
 
-        // Distribute evenly along route to prevent clustering at start/end
+        // Distribute evenly along route to prevent clustering
         let distributed = distributeEvenly(allChargers, alongRoute: route, maxPerSegmentMile: 3)
 
         print("EV Chargers: \(distributed.count) after even distribution")
 
-        // Supplement with Open Charge Map speed data
-        let enriched = await enrichWithOCMSpeeds(chargers: distributed, searchPoints: searchPoints)
+        // Enrich with OCM speed data (use fewer points)
+        let ocmPoints = stride(from: 0, to: searchPoints.count, by: 3).map { searchPoints[$0] }
+        let enriched = await enrichWithOCMSpeeds(chargers: distributed, searchPoints: ocmPoints)
         chargers = enriched
         isLoading = false
     }
@@ -272,23 +280,18 @@ class EVChargerService {
         guard let url = components.url else { return [] }
 
         do {
-            let (data, response) = try await URLSession.shared.data(from: url)
+            var request = URLRequest(url: url)
+            request.timeoutInterval = 10 // 10-second timeout per request
+            let (data, response) = try await URLSession.shared.data(for: request)
             if let httpResponse = response as? HTTPURLResponse {
                 print("NREL HTTP \(httpResponse.statusCode) for \(String(format: "%.3f", point.latitude)),\(String(format: "%.3f", point.longitude))")
             }
-            let decoder = JSONDecoder()
-            let nrelResponse = try decoder.decode(NRELResponse.self, from: data)
+            let nrelResponse = try JSONDecoder().decode(NRELResponse.self, from: data)
             print("NREL: \(nrelResponse.fuel_stations.count) stations found")
             cache[cacheKey] = nrelResponse.fuel_stations
             return nrelResponse.fuel_stations.map { mapStationToCharger($0) }
         } catch {
-            print("NREL fetch error: \(error)")
-            // Try to print raw response for debugging
-            if let url = components.url,
-               let (data, _) = try? await URLSession.shared.data(from: url),
-               let raw = String(data: data, encoding: .utf8) {
-                print("NREL raw response (first 500): \(String(raw.prefix(500)))")
-            }
+            print("NREL fetch error: \(error.localizedDescription)")
             return []
         }
     }
@@ -368,6 +371,7 @@ class EVChargerService {
 
         do {
             var request = URLRequest(url: url)
+            request.timeoutInterval = 8 // 8-second timeout
             request.setValue("application/json", forHTTPHeaderField: "Accept")
             let (data, _) = try await URLSession.shared.data(for: request)
             let stations = try JSONDecoder().decode([OCMStation].self, from: data)
@@ -375,21 +379,32 @@ class EVChargerService {
             print("OCM: \(stations.count) stations near \(String(format: "%.3f", point.latitude)),\(String(format: "%.3f", point.longitude))")
             return stations
         } catch {
-            print("OCM fetch error: \(error)")
+            print("OCM fetch error: \(error.localizedDescription)")
             return []
         }
     }
 
     /// Match NREL chargers with OCM data by proximity to get real kW speeds
     private func enrichWithOCMSpeeds(chargers: [EVCharger], searchPoints: [CLLocationCoordinate2D]) async -> [EVCharger] {
-        // Fetch OCM data for a subset of search points (every other to reduce API calls)
+        guard !chargers.isEmpty, !searchPoints.isEmpty else { return chargers }
+
+        // Fetch OCM data concurrently for all points
         var allOCM: [OCMStation] = []
         var seenOCMIds = Set<Int>()
 
-        let ocmPoints = stride(from: 0, to: searchPoints.count, by: 2).map { searchPoints[$0] }
-        for point in ocmPoints {
-            let stations = await fetchOCMStations(near: point, radiusMiles: 2.0)
-            for s in stations {
+        let ocmResults: [[OCMStation]] = await withTaskGroup(of: [OCMStation].self) { group in
+            for point in searchPoints {
+                group.addTask {
+                    await self.fetchOCMStations(near: point, radiusMiles: 5.0)
+                }
+            }
+            var results: [[OCMStation]] = []
+            for await batch in group { results.append(batch) }
+            return results
+        }
+
+        for batch in ocmResults {
+            for s in batch {
                 if !seenOCMIds.contains(s.ID) {
                     seenOCMIds.insert(s.ID)
                     allOCM.append(s)
