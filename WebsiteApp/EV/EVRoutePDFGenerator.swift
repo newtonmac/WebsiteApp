@@ -189,7 +189,7 @@ struct EVRoutePDFGenerator {
                 profile: route.elevationProfile,
                 vehicle: vehicle,
                 chargingStops: route.chargingStops,
-                avgSpeedMps: (route.distanceMiles * 1609.34) / max(1, route.durationMinutes * 60),
+                avgSpeedMps: (route.distanceMiles * EVConstants.metersPerMile) / max(1, route.durationMinutes * 60),
                 x: margin, y: currentY, width: contentWidth, height: 140
             )
         }
@@ -206,7 +206,7 @@ struct EVRoutePDFGenerator {
                 profile: route.elevationProfile,
                 vehicle: vehicle,
                 chargingStops: route.chargingStops,
-                avgSpeedMps: (route.distanceMiles * 1609.34) / max(1, route.durationMinutes * 60),
+                avgSpeedMps: (route.distanceMiles * EVConstants.metersPerMile) / max(1, route.durationMinutes * 60),
                 x: margin, y: currentY, width: contentWidth, height: 130
             )
         }

@@ -1,5 +1,16 @@
 import SwiftUI
 import CoreLocation
+import MapKit
+
+// MARK: - Debug Logging
+
+/// Debug-only logging — stripped from release builds
+@inline(__always)
+func evLog(_ message: @autoclosure () -> String) {
+    #if DEBUG
+    print(message())
+    #endif
+}
 
 // MARK: - Shared Constants
 
@@ -7,12 +18,17 @@ enum EVConstants {
     static let metersPerFoot: Double = 0.3048
     static let feetPerMeter: Double = 3.28084
     static let metersPerMile: Double = 1609.34
+    static let milesPerMeter: Double = 0.000621371
     static let joulesPerKwh: Double = 3_600_000
+    static let kmPerMile: Double = 1.60934
 
     // Physics
     static let airDensity: Double = 1.225       // kg/m³ at sea level
     static let drivetrainEfficiency: Double = 0.88
     static let gravity: Double = 9.81           // m/s²
+
+    // Default map center (San Diego)
+    static let defaultCoordinate = CLLocationCoordinate2D(latitude: 32.72, longitude: -117.16)
 }
 
 // MARK: - Shared Formatting
@@ -131,4 +147,48 @@ func computeBatteryProfile(
 /// Convert meters to feet
 func metersToFeet(_ meters: Double) -> Int {
     Int(meters * EVConstants.feetPerMeter)
+}
+
+// MARK: - Route Sampling
+
+/// Evenly sample points along a route polyline
+func sampleRoutePoints(route: MKRoute, count: Int) -> [CLLocationCoordinate2D] {
+    let polyline = route.polyline
+    let pointCount = polyline.pointCount
+    guard pointCount > 1, count > 0 else { return [] }
+
+    let mapPoints = polyline.points()
+
+    var cumDist: [Double] = [0]
+    for i in 1..<pointCount {
+        let p1 = mapPoints[i-1].coordinate
+        let p2 = mapPoints[i].coordinate
+        let d = CLLocation(latitude: p1.latitude, longitude: p1.longitude)
+            .distance(from: CLLocation(latitude: p2.latitude, longitude: p2.longitude))
+        cumDist.append((cumDist.last ?? 0) + d)
+    }
+
+    let totalDist = cumDist.last ?? 1
+    var sampled: [CLLocationCoordinate2D] = []
+
+    for i in 0..<count {
+        let targetDist = totalDist * Double(i) / Double(max(1, count - 1))
+        var segIdx = 0
+        while segIdx < cumDist.count - 1 && cumDist[segIdx + 1] < targetDist {
+            segIdx += 1
+        }
+        if segIdx >= pointCount - 1 {
+            sampled.append(mapPoints[pointCount - 1].coordinate)
+            continue
+        }
+        let segLen = cumDist[segIdx + 1] - cumDist[segIdx]
+        let t = segLen > 0 ? (targetDist - cumDist[segIdx]) / segLen : 0
+        let p1 = mapPoints[segIdx].coordinate
+        let p2 = mapPoints[segIdx + 1].coordinate
+        let lat = p1.latitude + t * (p2.latitude - p1.latitude)
+        let lon = p1.longitude + t * (p2.longitude - p1.longitude)
+        sampled.append(CLLocationCoordinate2D(latitude: lat, longitude: lon))
+    }
+
+    return sampled
 }

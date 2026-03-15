@@ -186,7 +186,7 @@ struct EVMapContent: View {
     private var currentCenterCoordinate: CLLocationCoordinate2D? {
         if let destination { return destination }
         if let origin { return origin }
-        return CLLocationCoordinate2D(latitude: 32.72, longitude: -117.16)
+        return EVConstants.defaultCoordinate
     }
 
     // MARK: - Map Control Buttons
@@ -219,7 +219,7 @@ struct EVMapContent: View {
                 withAnimation(.easeInOut(duration: 0.3)) {
                     cameraPosition = .camera(
                         MapCamera(
-                            centerCoordinate: currentCenterCoordinate ?? CLLocationCoordinate2D(latitude: 32.72, longitude: -117.16),
+                            centerCoordinate: currentCenterCoordinate ?? EVConstants.defaultCoordinate,
                             distance: 5000,
                             heading: 0,
                             pitch: 60

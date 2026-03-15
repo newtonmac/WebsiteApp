@@ -111,7 +111,7 @@ enum PreviewMock {
             var grade = 0.0
             if i > 0 {
                 let prevElev = points[i - 1].elevation
-                let segDist = (totalMiles / Double(count - 1)) * 1609.34
+                let segDist = (totalMiles / Double(count - 1)) * EVConstants.metersPerMile
                 grade = ((elev - prevElev) / segDist) * 100
             }
 

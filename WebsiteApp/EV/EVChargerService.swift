@@ -128,7 +128,7 @@ class EVChargerService {
         isLoading = true
         chargers = []
 
-        let routeMiles = route.distance * 0.000621371
+        let routeMiles = route.distance * EVConstants.milesPerMeter
         // Sample every ~7 miles, min 3 points, max 40 — balances coverage vs API calls
         let sampleCount = max(3, min(40, Int(routeMiles / 7) + 2))
         let searchPoints = sampleRoutePoints(route: route, count: sampleCount)
@@ -156,7 +156,7 @@ class EVChargerService {
         }
 
         // Deduplicate and filter to within 2 miles of route using pre-sampled points
-        let maxMeters = 2.0 * 1609.34
+        let maxMeters = 2.0 * EVConstants.metersPerMile
         for charger in fetchedChargers {
             guard !seenIds.contains(charger.id) else { continue }
             seenIds.insert(charger.id)
@@ -170,12 +170,12 @@ class EVChargerService {
             }
         }
 
-        print("EV Chargers: \(allChargers.count) stations within 2mi of route (\(String(format: "%.0f", routeMiles))mi, \(sampleCount) search points)")
+        evLog("EV Chargers: \(allChargers.count) stations within 2mi of route (\(String(format: "%.0f", routeMiles))mi, \(sampleCount) search points)")
 
         // Distribute evenly along route to prevent clustering
         let distributed = distributeEvenly(allChargers, alongRoute: route, maxPerSegmentMile: 3)
 
-        print("EV Chargers: \(distributed.count) after even distribution")
+        evLog("EV Chargers: \(distributed.count) after even distribution")
 
         // Enrich with OCM speed data (use fewer points)
         let ocmPoints = stride(from: 0, to: searchPoints.count, by: 3).map { searchPoints[$0] }
@@ -188,7 +188,7 @@ class EVChargerService {
 
     /// Divide route into segments and cap chargers per segment to avoid clustering
     private func distributeEvenly(_ chargers: [EVCharger], alongRoute route: MKRoute, maxPerSegmentMile: Int) -> [EVCharger] {
-        let routeMiles = route.distance * 0.000621371
+        let routeMiles = route.distance * EVConstants.milesPerMeter
         guard routeMiles > 0, !chargers.isEmpty else { return chargers }
 
         // Create segments of ~10 miles each
@@ -284,14 +284,14 @@ class EVChargerService {
             request.timeoutInterval = 10 // 10-second timeout per request
             let (data, response) = try await URLSession.shared.data(for: request)
             if let httpResponse = response as? HTTPURLResponse {
-                print("NREL HTTP \(httpResponse.statusCode) for \(String(format: "%.3f", point.latitude)),\(String(format: "%.3f", point.longitude))")
+                evLog("NREL HTTP \(httpResponse.statusCode) for \(String(format: "%.3f", point.latitude)),\(String(format: "%.3f", point.longitude))")
             }
             let nrelResponse = try JSONDecoder().decode(NRELResponse.self, from: data)
-            print("NREL: \(nrelResponse.fuel_stations.count) stations found")
+            evLog("NREL: \(nrelResponse.fuel_stations.count) stations found")
             cache[cacheKey] = nrelResponse.fuel_stations
             return nrelResponse.fuel_stations.map { mapStationToCharger($0) }
         } catch {
-            print("NREL fetch error: \(error.localizedDescription)")
+            evLog("NREL fetch error: \(error.localizedDescription)")
             return []
         }
     }
@@ -364,7 +364,7 @@ class EVChargerService {
         let cacheKey = "ocm_\(String(format: "%.2f", point.latitude)),\(String(format: "%.2f", point.longitude))"
         if let cached = ocmCache[cacheKey] { return cached }
 
-        let radiusKm = radiusMiles * 1.60934
+        let radiusKm = radiusMiles * EVConstants.kmPerMile
         let urlStr = "https://api.openchargemap.io/v3/poi/?output=json&latitude=\(point.latitude)&longitude=\(point.longitude)&distance=\(radiusKm)&distanceunit=KM&maxresults=50&compact=true&verbose=false"
 
         guard let url = URL(string: urlStr) else { return [] }
@@ -376,10 +376,10 @@ class EVChargerService {
             let (data, _) = try await URLSession.shared.data(for: request)
             let stations = try JSONDecoder().decode([OCMStation].self, from: data)
             ocmCache[cacheKey] = stations
-            print("OCM: \(stations.count) stations near \(String(format: "%.3f", point.latitude)),\(String(format: "%.3f", point.longitude))")
+            evLog("OCM: \(stations.count) stations near \(String(format: "%.3f", point.latitude)),\(String(format: "%.3f", point.longitude))")
             return stations
         } catch {
-            print("OCM fetch error: \(error.localizedDescription)")
+            evLog("OCM fetch error: \(error.localizedDescription)")
             return []
         }
     }
@@ -413,11 +413,11 @@ class EVChargerService {
         }
 
         guard !allOCM.isEmpty else {
-            print("OCM: No data available, using NREL estimates")
+            evLog("OCM: No data available, using NREL estimates")
             return chargers
         }
 
-        print("OCM: \(allOCM.count) unique stations for speed matching")
+        evLog("OCM: \(allOCM.count) unique stations for speed matching")
 
         // Match each NREL charger to nearest OCM station within 200m
         return chargers.map { charger in
@@ -456,51 +456,6 @@ class EVChargerService {
                 dcFastCount: charger.dcFastCount
             )
         }
-    }
-
-    // MARK: - Route Sampling
-
-    /// Evenly sample points along the route polyline
-    private func sampleRoutePoints(route: MKRoute, count: Int) -> [CLLocationCoordinate2D] {
-        let polyline = route.polyline
-        let pointCount = polyline.pointCount
-        guard pointCount > 1, count > 0 else { return [] }
-
-        let mapPoints = polyline.points()
-
-        // Build cumulative distance array
-        var cumDist: [Double] = [0]
-        for i in 1..<pointCount {
-            let p1 = mapPoints[i-1].coordinate
-            let p2 = mapPoints[i].coordinate
-            let d = CLLocation(latitude: p1.latitude, longitude: p1.longitude)
-                .distance(from: CLLocation(latitude: p2.latitude, longitude: p2.longitude))
-            cumDist.append(cumDist.last! + d)
-        }
-
-        let totalDist = cumDist.last ?? 1
-        var sampled: [CLLocationCoordinate2D] = []
-
-        for i in 0..<count {
-            let targetDist = totalDist * Double(i) / Double(max(1, count - 1))
-            var segIdx = 0
-            while segIdx < cumDist.count - 1 && cumDist[segIdx + 1] < targetDist {
-                segIdx += 1
-            }
-            if segIdx >= pointCount - 1 {
-                sampled.append(mapPoints[pointCount - 1].coordinate)
-                continue
-            }
-            let segLen = cumDist[segIdx + 1] - cumDist[segIdx]
-            let t = segLen > 0 ? (targetDist - cumDist[segIdx]) / segLen : 0
-            let p1 = mapPoints[segIdx].coordinate
-            let p2 = mapPoints[segIdx + 1].coordinate
-            let lat = p1.latitude + t * (p2.latitude - p1.latitude)
-            let lon = p1.longitude + t * (p2.longitude - p1.longitude)
-            sampled.append(CLLocationCoordinate2D(latitude: lat, longitude: lon))
-        }
-
-        return sampled
     }
 
 }

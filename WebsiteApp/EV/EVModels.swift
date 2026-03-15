@@ -22,7 +22,7 @@ struct EVVehicle: Identifiable, Hashable {
         if settings.useMiles {
             return "\(epaMiles) mi EPA"
         } else {
-            return "\(Int(Double(epaMiles) * 1.60934)) km EPA"
+            return "\(Int(Double(epaMiles) * EVConstants.kmPerMile)) km EPA"
         }
     }
 

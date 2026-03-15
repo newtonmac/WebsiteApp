@@ -82,7 +82,7 @@ struct RouteResult: Identifiable {
          finalBatteryPct: Double, finalSection: FinalSection? = nil) {
         self.route = route
         self.routeName = route.name
-        self.distanceMiles = route.distance * 0.000621371
+        self.distanceMiles = route.distance * EVConstants.milesPerMeter
         self.durationMinutes = route.expectedTravelTime / 60
         self.elevationGain = elevationGain
         self.elevationLoss = elevationLoss
@@ -134,8 +134,6 @@ class EVRouteService {
     var routes: [RouteResult] = []
     var isLoading = false
     var errorMessage: String?
-
-    private let googleAPIKey = "AIzaSyBEjpKpb_xMnZgrkTBOKMefOdaqkmQHS-8"
 
     // Charging parameters (defaults, overridden by settings)
     private var minBatteryPct = 15.0
@@ -194,7 +192,7 @@ class EVRouteService {
                     elevationLoss: energy.loss,
                     energyKwh: energy.totalKwh,
                     batteryPctUsed: totalBatteryPct,
-                    efficiency: (route.distance * 0.000621371) / max(energy.totalKwh, 0.01),
+                    efficiency: (route.distance * EVConstants.milesPerMeter) / max(energy.totalKwh, 0.01),
                     averageGrade: energy.avgGrade,
                     peakGrade: energy.peakGrade,
                     elevationProfile: profile,
@@ -409,7 +407,7 @@ class EVRouteService {
 
         // If all zeros, try Open-Meteo as fallback
         if allElevations.allSatisfy({ $0 == 0 }) {
-            print("Open Elevation returned all zeros, trying Open-Meteo fallback...")
+            evLog("Open Elevation returned all zeros, trying Open-Meteo fallback...")
             return await fetchElevationsOpenMeteo(points)
         }
 
@@ -433,27 +431,27 @@ class EVRouteService {
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
         } catch {
-            print("Open Elevation: JSON error: \(error)")
+            evLog("Open Elevation: JSON error: \(error)")
             return Array(repeating: 0, count: points.count)
         }
 
-        print("Open Elevation: requesting \(points.count) points")
+        evLog("Open Elevation: requesting \(points.count) points")
 
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
 
             if let httpResponse = response as? HTTPURLResponse {
-                print("Open Elevation HTTP \(httpResponse.statusCode)")
+                evLog("Open Elevation HTTP \(httpResponse.statusCode)")
             }
 
             let decoded = try JSONDecoder().decode(OpenElevationResponse.self, from: data)
             let elevs = decoded.results.map { $0.elevation }
             let minE = elevs.min() ?? 0
             let maxE = elevs.max() ?? 0
-            print("Open Elevation: \(elevs.count) pts, range \(String(format: "%.1f", minE))m - \(String(format: "%.1f", maxE))m")
+            evLog("Open Elevation: \(elevs.count) pts, range \(String(format: "%.1f", minE))m - \(String(format: "%.1f", maxE))m")
             return elevs
         } catch {
-            print("Open Elevation error: \(error)")
+            evLog("Open Elevation error: \(error)")
             return Array(repeating: 0, count: points.count)
         }
     }
@@ -482,63 +480,20 @@ class EVRouteService {
                 continue
             }
 
-            print("Open-Meteo: requesting \(chunk.count) points")
+            evLog("Open-Meteo: requesting \(chunk.count) points")
 
             do {
                 let (data, _) = try await URLSession.shared.data(from: url)
                 let decoded = try JSONDecoder().decode(OpenMeteoElevationResponse.self, from: data)
-                print("Open-Meteo: got \(decoded.elevation.count) elevations")
+                evLog("Open-Meteo: got \(decoded.elevation.count) elevations")
                 allElevations.append(contentsOf: decoded.elevation)
             } catch {
-                print("Open-Meteo error: \(error)")
+                evLog("Open-Meteo error: \(error)")
                 allElevations.append(contentsOf: Array(repeating: 0, count: chunk.count))
             }
         }
 
         return allElevations
-    }
-
-    // MARK: - Route Sampling
-
-    private func sampleRoutePoints(route: MKRoute, count: Int) -> [CLLocationCoordinate2D] {
-        let polyline = route.polyline
-        let pointCount = polyline.pointCount
-        guard pointCount > 1 else { return [] }
-
-        var allPoints: [CLLocationCoordinate2D] = []
-        let mapPoints = polyline.points()
-        for i in 0..<pointCount {
-            allPoints.append(mapPoints[i].coordinate)
-        }
-
-        var cumDist: [Double] = [0]
-        for i in 1..<allPoints.count {
-            let loc1 = CLLocation(latitude: allPoints[i-1].latitude, longitude: allPoints[i-1].longitude)
-            let loc2 = CLLocation(latitude: allPoints[i].latitude, longitude: allPoints[i].longitude)
-            cumDist.append(cumDist.last! + loc1.distance(from: loc2))
-        }
-
-        let totalDist = cumDist.last ?? 1
-        var sampled: [CLLocationCoordinate2D] = []
-
-        for i in 0..<count {
-            let targetDist = totalDist * Double(i) / Double(count - 1)
-            var segIdx = 0
-            while segIdx < cumDist.count - 1 && cumDist[segIdx + 1] < targetDist {
-                segIdx += 1
-            }
-            if segIdx >= allPoints.count - 1 {
-                sampled.append(allPoints.last!)
-                continue
-            }
-            let segLen = cumDist[segIdx + 1] - cumDist[segIdx]
-            let t = segLen > 0 ? (targetDist - cumDist[segIdx]) / segLen : 0
-            let lat = allPoints[segIdx].latitude + t * (allPoints[segIdx + 1].latitude - allPoints[segIdx].latitude)
-            let lon = allPoints[segIdx].longitude + t * (allPoints[segIdx + 1].longitude - allPoints[segIdx].longitude)
-            sampled.append(CLLocationCoordinate2D(latitude: lat, longitude: lon))
-        }
-
-        return sampled
     }
 
     // MARK: - Elevation Profile
@@ -553,7 +508,7 @@ class EVRouteService {
             smoothed[i] = (elevations[i-1] + elevations[i] + elevations[i+1]) / 3.0
         }
 
-        let totalMiles = totalDistance * 0.000621371
+        let totalMiles = totalDistance * EVConstants.milesPerMeter
         var profile: [ElevationPoint] = []
 
         for i in 0..<points.count {

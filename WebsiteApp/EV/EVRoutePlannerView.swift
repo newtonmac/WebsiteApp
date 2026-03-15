@@ -25,7 +25,7 @@ struct EVRoutePlannerView: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @GestureState private var dragOffset: CGFloat = 0
     @State private var mapCameraPosition: MapCameraPosition = .region(
-        MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 32.72, longitude: -117.16),
+        MKCoordinateRegion(center: EVConstants.defaultCoordinate,
                           span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5))
     )
 
@@ -44,7 +44,7 @@ struct EVRoutePlannerView: View {
 
         // If a route with charging stops is selected, only show chargers within detour distance of stops
         if let route = selectedRoute, route.needsCharging {
-            let radiusMeters = settings.maxDetourMiles * 1609.34
+            let radiusMeters = settings.maxDetourMiles * EVConstants.metersPerMile
             let stopLocations = route.chargingStops.map {
                 CLLocation(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude)
             }
@@ -802,7 +802,7 @@ struct EVRoutePlannerView: View {
                     profile: route.elevationProfile,
                     vehicle: selectedVehicle,
                     chargingStops: route.chargingStops,
-                    avgSpeedMps: (route.distanceMiles * 1609.34) / max(1, route.durationMinutes * 60)
+                    avgSpeedMps: (route.distanceMiles * EVConstants.metersPerMile) / max(1, route.durationMinutes * 60)
                 )
                     .frame(height: 160)
                     .clipShape(RoundedRectangle(cornerRadius: 10))

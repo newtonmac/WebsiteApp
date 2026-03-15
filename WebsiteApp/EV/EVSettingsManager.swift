@@ -77,13 +77,13 @@ final class EVSettingsManager: ObservableObject {
         if useMiles {
             return String(format: "%.1f mi", miles)
         } else {
-            return String(format: "%.1f km", miles * 1.60934)
+            return String(format: "%.1f km", miles * EVConstants.kmPerMile)
         }
     }
 
     /// Distance value converted
     func distanceValue(_ miles: Double) -> Double {
-        useMiles ? miles : miles * 1.60934
+        useMiles ? miles : miles * EVConstants.kmPerMile
     }
 
     /// Unit label
@@ -97,7 +97,7 @@ final class EVSettingsManager: ObservableObject {
         if useMiles {
             return String(format: "%.2f kWh/mi", kwhPerMile)
         } else {
-            return String(format: "%.2f kWh/km", kwhPerMile / 1.60934)
+            return String(format: "%.2f kWh/km", kwhPerMile / EVConstants.kmPerMile)
         }
     }
 
@@ -106,7 +106,7 @@ final class EVSettingsManager: ObservableObject {
         if useMiles {
             return String(format: "%.1f mi/kWh", miPerKwh)
         } else {
-            return String(format: "%.1f km/kWh", miPerKwh * 1.60934)
+            return String(format: "%.1f km/kWh", miPerKwh * EVConstants.kmPerMile)
         }
     }
 

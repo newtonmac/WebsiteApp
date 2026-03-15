@@ -27,7 +27,7 @@ struct EVRouteDetailView: View {
         self.vehicle = vehicle
         self.chargers = chargers
 
-        let radiusMeters: Double = 50 * 1609.34
+        let radiusMeters: Double = 50 * EVConstants.metersPerMile
         let maxPerStop = 5
         var groups: [StopChargers] = []
 
@@ -39,7 +39,7 @@ struct EVRouteDetailView: View {
                 let chargerLocation = CLLocation(latitude: charger.coordinate.latitude, longitude: charger.coordinate.longitude)
                 let dist = stopLocation.distance(from: chargerLocation)
                 if dist <= radiusMeters {
-                    nearby.append(NearbyCharger(id: charger.id, charger: charger, distanceMiles: dist / 1609.34))
+                    nearby.append(NearbyCharger(id: charger.id, charger: charger, distanceMiles: dist / EVConstants.metersPerMile))
                 }
             }
 
@@ -431,7 +431,7 @@ struct EVRouteDetailView: View {
                     profile: route.elevationProfile,
                     vehicle: vehicle,
                     chargingStops: route.chargingStops,
-                    avgSpeedMps: (route.distanceMiles * 1609.34) / max(1, route.durationMinutes * 60)
+                    avgSpeedMps: (route.distanceMiles * EVConstants.metersPerMile) / max(1, route.durationMinutes * 60)
                 )
                     .frame(height: 160)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
