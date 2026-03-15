@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreLocation
 
 struct EVRouteDetailView: View {
     let route: RouteResult
@@ -331,47 +332,124 @@ struct EVRouteDetailView: View {
     // MARK: - Chargers
 
     private var chargersSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Chargers Along Route (\(chargers.count))")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(EVTheme.textPrimary)
+        let nearbyRadius: Double = 20 // miles
 
-            ForEach(chargers) { charger in
-                HStack(spacing: 10) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(networkColor(charger.network))
-                            .frame(width: 32, height: 24)
-                        Text(charger.network.abbreviation)
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(.white)
-                    }
+        return VStack(alignment: .leading, spacing: 16) {
+            if route.needsCharging {
+                ForEach(route.chargingStops) { stop in
+                    let nearby = chargersNear(stop: stop, radiusMiles: nearbyRadius)
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(charger.name)
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(EVTheme.textPrimary)
-                            .lineLimit(1)
-                        Text(charger.address)
-                            .font(.caption)
-                            .foregroundStyle(EVTheme.textSecondary)
-                            .lineLimit(1)
-                        if !charger.connectors.isEmpty {
-                            Text(charger.connectors.joined(separator: " • "))
-                                .font(.caption2)
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "bolt.circle.fill")
+                                .foregroundStyle(EVTheme.accentYellow)
+                                .font(.subheadline)
+                            Text("Chargers Near Stop \(stop.stopNumber)")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(EVTheme.textPrimary)
+                            Spacer()
+                            Text("Mile \(String(format: "%.0f", stop.distanceMiles))")
+                                .font(.caption)
                                 .foregroundStyle(EVTheme.textSecondary)
                         }
+
+                        if nearby.isEmpty {
+                            Text("No chargers found within \(Int(nearbyRadius)) miles")
+                                .font(.caption)
+                                .foregroundStyle(EVTheme.textSecondary)
+                                .padding(.vertical, 4)
+                        } else {
+                            ForEach(nearby) { charger in
+                                chargerRow(charger: charger, stopCoordinate: stop.coordinate)
+
+                                if charger.id != nearby.last?.id {
+                                    Rectangle()
+                                        .fill(EVTheme.border)
+                                        .frame(height: 1)
+                                }
+                            }
+                        }
+                    }
+
+                    if stop.id != route.chargingStops.last?.id {
+                        Rectangle()
+                            .fill(EVTheme.border.opacity(0.5))
+                            .frame(height: 1)
+                            .padding(.vertical, 4)
                     }
                 }
-                .padding(.vertical, 4)
+            } else {
+                Text("Chargers Along Route (\(chargers.count))")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(EVTheme.textPrimary)
 
-                if charger.id != chargers.last?.id {
-                    Rectangle()
-                        .fill(EVTheme.border)
-                        .frame(height: 1)
+                ForEach(chargers) { charger in
+                    chargerRow(charger: charger, stopCoordinate: nil)
+
+                    if charger.id != chargers.last?.id {
+                        Rectangle()
+                            .fill(EVTheme.border)
+                            .frame(height: 1)
+                    }
                 }
             }
         }
+    }
+
+    private func chargersNear(stop: ChargingStop, radiusMiles: Double) -> [EVCharger] {
+        let stopLocation = CLLocation(latitude: stop.coordinate.latitude, longitude: stop.coordinate.longitude)
+        let radiusMeters = radiusMiles * 1609.34
+
+        return chargers
+            .filter { charger in
+                let chargerLocation = CLLocation(latitude: charger.coordinate.latitude, longitude: charger.coordinate.longitude)
+                return stopLocation.distance(from: chargerLocation) <= radiusMeters
+            }
+            .sorted { a, b in
+                let locA = CLLocation(latitude: a.coordinate.latitude, longitude: a.coordinate.longitude)
+                let locB = CLLocation(latitude: b.coordinate.latitude, longitude: b.coordinate.longitude)
+                return stopLocation.distance(from: locA) < stopLocation.distance(from: locB)
+            }
+    }
+
+    private func chargerRow(charger: EVCharger, stopCoordinate: CLLocationCoordinate2D?) -> some View {
+        HStack(spacing: 10) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(networkColor(charger.network))
+                    .frame(width: 32, height: 24)
+                Text(charger.network.abbreviation)
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.white)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(charger.name)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(EVTheme.textPrimary)
+                    .lineLimit(1)
+                HStack(spacing: 4) {
+                    Text(charger.address)
+                        .font(.caption)
+                        .foregroundStyle(EVTheme.textSecondary)
+                        .lineLimit(1)
+                    if let coord = stopCoordinate {
+                        let dist = CLLocation(latitude: coord.latitude, longitude: coord.longitude)
+                            .distance(from: CLLocation(latitude: charger.coordinate.latitude, longitude: charger.coordinate.longitude))
+                        let miles = dist / 1609.34
+                        Text("• \(String(format: "%.1f mi", miles))")
+                            .font(.caption)
+                            .foregroundStyle(EVTheme.accentGreen)
+                    }
+                }
+                if !charger.connectors.isEmpty {
+                    Text(charger.connectors.joined(separator: " • "))
+                        .font(.caption2)
+                        .foregroundStyle(EVTheme.textSecondary)
+                }
+            }
+        }
+        .padding(.vertical, 4)
     }
 
     // MARK: - Helpers
