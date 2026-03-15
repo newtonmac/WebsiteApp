@@ -231,7 +231,7 @@ struct EVSettingsView: View {
                     Text("Used for trip cost estimates")
                         .font(.system(size: 11))
                         .foregroundStyle(EVTheme.textSecondary)
-                    Slider(value: $settings.electricityCostPerKwh, in: 0.05...0.60, step: 0.01)
+                    Slider(value: $settings.electricityCostPerKwh, in: 0.05...1.00, step: 0.01)
                         .tint(EVTheme.accentGreen)
                 }
             }
