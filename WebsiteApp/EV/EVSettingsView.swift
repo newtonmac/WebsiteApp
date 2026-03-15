@@ -1,8 +1,10 @@
 import SwiftUI
+import StoreKit
 
 struct EVSettingsView: View {
     @ObservedObject var settings = EVSettingsManager.shared
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.requestReview) private var requestReview
 
     var body: some View {
         NavigationStack {
@@ -366,14 +368,9 @@ struct EVSettingsView: View {
     }
 
     private func requestAppReview() {
-        guard let scene = UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene })
-            .first else { return }
-        SKStoreReviewController.requestReview(in: scene)
+        requestReview()
     }
 }
-
-import StoreKit
 
 // MARK: - Reusable Settings Components
 

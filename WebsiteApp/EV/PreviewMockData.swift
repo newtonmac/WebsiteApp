@@ -1,3 +1,4 @@
+#if DEBUG
 import Foundation
 import MapKit
 
@@ -196,3 +197,4 @@ enum PreviewMock {
         finalBatteryPct: 31.9
     )
 }
+#endif
