@@ -14,7 +14,10 @@ struct ChargingStop: Identifiable {
 
 struct RouteResult: Identifiable {
     let id = UUID()
-    let route: MKRoute
+    let route: MKRoute?
+    let routeName: String
+    let distanceMiles: Double
+    let durationMinutes: Double
     let elevationGain: Double
     let elevationLoss: Double
     let energyKwh: Double           // total energy for full trip (no stops)
@@ -27,10 +30,53 @@ struct RouteResult: Identifiable {
     let chargingStops: [ChargingStop]
     let finalBatteryPct: Double     // battery % at destination (after charging stops)
 
-    var distanceMiles: Double { route.distance * 0.000621371 }
-    var durationMinutes: Double { route.expectedTravelTime / 60 }
     var remainingBatteryPct: Double { finalBatteryPct }
     var needsCharging: Bool { !chargingStops.isEmpty }
+
+    /// Standard init from a real MKRoute
+    init(route: MKRoute, elevationGain: Double, elevationLoss: Double, energyKwh: Double,
+         batteryPctUsed: Double, efficiency: Double, averageGrade: Double, peakGrade: Double,
+         elevationProfile: [ElevationPoint], score: Double, chargingStops: [ChargingStop],
+         finalBatteryPct: Double) {
+        self.route = route
+        self.routeName = route.name
+        self.distanceMiles = route.distance * 0.000621371
+        self.durationMinutes = route.expectedTravelTime / 60
+        self.elevationGain = elevationGain
+        self.elevationLoss = elevationLoss
+        self.energyKwh = energyKwh
+        self.batteryPctUsed = batteryPctUsed
+        self.efficiency = efficiency
+        self.averageGrade = averageGrade
+        self.peakGrade = peakGrade
+        self.elevationProfile = elevationProfile
+        self.score = score
+        self.chargingStops = chargingStops
+        self.finalBatteryPct = finalBatteryPct
+    }
+
+    /// Preview init without MKRoute
+    init(routeName: String, distanceMiles: Double, durationMinutes: Double,
+         elevationGain: Double, elevationLoss: Double, energyKwh: Double,
+         batteryPctUsed: Double, efficiency: Double, averageGrade: Double, peakGrade: Double,
+         elevationProfile: [ElevationPoint], score: Double, chargingStops: [ChargingStop],
+         finalBatteryPct: Double) {
+        self.route = nil
+        self.routeName = routeName
+        self.distanceMiles = distanceMiles
+        self.durationMinutes = durationMinutes
+        self.elevationGain = elevationGain
+        self.elevationLoss = elevationLoss
+        self.energyKwh = energyKwh
+        self.batteryPctUsed = batteryPctUsed
+        self.efficiency = efficiency
+        self.averageGrade = averageGrade
+        self.peakGrade = peakGrade
+        self.elevationProfile = elevationProfile
+        self.score = score
+        self.chargingStops = chargingStops
+        self.finalBatteryPct = finalBatteryPct
+    }
 }
 
 struct ElevationPoint {

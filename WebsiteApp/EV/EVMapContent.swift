@@ -47,15 +47,15 @@ struct EVMapContent: View {
             // Route polylines — alternatives first, selected on top
             ForEach(routes) { route in
                 let isSelected = route.id == selectedRoute?.id
-                if !isSelected {
-                    MapPolyline(route.route.polyline)
+                if !isSelected, let mkRoute = route.route {
+                    MapPolyline(mkRoute.polyline)
                         .stroke(Color.gray.opacity(0.4), lineWidth: 3)
                 }
             }
 
             // Selected route on top
-            if let selected = selectedRoute {
-                MapPolyline(selected.route.polyline)
+            if let selected = selectedRoute, let mkRoute = selected.route {
+                MapPolyline(mkRoute.polyline)
                     .stroke(EVTheme.accentBlue, lineWidth: 5)
             }
 
@@ -468,4 +468,14 @@ struct ChargerDetailSheet: View {
         .background(EVTheme.bgCard)
         .preferredColorScheme(.dark)
     }
+}
+
+// MARK: - Previews
+
+#Preview("Charger Detail — Tesla") {
+    ChargerDetailSheet(charger: PreviewMock.chargers[0])
+}
+
+#Preview("Charger Detail — Electrify America") {
+    ChargerDetailSheet(charger: PreviewMock.chargers[1])
 }

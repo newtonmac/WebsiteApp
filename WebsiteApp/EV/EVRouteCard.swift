@@ -205,3 +205,37 @@ struct BatteryBarView: View {
         return EVTheme.accentGreen
     }
 }
+
+// MARK: - Previews
+
+#Preview("Route Card — Best (Charging)") {
+    VStack(spacing: 12) {
+        EVRouteCard(
+            route: PreviewMock.longTripRoute,
+            vehicle: PreviewMock.vehicle,
+            isBest: true,
+            isSelected: true
+        )
+        EVRouteCard(
+            route: PreviewMock.altRoute,
+            vehicle: PreviewMock.vehicle,
+            isBest: false,
+            isSelected: false
+        )
+    }
+    .padding()
+    .background(EVTheme.bgPrimary)
+    .preferredColorScheme(.dark)
+}
+
+#Preview("Route Card — Short Trip") {
+    EVRouteCard(
+        route: PreviewMock.shortTripRoute,
+        vehicle: PreviewMock.vehicle,
+        isBest: true,
+        isSelected: true
+    )
+    .padding()
+    .background(EVTheme.bgPrimary)
+    .preferredColorScheme(.dark)
+}

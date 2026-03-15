@@ -745,7 +745,8 @@ struct EVRoutePlannerView: View {
     }
 
     private func fitMapToRoute(_ route: RouteResult) {
-        let rect = route.route.polyline.boundingMapRect
+        guard let mkRoute = route.route else { return }
+        let rect = mkRoute.polyline.boundingMapRect
         let padded = rect.insetBy(dx: -rect.size.width * 0.1, dy: -rect.size.height * 0.1)
         mapCameraPosition = .rect(padded)
     }

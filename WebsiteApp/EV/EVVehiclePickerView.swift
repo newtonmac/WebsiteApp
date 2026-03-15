@@ -92,3 +92,7 @@ struct EVVehiclePickerView: View {
             .foregroundStyle(EVTheme.textSecondary)
     }
 }
+
+#Preview("Vehicle Picker") {
+    EVVehiclePickerView(selectedVehicle: .constant(PreviewMock.vehicle))
+}

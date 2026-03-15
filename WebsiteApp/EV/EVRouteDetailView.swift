@@ -58,7 +58,7 @@ struct EVRouteDetailView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     // Title
                     HStack {
-                        Text(route.route.name.isEmpty ? "Route" : route.route.name)
+                        Text(route.routeName.isEmpty ? "Route" : route.routeName)
                             .font(.title3.weight(.bold))
                             .foregroundStyle(EVTheme.accentGreen)
                         Text("— \(String(format: "%.1f mi", route.distanceMiles))")
@@ -685,4 +685,22 @@ struct ElevationChartView: View {
             }
         }
     }
+}
+
+// MARK: - Previews
+
+#Preview("Route Detail — Charging Needed") {
+    EVRouteDetailView(
+        route: PreviewMock.longTripRoute,
+        vehicle: PreviewMock.vehicle,
+        chargers: PreviewMock.chargers
+    )
+}
+
+#Preview("Route Detail — No Charging") {
+    EVRouteDetailView(
+        route: PreviewMock.shortTripRoute,
+        vehicle: PreviewMock.vehicle,
+        chargers: PreviewMock.chargers
+    )
 }
