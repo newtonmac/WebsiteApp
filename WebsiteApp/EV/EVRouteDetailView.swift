@@ -898,22 +898,3 @@ struct ElevationChartView: View {
     }
 }
 
-// MARK: - Previews
-
-#if DEBUG
-#Preview("Route Detail — Charging Needed") {
-    EVRouteDetailView(
-        route: PreviewMock.longTripRoute,
-        vehicle: PreviewMock.vehicle,
-        chargers: PreviewMock.chargers
-    )
-}
-
-#Preview("Route Detail — No Charging") {
-    EVRouteDetailView(
-        route: PreviewMock.shortTripRoute,
-        vehicle: PreviewMock.vehicle,
-        chargers: PreviewMock.chargers
-    )
-}
-#endif

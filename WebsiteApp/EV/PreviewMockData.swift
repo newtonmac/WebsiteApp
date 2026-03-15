@@ -1,5 +1,5 @@
 #if DEBUG
-import Foundation
+import SwiftUI
 import MapKit
 
 /// Mock data for Xcode Previews and App Store screenshots
@@ -196,5 +196,67 @@ enum PreviewMock {
         chargingStops: chargingStops,
         finalBatteryPct: 31.9
     )
+}
+
+// MARK: - Previews
+
+#Preview("Charger Detail — Tesla") {
+    ChargerDetailSheet(charger: PreviewMock.chargers[0])
+}
+
+#Preview("Charger Detail — Electrify America") {
+    ChargerDetailSheet(charger: PreviewMock.chargers[1])
+}
+
+#Preview("Route Card — Best (Charging)") {
+    VStack(spacing: 12) {
+        EVRouteCard(
+            route: PreviewMock.longTripRoute,
+            vehicle: PreviewMock.vehicle,
+            isBest: true,
+            isSelected: true
+        )
+        EVRouteCard(
+            route: PreviewMock.altRoute,
+            vehicle: PreviewMock.vehicle,
+            isBest: false,
+            isSelected: false
+        )
+    }
+    .padding()
+    .background(EVTheme.bgPrimary)
+    .preferredColorScheme(.dark)
+}
+
+#Preview("Route Card — Short Trip") {
+    EVRouteCard(
+        route: PreviewMock.shortTripRoute,
+        vehicle: PreviewMock.vehicle,
+        isBest: true,
+        isSelected: true
+    )
+    .padding()
+    .background(EVTheme.bgPrimary)
+    .preferredColorScheme(.dark)
+}
+
+#Preview("Route Detail — Charging Needed") {
+    EVRouteDetailView(
+        route: PreviewMock.longTripRoute,
+        vehicle: PreviewMock.vehicle,
+        chargers: PreviewMock.chargers
+    )
+}
+
+#Preview("Route Detail — No Charging") {
+    EVRouteDetailView(
+        route: PreviewMock.shortTripRoute,
+        vehicle: PreviewMock.vehicle,
+        chargers: PreviewMock.chargers
+    )
+}
+
+#Preview("Vehicle Picker") {
+    EVVehiclePickerView(selectedVehicle: .constant(PreviewMock.vehicle))
 }
 #endif
