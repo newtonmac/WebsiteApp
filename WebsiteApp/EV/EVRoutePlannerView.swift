@@ -18,8 +18,7 @@ struct EVRoutePlannerView: View {
     @State private var panelExpanded = true
     @State private var selectedCharger: EVCharger?
     @State private var mapStyle: EVMapStyle = .standard
-    @State private var showingSummarySheet = false
-    @State private var summaryPDFData: Data?
+    @State private var summaryPDFItem: PDFItem?
     @State private var selectedNetworks: Set<ChargerNetwork> = Set(ChargerNetwork.allCases)
     @State private var keyboardOffset: CGFloat = 0
     @Environment(\.verticalSizeClass) private var verticalSizeClass
@@ -214,10 +213,8 @@ struct EVRoutePlannerView: View {
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
         }
-        .sheet(isPresented: $showingSummarySheet) {
-            if let pdfData = summaryPDFData {
-                PDFShareSheet(pdfData: pdfData, fileName: "EV_Route_Summary.pdf")
-            }
+        .sheet(item: $summaryPDFItem) { item in
+            PDFShareSheet(pdfData: item.data, fileName: "EV_Route_Summary.pdf")
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { notification in
             if let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
@@ -538,19 +535,14 @@ struct EVRoutePlannerView: View {
             }
 
             Button {
-                Task.detached {
-                    let pdfData = EVRoutePDFGenerator.generatePDF(
-                        route: route,
-                        vehicle: selectedVehicle,
-                        origin: originText,
-                        destination: destinationText,
-                        chargers: chargerService.chargers
-                    )
-                    await MainActor.run {
-                        summaryPDFData = pdfData
-                        showingSummarySheet = true
-                    }
-                }
+                let pdfData = EVRoutePDFGenerator.generatePDF(
+                    route: route,
+                    vehicle: selectedVehicle,
+                    origin: originText,
+                    destination: destinationText,
+                    chargers: chargerService.chargers
+                )
+                summaryPDFItem = PDFItem(data: pdfData)
             } label: {
                 HStack {
                     Image(systemName: "doc.text.fill")
@@ -1002,6 +994,13 @@ struct FlowLayout: Layout {
             lineHeight = max(lineHeight, size.height)
         }
     }
+}
+
+// MARK: - PDF Item
+
+struct PDFItem: Identifiable {
+    let id = UUID()
+    let data: Data
 }
 
 // MARK: - PDF Share Sheet
