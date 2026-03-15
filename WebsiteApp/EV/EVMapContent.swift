@@ -418,15 +418,24 @@ struct ChargerDetailSheet: View {
             }
 
             // Pricing
-            if let pricing = charger.pricing, !pricing.isEmpty {
-                HStack(spacing: 6) {
-                    Image(systemName: "dollarsign.circle.fill")
-                        .font(.system(size: 13))
-                        .foregroundStyle(EVTheme.accentYellow)
-                    Text(pricing)
-                        .font(.system(size: 13))
-                        .foregroundStyle(EVTheme.textSecondary)
-                        .lineLimit(4)
+            HStack(spacing: 6) {
+                Image(systemName: "dollarsign.circle.fill")
+                    .font(.system(size: 13))
+                    .foregroundStyle(EVTheme.accentYellow)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(String(format: "$%.2f", charger.pricePerKwh))/kWh")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(EVTheme.textPrimary)
+                    if let pricing = charger.pricing, !pricing.isEmpty {
+                        Text(pricing)
+                            .font(.system(size: 12))
+                            .foregroundStyle(EVTheme.textSecondary)
+                            .lineLimit(3)
+                    } else {
+                        Text("Avg. \(charger.network.shortName) rate")
+                            .font(.system(size: 12))
+                            .foregroundStyle(EVTheme.textSecondary)
+                    }
                 }
             }
 

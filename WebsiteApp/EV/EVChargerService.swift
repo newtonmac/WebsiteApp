@@ -20,6 +20,31 @@ struct EVCharger: Identifiable, Hashable {
         (level2Count ?? 0) + (dcFastCount ?? 0)
     }
 
+    /// Parse price per kWh from NREL pricing string, fallback to network default
+    var pricePerKwh: Double {
+        if let pricing = pricing, !pricing.isEmpty {
+            // Try to extract a $/kWh value from the free-text pricing string
+            // Common patterns: "$0.35/kWh", "$0.48 per kWh", "0.39/kWh"
+            let lower = pricing.lowercased()
+            if lower.contains("kwh") || lower.contains("kw") {
+                let pattern = #"\$?(\d+\.?\d*)\s*(?:/\s*kwh|per\s*kwh|\/kwh)"#
+                if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
+                   let match = regex.firstMatch(in: pricing, range: NSRange(pricing.startIndex..., in: pricing)),
+                   let range = Range(match.range(at: 1), in: pricing),
+                   let value = Double(pricing[range]),
+                   value > 0 && value < 5.0 {
+                    return value
+                }
+            }
+        }
+        return network.defaultPricePerKwh
+    }
+
+    /// Estimate charging cost for a given number of kWh
+    func estimatedCost(forKwh kwh: Double) -> Double {
+        kwh * pricePerKwh
+    }
+
     static func == (lhs: EVCharger, rhs: EVCharger) -> Bool {
         lhs.id == rhs.id
     }
@@ -71,6 +96,19 @@ enum ChargerNetwork: String, CaseIterable {
         case .blink: return "#ff6f00"
         case .evConnect: return "#5cbf14"
         case .shell: return "#fbce07"
+        }
+    }
+
+    /// Typical DC fast charging price per kWh (USD) by network
+    var defaultPricePerKwh: Double {
+        switch self {
+        case .tesla: return 0.35           // Supercharger avg
+        case .electrifyAmerica: return 0.48 // Pass+ ~$0.31, guest ~$0.48
+        case .evgo: return 0.39            // Pay-as-you-go avg
+        case .chargePoint: return 0.42     // Varies by host
+        case .blink: return 0.49           // DC fast avg
+        case .evConnect: return 0.40       // Varies
+        case .shell: return 0.49           // Recharge avg
         }
     }
 }

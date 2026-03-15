@@ -189,6 +189,30 @@ struct EVRouteDetailView: View {
 
     // MARK: - Charging Plan
 
+    /// Find the nearest charger to a charging stop and return its price per kWh
+    private func pricePerKwhForStop(_ stop: ChargingStop) -> Double {
+        let stopLoc = CLLocation(latitude: stop.coordinate.latitude, longitude: stop.coordinate.longitude)
+        var bestCharger: EVCharger?
+        var bestDist = Double.greatestFiniteMagnitude
+
+        for charger in chargers {
+            let dist = stopLoc.distance(from: CLLocation(latitude: charger.coordinate.latitude, longitude: charger.coordinate.longitude))
+            if dist < bestDist {
+                bestDist = dist
+                bestCharger = charger
+            }
+        }
+
+        return bestCharger?.pricePerKwh ?? ChargerNetwork.electrifyAmerica.defaultPricePerKwh
+    }
+
+    /// Total estimated charging cost for all stops
+    private var totalChargingCost: Double {
+        route.chargingStops.reduce(0.0) { total, stop in
+            total + stop.energyToAddKwh * pricePerKwhForStop(stop)
+        }
+    }
+
     private var chargingPlanSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -197,6 +221,10 @@ struct EVRouteDetailView: View {
                 Text("Charging Plan")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(EVTheme.textPrimary)
+                Spacer()
+                Text("Est. \(String(format: "$%.2f", totalChargingCost)) total")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(EVTheme.accentGreen)
             }
 
             // Start
@@ -209,11 +237,13 @@ struct EVRouteDetailView: View {
             )
 
             ForEach(route.chargingStops) { stop in
+                let price = pricePerKwhForStop(stop)
+                let cost = stop.energyToAddKwh * price
                 chargingTimelineRow(
                     icon: "bolt.circle.fill",
                     iconColor: EVTheme.accentYellow,
                     title: "Charging Stop \(stop.stopNumber)",
-                    subtitle: "At mile \(String(format: "%.0f", stop.distanceMiles)) — Arrive \(Int(stop.arrivalBatteryPct))% → Charge to \(Int(stop.departureBatteryPct))% (+\(String(format: "%.1f", stop.energyToAddKwh)) kWh)",
+                    subtitle: "At mile \(String(format: "%.0f", stop.distanceMiles)) — Arrive \(Int(stop.arrivalBatteryPct))% → Charge to \(Int(stop.departureBatteryPct))% (+\(String(format: "%.1f", stop.energyToAddKwh)) kWh) — Est. \(String(format: "$%.2f", cost)) @ \(String(format: "$%.2f", price))/kWh",
                     isLast: false
                 )
             }
@@ -359,6 +389,8 @@ struct EVRouteDetailView: View {
                 DetailRow(label: "Energy Added", value: String(format: "+%.1f kWh", energyAdded),
                           valueColor: EVTheme.accentGreen)
                 DetailRow(label: "Charging Stops", value: "\(route.chargingStops.count)")
+                DetailRow(label: "Est. Charging Cost", value: String(format: "$%.2f", totalChargingCost),
+                          valueColor: EVTheme.accentYellow)
             }
 
             DetailRow(label: "Arrival Battery", value: String(format: "%.0f%%", arrivalPct),
@@ -464,10 +496,15 @@ struct EVRouteDetailView: View {
                             .foregroundStyle(EVTheme.accentGreen)
                     }
                 }
-                if !charger.connectors.isEmpty {
-                    Text(charger.connectors.joined(separator: " • "))
+                HStack(spacing: 4) {
+                    if !charger.connectors.isEmpty {
+                        Text(charger.connectors.joined(separator: " • "))
+                            .font(.caption2)
+                            .foregroundStyle(EVTheme.textSecondary)
+                    }
+                    Text("• \(String(format: "$%.2f", charger.pricePerKwh))/kWh")
                         .font(.caption2)
-                        .foregroundStyle(EVTheme.textSecondary)
+                        .foregroundStyle(EVTheme.accentYellow)
                 }
             }
         }
