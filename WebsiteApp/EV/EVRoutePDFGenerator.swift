@@ -556,7 +556,7 @@ struct EVRoutePDFGenerator {
             context.strokePath()
 
             // Y-axis labels
-            let elevVal = maxElev - (Double(i) / 4.0) * elevRange
+            let elevVal = minElev + (Double(i) / 4.0) * elevRange
             let labelAttr: [NSAttributedString.Key: Any] = [
                 .font: font(7), .foregroundColor: textSecondary
             ]
@@ -573,7 +573,7 @@ struct EVRoutePDFGenerator {
         fillPath.move(to: CGPoint(x: chartX, y: chartY))
         for point in profile {
             let px = chartX + (point.distance / maxDist) * chartW
-            let py = chartY + chartH - ((point.elevation * 3.28084 - minElev) / elevRange) * chartH
+            let py = chartY + ((point.elevation * 3.28084 - minElev) / elevRange) * chartH
             fillPath.addLine(to: CGPoint(x: px, y: py))
         }
         fillPath.addLine(to: CGPoint(x: chartX + chartW, y: chartY))
@@ -593,9 +593,9 @@ struct EVRoutePDFGenerator {
         // Grade-colored line segments
         for i in 1..<profile.count {
             let x1 = chartX + (profile[i-1].distance / maxDist) * chartW
-            let y1 = chartY + chartH - ((profile[i-1].elevation * 3.28084 - minElev) / elevRange) * chartH
+            let y1 = chartY + ((profile[i-1].elevation * 3.28084 - minElev) / elevRange) * chartH
             let x2 = chartX + (profile[i].distance / maxDist) * chartW
-            let y2 = chartY + chartH - ((profile[i].elevation * 3.28084 - minElev) / elevRange) * chartH
+            let y2 = chartY + ((profile[i].elevation * 3.28084 - minElev) / elevRange) * chartH
 
             let grade = profile[i].grade
             let color: UIColor
@@ -690,7 +690,7 @@ struct EVRoutePDFGenerator {
             context.addLine(to: CGPoint(x: chartX + chartW, y: gy))
             context.strokePath()
 
-            let pctVal = 100 - (Double(i) / 4.0) * 100
+            let pctVal = (Double(i) / 4.0) * 100
             let lAttr: [NSAttributedString.Key: Any] = [.font: font(7), .foregroundColor: accentBlue]
             let lStr = NSAttributedString(string: "\(Int(pctVal))%", attributes: lAttr)
             let lLine = CTLineCreateWithAttributedString(lStr)
@@ -702,9 +702,9 @@ struct EVRoutePDFGenerator {
         // Battery line
         for i in 1..<battPcts.count {
             let x1 = chartX + (profile[i-1].distance / maxDist) * chartW
-            let y1 = chartY + chartH - (battPcts[i-1] / 100.0) * chartH
+            let y1 = chartY + (battPcts[i-1] / 100.0) * chartH
             let x2 = chartX + (profile[i].distance / maxDist) * chartW
-            let y2 = chartY + chartH - (battPcts[i] / 100.0) * chartH
+            let y2 = chartY + (battPcts[i] / 100.0) * chartH
 
             let color: UIColor
             if battPcts[i] < 15 { color = accentRed }
@@ -724,7 +724,7 @@ struct EVRoutePDFGenerator {
         fillPath.move(to: CGPoint(x: chartX, y: chartY))
         for i in 0..<battPcts.count {
             let px = chartX + (profile[i].distance / maxDist) * chartW
-            let py = chartY + chartH - (battPcts[i] / 100.0) * chartH
+            let py = chartY + (battPcts[i] / 100.0) * chartH
             fillPath.addLine(to: CGPoint(x: px, y: py))
         }
         fillPath.addLine(to: CGPoint(x: chartX + chartW, y: chartY))
@@ -753,7 +753,7 @@ struct EVRoutePDFGenerator {
         }
 
         // 15% threshold line
-        let thresholdY = chartY + chartH - (15.0 / 100.0) * chartH
+        let thresholdY = chartY + (15.0 / 100.0) * chartH
         context.setStrokeColor(accentRed.withAlphaComponent(0.4).cgColor)
         context.setLineWidth(0.5)
         context.setLineDash(phase: 0, lengths: [4, 3])
