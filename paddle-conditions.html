@@ -3151,11 +3151,11 @@
             document.getElementById('conditionsArea').innerHTML=`
                 <div class="score-hero">
                     <div class="score-circles-stack">
-                        <div class="score-circle status-circle" style="--score-color:${pinStatusColor};--score-pct:100;cursor:pointer;" onclick="document.getElementById('statusPopup').style.display=document.getElementById('statusPopup').style.display==='block'?'none':'block'">
+                        <div class="score-circle status-circle" style="--score-color:${pinStatusColor};--score-pct:100;cursor:pointer;" onclick="var p=document.getElementById('statusPopup'),o=document.getElementById('statusOverlay'),s=p.style.display==='block'?'none':'block';p.style.display=s;o.style.display=s">
                             <span class="score-number" style="color:${pinStatusColor};">${pinStatusLabel}</span>
                             <span class="score-label">Status</span>
                         </div>
-                        <a style="font-size:11px;color:#06b6d4;cursor:pointer;text-decoration:none;" onclick="document.getElementById('statusPopup').style.display=document.getElementById('statusPopup').style.display==='block'?'none':'block'">Data</a>
+                        <a style="font-size:11px;color:#06b6d4;cursor:pointer;text-decoration:none;" onclick="var p=document.getElementById('statusPopup'),o=document.getElementById('statusOverlay'),s=p.style.display==='block'?'none':'block';p.style.display=s;o.style.display=s">Data</a>
                         <div class="score-circle" style="--score-color:${color};--score-pct:${score};">
                             <span class="score-number" style="color:${color};">${score}</span>
                             <span class="score-label">Score</span>
@@ -3188,13 +3188,14 @@
                     </div>
                 </div>
 
-                <div id="statusPopup" style="display:none;background:#1a1d28;border:1px solid #2d3040;border-radius:12px;padding:16px;margin-bottom:20px;position:relative;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <div id="statusPopup" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a1d28;border:1px solid #2d3040;border-radius:12px;padding:20px;z-index:9999;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.6);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
                         <span style="font-weight:700;color:${pinStatusColor};font-size:16px;">&#x1F50D; Water Quality Status</span>
-                        <span style="cursor:pointer;color:#8b8fa3;font-size:18px;" onclick="document.getElementById('statusPopup').style.display='none'">&times;</span>
+                        <span style="cursor:pointer;color:#8b8fa3;font-size:22px;line-height:1;" onclick="document.getElementById('statusPopup').style.display='none';document.getElementById('statusOverlay').style.display='none'">&times;</span>
                     </div>
                     ${statusExplain}
                 </div>
+                <div id="statusOverlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9998;" onclick="document.getElementById('statusPopup').style.display='none';this.style.display='none'"></div>
 
                 <div class="grid">
                     <div class="card">
