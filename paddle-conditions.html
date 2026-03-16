@@ -1067,6 +1067,10 @@
             .wind-values h3 { font-size: 22px; }
             .card { padding: 14px; }
         }
+        /* Mobile-friendly InfoWindow sizing */
+        @media (max-width: 600px) {
+            .gm-style .gm-style-iw-c { max-width: calc(100vw - 60px) !important; }
+        }
         /* Dark theme for Google Maps InfoWindow */
         .gm-style-iw-d { overflow: auto !important; background: #1a1d28 !important; scrollbar-width: thin; scrollbar-color: #3d4055 #1a1d28; }
         .gm-style .gm-style-iw-c { background: #1a1d28 !important; border: 1px solid #2d3040 !important; border-radius: 10px !important; padding: 0 !important; box-shadow: 0 4px 24px rgba(0,0,0,0.5) !important; max-width: 360px !important; overflow: hidden !important; }
@@ -3309,7 +3313,7 @@
                       ).join('<br>')
                     : '<span style="color:#6b7280;">None nearby</span>';
 
-                const paddlePopup = `<div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:320px;padding:10px;background:#1a1d28;color:#e2e8f0;border-radius:8px;">` +
+                const paddlePopup = `<div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:320px;width:calc(100vw - 80px);min-width:260px;padding:10px;background:#1a1d28;color:#e2e8f0;border-radius:8px;box-sizing:border-box;">` +
                     `<div style="font-weight:700;font-size:15px;margin-bottom:2px;color:#f1f5f9;">${paddleName || 'Paddle Spot'}</div>` +
                     `<div style="font-size:11px;color:#8b8fa3;margin-bottom:8px;">${paddleAddress || ''}</div>` +
                     // Three circles row
@@ -3391,7 +3395,8 @@
                             const preds = tides.predictions;
                             const vs = preds.map(x => +x.v);
                             const mn = Math.min(...vs), mx = Math.max(...vs), rng = mx - mn || 1;
-                            const svgW = 300, svgH = 80;
+                            const isMobile = window.innerWidth <= 600;
+                            const svgW = 300, svgH = isMobile ? 100 : 80;
                             const pad = {t:12, r:6, b:18, l:28};
                             const pW = svgW - pad.l - pad.r, pH = svgH - pad.t - pad.b;
 
@@ -3443,7 +3448,7 @@
                                 const y = pad.t + pH * i / 3;
                                 const val = (mx - (rng * i / 3)).toFixed(1);
                                 gridSvg += `<line x1="${pad.l}" y1="${y.toFixed(1)}" x2="${svgW - pad.r}" y2="${y.toFixed(1)}" stroke="#2d304060" stroke-width="0.5"/>`;
-                                gridSvg += `<text x="${pad.l - 3}" y="${(y + 3).toFixed(1)}" fill="#6b7280" font-size="7" text-anchor="end">${val}</text>`;
+                                gridSvg += `<text x="${pad.l - 3}" y="${(y + 3).toFixed(1)}" fill="#6b7280" font-size="${isMobile ? 9 : 7}" text-anchor="end">${val}</text>`;
                             }
 
                             // Time labels along bottom
@@ -3453,21 +3458,22 @@
                                 const x = pad.l + (i / (preds.length - 1)) * pW;
                                 const t = new Date(preds[i].t.replace(' ','T'));
                                 const lbl = t.toLocaleTimeString([], {hour:'numeric', hour12:true});
-                                timeSvg += `<text x="${x.toFixed(1)}" y="${(svgH - 4).toFixed(1)}" fill="#6b7280" font-size="7" text-anchor="middle">${lbl}</text>`;
+                                timeSvg += `<text x="${x.toFixed(1)}" y="${(svgH - 4).toFixed(1)}" fill="#6b7280" font-size="${isMobile ? 9 : 7}" text-anchor="middle">${lbl}</text>`;
                             }
 
                             // Now marker
                             let nowSvg = '';
                             if (nowX !== null) {
-                                nowSvg = `<circle cx="${nowX.toFixed(1)}" cy="${nowY.toFixed(1)}" r="3.5" fill="#f97316" stroke="#1a1d28" stroke-width="1.5"/>` +
-                                    `<text x="${nowX.toFixed(1)}" y="${(nowY - 6).toFixed(1)}" fill="#f97316" font-size="7" font-weight="bold" text-anchor="middle">NOW</text>`;
+                                const dotR = isMobile ? 5 : 3.5;
+                                nowSvg = `<circle cx="${nowX.toFixed(1)}" cy="${nowY.toFixed(1)}" r="${dotR}" fill="#f97316" stroke="#1a1d28" stroke-width="1.5"/>` +
+                                    `<text x="${nowX.toFixed(1)}" y="${(nowY - (isMobile ? 8 : 6)).toFixed(1)}" fill="#f97316" font-size="${isMobile ? 9 : 7}" font-weight="bold" text-anchor="middle">NOW</text>`;
                             }
 
                             const svg = `<svg width="100%" viewBox="0 0 ${svgW} ${svgH}" style="display:block;margin:4px 0;">` +
                                 gridSvg +
                                 `<defs><linearGradient id="tgp" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#06b6d4" stop-opacity="0.15"/><stop offset="100%" stop-color="#06b6d4" stop-opacity="0.02"/></linearGradient></defs>` +
                                 `<path d="${fillD}" fill="url(#tgp)"/>` +
-                                `<path d="${pathD}" fill="none" stroke="#06b6d4" stroke-width="1.5"/>` +
+                                `<path d="${pathD}" fill="none" stroke="#06b6d4" stroke-width="${isMobile ? 2 : 1.5}"/>` +
                                 nowSvg + timeSvg +
                                 `</svg>`;
 
