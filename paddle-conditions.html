@@ -589,6 +589,7 @@
         }
         .beach-station.status-red { border-left-color: #f87171; }
         .beach-station.status-yellow { border-left-color: #fbbf24; }
+        .beach-station.status-green { border-left-color: #34d399; }
         .beach-station-info { flex: 1; min-width: 0; }
         .beach-station-name { font-size: 12px; font-weight: 600; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .beach-station-code { font-size: 10px; color: #06b6d4; font-weight: 600; font-family: monospace; }
@@ -1086,6 +1087,8 @@
             <a href="https://www.weather.gov" target="_blank">NWS</a> &bull;
             <a href="https://habsos.noaa.gov" target="_blank">HABSOS</a> &bull;
             <a href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank">CA WQ</a> &bull;
+            <a href="https://www.coastal.ca.gov/YourCoast/" target="_blank">CA Coastal</a> &bull;
+            <a href="https://www.theswimguide.org" target="_blank">Swim Guide</a> &bull;
             Updated <span id="lastUpdate">--</span>
         </div>
 
@@ -2151,7 +2154,7 @@
             const station = nearestStation(paddleLat, paddleLon);
 
             try {
-                const [weather, tides, tideH, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach] = await Promise.all([
+                const [weather, tides, tideH, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess] = await Promise.all([
                     fetchWeather(paddleLat, paddleLon),
                     fetchTides(station.id).catch(() => null),
                     fetchTideHourly(station.id).catch(() => null),
@@ -2163,8 +2166,9 @@
                     fetchCAHAB(paddleLat, paddleLon).catch(() => null),
                     fetchRiverFlow(paddleLat, paddleLon).catch(() => null),
                     fetchSDBeachStatus(paddleLat, paddleLon).catch(() => null),
+                    fetchCoastalAccess(paddleLat, paddleLon).catch(() => []),
                 ]);
-                render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach);
+                render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess);
             } catch (e) {
                 document.getElementById('conditionsArea').innerHTML = `<div style="text-align:center;padding:48px;color:#f87171;">
                     <div style="font-size:36px;margin-bottom:12px;">&#x26A0;</div>
@@ -2614,6 +2618,23 @@
             };
         }
 
+        // ======== CA Coastal Access — validate beach access points ========
+        let coastalAccessCache = null;
+        async function fetchCoastalAccess(lat, lon) {
+            // Fetch all CA coastal access points (cached after first call)
+            if (!coastalAccessCache) {
+                const r = await fetch('https://api.coastal.ca.gov/access/v1/locations');
+                if (!r.ok) throw new Error(`Coastal: ${r.status}`);
+                coastalAccessCache = await r.json();
+            }
+            // Find nearby access points (within ~5 miles) sorted by distance
+            return coastalAccessCache.filter(loc => {
+                if (!loc.LATITUDE || !loc.LONGITUDE) return false;
+                loc._dist = hav(lat, lon, parseFloat(loc.LATITUDE), parseFloat(loc.LONGITUDE));
+                return loc._dist < 5;
+            }).sort((a, b) => a._dist - b._dist);
+        }
+
         // ======== Render ========
         // Google Weather helpers
         function gTemp(t) { // Convert Google temp to °F
@@ -2632,7 +2653,7 @@
             return v.distance * 0.621371; // km to mi
         }
 
-        function render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach) {
+        function render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess) {
             const c = weather.current;
             const {score,factors} = calcScore(weather, sdBeach, beachAdvisories);
             const color = sClr(score);
@@ -2860,6 +2881,45 @@
                         })()}
 
                         ${(() => {
+                            // Coastal Access Points from CA Coastal Commission
+                            if (!coastalAccess || coastalAccess.length === 0) return '';
+                            const nearest = coastalAccess.slice(0, 4);
+                            let caH = '<div class="source-divider">Nearby Beach Access <a class="src-link" href="https://www.coastal.ca.gov/YourCoast/" target="_blank">CA Coastal Commission</a><a class="src-link" href="https://www.theswimguide.org/find" target="_blank">Swim Guide</a></div>';
+                            nearest.forEach(loc => {
+                                const features = [];
+                                if (loc.SNDY_BEACH === 'Yes') features.push('Sandy Beach');
+                                if (loc.RKY_SHORE === 'Yes') features.push('Rocky Shore');
+                                if (loc.BOATING === 'Yes') features.push('Boating');
+                                if (loc.FISHING === 'Yes') features.push('Fishing');
+                                if (loc.TIDEPOOL === 'Yes') features.push('Tidepools');
+                                if (loc.CAMPGROUND === 'Yes') features.push('Camping');
+                                if (loc.DOG_FRIENDLY === 'Yes') features.push('Dog Friendly');
+                                if (loc.DSABLDACSS === 'Yes') features.push('ADA Access');
+                                if (loc.Bch_whlchr === 'Yes') features.push('Beach Wheelchair');
+                                const isMarina = (loc.BT_FACIL_TYPE || '').toLowerCase().includes('marina');
+                                const isDock = (loc.BT_FACIL_TYPE || '').toLowerCase().includes('dock');
+                                const isBoatOnly = (isMarina || isDock) && loc.SNDY_BEACH !== 'Yes' && loc.RKY_SHORE !== 'Yes';
+                                const icon = isBoatOnly ? '&#x2693;' : loc.SNDY_BEACH === 'Yes' ? '&#x1F3D6;' : loc.BOATING === 'Yes' ? '&#x1F6F6;' : '&#x1F30A;';
+                                const accessType = isBoatOnly ? 'Commercial/Marina' : loc.SNDY_BEACH === 'Yes' ? 'Beach Access' : loc.RKY_SHORE === 'Yes' ? 'Rocky Shore' : 'Water Access';
+                                const borderCls = isBoatOnly ? 'style="border-left-color:#6b7280;"' : '';
+                                const dist = loc._dist ? loc._dist.toFixed(1) + ' mi' : '';
+                                const parking = loc.PARKING === 'Yes' ? '&#x1F17F;&#xFE0F;' : '';
+                                const restrooms = loc.RESTROOMS === 'Yes' ? '&#x1F6BB;' : '';
+                                const fee = loc.FEE === 'Yes' ? '&#x1F4B2;' : '';
+                                caH += `<div class="beach-station ${isBoatOnly ? '' : 'status-green'}" ${borderCls}>
+                                    <div class="beach-station-info">
+                                        <div class="beach-station-name">${icon} ${loc.NameMobileWeb || 'Access Point'}</div>
+                                        <div><span class="beach-station-code">${accessType}</span> <span class="beach-station-dist">${dist}</span> ${parking} ${restrooms} ${fee}</div>
+                                        ${loc.BT_FACIL_TYPE ? `<div class="beach-station-dist">${loc.BT_FACIL_TYPE}</div>` : ''}
+                                        ${features.length > 0 ? `<div class="beach-station-dist">${features.join(' &bull; ')}</div>` : ''}
+                                    </div>
+                                    <div class="beach-station-status ${isBoatOnly ? 'advisory' : 'open'}">${isBoatOnly ? 'No Beach' : 'Open'}</div>
+                                </div>`;
+                            });
+                            return caH;
+                        })()}
+
+                        ${(() => {
                             // NWS weather alerts relevant to water safety
                             if (!nwsAlerts || nwsAlerts.length === 0) return '';
                             let nwsH = '<div class="source-divider">NWS Weather Alerts <a class="src-link" href="https://alerts.weather.gov" target="_blank">NWS Alerts</a></div>';
@@ -2932,6 +2992,8 @@
                             <a class="resource-link" href="https://waterdata.usgs.gov/nwis" target="_blank"><span class="res-icon">&#x1F4C8;</span> USGS Water Data (Stream Flow)</a>
                             <a class="resource-link" href="https://www.cnrfc.noaa.gov/rainfall_data.php" target="_blank"><span class="res-icon">&#x1F327;</span> NOAA Rainfall Observations</a>
                             <a class="resource-link" href="https://www.airnow.gov" target="_blank"><span class="res-icon">&#x1F4A8;</span> AirNow Air Quality</a>
+                            <a class="resource-link" href="https://www.theswimguide.org/find" target="_blank"><span class="res-icon">&#x1F3CA;</span> Swim Guide - Beach Water Quality</a>
+                            <a class="resource-link" href="https://www.coastal.ca.gov/YourCoast/" target="_blank"><span class="res-icon">&#x1F3D6;</span> CA Coastal Access Guide</a>
                             ${sdBeach && sdBeach.length > 0 ? `
                             <a class="resource-link" href="https://www.sdbeachinfo.com" target="_blank"><span class="res-icon">&#x1F3D6;</span> SD Beach &amp; Bay Water Quality</a>
                             <a class="resource-link" href="https://www.sdcoastkeeper.org/beach-advisories" target="_blank"><span class="res-icon">&#x1F6A9;</span> SD Coastkeeper Advisories</a>
