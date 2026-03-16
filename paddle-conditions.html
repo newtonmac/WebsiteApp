@@ -3192,7 +3192,7 @@
             }).join('');
             const scoreExplain = `<div style="font-size:13px;color:#e2e8f0;line-height:1.6;">` +
                 `<div style="margin-bottom:8px;color:#8b8fa3;">Overall score is a weighted average of five categories:</div>` +
-                `<div style="margin-bottom:6px;color:#8b8fa3;font-size:11px;">Water Quality 35% · Wind &amp; Weather 25% · Water Surface 25% · UV 10% · Water Temp 5%</div>` +
+                `<div style="margin-bottom:6px;color:#8b8fa3;font-size:11px;">Water Quality 35% · Wind &amp; Weather 25% · Water Surface 25% · UV &amp; Sun 10% · Water Temp 5%</div>` +
                 scoreCats +
                 `<div style="margin-top:10px;border-top:1px solid #2d3040;padding-top:8px;color:#8b8fa3;font-size:11px;">` +
                 `Sources: <a href="https://open-meteo.com" target="_blank" style="color:#06b6d4;">Open-Meteo</a>, ` +
@@ -3357,8 +3357,39 @@
                         <div class="score-verdict" style="color:${color};">${sVer(score)}</div>
                         <div class="score-summary">${sSum(score,weather,categories)}</div>
                         <div class="score-categories">
-                            ${Object.values(categories).map(cat => {
-                                const cc = sClr(cat.score);
+                            ${['water','wind','surface'].map(key => { const cat = categories[key]; const cc = sClr(cat.score);
+                                if (key === 'wind') {
+                                    const uvCat = categories.uv; const wtCat = categories.temp;
+                                    const uvCc = sClr(uvCat.score); const wtCc = sClr(wtCat.score);
+                                    const allFactors = [...cat.factors, ...uvCat.factors, ...wtCat.factors];
+                                    return `<div class="score-cat">
+                                    <div class="score-cat-header">
+                                        <span class="score-cat-icon">${cat.icon}</span>
+                                        <span class="score-cat-label">${cat.label}</span>
+                                        <span class="score-cat-value" style="color:${cc};">${wwScore}</span>
+                                    </div>
+                                    <div class="score-cat-bar"><div class="score-cat-fill" style="width:${wwScore}%;background:${cc};"></div></div>
+                                    <div class="score-cat-factors">${cat.factors.map(f=>`<span class="score-cat-tag" style="color:${f.c};">${f.l}</span>`).join('')}</div>
+                                    <div style="margin-left:22px;margin-top:8px;">
+                                        <div class="score-cat-header">
+                                            <span class="score-cat-icon">${uvCat.icon}</span>
+                                            <span class="score-cat-label">${uvCat.label}</span>
+                                            <span class="score-cat-value" style="color:${uvCc};">${uvCat.score}</span>
+                                        </div>
+                                        <div class="score-cat-bar"><div class="score-cat-fill" style="width:${uvCat.score}%;background:${uvCc};"></div></div>
+                                        <div class="score-cat-factors">${uvCat.factors.map(f=>`<span class="score-cat-tag" style="color:${f.c};">${f.l}</span>`).join('')}</div>
+                                    </div>
+                                    <div style="margin-left:22px;margin-top:8px;">
+                                        <div class="score-cat-header">
+                                            <span class="score-cat-icon">${wtCat.icon}</span>
+                                            <span class="score-cat-label">${wtCat.label}</span>
+                                            <span class="score-cat-value" style="color:${wtCc};">${wtCat.score}</span>
+                                        </div>
+                                        <div class="score-cat-bar"><div class="score-cat-fill" style="width:${wtCat.score}%;background:${wtCc};"></div></div>
+                                        <div class="score-cat-factors">${wtCat.factors.map(f=>`<span class="score-cat-tag" style="color:${f.c};">${f.l}</span>`).join('')}</div>
+                                    </div>
+                                </div>`;
+                                }
                                 return `<div class="score-cat">
                                     <div class="score-cat-header">
                                         <span class="score-cat-icon">${cat.icon}</span>
