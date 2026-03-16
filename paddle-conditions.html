@@ -1771,7 +1771,7 @@
     <script>
         let map, userMarker, paddleMarker, paddleLat, paddleLon, paddleName, paddleAddress;
         let placesService, nearbyPlace = null;
-        let stationMarkers = [], stormDrainMarkers = [], stationInfoWindow = null;
+        let stationMarkers = [], stormDrainMarkers = [], stationInfoWindow = null, paddleInfoWindow = null;
         let allDEHStations = []; // All DEH stations (unfiltered) for map pins
 
         const NOAA_TIDE_API = 'https://api.tidesandcurrents.noaa.gov/api/prod/datagetter';
@@ -3128,7 +3128,7 @@
             const c = weather.current;
             const {score,factors,categories,tier} = calcScore(weather, sdBeach, beachAdvisories, marineSwell, riverFlow, noaaWaterTemp, usgsWaterTemp);
             const color = sClr(score);
-            const wwScore = categories.wind.score;
+            const wwScore = Math.round(categories.wind.score * 0.6 + categories.uv.score * 0.25 + categories.temp.score * 0.15);
             const wwColor = sClr(wwScore);
             const q = wq(weather, sdBeach, beachAdvisories, marineSwell, riverFlow);
             const sp = sports(weather);
@@ -3202,19 +3202,28 @@
 
             // Build weather score explanation for popup
             const wwCat = categories.wind;
-            const wwFTags = wwCat.factors.length > 0 ? wwCat.factors.map(f => `<div style="margin:4px 0;display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${f.c};"></span><span>${f.l}</span></div>`).join('') : '<div style="color:#8b8fa3;">No adverse conditions detected</div>';
+            const uvCat = categories.uv;
+            const wtCat = categories.temp;
+            const allWwFactors = [...wwCat.factors, ...uvCat.factors, ...wtCat.factors];
+            const wwFTags = allWwFactors.length > 0 ? allWwFactors.map(f => `<div style="margin:4px 0;display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${f.c};"></span><span>${f.l}</span></div>`).join('') : '<div style="color:#8b8fa3;">No adverse conditions detected</div>';
             const wwExplain = `<div style="font-size:13px;color:#e2e8f0;line-height:1.6;">` +
-                `<div style="margin-bottom:8px;color:#8b8fa3;">Wind &amp; Weather score factors:</div>` +
+                `<div style="margin-bottom:8px;color:#8b8fa3;">Weather score = Wind (60%) + UV &amp; Sun (25%) + Water Temp (15%)</div>` +
                 `<div style="margin:8px 0;">` +
-                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Wind Speed</span><span>${c.wind_speed_10m ? c.wind_speed_10m.toFixed(0)+' mph' : '--'}</span></div>` +
-                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Gusts</span><span>${c.wind_gusts_10m ? c.wind_gusts_10m.toFixed(0)+' mph' : '--'}</span></div>` +
-                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Precipitation</span><span>${c.precipitation !== undefined ? c.precipitation+' mm' : '--'}</span></div>` +
-                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Visibility</span><span>${c.visibility ? (c.visibility/1000).toFixed(1)+' km' : '--'}</span></div>` +
+                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>&#x1F4A8; Wind</span><span style="color:${sClr(wwCat.score)};font-weight:600;">${wwCat.score}</span></div>` +
+                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;padding-left:12px;font-size:12px;color:#8b8fa3;"><span>Speed</span><span>${c.wind_speed_10m ? c.wind_speed_10m.toFixed(0)+' mph' : '--'}</span></div>` +
+                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;padding-left:12px;font-size:12px;color:#8b8fa3;"><span>Gusts</span><span>${c.wind_gusts_10m ? c.wind_gusts_10m.toFixed(0)+' mph' : '--'}</span></div>` +
+                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;padding-left:12px;font-size:12px;color:#8b8fa3;"><span>Precipitation</span><span>${c.precipitation !== undefined ? c.precipitation+' mm' : '--'}</span></div>` +
+                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;padding-left:12px;font-size:12px;color:#8b8fa3;"><span>Visibility</span><span>${c.visibility ? (c.visibility/1000).toFixed(1)+' km' : '--'}</span></div>` +
+                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>&#x2600; UV &amp; Sun</span><span style="color:${sClr(uvCat.score)};font-weight:600;">${uvCat.score}</span></div>` +
+                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;padding-left:12px;font-size:12px;color:#8b8fa3;"><span>UV Index</span><span>${c.uv_index !== undefined ? c.uv_index.toFixed(1) : '--'}</span></div>` +
+                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>&#x1F321; Water Temp</span><span style="color:${sClr(wtCat.score)};font-weight:600;">${wtCat.score}</span></div>` +
+                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;padding-left:12px;font-size:12px;color:#8b8fa3;"><span>Temperature</span><span>${wtCat.factors[0] ? wtCat.factors[0].l : '--'}</span></div>` +
                 `</div>` +
                 `<div style="margin-top:8px;"><strong>Active factors:</strong></div>` +
                 wwFTags +
                 `<div style="margin-top:10px;border-top:1px solid #2d3040;padding-top:8px;color:#8b8fa3;font-size:11px;">` +
-                `Source: <a href="https://open-meteo.com" target="_blank" style="color:#06b6d4;">Open-Meteo Weather API</a>` +
+                `Sources: <a href="https://open-meteo.com" target="_blank" style="color:#06b6d4;">Open-Meteo</a>, ` +
+                `<a href="https://tidesandcurrents.noaa.gov" target="_blank" style="color:#06b6d4;">NOAA</a>` +
                 `</div></div>`;
 
             // Update paddle pin color to match nearest station
@@ -3224,6 +3233,58 @@
                     url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(pinSvg),
                     scaledSize: new google.maps.Size(44, 56),
                     anchor: new google.maps.Point(22, 56),
+                });
+
+                // Build combined InfoWindow for paddle pin click
+                const catBars = Object.values(categories).map(cat => {
+                    const cc = sClr(cat.score);
+                    return `<div style="margin:3px 0;">` +
+                        `<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:1px;">` +
+                        `<span>${cat.icon} ${cat.label}</span><span style="color:${cc};font-weight:600;">${cat.score}</span></div>` +
+                        `<div style="height:4px;background:#e5e7eb;border-radius:2px;overflow:hidden;">` +
+                        `<div style="height:100%;width:${cat.score}%;background:${cc};border-radius:2px;"></div></div></div>`;
+                }).join('');
+
+                const nearestLabel = nearbyStations.length > 0
+                    ? nearbyStations.slice(0, 3).map(s =>
+                        `<span style="display:inline-flex;align-items:center;gap:3px;"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${stationStatusColor(s)};"></span>${s.Name} (${s._dist.toFixed(1)}mi ${s._dir ? s._dir.a + s._dir.l : ''})</span>`
+                      ).join('<br>')
+                    : '<span style="color:#9ca3af;">No nearby stations</span>';
+
+                const paddlePopup = `<div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:320px;padding:6px;">` +
+                    `<div style="font-weight:700;font-size:15px;margin-bottom:2px;">${paddleName || 'Paddle Spot'}</div>` +
+                    `<div style="font-size:11px;color:#6b7280;margin-bottom:8px;">${paddleAddress || ''}</div>` +
+                    // Three circles row
+                    `<div style="display:flex;gap:10px;justify-content:center;margin-bottom:8px;">` +
+                    `<div style="text-align:center;">` +
+                    `<div style="width:48px;height:48px;border-radius:50%;border:3px solid ${pinStatusColor};display:flex;align-items:center;justify-content:center;margin:0 auto;">` +
+                    `<span style="font-weight:800;font-size:11px;color:${pinStatusColor};">${pinStatusLabel}</span></div>` +
+                    `<div style="font-size:9px;color:#6b7280;margin-top:2px;">Status</div></div>` +
+                    `<div style="text-align:center;">` +
+                    `<div style="width:48px;height:48px;border-radius:50%;border:3px solid ${color};display:flex;align-items:center;justify-content:center;margin:0 auto;">` +
+                    `<span style="font-weight:800;font-size:16px;color:${color};">${score}</span></div>` +
+                    `<div style="font-size:9px;color:#6b7280;margin-top:2px;">Score</div></div>` +
+                    `<div style="text-align:center;">` +
+                    `<div style="width:48px;height:48px;border-radius:50%;border:3px solid ${wwColor};display:flex;align-items:center;justify-content:center;margin:0 auto;">` +
+                    `<span style="font-weight:800;font-size:16px;color:${wwColor};">${wwScore}</span></div>` +
+                    `<div style="font-size:9px;color:#6b7280;margin-top:2px;">Weather</div></div>` +
+                    `</div>` +
+                    // Verdict
+                    `<div style="text-align:center;font-weight:700;font-size:13px;color:${color};margin-bottom:6px;">${sVer(score)}</div>` +
+                    // Category bars
+                    `<div style="border-top:1px solid #e5e7eb;padding-top:6px;margin-top:2px;">${catBars}</div>` +
+                    // Nearest stations
+                    `<div style="border-top:1px solid #e5e7eb;padding-top:6px;margin-top:6px;font-size:10px;color:#6b7280;">` +
+                    `<div style="font-weight:600;margin-bottom:3px;">Nearest Monitors:</div>${nearestLabel}</div>` +
+                    `</div>`;
+
+                if (!paddleInfoWindow) paddleInfoWindow = new google.maps.InfoWindow();
+                // Remove old listener if any, then add fresh
+                google.maps.event.clearListeners(paddleMarker, 'click');
+                paddleMarker.addListener('click', () => {
+                    if (stationInfoWindow) stationInfoWindow.close();
+                    paddleInfoWindow.setContent(paddlePopup);
+                    paddleInfoWindow.open(map, paddleMarker);
                 });
             }
 
@@ -3332,7 +3393,7 @@
 
                 <div id="wwPopup" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a1d28;border:1px solid #2d3040;border-radius:12px;padding:20px;z-index:9999;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.6);max-height:80vh;overflow-y:auto;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                        <span style="font-weight:700;color:${wwColor};font-size:16px;">&#x1F4A8; Wind &amp; Weather Details</span>
+                        <span style="font-weight:700;color:${wwColor};font-size:16px;">&#x1F4A8; Weather Score Details</span>
                         <span style="cursor:pointer;color:#8b8fa3;font-size:22px;line-height:1;" onclick="document.getElementById('wwPopup').style.display='none';document.getElementById('wwOverlay').style.display='none'">&times;</span>
                     </div>
                     ${wwExplain}
