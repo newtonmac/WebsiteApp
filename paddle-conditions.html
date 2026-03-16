@@ -3099,6 +3099,39 @@
                   `&#x2022; <a href="https://data.ca.gov" target="_blank" style="color:#06b6d4;">CA Open Data</a> — statewide beach advisories &amp; closures` +
                   `</div></div>`;
 
+            // Build score explanation for popup
+            const scoreCats = Object.values(categories).map(cat => {
+                const cc = sClr(cat.score);
+                const fTags = cat.factors.length > 0 ? cat.factors.map(f => `<span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;background:rgba(255,255,255,0.06);color:${f.c};margin:2px;">${f.l}</span>`).join('') : '<span style="color:#8b8fa3;font-size:11px;">No issues</span>';
+                return `<div style="margin:6px 0;"><div style="display:flex;justify-content:space-between;align-items:center;"><span>${cat.icon} <strong>${cat.label}</strong></span><span style="color:${cc};font-weight:700;">${cat.score}</span></div><div style="height:4px;background:#2d3040;border-radius:2px;margin:4px 0;"><div style="height:100%;width:${cat.score}%;background:${cc};border-radius:2px;"></div></div><div>${fTags}</div></div>`;
+            }).join('');
+            const scoreExplain = `<div style="font-size:13px;color:#e2e8f0;line-height:1.6;">` +
+                `<div style="margin-bottom:8px;color:#8b8fa3;">Overall score is a weighted average of four categories:</div>` +
+                `<div style="margin-bottom:6px;color:#8b8fa3;font-size:11px;">Water Quality 35% · Wind &amp; Weather 30% · Water Surface 25% · UV 10%</div>` +
+                scoreCats +
+                `<div style="margin-top:10px;border-top:1px solid #2d3040;padding-top:8px;color:#8b8fa3;font-size:11px;">` +
+                `Sources: <a href="https://open-meteo.com" target="_blank" style="color:#06b6d4;">Open-Meteo</a>, ` +
+                `<a href="https://www.sdbeachinfo.com" target="_blank" style="color:#06b6d4;">SD County DEH</a>, ` +
+                `<a href="https://tidesandcurrents.noaa.gov" target="_blank" style="color:#06b6d4;">NOAA</a>` +
+                `</div></div>`;
+
+            // Build weather score explanation for popup
+            const wwCat = categories.wind;
+            const wwFTags = wwCat.factors.length > 0 ? wwCat.factors.map(f => `<div style="margin:4px 0;display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${f.c};"></span><span>${f.l}</span></div>`).join('') : '<div style="color:#8b8fa3;">No adverse conditions detected</div>';
+            const wwExplain = `<div style="font-size:13px;color:#e2e8f0;line-height:1.6;">` +
+                `<div style="margin-bottom:8px;color:#8b8fa3;">Wind &amp; Weather score factors:</div>` +
+                `<div style="margin:8px 0;">` +
+                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Wind Speed</span><span>${c.wind_speed_10m ? c.wind_speed_10m.toFixed(0)+' mph' : '--'}</span></div>` +
+                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Gusts</span><span>${c.wind_gusts_10m ? c.wind_gusts_10m.toFixed(0)+' mph' : '--'}</span></div>` +
+                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Precipitation</span><span>${c.precipitation !== undefined ? c.precipitation+' mm' : '--'}</span></div>` +
+                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Visibility</span><span>${c.visibility ? (c.visibility/1000).toFixed(1)+' km' : '--'}</span></div>` +
+                `</div>` +
+                `<div style="margin-top:8px;"><strong>Active factors:</strong></div>` +
+                wwFTags +
+                `<div style="margin-top:10px;border-top:1px solid #2d3040;padding-top:8px;color:#8b8fa3;font-size:11px;">` +
+                `Source: <a href="https://open-meteo.com" target="_blank" style="color:#06b6d4;">Open-Meteo Weather API</a>` +
+                `</div></div>`;
+
             // Update paddle pin color to match nearest station
             if (paddleMarker) {
                 const pinSvg = makePaddlePinSvg(pinStatusColor);
@@ -3157,16 +3190,18 @@
                         <div class="score-circle status-circle" style="--score-color:${pinStatusColor};--score-pct:100;cursor:pointer;" onclick="var p=document.getElementById('statusPopup'),o=document.getElementById('statusOverlay'),s=p.style.display==='block'?'none':'block';p.style.display=s;o.style.display=s">
                             <span class="score-number" style="color:${pinStatusColor};">${pinStatusLabel}</span>
                             <span class="score-label">Status</span>
-                            <span class="score-label" style="font-size:9px;color:#06b6d4;text-decoration:underline;margin-top:1px;">Source</span>
+                            <span class="score-label" style="font-size:9px;color:#06b6d4;text-decoration:underline;margin-top:4px;">Source</span>
                         </div>
                         ${pinStatusDetail ? `<div style="font-size:11px;color:${pinStatusColor};max-width:140px;text-align:center;line-height:1.3;margin-top:2px;">${pinStatusDetail}</div>` : ''}
-                        <div class="score-circle" style="--score-color:${color};--score-pct:${score};">
+                        <div class="score-circle" style="--score-color:${color};--score-pct:${score};cursor:pointer;" onclick="var p=document.getElementById('scorePopup'),o=document.getElementById('scoreOverlay'),s=p.style.display==='block'?'none':'block';p.style.display=s;o.style.display=s">
                             <span class="score-number" style="color:${color};">${score}</span>
                             <span class="score-label">Score</span>
+                            <span class="score-label" style="font-size:9px;color:#06b6d4;text-decoration:underline;margin-top:4px;">Source</span>
                         </div>
-                        <div class="score-circle" style="--score-color:${wwColor};--score-pct:${wwScore};">
+                        <div class="score-circle" style="--score-color:${wwColor};--score-pct:${wwScore};cursor:pointer;" onclick="var p=document.getElementById('wwPopup'),o=document.getElementById('wwOverlay'),s=p.style.display==='block'?'none':'block';p.style.display=s;o.style.display=s">
                             <span class="score-number" style="color:${wwColor};">${wwScore}</span>
                             <span class="score-label">Weather<br>Score</span>
+                            <span class="score-label" style="font-size:9px;color:#06b6d4;text-decoration:underline;margin-top:4px;">Source</span>
                         </div>
                     </div>
                     <div class="score-details">
@@ -3200,6 +3235,24 @@
                     ${statusExplain}
                 </div>
                 <div id="statusOverlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9998;" onclick="document.getElementById('statusPopup').style.display='none';this.style.display='none'"></div>
+
+                <div id="scorePopup" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a1d28;border:1px solid #2d3040;border-radius:12px;padding:20px;z-index:9999;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.6);max-height:80vh;overflow-y:auto;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                        <span style="font-weight:700;color:${color};font-size:16px;">&#x1F3AF; Paddle Score Breakdown</span>
+                        <span style="cursor:pointer;color:#8b8fa3;font-size:22px;line-height:1;" onclick="document.getElementById('scorePopup').style.display='none';document.getElementById('scoreOverlay').style.display='none'">&times;</span>
+                    </div>
+                    ${scoreExplain}
+                </div>
+                <div id="scoreOverlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9998;" onclick="document.getElementById('scorePopup').style.display='none';this.style.display='none'"></div>
+
+                <div id="wwPopup" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a1d28;border:1px solid #2d3040;border-radius:12px;padding:20px;z-index:9999;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.6);max-height:80vh;overflow-y:auto;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                        <span style="font-weight:700;color:${wwColor};font-size:16px;">&#x1F4A8; Wind &amp; Weather Details</span>
+                        <span style="cursor:pointer;color:#8b8fa3;font-size:22px;line-height:1;" onclick="document.getElementById('wwPopup').style.display='none';document.getElementById('wwOverlay').style.display='none'">&times;</span>
+                    </div>
+                    ${wwExplain}
+                </div>
+                <div id="wwOverlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9998;" onclick="document.getElementById('wwPopup').style.display='none';this.style.display='none'"></div>
 
                 <div class="grid">
                     <div class="card">
