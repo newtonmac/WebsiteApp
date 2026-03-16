@@ -2638,12 +2638,12 @@
             else { uvFactors.push({l:`Low UV (${uv})`,c:'#34d399'}); }
 
             // --- WATER TEMPERATURE (0-100) ---
-            // Primary: Open-Meteo SST (Celsius), Fallback: NOAA station (Fahrenheit)
+            // Primary: NOAA station (real-time sensor, °F), Fallback: Open-Meteo SST (model, °C→°F)
             let wtScore = 100, wtFactors = [];
             const sstC = marineSwell?.current?.sea_surface_temperature;
             let sstF = null;
-            if (sstC != null) { sstF = sstC * 9/5 + 32; }
-            else if (noaaWaterTemp != null) { sstF = noaaWaterTemp; }
+            if (noaaWaterTemp != null) { sstF = noaaWaterTemp; }
+            else if (sstC != null) { sstF = sstC * 9/5 + 32; }
 
             if (sstF != null) {
                 if (sstF >= 75) { wtScore = 100; wtFactors.push({l:`Warm (${sstF.toFixed(0)}°F)`,c:'#34d399'}); }
