@@ -3267,6 +3267,11 @@
                         `<div style="height:100%;width:${cat.score}%;background:${cc};border-radius:2px;"></div></div></div>`;
                 }).join('');
 
+                // Compute sunrise/sunset for popup
+                const sr=weather.daily?.sunrise?.[0],ss=weather.daily?.sunset?.[0];
+                const srT=sr?new Date(sr).toLocaleTimeString([],{hour:'numeric',minute:'2-digit',hour12:true}):'--';
+                const ssT=ss?new Date(ss).toLocaleTimeString([],{hour:'numeric',minute:'2-digit',hour12:true}):'--';
+
                 const nearestLabel = nearbyStations.length > 0
                     ? nearbyStations.slice(0, 3).map(s =>
                         `<span style="display:inline-flex;align-items:center;gap:3px;"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${stationStatusColor(s)};"></span>${s.Name} (${s._dist.toFixed(1)}mi ${s._dir ? s._dir.a + s._dir.l : ''})</span>`
@@ -3307,6 +3312,68 @@
                     `<div style="text-align:center;font-weight:700;font-size:13px;color:${color};margin-bottom:6px;">${sVer(score)}</div>` +
                     // Category bars
                     `<div style="border-top:1px solid #2d3040;padding-top:6px;margin-top:2px;">${catBars}</div>` +
+                    // --- Concise summaries: Wind, Weather, Tides, Water Quality ---
+                    (() => {
+                        const secStyle = 'border-top:1px solid #2d3040;padding-top:6px;margin-top:6px;font-size:10px;color:#c0c4d0;';
+                        const headStyle = 'font-weight:600;margin-bottom:4px;color:#8b8fa3;font-size:10px;';
+                        const rowStyle = 'display:flex;justify-content:space-between;align-items:center;padding:1px 0;';
+                        const valStyle = 'color:#e2e8f0;font-weight:600;';
+                        let html = '';
+
+                        // Wind summary
+                        const ws = c.wind_speed_10m, wg = c.wind_gusts_10m, wd = c.wind_direction_10m;
+                        html += `<div style="${secStyle}">` +
+                            `<div style="${headStyle}">&#x1F4A8; Wind</div>` +
+                            `<div style="${rowStyle}"><span>Speed</span><span style="${valStyle}">${ws?.toFixed(0) || '--'} mph ${wDir(wd)}</span></div>` +
+                            `<div style="${rowStyle}"><span>Gusts</span><span style="${valStyle}">${wg?.toFixed(0) || '--'} mph</span></div>` +
+                            `<div style="${rowStyle}"><span>Max today</span><span style="${valStyle}">${weather.daily?.wind_speed_10m_max?.[0]?.toFixed(0) || '--'} mph</span></div>` +
+                            `</div>`;
+
+                        // Weather summary
+                        const temp = c.temperature_2m, feels = c.apparent_temperature, hum = c.relative_humidity_2m, uv = c.uv_index;
+                        const uvColor = uv >= 8 ? '#ef4444' : uv >= 6 ? '#f97316' : uv >= 3 ? '#eab308' : '#22c55e';
+                        html += `<div style="${secStyle}">` +
+                            `<div style="${headStyle}">&#x2600;&#xFE0F; Weather</div>` +
+                            `<div style="${rowStyle}"><span>Conditions</span><span style="${valStyle}">${wxD(c.weather_code)}</span></div>` +
+                            `<div style="${rowStyle}"><span>Temp / Feels like</span><span style="${valStyle}">${temp?.toFixed(0) || '--'}°F / ${feels?.toFixed(0) || '--'}°F</span></div>` +
+                            `<div style="${rowStyle}"><span>Humidity</span><span style="${valStyle}">${hum?.toFixed(0) || '--'}%</span></div>` +
+                            `<div style="${rowStyle}"><span>UV Index</span><span style="${valStyle}color:${uvColor};">${uv?.toFixed(0) || '--'}</span></div>` +
+                            `<div style="${rowStyle}"><span>Sunrise / Sunset</span><span style="${valStyle}">${srT} / ${ssT}</span></div>` +
+                            `</div>`;
+
+                        // Tides summary
+                        if (tides?.predictions) {
+                            const now = new Date();
+                            const upcoming = tides.predictions.filter(p => new Date(p.t.replace(' ','T')) >= now).slice(0, 3);
+                            if (upcoming.length > 0) {
+                                html += `<div style="${secStyle}">` +
+                                    `<div style="${headStyle}">&#x1F30A; Tides</div>`;
+                                upcoming.forEach(p => {
+                                    const t = new Date(p.t.replace(' ','T'));
+                                    const tm = t.toLocaleTimeString([], {hour:'numeric', minute:'2-digit', hour12:true});
+                                    const hi = +p.v > 3;
+                                    const tColor = hi ? '#06b6d4' : '#8b8fa3';
+                                    html += `<div style="${rowStyle}"><span style="color:${tColor};font-weight:600;font-size:9px;">${hi ? 'HIGH' : 'LOW'}</span><span>${tm}</span><span style="${valStyle}">${(+p.v).toFixed(1)} ft</span></div>`;
+                                });
+                                html += `</div>`;
+                            }
+                        }
+
+                        // Water Quality summary
+                        html += `<div style="${secStyle}">` +
+                            `<div style="${headStyle}">&#x1F4A7; Water Quality</div>` +
+                            `<div style="${rowStyle}"><span>Status</span><span style="${valStyle}">${q.ico} ${q.l.split('—')[0].trim()}</span></div>`;
+                        if (marineSwell?.current) {
+                            const sh = marineSwell.current.swell_wave_height || marineSwell.current.wave_height;
+                            const sp = marineSwell.current.swell_wave_period || marineSwell.current.wave_period;
+                            if (sh != null) html += `<div style="${rowStyle}"><span>Swell</span><span style="${valStyle}">${(sh * 3.281).toFixed(1)} ft${sp ? ' @ ' + sp.toFixed(0) + 's' : ''}</span></div>`;
+                        }
+                        const precip = weather.daily?.precipitation_sum?.[0];
+                        if (precip != null) html += `<div style="${rowStyle}"><span>Rain today</span><span style="${valStyle}${precip > 0.1 ? 'color:#f97316;' : ''}">${precip.toFixed(2)} in</span></div>`;
+                        html += `</div>`;
+
+                        return html;
+                    })() +
                     // Nearest DEH monitors
                     `<div style="border-top:1px solid #2d3040;padding-top:6px;margin-top:6px;font-size:10px;color:#c0c4d0;">` +
                     `<div style="font-weight:600;margin-bottom:3px;color:#8b8fa3;">Nearest DEH Monitors:</div>${nearestLabel}</div>` +
