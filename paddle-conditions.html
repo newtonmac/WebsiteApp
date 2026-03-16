@@ -560,7 +560,7 @@
     </div>
 
     <script>
-        let map, userMarker, paddleMarker, paddleLat, paddleLon, paddleName;
+        let map, userMarker, paddleMarker, paddleLat, paddleLon, paddleName, paddleAddress;
         let placesService, nearbyPlace = null;
 
         const NOAA_TIDE_API = 'https://api.tidesandcurrents.noaa.gov/api/prod/datagetter';
@@ -685,40 +685,40 @@
                 }
             });
 
-            // Reverse geocode - search all results for the best water/place name
+            // Get the place name using both geocoder and Places API
+            paddleName = null;
+            paddleAddress = null;
+
+            // Start both lookups in parallel
+            // 1) Places nearbySearch for the real common name (parks, beaches, marinas)
+            searchNearbyPlace(lat, lon);
+
+            // 2) Geocoder for address context
             const geocoder = new google.maps.Geocoder();
             geocoder.geocode({ location: { lat, lng: lon } }, (results, status) => {
-                paddleName = null;
                 if (status === 'OK' && results) {
-                    // First pass: look for natural_feature or water body across ALL results
+                    // Save formatted address
+                    paddleAddress = results[0]?.formatted_address?.split(',').slice(0, 2).join(',').trim() || '';
+
+                    // Check if any result is a natural_feature
                     for (const r of results) {
                         if (r.types.includes('natural_feature')) {
-                            paddleName = r.formatted_address.split(',')[0];
+                            if (!paddleName) paddleName = r.formatted_address.split(',')[0];
                             break;
                         }
                     }
-                    // Second pass: look for point_of_interest, park, marina
+
+                    // Fallback: neighborhood or locality
                     if (!paddleName) {
-                        for (const r of results) {
-                            if (r.types.some(t => ['point_of_interest','park','marina','harbor'].includes(t))) {
-                                paddleName = r.formatted_address.split(',')[0];
-                                break;
-                            }
-                        }
-                    }
-                    // Third: neighborhood, sublocality, or locality from first result
-                    if (!paddleName && results[0]) {
-                        const comps = results[0].address_components;
-                        const pick = comps.find(c => c.types.includes('natural_feature'))
-                            || comps.find(c => c.types.includes('neighborhood'))
+                        const comps = results[0]?.address_components || [];
+                        const pick = comps.find(c => c.types.includes('neighborhood'))
                             || comps.find(c => c.types.includes('sublocality'))
                             || comps.find(c => c.types.includes('locality'));
-                        paddleName = pick?.long_name || results[0].formatted_address.split(',')[0];
+                        if (pick) paddleName = pick.long_name;
                     }
                 }
-                if (!paddleName) paddleName = `${lat.toFixed(4)}°, ${lon.toFixed(4)}°`;
+                if (!paddleName) paddleName = paddleAddress || `${lat.toFixed(4)}°, ${lon.toFixed(4)}°`;
                 loadConditions();
-                searchNearbyPlace(lat, lon);
             });
         }
 
@@ -745,6 +745,14 @@
                     }, (place, dStatus) => {
                         if (dStatus === google.maps.places.PlacesServiceStatus.OK && place) {
                             nearbyPlace = place;
+                            // Use the Places name as the primary paddle name
+                            paddleName = place.name;
+                            paddleAddress = place.formatted_address?.split(',').slice(0, 2).join(',').trim() || paddleAddress;
+                            // Update the name in the score hero if already rendered
+                            const nameEl = document.getElementById('paddlePlaceName');
+                            if (nameEl) nameEl.textContent = '📍 ' + paddleName;
+                            const addrEl = document.getElementById('paddlePlaceAddr');
+                            if (addrEl) addrEl.textContent = paddleAddress;
                             renderPlaceBadge();
                         }
                     });
@@ -1077,8 +1085,8 @@
                         <span class="score-label">Score</span>
                     </div>
                     <div class="score-details">
-                        <div class="score-place">&#x1F4CD; ${paddleName}</div>
-                        <div class="score-place-sub">${paddleLat.toFixed(4)}°${paddleLat>=0?'N':'S'}, ${Math.abs(paddleLon).toFixed(4)}°${paddleLon>=0?'E':'W'}</div>
+                        <div class="score-place" id="paddlePlaceName">&#x1F4CD; ${paddleName}</div>
+                        <div class="score-place-sub" id="paddlePlaceAddr">${paddleAddress || (paddleLat.toFixed(4)+'°'+(paddleLat>=0?'N':'S')+', '+Math.abs(paddleLon).toFixed(4)+'°'+(paddleLon>=0?'E':'W'))}</div>
                         <div id="placeBadgeArea"></div>
                         <div class="score-verdict" style="color:${color};">${sVer(score)}</div>
                         <div class="score-summary">${sSum(score,weather)}</div>
