@@ -2946,16 +2946,6 @@
                 else stationMarkers.push(marker);
             });
 
-            // Show storm drain markers only at higher zoom levels
-            updateDrainVisibility();
-            map.addListener('zoom_changed', updateDrainVisibility);
-        }
-
-        function updateDrainVisibility() {
-            if (!map) return;
-            const zoom = map.getZoom();
-            const show = zoom >= 14;
-            stormDrainMarkers.forEach(m => m.setVisible(show));
         }
 
         function render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell) {
@@ -2965,8 +2955,8 @@
             const q = wq(weather, sdBeach, beachAdvisories, marineSwell, riverFlow);
             const sp = sports(weather);
 
-            // Add DEH station pins + storm drain pins to the map (all stations, not just nearby)
-            addStationMarkers(allDEHStations);
+            // Add DEH station pins + storm drain pins within 1 mile of paddle spot
+            addStationMarkers(allDEHStations.filter(s => s._dist <= 1));
             const localSrc = getLocalBeachSource(paddleLat, paddleLon);
 
             let alertH='';
