@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title>Paddle Conditions - JMLSD</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -12,6 +12,7 @@
             background: #0f1117;
             color: #e1e4e8;
             min-height: 100vh;
+            -webkit-text-size-adjust: 100%;
         }
 
         .header {
@@ -77,6 +78,7 @@
             height: 380px;
             border-radius: 16px;
             overflow: hidden;
+            -webkit-mask-image: -webkit-radial-gradient(white, black);
             border: 1px solid #2d3040;
             margin-bottom: 20px;
             background: #1a1d28;
@@ -129,6 +131,7 @@
             font-size: 13px;
             color: #22d3ee;
             font-weight: 600;
+            -webkit-backdrop-filter: blur(8px);
             backdrop-filter: blur(8px);
             border: 1px solid #06b6d440;
             pointer-events: none;
@@ -147,6 +150,7 @@
             font-size: 11px;
             color: #e1e4e8;
             font-weight: 600;
+            -webkit-backdrop-filter: blur(8px);
             backdrop-filter: blur(8px);
             border: 1px solid #2d3040;
             pointer-events: none;
@@ -180,7 +184,7 @@
         .score-circle::before {
             content: '';
             position: absolute;
-            inset: 0;
+            top: 0; right: 0; bottom: 0; left: 0;
             border-radius: 50%;
             padding: 4px;
             background: conic-gradient(var(--score-color) calc(var(--score-pct) * 1%), #2d3040 0);
@@ -204,7 +208,7 @@
         /* Grid */
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
             gap: 16px;
             margin-bottom: 20px;
         }
@@ -354,12 +358,13 @@
         .place-modal-overlay {
             display: none;
             position: fixed;
-            inset: 0;
-            background: #000000aa;
+            top: 0; right: 0; bottom: 0; left: 0;
+            background: rgba(0,0,0,0.67);
             z-index: 9999;
             align-items: center;
             justify-content: center;
             padding: 20px;
+            -webkit-overflow-scrolling: touch;
         }
         .place-modal-overlay.open { display: flex; }
 
@@ -371,6 +376,7 @@
             width: 100%;
             max-height: 85vh;
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
             scrollbar-width: thin;
             scrollbar-color: #2d3040 transparent;
         }
