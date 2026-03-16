@@ -2473,36 +2473,40 @@
         // The CA Open Data dataset has NO "closure lifted" field, so old closures linger.
         // Our sdBeach proxy gets real-time station colors directly from sdbeachinfo.com.
         function dehTier(sdBeach, beachAdvisories, marineSwell, riverFlow) {
-            const closedStations = (sdBeach||[]).filter(st => (st.RBGColor||'').toLowerCase().includes('red'));
-            const advisoryStations = (sdBeach||[]).filter(st => (st.RBGColor||'').toLowerCase().includes('yellow'));
-            const openStations = (sdBeach||[]).filter(st => (st.RBGColor||'').toLowerCase().includes('green'));
-            const caClosures = (beachAdvisories||[]).filter(r => (r.AdvisoryType||'').toLowerCase() === 'closure');
-            const caPostings = (beachAdvisories||[]).filter(r => (r.AdvisoryType||'').toLowerCase() !== 'closure');
+            // Use TIERED radius for scoring — a closure 7 miles away at Coronado
+            // should not close Mission Bay. Different water bodies, different conditions.
+            // Closures: ≤2mi (same beach/bay area)
+            // Advisories: ≤3mi (nearby stations)
+            // Display: full list kept at 8mi for informational purposes
+            const nearby = (sdBeach||[]);
+            const closedStations = nearby.filter(st => (st.RBGColor||'').toLowerCase().includes('red') && (st._dist || 99) <= 2);
+            const advisoryStations = nearby.filter(st => (st.RBGColor||'').toLowerCase().includes('yellow') && (st._dist || 99) <= 3);
+            const localStations = nearby.filter(st => (st._dist || 99) <= 3);
+            const localOpen = localStations.filter(st => (st.RBGColor||'').toLowerCase().includes('green'));
+
+            const caClosures = (beachAdvisories||[]).filter(r => (r.AdvisoryType||'').toLowerCase() === 'closure' && (r._dist || 99) <= 3);
+            const caPostings = (beachAdvisories||[]).filter(r => (r.AdvisoryType||'').toLowerCase() !== 'closure' && (r._dist || 99) <= 5);
             const southSwell = hasSouthSwell(marineSwell);
             const tjFlowing = isTJRiverFlowing(riverFlow);
             const hasTJCause = caClosures.some(r => (r.AdvisoryCause||'').toLowerCase().includes('tijuana'));
 
-            // Cross-reference: if sdBeach has real-time data AND nearby stations are all
-            // green/open, then CA closures older than 7 days are likely expired/lifted.
-            // sdBeach is the authoritative real-time source (DEH collects samples weekly).
-            const hasLiveData = (sdBeach||[]).length > 0;
-            const allStationsOpen = hasLiveData && closedStations.length === 0 && advisoryStations.length === 0;
+            // Cross-reference: if local DEH stations are open, stale CA closures are likely lifted
+            const hasLiveData = localStations.length > 0;
+            const allLocalOpen = hasLiveData && closedStations.length === 0 && advisoryStations.length === 0;
             const staleClosures = caClosures.filter(r => (r._daysSince || 0) > 7);
             const freshClosures = caClosures.filter(r => (r._daysSince || 0) <= 7);
 
-            // If all DEH stations are open and CA closures are old (>7 days), override them
-            const effectiveClosures = allStationsOpen ? freshClosures : caClosures;
-            const effectivePostings = allStationsOpen
+            const effectiveClosures = allLocalOpen ? freshClosures : caClosures;
+            const effectivePostings = allLocalOpen
                 ? caPostings.filter(r => (r._daysSince || 0) <= 7)
                 : caPostings;
 
             const exceedsBacteria = closedStations.length > 0 || advisoryStations.length > 0 || effectivePostings.length > 0;
 
-            // CLOSURE: Known sewage impacts (spill, TJ River flowing, sewage confirmed)
+            // CLOSURE: Nearby sewage/closure (within 2mi for stations, 3mi for CA data)
             if (closedStations.length > 0 || effectiveClosures.length > 0 || (tjFlowing && hasTJCause)) {
-                const staleNote = (allStationsOpen && staleClosures.length > 0 && effectiveClosures.length === 0) ? '' : '';
                 return { tier: 'closure', score: -35, label: 'Beach Closure',
-                    detail: effectiveClosures.length > 0 ? (effectiveClosures[0].AdvisoryCause || 'Sewage contamination') : 'Beach closed by monitoring agency',
+                    detail: effectiveClosures.length > 0 ? (effectiveClosures[0].AdvisoryCause || 'Sewage contamination') : closedStations.length > 0 ? `${closedStations[0].Name || 'Beach'} closed by DEH` : 'Beach closed by monitoring agency',
                     southSwell, tjFlowing, staleOverrides: staleClosures.length };
             }
             // WARNING: Bacteria exceeds + south swell (transboundary flow)
@@ -2511,7 +2515,7 @@
                     detail: 'Bacteria exceeds standards with south swell pushing contaminated water northward',
                     southSwell, tjFlowing, staleOverrides: 0 };
             }
-            // ADVISORY: Bacteria exceeds standards only
+            // ADVISORY: Bacteria exceeds standards (within 3mi)
             if (exceedsBacteria) {
                 return { tier: 'advisory', score: -15, label: 'Beach Advisory',
                     detail: 'Water sample results exceed state health standards for bacteria',
