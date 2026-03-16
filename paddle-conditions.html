@@ -207,7 +207,7 @@
         /* Grid */
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-template-columns: repeat(2, 1fr);
             gap: 16px;
             margin-bottom: 20px;
         }
@@ -311,7 +311,7 @@
         .hourly-item .mini-arrow::after { content: ''; position: absolute; top: -2px; left: 50%; transform: translateX(-50%); border-left: 4px solid transparent; border-right: 4px solid transparent; border-bottom: 5px solid #06b6d4; }
 
         /* Sports */
-        .sport-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .sport-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
         .sport-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #0f111780; border-radius: 10px; }
         .sport-icon { font-size: 22px; }
         .sport-info .sport-name { font-size: 12px; font-weight: 600; }
@@ -526,6 +526,10 @@
             text-align: center;
             color: #6b7280;
             font-size: 13px;
+        }
+
+        @media (max-width: 900px) {
+            .sport-grid { grid-template-columns: repeat(2, 1fr); }
         }
 
         @media (max-width: 700px) {
