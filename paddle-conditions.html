@@ -589,6 +589,7 @@
         }
         .beach-station.status-red { border-left-color: #f87171; }
         .beach-station.status-yellow { border-left-color: #fbbf24; }
+        .beach-station.status-green { border-left-color: #34d399; }
         .beach-station-info { flex: 1; min-width: 0; }
         .beach-station-name { font-size: 12px; font-weight: 600; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .beach-station-code { font-size: 10px; color: #06b6d4; font-weight: 600; font-family: monospace; }
@@ -1086,6 +1087,8 @@
             <a href="https://www.weather.gov" target="_blank">NWS</a> &bull;
             <a href="https://habsos.noaa.gov" target="_blank">HABSOS</a> &bull;
             <a href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank">CA WQ</a> &bull;
+            <a href="https://www.coastal.ca.gov/YourCoast/" target="_blank">CA Coastal</a> &bull;
+            <a href="https://www.theswimguide.org" target="_blank">Swim Guide</a> &bull;
             Updated <span id="lastUpdate">--</span>
         </div>
 
@@ -2151,7 +2154,7 @@
             const station = nearestStation(paddleLat, paddleLon);
 
             try {
-                const [weather, tides, tideH, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach] = await Promise.all([
+                const [weather, tides, tideH, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell] = await Promise.all([
                     fetchWeather(paddleLat, paddleLon),
                     fetchTides(station.id).catch(() => null),
                     fetchTideHourly(station.id).catch(() => null),
@@ -2163,8 +2166,10 @@
                     fetchCAHAB(paddleLat, paddleLon).catch(() => null),
                     fetchRiverFlow(paddleLat, paddleLon).catch(() => null),
                     fetchSDBeachStatus(paddleLat, paddleLon).catch(() => null),
+                    fetchCoastalAccess(paddleLat, paddleLon).catch(() => []),
+                    fetchMarineSwell(paddleLat, paddleLon).catch(() => null),
                 ]);
-                render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach);
+                render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell);
             } catch (e) {
                 document.getElementById('conditionsArea').innerHTML = `<div style="text-align:center;padding:48px;color:#f87171;">
                     <div style="font-size:36px;margin-bottom:12px;">&#x26A0;</div>
@@ -2195,21 +2200,48 @@
             return r.json();
         }
 
+        // Open-Meteo Marine API — swell direction and wave data
+        // Used to detect south swell (transboundary flow) per SD County DEH tiered system
+        async function fetchMarineSwell(lat, lon) {
+            const r = await fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&current=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period&timezone=auto`);
+            if (!r.ok) throw new Error(`Marine: ${r.status}`);
+            return r.json();
+        }
+
         // SD County Beach & Bay Water Quality Program (sdbeachinfo.com)
-        // Only covers San Diego County beaches (roughly south of ~33.15 lat)
+        // DEH is the primary authoritative source — they collect samples at 81 stations.
+        // sdbeachinfo.com blocks CORS, so we use a Cloudflare Worker proxy.
+        // Fallback: direct fetch (works if same-origin or CORS policy changes).
+        const SD_BEACH_PROXY = 'https://sd-beach-proxy.newtonmac.workers.dev';
+
         async function fetchSDBeachStatus(lat, lon) {
             // Skip if outside San Diego County area
             if (lat > 33.25 || lon > -116.9 || lon < -117.7) return null;
-            const results = [];
-            for (const regionId of [1, 2, 3]) {
-                try {
-                    const r = await fetch(`https://sdbeachinfo.com/Home/GetTargetCityByID?id=${regionId}`);
-                    if (r.ok) {
-                        const data = await r.json();
-                        if (Array.isArray(data)) results.push(...data);
-                    }
-                } catch(e) {}
+
+            let results = [];
+
+            // Try proxy first (CORS-enabled, fetches all 3 regions in one call)
+            try {
+                const r = await fetch(SD_BEACH_PROXY);
+                if (r.ok) {
+                    const data = await r.json();
+                    if (Array.isArray(data)) results = data;
+                }
+            } catch(e) {}
+
+            // Fallback: direct fetch per region (works if CORS policy changes)
+            if (results.length === 0) {
+                for (const regionId of [1, 2, 3]) {
+                    try {
+                        const r = await fetch(`https://sdbeachinfo.com/Home/GetTargetCityByID?id=${regionId}`);
+                        if (r.ok) {
+                            const data = await r.json();
+                            if (Array.isArray(data)) results.push(...data);
+                        }
+                    } catch(e) {}
+                }
             }
+
             if (results.length === 0) return null;
             // Filter to nearby stations (within ~8 miles) and sort by distance
             return results.filter(s => {
@@ -2405,7 +2437,58 @@
         }
 
         // ======== Scoring ========
-        function calcScore(w, sdBeach, beachAdvisories) {
+        // Detect south swell (transboundary flow) per SD County DEH tiered system
+        // South swell pushes contaminated water from TJ River northward toward Imperial Beach
+        function hasSouthSwell(marineSwell) {
+            if (!marineSwell?.current) return false;
+            const dir = marineSwell.current.swell_wave_direction ?? marineSwell.current.wave_direction;
+            if (dir == null) return false;
+            // South swell = waves coming from 135°-225° (SE to SW)
+            return dir >= 135 && dir <= 225;
+        }
+
+        // Check if Tijuana River is flowing (indicator of sewage contamination)
+        function isTJRiverFlowing(riverFlow) {
+            if (!riverFlow || !Array.isArray(riverFlow)) return false;
+            // River flow data with any significant flow indicates TJ River is active
+            return riverFlow.some(g => g.flow > 0 && g.name && g.name.toLowerCase().includes('tijuana'));
+        }
+
+        // SD County DEH Beach Water Quality Tiered System
+        // Determines tier level: CLOSURE > WARNING > ADVISORY > OPEN
+        // Based on: bacteria levels, sewage/TJ River status, south swell direction
+        function dehTier(sdBeach, beachAdvisories, marineSwell, riverFlow) {
+            const closedStations = (sdBeach||[]).filter(st => (st.RBGColor||'').toLowerCase().includes('red'));
+            const advisoryStations = (sdBeach||[]).filter(st => (st.RBGColor||'').toLowerCase().includes('yellow'));
+            const caClosures = (beachAdvisories||[]).filter(r => (r.AdvisoryType||'').toLowerCase() === 'closure');
+            const caPostings = (beachAdvisories||[]).filter(r => (r.AdvisoryType||'').toLowerCase() !== 'closure');
+            const southSwell = hasSouthSwell(marineSwell);
+            const tjFlowing = isTJRiverFlowing(riverFlow);
+            const hasTJCause = caClosures.some(r => (r.AdvisoryCause||'').toLowerCase().includes('tijuana'));
+            const exceedsBacteria = closedStations.length > 0 || advisoryStations.length > 0 || caPostings.length > 0;
+
+            // CLOSURE: Known sewage impacts (spill, TJ River flowing, sewage confirmed)
+            if (closedStations.length > 0 || caClosures.length > 0 || (tjFlowing && hasTJCause)) {
+                return { tier: 'closure', score: -35, label: 'Beach Closure',
+                    detail: caClosures.length > 0 ? (caClosures[0].AdvisoryCause || 'Sewage contamination') : 'Beach closed by monitoring agency',
+                    southSwell, tjFlowing };
+            }
+            // WARNING: Bacteria exceeds + south swell (transboundary flow)
+            if (exceedsBacteria && southSwell) {
+                return { tier: 'warning', score: -25, label: 'Beach Warning — South Swell',
+                    detail: 'Bacteria exceeds standards with south swell pushing contaminated water northward',
+                    southSwell, tjFlowing };
+            }
+            // ADVISORY: Bacteria exceeds standards only
+            if (exceedsBacteria) {
+                return { tier: 'advisory', score: -15, label: 'Beach Advisory',
+                    detail: 'Water sample results exceed state health standards for bacteria',
+                    southSwell, tjFlowing };
+            }
+            return { tier: 'open', score: 0, label: 'Open', detail: null, southSwell, tjFlowing };
+        }
+
+        function calcScore(w, sdBeach, beachAdvisories, marineSwell, riverFlow) {
             const c = w.current;
             let s = 100; const f = [];
             const wi = c.wind_speed_10m, g = c.wind_gusts_10m;
@@ -2428,15 +2511,12 @@
             else if(wc>=71)s-=15;
             else if(wc>=51)s-=10;
 
-            // Water quality: beach closures/advisories from real monitoring data
-            const closedStations = (sdBeach||[]).filter(st => (st.RBGColor||'').toLowerCase().includes('red'));
-            const advisoryStations = (sdBeach||[]).filter(st => (st.RBGColor||'').toLowerCase().includes('yellow'));
-            const caClosures = (beachAdvisories||[]).filter(r => (r.AdvisoryType||'').toLowerCase() === 'closure');
-            const caPostings = (beachAdvisories||[]).filter(r => (r.AdvisoryType||'').toLowerCase() !== 'closure');
-            if (closedStations.length > 0) {s-=25;f.push({l:'Beach closure nearby',c:'#f87171'});}
-            else if (caClosures.length > 0) {s-=25;f.push({l:'Beach closure (sewage/contamination)',c:'#f87171'});}
-            else if (caPostings.length > 0) {s-=20;f.push({l:'Bacteria advisory',c:'#f87171'});}
-            else if (advisoryStations.length > 0) {s-=10;f.push({l:'Water quality advisory',c:'#fbbf24'});}
+            // Water quality: SD County DEH tiered system
+            const tier = dehTier(sdBeach, beachAdvisories, marineSwell, riverFlow);
+            if (tier.tier === 'closure') {s+=tier.score;f.push({l:tier.label,c:'#f87171'});}
+            else if (tier.tier === 'warning') {s+=tier.score;f.push({l:tier.label,c:'#f87171'});}
+            else if (tier.tier === 'advisory') {s+=tier.score;f.push({l:tier.label,c:'#fbbf24'});}
+            if (tier.southSwell && tier.tier !== 'open') f.push({l:'South swell (transboundary)',c:'#f97316'});
 
             return{score:Math.max(0,Math.min(100,s)),factors:f};
         }
@@ -2476,42 +2556,44 @@
 
         function wxD(c){return{0:'Clear sky',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45:'Foggy',48:'Rime fog',51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',61:'Light rain',63:'Rain',65:'Heavy rain',71:'Light snow',73:'Snow',75:'Heavy snow',80:'Rain showers',81:'Moderate showers',82:'Heavy showers',95:'Thunderstorm',96:'Thunderstorm w/ hail',99:'Severe thunderstorm'}[c]||'Unknown';}
 
-        function wq(w, sdBeach, beachAdvisories){
+        // Water quality assessment using SD County DEH Beach Water Quality Management System
+        // Three tiers: CLOSURE (sewage/spill), WARNING (bacteria + south swell), ADVISORY (bacteria only)
+        // Thresholds: Enterococcus > 104 MPN/100mL, Fecal Coliform > 400/100mL
+        // South swell (135°-225°) indicates transboundary flow from Tijuana River
+        function wq(w, sdBeach, beachAdvisories, marineSwell, riverFlow){
             const p=w.daily?.precipitation_sum?.[0]||0,wc=w.current.weather_code;
+            const tier = dehTier(sdBeach, beachAdvisories, marineSwell, riverFlow);
+            const southSwell = tier.southSwell;
+            const swellNote = southSwell ? ' South swell detected — transboundary contamination risk.' : '';
 
-            // Check real monitoring data first — these override rain-based estimates
-            const closedStations = (sdBeach||[]).filter(s => (s.RBGColor||'').toLowerCase().includes('red'));
-            const advisoryStations = (sdBeach||[]).filter(s => (s.RBGColor||'').toLowerCase().includes('yellow'));
-
-            // Separate CA state data into closures (sewage, ongoing) vs postings (temporary)
-            const closures = (beachAdvisories||[]).filter(r => (r.AdvisoryType||'').toLowerCase() === 'closure');
-            const postings = (beachAdvisories||[]).filter(r => (r.AdvisoryType||'').toLowerCase() !== 'closure');
-
-            // Beach closures from monitoring stations = most severe
-            if (closedStations.length > 0) {
-                const names = closedStations.slice(0,3).map(s => s.Name).join(', ');
-                return{l:'Poor - Beach Closure Nearby',d:`${closedStations.length} station${closedStations.length>1?'s':''} closed/advisory: ${names}. Avoid water contact.`,cls:'wq-poor',ico:'&#x1F6AB;'};
-            }
-            // Active beach closures from CA state data (e.g. Tijuana River sewage)
-            if (closures.length > 0) {
-                const names = [...new Set(closures.slice(0,3).map(r => r.Beach_Name || r.Station_Description))].join(', ');
-                const cause = closures[0].AdvisoryCause || 'contamination';
-                return{l:'Poor - Beach Closure',d:`${closures.length} active closure${closures.length>1?'s':''} nearby: ${names}. Cause: ${cause}. Avoid water contact.`,cls:'wq-poor',ico:'&#x1F6AB;'};
-            }
-            // Active bacteria advisories/postings from CA data
-            if (postings.length > 0) {
-                return{l:'Advisory - Bacteria Detected',d:`${postings.length} active advisory${postings.length>1?'ies':'y'} nearby. Check details below.`,cls:'wq-poor',ico:'&#x1F6AB;'};
-            }
-            // Advisory-level stations (yellow)
-            if (advisoryStations.length > 0) {
-                const names = advisoryStations.slice(0,3).map(s => s.Name).join(', ');
-                return{l:'Caution - Advisory Nearby',d:`${advisoryStations.length} station${advisoryStations.length>1?'s':''} under advisory: ${names}. Use caution.`,cls:'wq-fair',ico:'&#x26A0;'};
+            // DEH Tier: CLOSURE — Known sewage impacts
+            if (tier.tier === 'closure') {
+                const closures = (beachAdvisories||[]).filter(r => (r.AdvisoryType||'').toLowerCase() === 'closure');
+                const closedStations = (sdBeach||[]).filter(s => (s.RBGColor||'').toLowerCase().includes('red'));
+                const names = closures.length > 0
+                    ? [...new Set(closures.slice(0,3).map(r => r.Beach_Name || r.Station_Description))].join(', ')
+                    : closedStations.slice(0,3).map(s => s.Name).join(', ');
+                const cause = closures.length > 0 ? (closures[0].AdvisoryCause || 'Sewage contamination') : 'Beach closed by monitoring agency';
+                return{l:'Closure — Avoid Water Contact',d:`${cause}. ${names ? names + '.' : ''} Do NOT enter the water.${swellNote}`,cls:'wq-poor',ico:'&#x1F6AB;'};
             }
 
-            // Fall back to rain-based estimate
-            if(p>1.0)return{l:'Poor - Heavy Rain Runoff',d:'Significant runoff. Avoid water contact 72h after heavy rain.',cls:'wq-poor',ico:'&#x1F6AB;'};
-            if(p>0.5||wc>=80)return{l:'Advisory - Recent Rain',d:'Runoff may affect quality. Check local advisories.',cls:'wq-fair',ico:'&#x26A0;'};
-            return{l:'Good - Safe for Contact',d:'No recent rain. Water quality expected good.',cls:'wq-good',ico:'&#x2705;'};
+            // DEH Tier: WARNING — Bacteria exceeds + south swell (transboundary)
+            if (tier.tier === 'warning') {
+                return{l:'Warning — South Swell + Bacteria',d:`Test results exceed state health standards. South swell is pushing contaminated waters northward (transboundary flow). Avoid water contact.`,cls:'wq-poor',ico:'&#x26A0;'};
+            }
+
+            // DEH Tier: ADVISORY — Bacteria exceeds standards only
+            if (tier.tier === 'advisory') {
+                const postings = (beachAdvisories||[]).filter(r => (r.AdvisoryType||'').toLowerCase() !== 'closure');
+                const advisoryStations = (sdBeach||[]).filter(s => (s.RBGColor||'').toLowerCase().includes('yellow'));
+                const count = postings.length + advisoryStations.length;
+                return{l:'Advisory — Bacteria Exceeds Standards',d:`${count} location${count>1?'s':''} with elevated bacteria levels nearby. Water contact not recommended.${swellNote}`,cls:'wq-fair',ico:'&#x26A0;'};
+            }
+
+            // No DEH tier triggered — fall back to rain-based estimate
+            if(p>1.0)return{l:'Poor — Heavy Rain Runoff',d:`Significant rainfall (${p.toFixed(1)}"). Bacteria levels typically elevated 72h after heavy rain. Avoid water contact.${swellNote}`,cls:'wq-poor',ico:'&#x1F6AB;'};
+            if(p>0.5||wc>=80)return{l:'Advisory — Recent Rain',d:`Recent precipitation may affect water quality. Check local advisories before entering water.${swellNote}`,cls:'wq-fair',ico:'&#x26A0;'};
+            return{l:'Good — Safe for Contact',d:`No active advisories, closures, or significant rainfall. Water quality expected good.${southSwell ? ' Note: south swell present — monitor conditions.' : ''}`,cls:'wq-good',ico:'&#x2705;'};
         }
 
         // ======== Tide chart ========
@@ -2614,6 +2696,23 @@
             };
         }
 
+        // ======== CA Coastal Access — validate beach access points ========
+        let coastalAccessCache = null;
+        async function fetchCoastalAccess(lat, lon) {
+            // Fetch all CA coastal access points (cached after first call)
+            if (!coastalAccessCache) {
+                const r = await fetch('https://api.coastal.ca.gov/access/v1/locations');
+                if (!r.ok) throw new Error(`Coastal: ${r.status}`);
+                coastalAccessCache = await r.json();
+            }
+            // Find nearby access points (within ~5 miles) sorted by distance
+            return coastalAccessCache.filter(loc => {
+                if (!loc.LATITUDE || !loc.LONGITUDE) return false;
+                loc._dist = hav(lat, lon, parseFloat(loc.LATITUDE), parseFloat(loc.LONGITUDE));
+                return loc._dist < 5;
+            }).sort((a, b) => a._dist - b._dist);
+        }
+
         // ======== Render ========
         // Google Weather helpers
         function gTemp(t) { // Convert Google temp to °F
@@ -2632,11 +2731,11 @@
             return v.distance * 0.621371; // km to mi
         }
 
-        function render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach) {
+        function render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell) {
             const c = weather.current;
-            const {score,factors} = calcScore(weather, sdBeach, beachAdvisories);
+            const {score,factors} = calcScore(weather, sdBeach, beachAdvisories, marineSwell, riverFlow);
             const color = sClr(score);
-            const q = wq(weather, sdBeach, beachAdvisories);
+            const q = wq(weather, sdBeach, beachAdvisories, marineSwell, riverFlow);
             const sp = sports(weather);
             const localSrc = getLocalBeachSource(paddleLat, paddleLon);
 
@@ -2751,6 +2850,15 @@
                         <div class="wq-status ${q.cls}"><span class="wq-icon">${q.ico}</span><div class="wq-text"><h4>${q.l}</h4><p>${q.d}</p></div></div>
                         <div class="stat-row"><span class="stat-label">Precipitation Today</span><span class="stat-value">${(weather.daily.precipitation_sum?.[0]||0).toFixed(2)} in</span></div>
                         <div class="stat-row"><span class="stat-label">Current Precip</span><span class="stat-value">${c.precipitation.toFixed(2)} in</span></div>
+                        ${marineSwell?.current ? `
+                        <div class="stat-row"><span class="stat-label">Swell</span><span class="stat-value">${(marineSwell.current.swell_wave_height||marineSwell.current.wave_height||0).toFixed(1)} ft ${wDir(marineSwell.current.swell_wave_direction??marineSwell.current.wave_direction??0)} (${(marineSwell.current.swell_wave_direction??marineSwell.current.wave_direction??0)}°)${hasSouthSwell(marineSwell) ? ' <span style="color:#f97316;font-weight:600;">⚠ South Swell</span>' : ''}</span></div>
+                        <div class="stat-row"><span class="stat-label">Wave Period</span><span class="stat-value">${(marineSwell.current.swell_wave_period||marineSwell.current.wave_period||0).toFixed(1)}s</span></div>
+                        ` : ''}
+                        ${(() => {
+                            const t = dehTier(sdBeach, beachAdvisories, marineSwell, riverFlow);
+                            const clr = t.tier==='closure'?'#f87171':t.tier==='warning'?'#f97316':t.tier==='advisory'?'#fbbf24':'#34d399';
+                            return `<div class="stat-row"><span class="stat-label">DEH Tier</span><span class="stat-value" style="font-weight:600;color:${clr}">${t.tier.toUpperCase()}</span></div>`;
+                        })()}
 
                         ${(() => {
                             // SD County Beach & Bay monitoring stations
@@ -2860,6 +2968,45 @@
                         })()}
 
                         ${(() => {
+                            // Coastal Access Points from CA Coastal Commission
+                            if (!coastalAccess || coastalAccess.length === 0) return '';
+                            const nearest = coastalAccess.slice(0, 4);
+                            let caH = '<div class="source-divider">Nearby Beach Access <a class="src-link" href="https://www.coastal.ca.gov/YourCoast/" target="_blank">CA Coastal Commission</a><a class="src-link" href="https://www.theswimguide.org/find" target="_blank">Swim Guide</a></div>';
+                            nearest.forEach(loc => {
+                                const features = [];
+                                if (loc.SNDY_BEACH === 'Yes') features.push('Sandy Beach');
+                                if (loc.RKY_SHORE === 'Yes') features.push('Rocky Shore');
+                                if (loc.BOATING === 'Yes') features.push('Boating');
+                                if (loc.FISHING === 'Yes') features.push('Fishing');
+                                if (loc.TIDEPOOL === 'Yes') features.push('Tidepools');
+                                if (loc.CAMPGROUND === 'Yes') features.push('Camping');
+                                if (loc.DOG_FRIENDLY === 'Yes') features.push('Dog Friendly');
+                                if (loc.DSABLDACSS === 'Yes') features.push('ADA Access');
+                                if (loc.Bch_whlchr === 'Yes') features.push('Beach Wheelchair');
+                                const isMarina = (loc.BT_FACIL_TYPE || '').toLowerCase().includes('marina');
+                                const isDock = (loc.BT_FACIL_TYPE || '').toLowerCase().includes('dock');
+                                const isBoatOnly = (isMarina || isDock) && loc.SNDY_BEACH !== 'Yes' && loc.RKY_SHORE !== 'Yes';
+                                const icon = isBoatOnly ? '&#x2693;' : loc.SNDY_BEACH === 'Yes' ? '&#x1F3D6;' : loc.BOATING === 'Yes' ? '&#x1F6F6;' : '&#x1F30A;';
+                                const accessType = isBoatOnly ? 'Commercial/Marina' : loc.SNDY_BEACH === 'Yes' ? 'Beach Access' : loc.RKY_SHORE === 'Yes' ? 'Rocky Shore' : 'Water Access';
+                                const borderCls = isBoatOnly ? 'style="border-left-color:#6b7280;"' : '';
+                                const dist = loc._dist ? loc._dist.toFixed(1) + ' mi' : '';
+                                const parking = loc.PARKING === 'Yes' ? '&#x1F17F;&#xFE0F;' : '';
+                                const restrooms = loc.RESTROOMS === 'Yes' ? '&#x1F6BB;' : '';
+                                const fee = loc.FEE === 'Yes' ? '&#x1F4B2;' : '';
+                                caH += `<div class="beach-station ${isBoatOnly ? '' : 'status-green'}" ${borderCls}>
+                                    <div class="beach-station-info">
+                                        <div class="beach-station-name">${icon} ${loc.NameMobileWeb || 'Access Point'}</div>
+                                        <div><span class="beach-station-code">${accessType}</span> <span class="beach-station-dist">${dist}</span> ${parking} ${restrooms} ${fee}</div>
+                                        ${loc.BT_FACIL_TYPE ? `<div class="beach-station-dist">${loc.BT_FACIL_TYPE}</div>` : ''}
+                                        ${features.length > 0 ? `<div class="beach-station-dist">${features.join(' &bull; ')}</div>` : ''}
+                                    </div>
+                                    <div class="beach-station-status ${isBoatOnly ? 'advisory' : 'open'}">${isBoatOnly ? 'No Beach' : 'Open'}</div>
+                                </div>`;
+                            });
+                            return caH;
+                        })()}
+
+                        ${(() => {
                             // NWS weather alerts relevant to water safety
                             if (!nwsAlerts || nwsAlerts.length === 0) return '';
                             let nwsH = '<div class="source-divider">NWS Weather Alerts <a class="src-link" href="https://alerts.weather.gov" target="_blank">NWS Alerts</a></div>';
@@ -2932,6 +3079,8 @@
                             <a class="resource-link" href="https://waterdata.usgs.gov/nwis" target="_blank"><span class="res-icon">&#x1F4C8;</span> USGS Water Data (Stream Flow)</a>
                             <a class="resource-link" href="https://www.cnrfc.noaa.gov/rainfall_data.php" target="_blank"><span class="res-icon">&#x1F327;</span> NOAA Rainfall Observations</a>
                             <a class="resource-link" href="https://www.airnow.gov" target="_blank"><span class="res-icon">&#x1F4A8;</span> AirNow Air Quality</a>
+                            <a class="resource-link" href="https://www.theswimguide.org/find" target="_blank"><span class="res-icon">&#x1F3CA;</span> Swim Guide - Beach Water Quality</a>
+                            <a class="resource-link" href="https://www.coastal.ca.gov/YourCoast/" target="_blank"><span class="res-icon">&#x1F3D6;</span> CA Coastal Access Guide</a>
                             ${sdBeach && sdBeach.length > 0 ? `
                             <a class="resource-link" href="https://www.sdbeachinfo.com" target="_blank"><span class="res-icon">&#x1F3D6;</span> SD Beach &amp; Bay Water Quality</a>
                             <a class="resource-link" href="https://www.sdcoastkeeper.org/beach-advisories" target="_blank"><span class="res-icon">&#x1F6A9;</span> SD Coastkeeper Advisories</a>
