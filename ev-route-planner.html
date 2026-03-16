@@ -1121,7 +1121,7 @@
                 <input type="text" id="destInput" placeholder="Enter destination address..." />
             </div>
             <div id="stopsContainer"></div>
-            <button class="add-stop-btn" id="addStopBtn" type="button">+ Add Another Destination</button>
+            <button class="add-stop-btn" id="addStopBtn" type="button">+ Add Stop</button>
             <div class="round-trip-toggle">
                 <label class="toggle-label" for="roundTripCb">
                     <input type="checkbox" id="roundTripCb" />
@@ -1958,8 +1958,7 @@ function addStop() {
     const id = stopIdCounter++;
     const colorIdx = stops.length % stopColors.length;
     const color = stopColors[colorIdx];
-    const stopNum = stops.length + 1;
-    const label = `Destination ${stopNum + 1}`;
+    const label = 'Destination'; // will be corrected by renumberStops()
 
     const row = document.createElement('div');
     row.className = 'stop-row';
@@ -2010,14 +2009,30 @@ function updateAddStopBtn() {
 }
 
 function renumberStops() {
+    const destLabel = document.querySelector('#destGroup label');
+    if (stops.length === 0) {
+        // No stops — original field is "Destination"
+        destLabel.textContent = 'Destination';
+        document.getElementById('destInput').placeholder = 'Enter destination address...';
+    } else {
+        // Stops exist — original field becomes "Stop 1"
+        destLabel.textContent = 'Stop 1';
+        document.getElementById('destInput').placeholder = 'Enter stop address...';
+    }
+
     stops.forEach((s, i) => {
-        const label = `Destination ${i + 2}`;
+        const isLast = i === stops.length - 1;
+        const label = isLast ? 'Destination' : `Stop ${i + 2}`;
+        const placeholder = isLast ? 'Enter destination address...' : 'Enter stop address...';
         const group = document.getElementById(`stopGroup_${s.id}`);
-        if (group) group.querySelector('label').textContent = label;
+        if (group) {
+            group.querySelector('label').textContent = label;
+            group.querySelector('input').placeholder = placeholder;
+        }
         s.color = stopColors[i % stopColors.length];
         if (s.marker && s.coord) {
             s.marker.setMap(null);
-            s.marker = createCircleMarker(s.coord, s.color, `Stop ${label}`);
+            s.marker = createCircleMarker(s.coord, s.color, label);
         }
     });
 }
