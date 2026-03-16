@@ -2212,7 +2212,7 @@
         // DEH is the primary authoritative source — they collect samples at 81 stations.
         // sdbeachinfo.com blocks CORS, so we use a Cloudflare Worker proxy.
         // Fallback: direct fetch (works if same-origin or CORS policy changes).
-        const SD_BEACH_PROXY = 'https://sd-beach-proxy.jmlsd.workers.dev';
+        const SD_BEACH_PROXY = 'https://sd-beach-proxy.newtonmac.workers.dev';
 
         async function fetchSDBeachStatus(lat, lon) {
             // Skip if outside San Diego County area
