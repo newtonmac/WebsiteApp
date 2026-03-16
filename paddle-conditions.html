@@ -2890,15 +2890,26 @@
             }
 
             const pW=W-p.l-p.r,pH=H-p.t-p.b;
-            ctx.beginPath();ctx.strokeStyle='#06b6d4';ctx.lineWidth=2;
+            // Build points array
+            const tPts=[];
             let nX=null,nY=null;
             preds.forEach((d,i)=>{
                 const x=p.l+(i/(preds.length-1))*pW;
                 const y=p.t+pH-((+d.v-mn)/rng)*pH;
-                i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+                tPts.push({x,y});
                 const pt=new Date(d.t.replace(' ','T'));
                 if(!nX&&pt>=now){nX=x;nY=y;}
             });
+
+            // Draw smooth Catmull-Rom spline
+            ctx.beginPath();ctx.strokeStyle='#06b6d4';ctx.lineWidth=2;
+            ctx.moveTo(tPts[0].x,tPts[0].y);
+            for(let i=0;i<tPts.length-1;i++){
+                const c0=tPts[Math.max(i-1,0)],c1=tPts[i],c2=tPts[i+1],c3=tPts[Math.min(i+2,tPts.length-1)];
+                const cp1x=c1.x+(c2.x-c0.x)/6,cp1y=c1.y+(c2.y-c0.y)/6;
+                const cp2x=c2.x-(c3.x-c1.x)/6,cp2y=c2.y-(c3.y-c1.y)/6;
+                ctx.bezierCurveTo(cp1x,cp1y,cp2x,cp2y,c2.x,c2.y);
+            }
             ctx.stroke();
 
             ctx.lineTo(p.l+pW,p.t+pH);ctx.lineTo(p.l,p.t+pH);ctx.closePath();
@@ -3371,19 +3382,34 @@
                             const pad = {t:12, r:6, b:18, l:28};
                             const pW = svgW - pad.l - pad.r, pH = svgH - pad.t - pad.b;
 
-                            // Build SVG path
-                            let pathD = '';
+                            // Build points array
+                            const pts = [];
                             let nowX = null, nowY = null;
                             preds.forEach((d, i) => {
                                 const x = pad.l + (i / (preds.length - 1)) * pW;
                                 const y = pad.t + pH - ((+d.v - mn) / rng) * pH;
-                                pathD += (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1);
+                                pts.push({x, y});
                                 const pt = new Date(d.t.replace(' ','T'));
                                 if (!nowX && pt >= now) { nowX = x; nowY = y; }
                             });
 
+                            // Catmull-Rom to cubic Bezier smooth curve
+                            let pathD = `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
+                            for (let i = 0; i < pts.length - 1; i++) {
+                                const p0 = pts[Math.max(i - 1, 0)];
+                                const p1 = pts[i];
+                                const p2 = pts[i + 1];
+                                const p3 = pts[Math.min(i + 2, pts.length - 1)];
+                                const cp1x = p1.x + (p2.x - p0.x) / 6;
+                                const cp1y = p1.y + (p2.y - p0.y) / 6;
+                                const cp2x = p2.x - (p3.x - p1.x) / 6;
+                                const cp2y = p2.y - (p3.y - p1.y) / 6;
+                                pathD += `C${cp1x.toFixed(1)},${cp1y.toFixed(1)},${cp2x.toFixed(1)},${cp2y.toFixed(1)},${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
+                            }
+
                             // Fill area path
-                            const fillD = pathD + `L${(pad.l + pW).toFixed(1)},${(pad.t + pH).toFixed(1)}L${pad.l},${(pad.t + pH).toFixed(1)}Z`;
+                            const lastPt = pts[pts.length - 1], firstPt = pts[0];
+                            const fillD = pathD + `L${lastPt.x.toFixed(1)},${(pad.t + pH).toFixed(1)}L${firstPt.x.toFixed(1)},${(pad.t + pH).toFixed(1)}Z`;
 
                             // Grid lines + labels
                             let gridSvg = '';
