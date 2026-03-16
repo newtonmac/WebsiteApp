@@ -2303,9 +2303,8 @@
                     const isClosure = (rec.AdvisoryType || '').toLowerCase() === 'closure';
                     rec._daysSince = daysSince;
 
-                    // Closures: max 30 days (was 120 — caused stale false alerts)
-                    // Regular postings: max 14 days
-                    if (isClosure ? daysSince < 30 : daysSince < 14) {
+                    // Max 10 days — DEH samples weekly, so 10 days keeps data current
+                    if (daysSince < 10) {
                         results.push(rec);
                     }
                 }
@@ -2509,13 +2508,8 @@
                     detail: effectiveClosures.length > 0 ? (effectiveClosures[0].AdvisoryCause || 'Sewage contamination') : closedStations.length > 0 ? `${closedStations[0].Name || 'Beach'} closed by DEH` : 'Beach closed by monitoring agency',
                     southSwell, tjFlowing, staleOverrides: staleClosures.length };
             }
-            // WARNING: Bacteria exceeds + south swell (transboundary flow)
-            if (exceedsBacteria && southSwell) {
-                return { tier: 'warning', score: -25, label: 'Beach Warning — South Swell',
-                    detail: 'Bacteria exceeds standards with south swell pushing contaminated water northward',
-                    southSwell, tjFlowing, staleOverrides: 0 };
-            }
             // ADVISORY: Bacteria exceeds standards (within 3mi)
+            // Water quality is purely contamination-based — swell is graded separately
             if (exceedsBacteria) {
                 return { tier: 'advisory', score: -15, label: 'Beach Advisory',
                     detail: 'Water sample results exceed state health standards for bacteria',
@@ -2537,10 +2531,8 @@
             const tier = dehTier(sdBeach, beachAdvisories, marineSwell, riverFlow);
             let wqScore = 100, wqFactors = [];
             if (tier.tier === 'closure') { wqScore = 0; wqFactors.push({l:'Beach Closure',c:'#f87171'}); }
-            else if (tier.tier === 'warning') { wqScore = 15; wqFactors.push({l:'Warning — South Swell',c:'#f87171'}); }
             else if (tier.tier === 'advisory') { wqScore = 40; wqFactors.push({l:'Bacteria Advisory',c:'#fbbf24'}); }
             else { wqFactors.push({l:'No advisories',c:'#34d399'}); }
-            if (tier.southSwell && tier.tier !== 'open') wqFactors.push({l:'South swell',c:'#f97316'});
             if (p > 1.0 && wqScore > 30) { wqScore = 30; wqFactors.push({l:'Heavy rain runoff',c:'#f87171'}); }
             else if (p > 0.5 && wqScore > 60) { wqScore = 60; wqFactors.push({l:'Rain runoff',c:'#fbbf24'}); }
 
@@ -2584,6 +2576,9 @@
             if (wi > 15) { wsScore -= 20; wsFactors.push({l:'Wind chop',c:'#f87171'}); }
             else if (wi > 10) { wsScore -= 10; wsFactors.push({l:'Light chop',c:'#fbbf24'}); }
 
+            // South swell indicator (informational — relevant for paddle conditions)
+            if (hasSouthSwell(marineSwell)) wsFactors.push({l:'South swell',c:'#f97316'});
+
             // --- UV & SUN (0-100) ---
             let uvScore = 100, uvFactors = [];
             const uv = c.uv_index;
@@ -2605,7 +2600,6 @@
 
             // CRITICAL CAP: if water is closed, overall can't suggest "go paddle"
             if (tier.tier === 'closure') overall = Math.min(overall, 15);
-            else if (tier.tier === 'warning') overall = Math.min(overall, 30);
             if (wc >= 95) overall = Math.min(overall, 20); // thunderstorms
 
             overall = Math.max(0, Math.min(100, overall));
@@ -2680,11 +2674,6 @@
                     : closedStations.slice(0,3).map(s => s.Name).join(', ');
                 const cause = closures.length > 0 ? (closures[0].AdvisoryCause || 'Sewage contamination') : 'Beach closed by monitoring agency';
                 return{l:'Closure — Avoid Water Contact',d:`${cause}. ${names ? names + '.' : ''} Do NOT enter the water.${swellNote}`,cls:'wq-poor',ico:'&#x1F6AB;'};
-            }
-
-            // DEH Tier: WARNING — Bacteria exceeds + south swell (transboundary)
-            if (tier.tier === 'warning') {
-                return{l:'Warning — South Swell + Bacteria',d:`Test results exceed state health standards. South swell is pushing contaminated waters northward (transboundary flow). Avoid water contact.`,cls:'wq-poor',ico:'&#x26A0;'};
             }
 
             // DEH Tier: ADVISORY — Bacteria exceeds standards only
@@ -2974,7 +2963,7 @@
                         ` : ''}
                         ${(() => {
                             const t = dehTier(sdBeach, beachAdvisories, marineSwell, riverFlow);
-                            const clr = t.tier==='closure'?'#f87171':t.tier==='warning'?'#f97316':t.tier==='advisory'?'#fbbf24':'#34d399';
+                            const clr = t.tier==='closure'?'#f87171':t.tier==='advisory'?'#fbbf24':'#34d399';
                             return `<div class="stat-row"><span class="stat-label">DEH Tier</span><span class="stat-value" style="font-weight:600;color:${clr}">${t.tier.toUpperCase()}</span></div>`;
                         })()}
 
