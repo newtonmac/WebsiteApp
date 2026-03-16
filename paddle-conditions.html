@@ -1068,17 +1068,19 @@
             .card { padding: 14px; }
         }
         /* Dark theme for Google Maps InfoWindow */
-        .gm-style-iw-d { overflow: auto !important; background: #1a1d28 !important; }
-        .gm-style .gm-style-iw-c { background: #1a1d28 !important; border: 1px solid #2d3040 !important; border-radius: 10px !important; padding: 0 !important; box-shadow: 0 4px 24px rgba(0,0,0,0.5) !important; max-width: 360px !important; }
+        .gm-style-iw-d { overflow: auto !important; background: #1a1d28 !important; scrollbar-width: thin; scrollbar-color: #3d4055 #1a1d28; }
+        .gm-style .gm-style-iw-c { background: #1a1d28 !important; border: 1px solid #2d3040 !important; border-radius: 10px !important; padding: 0 !important; box-shadow: 0 4px 24px rgba(0,0,0,0.5) !important; max-width: 360px !important; overflow: hidden !important; }
         .gm-style .gm-style-iw-tc::after { background: #1a1d28 !important; }
         .gm-style .gm-style-iw-chr button { filter: invert(0.7) !important; }
-        .gm-style .gm-style-iw { background: #1a1d28 !important; }
+        .gm-style .gm-style-iw, .gm-style .gm-style-iw > div { background: #1a1d28 !important; }
         .gm-style .gm-style-iw-t::after { background: #1a1d28 !important; }
-        .gm-style-iw-d::-webkit-scrollbar { width: 6px; }
+        .gm-style-iw-d::-webkit-scrollbar { width: 6px; background: #1a1d28; }
         .gm-style-iw-d::-webkit-scrollbar-track { background: #1a1d28; }
         .gm-style-iw-d::-webkit-scrollbar-thumb { background: #3d4055; border-radius: 3px; }
         .gm-style-iw-d::-webkit-scrollbar-thumb:hover { background: #555a70; }
         .gm-style .gm-style-iw-chr { background: #1a1d28 !important; }
+        .gm-style .gm-style-iw-c > div { background: #1a1d28 !important; }
+        .gm-style .gm-style-iw-c > button { background: #1a1d28 !important; }
     </style>
 </head>
 <body>
