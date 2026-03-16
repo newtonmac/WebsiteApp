@@ -1855,7 +1855,7 @@
                     ];
 
                     // Water keywords to match in result names / formatted addresses
-                    const waterKeywords = /\b(ocean|sea|lake|river|creek|bay|harbor|harbour|marina|lagoon|reservoir|pond|canal|strait|cove|inlet|estuary|waterway|beach|surf|coast|shore|wharf|dock|pier|port|channel|sound|gulf|cape|rapids|falls|spring|brook|stream)\b/i;
+                    const waterKeywords = /\b(ocean|sea|lake|river|creek|bay|harbor|harbour|marina|lagoon|reservoir|pond|canal|strait|cove|inlet|estuary|waterway|beach|surf|coast|shore|wharf|dock|pier|port|channel|sound|gulf|cape|rapids|falls|spring|brook|stream|point|peninsula|jetty|breakwater|reef|tide|tidepool|tideland|seawall|bluff|headland|sandbar|atoll|isthmus|narrows|shoal)\b/i;
 
                     for (const result of results) {
                         // Check if any result type is water-related
@@ -1879,6 +1879,15 @@
                     // street address, it's likely open water
                     const top = results[0];
                     if (top.types.includes('plus_code') && results.length <= 2) {
+                        resolve(true);
+                        return;
+                    }
+
+                    // If no street-level result exists, likely open water / waterfront
+                    const hasStreet = results.some(r =>
+                        r.types.includes('street_address') || r.types.includes('premise') || r.types.includes('subpremise')
+                    );
+                    if (!hasStreet) {
                         resolve(true);
                         return;
                     }
@@ -3077,10 +3086,15 @@
                   `Overall tier: <strong style="color:${tierInfo(tier.tier).color};">${tierInfo(tier.tier).label}</strong>` +
                   (tier.detail ? ` — ${tier.detail}` : '') +
                   `</div></div>`
-                : `<div style="font-size:13px;color:#e2e8f0;">No DEH monitoring stations within 1 mile.<br>` +
-                  `Status based on regional data.` +
-                  (tier.detail ? `<br>${tier.detail}` : '') +
-                  `</div>`;
+                : `<div style="font-size:13px;color:#e2e8f0;line-height:1.6;">` +
+                  `<div style="margin-bottom:8px;">No DEH monitoring stations within 1 mile of this location.</div>` +
+                  `<div style="margin-bottom:8px;">Status: <strong style="color:${tierInfo(tier.tier).color};">${tierInfo(tier.tier).label}</strong>` +
+                  (tier.detail ? ` — ${tier.detail}` : ' — No active advisories or closures in this area') + `</div>` +
+                  `<div style="color:#8b8fa3;font-size:11px;border-top:1px solid #2d3040;padding-top:8px;">` +
+                  `Data sources:<br>` +
+                  `&#x2022; <a href="https://www.sdbeachinfo.com" target="_blank" style="color:#06b6d4;">SD County DEH Beach &amp; Bay Program</a> — real-time station monitoring<br>` +
+                  `&#x2022; <a href="https://data.ca.gov" target="_blank" style="color:#06b6d4;">CA Open Data</a> — statewide beach advisories &amp; closures` +
+                  `</div></div>`;
 
             // Update paddle pin color to match nearest station
             if (paddleMarker) {
@@ -3141,6 +3155,7 @@
                             <span class="score-number" style="color:${pinStatusColor};">${pinStatusLabel}</span>
                             <span class="score-label">Status</span>
                         </div>
+                        <a style="font-size:11px;color:#06b6d4;cursor:pointer;text-decoration:none;" onclick="document.getElementById('statusPopup').style.display=document.getElementById('statusPopup').style.display==='block'?'none':'block'">Data</a>
                         <div class="score-circle" style="--score-color:${color};--score-pct:${score};">
                             <span class="score-number" style="color:${color};">${score}</span>
                             <span class="score-label">Score</span>
