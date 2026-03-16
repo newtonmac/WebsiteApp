@@ -3320,14 +3320,34 @@
                         const valStyle = 'color:#e2e8f0;font-weight:600;';
                         let html = '';
 
-                        // Wind summary
+                        // Wind summary with compass
                         const ws = c.wind_speed_10m, wg = c.wind_gusts_10m, wd = c.wind_direction_10m;
+                        const compassSize = 60, cx = compassSize / 2, cy = compassSize / 2, cr = 26;
+                        const arrowRad = (wd || 0) * Math.PI / 180;
+                        const aTipX = cx + Math.sin(arrowRad) * (cr - 4), aTipY = cy - Math.cos(arrowRad) * (cr - 4);
+                        const aBaseX = cx - Math.sin(arrowRad) * 8, aBaseY = cy + Math.cos(arrowRad) * 8;
+                        const aLX = cx + Math.cos(arrowRad) * 4, aLY = cy + Math.sin(arrowRad) * 4;
+                        const aRX = cx - Math.cos(arrowRad) * 4, aRY = cy - Math.sin(arrowRad) * 4;
+                        const compassSvg = `<svg width="${compassSize}" height="${compassSize}" viewBox="0 0 ${compassSize} ${compassSize}" style="flex-shrink:0;">` +
+                            `<circle cx="${cx}" cy="${cy}" r="${cr}" fill="#0f1117" stroke="#2d3040" stroke-width="1.5"/>` +
+                            `<text x="${cx}" y="8" fill="#6b7280" font-size="7" font-weight="600" text-anchor="middle">N</text>` +
+                            `<text x="${cx}" y="${compassSize - 3}" fill="#6b7280" font-size="7" font-weight="600" text-anchor="middle">S</text>` +
+                            `<text x="${compassSize - 3}" y="${cy + 3}" fill="#6b7280" font-size="7" font-weight="600" text-anchor="middle">E</text>` +
+                            `<text x="3" y="${cy + 3}" fill="#6b7280" font-size="7" font-weight="600" text-anchor="middle">W</text>` +
+                            `<polygon points="${aTipX.toFixed(1)},${aTipY.toFixed(1)} ${aLX.toFixed(1)},${aLY.toFixed(1)} ${aRX.toFixed(1)},${aRY.toFixed(1)}" fill="#06b6d4"/>` +
+                            `<polygon points="${aBaseX.toFixed(1)},${aBaseY.toFixed(1)} ${aLX.toFixed(1)},${aLY.toFixed(1)} ${aRX.toFixed(1)},${aRY.toFixed(1)}" fill="#3b82f6" opacity="0.5"/>` +
+                            `</svg>`;
+
                         html += `<div style="${secStyle}">` +
                             `<div style="${headStyle}">&#x1F4A8; Wind</div>` +
-                            `<div style="${rowStyle}"><span>Speed</span><span style="${valStyle}">${ws?.toFixed(0) || '--'} mph ${wDir(wd)}</span></div>` +
+                            `<div style="display:flex;align-items:center;gap:12px;">` +
+                            compassSvg +
+                            `<div style="flex:1;">` +
+                            `<div style="font-size:16px;font-weight:700;color:#e2e8f0;">${ws?.toFixed(0) || '--'} <span style="font-size:11px;color:#8b8fa3;font-weight:400;">mph</span></div>` +
+                            `<div style="font-size:10px;color:#06b6d4;margin-bottom:3px;">${wDir(wd)} (${wd?.toFixed(0) || '--'}°)</div>` +
                             `<div style="${rowStyle}"><span>Gusts</span><span style="${valStyle}">${wg?.toFixed(0) || '--'} mph</span></div>` +
                             `<div style="${rowStyle}"><span>Max today</span><span style="${valStyle}">${weather.daily?.wind_speed_10m_max?.[0]?.toFixed(0) || '--'} mph</span></div>` +
-                            `</div>`;
+                            `</div></div></div>`;
 
                         // Weather summary
                         const temp = c.temperature_2m, feels = c.apparent_temperature, hum = c.relative_humidity_2m, uv = c.uv_index;
