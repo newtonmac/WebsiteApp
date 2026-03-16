@@ -192,9 +192,10 @@
         .score-number { font-size: 36px; font-weight: 800; line-height: 1; }
         .score-label { font-size: 11px; color: #8b8fa3; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
         .score-details { flex: 1; min-width: 200px; }
+        .score-place { font-size: 20px; font-weight: 700; color: #06b6d4; margin-bottom: 4px; }
+        .score-place-sub { font-size: 12px; color: #6b7280; margin-bottom: 10px; font-family: monospace; }
         .score-verdict { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
         .score-summary { color: #8b8fa3; font-size: 14px; line-height: 1.5; }
-        .score-location { color: #06b6d4; font-size: 13px; margin-top: 6px; }
 
         .score-factors { display: flex; gap: 16px; margin-top: 14px; flex-wrap: wrap; }
         .score-factor { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #9ca3af; }
@@ -502,20 +503,38 @@
                 }
             });
 
-            // Reverse geocode to get place name
+            // Reverse geocode - search all results for the best water/place name
             const geocoder = new google.maps.Geocoder();
             geocoder.geocode({ location: { lat, lng: lon } }, (results, status) => {
-                if (status === 'OK' && results[0]) {
-                    // Find a meaningful name - prefer natural features, neighborhoods, cities
-                    const comps = results[0].address_components;
-                    const neighborhood = comps.find(c => c.types.includes('neighborhood'));
-                    const locality = comps.find(c => c.types.includes('locality'));
-                    const feature = comps.find(c => c.types.includes('natural_feature'));
-                    const area = comps.find(c => c.types.includes('sublocality'));
-                    paddleName = (feature || neighborhood || area || locality)?.long_name || results[0].formatted_address.split(',')[0];
-                } else {
-                    paddleName = `${lat.toFixed(4)}°, ${lon.toFixed(4)}°`;
+                paddleName = null;
+                if (status === 'OK' && results) {
+                    // First pass: look for natural_feature or water body across ALL results
+                    for (const r of results) {
+                        if (r.types.includes('natural_feature')) {
+                            paddleName = r.formatted_address.split(',')[0];
+                            break;
+                        }
+                    }
+                    // Second pass: look for point_of_interest, park, marina
+                    if (!paddleName) {
+                        for (const r of results) {
+                            if (r.types.some(t => ['point_of_interest','park','marina','harbor'].includes(t))) {
+                                paddleName = r.formatted_address.split(',')[0];
+                                break;
+                            }
+                        }
+                    }
+                    // Third: neighborhood, sublocality, or locality from first result
+                    if (!paddleName && results[0]) {
+                        const comps = results[0].address_components;
+                        const pick = comps.find(c => c.types.includes('natural_feature'))
+                            || comps.find(c => c.types.includes('neighborhood'))
+                            || comps.find(c => c.types.includes('sublocality'))
+                            || comps.find(c => c.types.includes('locality'));
+                        paddleName = pick?.long_name || results[0].formatted_address.split(',')[0];
+                    }
                 }
+                if (!paddleName) paddleName = `${lat.toFixed(4)}°, ${lon.toFixed(4)}°`;
                 loadConditions();
             });
         }
@@ -755,9 +774,10 @@
                         <span class="score-label">Score</span>
                     </div>
                     <div class="score-details">
+                        <div class="score-place">&#x1F4CD; ${paddleName}</div>
+                        <div class="score-place-sub">${paddleLat.toFixed(4)}°${paddleLat>=0?'N':'S'}, ${Math.abs(paddleLon).toFixed(4)}°${paddleLon>=0?'E':'W'}</div>
                         <div class="score-verdict" style="color:${color};">${sVer(score)}</div>
                         <div class="score-summary">${sSum(score,weather)}</div>
-                        <div class="score-location">&#x1F4CD; ${paddleName} &mdash; ${paddleLat.toFixed(4)}°, ${paddleLon.toFixed(4)}°</div>
                         <div class="score-factors">${factors.map(f=>`<div class="score-factor"><div class="factor-dot" style="background:${f.c};"></div>${f.l}</div>`).join('')}</div>
                     </div>
                 </div>
