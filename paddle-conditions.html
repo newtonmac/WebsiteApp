@@ -1067,6 +1067,11 @@
             .wind-values h3 { font-size: 22px; }
             .card { padding: 14px; }
         }
+        /* Dark theme for Google Maps InfoWindow */
+        .gm-style-iw-d { overflow: auto !important; }
+        .gm-style .gm-style-iw-c { background: #1a1d28 !important; border: 1px solid #2d3040 !important; border-radius: 10px !important; padding: 0 !important; box-shadow: 0 4px 24px rgba(0,0,0,0.5) !important; }
+        .gm-style .gm-style-iw-tc::after { background: #1a1d28 !important; }
+        .gm-style .gm-style-iw-chr button { filter: invert(0.7) !important; }
     </style>
 </head>
 <body>
@@ -3239,9 +3244,9 @@
                 const catBars = Object.values(categories).map(cat => {
                     const cc = sClr(cat.score);
                     return `<div style="margin:3px 0;">` +
-                        `<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:1px;">` +
+                        `<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:1px;color:#c0c4d0;">` +
                         `<span>${cat.icon} ${cat.label}</span><span style="color:${cc};font-weight:600;">${cat.score}</span></div>` +
-                        `<div style="height:4px;background:#e5e7eb;border-radius:2px;overflow:hidden;">` +
+                        `<div style="height:4px;background:#2d3040;border-radius:2px;overflow:hidden;">` +
                         `<div style="height:100%;width:${cat.score}%;background:${cc};border-radius:2px;"></div></div></div>`;
                 }).join('');
 
@@ -3249,33 +3254,43 @@
                     ? nearbyStations.slice(0, 3).map(s =>
                         `<span style="display:inline-flex;align-items:center;gap:3px;"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${stationStatusColor(s)};"></span>${s.Name} (${s._dist.toFixed(1)}mi ${s._dir ? s._dir.a + s._dir.l : ''})</span>`
                       ).join('<br>')
-                    : '<span style="color:#9ca3af;">No nearby stations</span>';
+                    : '<span style="color:#6b7280;">No nearby stations</span>';
 
-                const paddlePopup = `<div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:320px;padding:6px;">` +
-                    `<div style="font-weight:700;font-size:15px;margin-bottom:2px;">${paddleName || 'Paddle Spot'}</div>` +
-                    `<div style="font-size:11px;color:#6b7280;margin-bottom:8px;">${paddleAddress || ''}</div>` +
+                const nearbyDrains = sortedDEH.filter(s => isStormDrain(s)).slice(0, 5);
+                const drainsLabel = nearbyDrains.length > 0
+                    ? nearbyDrains.map(s =>
+                        `<span style="display:inline-flex;align-items:center;gap:3px;"><span style="color:#38bdf8;font-size:10px;">&#x1F4A7;</span>${s.Name || 'Storm Drain'} (${s._dist.toFixed(1)}mi ${s._dir ? s._dir.a + s._dir.l : ''})</span>`
+                      ).join('<br>')
+                    : '<span style="color:#6b7280;">None nearby</span>';
+
+                const paddlePopup = `<div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:320px;padding:10px;background:#1a1d28;color:#e2e8f0;border-radius:8px;">` +
+                    `<div style="font-weight:700;font-size:15px;margin-bottom:2px;color:#f1f5f9;">${paddleName || 'Paddle Spot'}</div>` +
+                    `<div style="font-size:11px;color:#8b8fa3;margin-bottom:8px;">${paddleAddress || ''}</div>` +
                     // Three circles row
                     `<div style="display:flex;gap:10px;justify-content:center;margin-bottom:8px;">` +
                     `<div style="text-align:center;">` +
                     `<div style="width:48px;height:48px;border-radius:50%;border:3px solid ${pinStatusColor};display:flex;align-items:center;justify-content:center;margin:0 auto;">` +
                     `<span style="font-weight:800;font-size:11px;color:${pinStatusColor};">${pinStatusLabel}</span></div>` +
-                    `<div style="font-size:9px;color:#6b7280;margin-top:2px;">Status</div></div>` +
+                    `<div style="font-size:9px;color:#8b8fa3;margin-top:2px;">Status</div></div>` +
                     `<div style="text-align:center;">` +
                     `<div style="width:48px;height:48px;border-radius:50%;border:3px solid ${color};display:flex;align-items:center;justify-content:center;margin:0 auto;">` +
                     `<span style="font-weight:800;font-size:16px;color:${color};">${score}</span></div>` +
-                    `<div style="font-size:9px;color:#6b7280;margin-top:2px;">Score</div></div>` +
+                    `<div style="font-size:9px;color:#8b8fa3;margin-top:2px;">Score</div></div>` +
                     `<div style="text-align:center;">` +
                     `<div style="width:48px;height:48px;border-radius:50%;border:3px solid ${wwColor};display:flex;align-items:center;justify-content:center;margin:0 auto;">` +
                     `<span style="font-weight:800;font-size:16px;color:${wwColor};">${wwScore}</span></div>` +
-                    `<div style="font-size:9px;color:#6b7280;margin-top:2px;">Weather</div></div>` +
+                    `<div style="font-size:9px;color:#8b8fa3;margin-top:2px;">Weather</div></div>` +
                     `</div>` +
                     // Verdict
                     `<div style="text-align:center;font-weight:700;font-size:13px;color:${color};margin-bottom:6px;">${sVer(score)}</div>` +
                     // Category bars
-                    `<div style="border-top:1px solid #e5e7eb;padding-top:6px;margin-top:2px;">${catBars}</div>` +
-                    // Nearest stations
-                    `<div style="border-top:1px solid #e5e7eb;padding-top:6px;margin-top:6px;font-size:10px;color:#6b7280;">` +
-                    `<div style="font-weight:600;margin-bottom:3px;">Nearest Monitors:</div>${nearestLabel}</div>` +
+                    `<div style="border-top:1px solid #2d3040;padding-top:6px;margin-top:2px;">${catBars}</div>` +
+                    // Nearest DEH monitors
+                    `<div style="border-top:1px solid #2d3040;padding-top:6px;margin-top:6px;font-size:10px;color:#c0c4d0;">` +
+                    `<div style="font-weight:600;margin-bottom:3px;color:#8b8fa3;">Nearest DEH Monitors:</div>${nearestLabel}</div>` +
+                    // Storm drains / outfalls
+                    `<div style="border-top:1px solid #2d3040;padding-top:6px;margin-top:6px;font-size:10px;color:#c0c4d0;">` +
+                    `<div style="font-weight:600;margin-bottom:3px;color:#8b8fa3;">Storm Drains / Outfalls:</div>${drainsLabel}</div>` +
                     `</div>`;
 
                 if (!paddleInfoWindow) paddleInfoWindow = new google.maps.InfoWindow();
