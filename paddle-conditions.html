@@ -564,6 +564,57 @@
             height: 28px;
         }
 
+        /* Beach advisory cards */
+        .beach-advisory {
+            padding: 10px 12px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        .beach-advisory.adv-active {
+            background: #f8717115;
+            border: 1px solid #f8717140;
+        }
+        .beach-advisory.adv-clear {
+            background: #34d39915;
+            border: 1px solid #34d39940;
+        }
+        .beach-advisory-title {
+            font-weight: 600;
+            color: #e1e4e8;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .beach-advisory-detail {
+            color: #8b8fa3;
+            font-size: 11px;
+        }
+        .beach-advisory-bacteria {
+            display: flex;
+            gap: 10px;
+            margin-top: 6px;
+            flex-wrap: wrap;
+        }
+        .bacteria-chip {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: #252836;
+            color: #c0c4d0;
+        }
+        .bacteria-chip.elevated { background: #f8717130; color: #f87171; }
+        .wq-source-credit {
+            font-size: 10px;
+            color: #6b7280;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #2d304040;
+        }
+        .wq-source-credit a { color: #06b6d4; text-decoration: none; }
+
         /* Google Place badge in score hero */
         .place-badge {
             display: inline-flex;
@@ -890,6 +941,7 @@
             Data: <a href="https://open-meteo.com" target="_blank">Open-Meteo</a> &bull;
             <a href="https://developers.google.com/maps/documentation/weather" target="_blank">Google Weather</a> &bull;
             <a href="https://tidesandcurrents.noaa.gov" target="_blank">NOAA Tides</a> &bull;
+            <a href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank">CA Beach WQ</a> &bull;
             Updated <span id="lastUpdate">--</span>
         </div>
 
@@ -953,6 +1005,7 @@
                     <li><strong><a href="https://tidesandcurrents.noaa.gov" target="_blank" style="color:#06b6d4">NOAA Tides &amp; Currents</a></strong> &mdash; Official US government tide predictions and real-time water level observations from NOAA monitoring stations</li>
                     <li><strong><a href="https://air-quality-api.open-meteo.com" target="_blank" style="color:#06b6d4">Open-Meteo Air Quality</a></strong> &mdash; Air quality and UV index data</li>
                     <li><strong><a href="https://maps.google.com" target="_blank" style="color:#06b6d4">Google Maps &amp; Places API</a></strong> &mdash; Interactive map display, location search, and place information</li>
+                    <li><strong><a href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank" style="color:#06b6d4">California State Water Resources Control Board</a></strong> &mdash; Official beach water quality advisories, postings, and closures based on bacteria testing (Enterococcus, Fecal Coliforms, Total Coliforms, E. Coli) via the CA Open Data Portal. Data collected by county health departments including the <a href="https://www.sdcoastkeeper.org/beach-advisories/" target="_blank" style="color:#06b6d4">San Diego Coastkeeper</a> and the <a href="https://www.sandiegocounty.gov/content/sdc/deh/lwqd/beachandbay.html" target="_blank" style="color:#06b6d4">SD County Dept. of Environmental Health</a></li>
                 </ul>
                 <p>PaddlePoint cross-references data from both Open-Meteo and Google Weather to give you a more complete picture. When both sources are shown side-by-side (<span class="source-tag source-om">OM</span> = Open-Meteo, <span class="source-tag source-gw">G</span> = Google), you can compare readings and make a more informed decision.</p>
                 <p>The paddle score is calculated algorithmically by combining the above data points. It is an <strong>estimate</strong>, not a professional safety assessment. PaddlePoint has no proprietary data collection, sensors, weather stations, or monitoring equipment.</p>
@@ -1201,13 +1254,16 @@
                 </ul>
 
                 <h3>How does Water Quality work?</h3>
-                <p>Water quality is estimated based on recent rainfall. Heavy rain causes runoff that can carry pollutants, bacteria, and debris into waterways. The ratings are:</p>
+                <p>Water quality has two components:</p>
+                <p><strong>1. Rainfall estimate:</strong> Based on recent precipitation data. Heavy rain causes runoff that can carry pollutants, bacteria, and debris into waterways:</p>
                 <ul>
                     <li><strong>Good &mdash; Safe for Contact</strong> &mdash; No significant recent rain</li>
                     <li><strong>Moderate &mdash; Use Caution</strong> &mdash; Some recent rain, avoid swallowing water</li>
                     <li><strong>Poor &mdash; Heavy Rain Runoff</strong> &mdash; Significant recent rain, avoid water contact for 72 hours after heavy rainfall</li>
                 </ul>
-                <p>This is an estimate only. It does not account for sewage spills, algae blooms, industrial discharge, or other localized pollution events. Always check local beach advisories.</p>
+                <p><strong>2. Official beach advisories:</strong> PaddlePoint also pulls real bacteria testing data from the California State Water Resources Control Board. When beaches near your paddle spot have active advisories (based on Enterococcus, Fecal Coliform, Total Coliform, or E. Coli testing), they'll appear in the Water Quality card with the specific bacteria levels and advisory details.</p>
+                <p>This data comes from organizations like <a href="https://www.sdcoastkeeper.org/beach-advisories/" target="_blank" style="color:#06b6d4">San Diego Coastkeeper</a> and county health departments who physically test the water at beaches. Advisory data is currently available for California beaches.</p>
+                <p>Even with this data, always check local beach advisory signs and official sources before entering the water.</p>
 
                 <h3>How do tides work?</h3>
                 <p>Tide data comes from the nearest NOAA monitoring station. PaddlePoint shows the current tide level and upcoming high/low tide times. Tides matter for paddlers because:</p>
@@ -1723,14 +1779,15 @@
             const station = nearestStation(paddleLat, paddleLon);
 
             try {
-                const [weather, tides, tideH, gWeather, gHourly] = await Promise.all([
+                const [weather, tides, tideH, gWeather, gHourly, beachAdvisories] = await Promise.all([
                     fetchWeather(paddleLat, paddleLon),
                     fetchTides(station.id).catch(() => null),
                     fetchTideHourly(station.id).catch(() => null),
                     fetchGoogleWeather(paddleLat, paddleLon).catch(() => null),
                     fetchGoogleHourly(paddleLat, paddleLon).catch(() => null),
+                    fetchBeachAdvisories(paddleLat, paddleLon).catch(() => []),
                 ]);
-                render(weather, tides, tideH, station, gWeather, gHourly);
+                render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories);
             } catch (e) {
                 document.getElementById('conditionsArea').innerHTML = `<div style="text-align:center;padding:48px;color:#f87171;">
                     <div style="font-size:36px;margin-bottom:12px;">&#x26A0;</div>
@@ -1759,6 +1816,35 @@
             const r = await fetch(`https://weather.googleapis.com/v1/forecast/hours:lookup?key=${GOOGLE_API_KEY}&location.latitude=${lat}&location.longitude=${lon}&hours=12`);
             if (!r.ok) throw new Error(`Google Hourly: ${r.status}`);
             return r.json();
+        }
+
+        // Beach water quality advisories from CA State Water Board via CA Open Data
+        const CA_BEACH_API = 'https://data.ca.gov/api/3/action/datastore_search';
+        const CA_BEACH_RESOURCE = 'd5cd6a23-829c-426d-a63e-689a55a3db9c';
+
+        async function fetchBeachAdvisories(lat, lon) {
+            // Get recent advisories (last 30 days) and filter by proximity
+            const d = new Date();
+            d.setDate(d.getDate() - 30);
+            const since = d.toISOString().split('T')[0];
+            const url = `${CA_BEACH_API}?resource_id=${CA_BEACH_RESOURCE}&limit=100&sort=_id desc&filters={"Beach_Status":"Active"}`;
+            const r = await fetch(url);
+            if (!r.ok) throw new Error(`Beach WQ: ${r.status}`);
+            const data = await r.json();
+            if (!data.success || !data.result?.records) return [];
+
+            // Filter to advisories near the paddle spot (within ~10 miles)
+            return data.result.records.filter(rec => {
+                const sLat = parseFloat(rec.Station_UpperLat || rec.Beach_UpperLat);
+                const sLon = parseFloat(rec.Station_UpperLon || rec.Beach_UpperLon);
+                if (!sLat || !sLon) return false;
+                const dist = hav(lat, lon, sLat, sLon);
+                rec._dist = dist;
+                // Check if advisory is recent (within 14 days)
+                const advDate = new Date(rec.DateofAdvisory);
+                const daysSince = (Date.now() - advDate.getTime()) / 86400000;
+                return dist < 10 && daysSince < 14;
+            }).sort((a, b) => a._dist - b._dist);
         }
 
         async function fetchTides(sid) {
@@ -1935,7 +2021,7 @@
             return v.distance * 0.621371; // km to mi
         }
 
-        function render(weather, tides, tideH, station, gWeather, gHourly) {
+        function render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories) {
             const c = weather.current;
             const {score,factors} = calcScore(weather);
             const color = sClr(score);
@@ -2052,6 +2138,40 @@
                         <div class="wq-status ${q.cls}"><span class="wq-icon">${q.ico}</span><div class="wq-text"><h4>${q.l}</h4><p>${q.d}</p></div></div>
                         <div class="stat-row"><span class="stat-label">Precipitation Today</span><span class="stat-value">${(weather.daily.precipitation_sum?.[0]||0).toFixed(2)} in</span></div>
                         <div class="stat-row"><span class="stat-label">Current Precip</span><span class="stat-value">${c.precipitation.toFixed(2)} in</span></div>
+                        ${beachAdvisories && beachAdvisories.length > 0 ? `
+                            <div class="source-divider">Active Beach Advisories Nearby</div>
+                            ${beachAdvisories.slice(0, 5).map(a => {
+                                const advDate = new Date(a.DateofAdvisory);
+                                const dateStr = advDate.toLocaleDateString([], {month:'short', day:'numeric', year:'numeric'});
+                                const dist = a._dist ? a._dist.toFixed(1) + ' mi away' : '';
+                                const enterococcus = parseInt(a.Enterococcus) || 0;
+                                const fecal = parseInt(a['Fecal Coliforms']) || 0;
+                                const totalCol = parseInt(a['Total Coliforms']) || 0;
+                                const eColi = parseInt(a['E.Coli']) || 0;
+                                return `<div class="beach-advisory adv-active">
+                                    <div class="beach-advisory-title">&#x1F6A9; ${a.Beach_Name || a.Station_Description || 'Beach'}</div>
+                                    <div class="beach-advisory-detail">${a.AdvisoryCause || 'Advisory'} &bull; ${dateStr} &bull; ${dist}</div>
+                                    ${a.DescriptionofArea ? `<div class="beach-advisory-detail">${a.DescriptionofArea}</div>` : ''}
+                                    <div class="beach-advisory-bacteria">
+                                        ${enterococcus ? `<span class="bacteria-chip ${enterococcus > 104 ? 'elevated' : ''}">Enterococcus: ${enterococcus}</span>` : ''}
+                                        ${fecal ? `<span class="bacteria-chip ${fecal > 400 ? 'elevated' : ''}">Fecal Coliform: ${fecal}</span>` : ''}
+                                        ${totalCol ? `<span class="bacteria-chip ${totalCol > 10000 ? 'elevated' : ''}">Total Coliform: ${totalCol}</span>` : ''}
+                                        ${eColi ? `<span class="bacteria-chip ${eColi > 235 ? 'elevated' : ''}">E. Coli: ${eColi}</span>` : ''}
+                                    </div>
+                                </div>`;
+                            }).join('')}
+                        ` : `
+                            <div class="source-divider">Beach Advisories</div>
+                            <div class="beach-advisory adv-clear">
+                                <div class="beach-advisory-title">&#x2705; No Active Advisories Nearby</div>
+                                <div class="beach-advisory-detail">No beach water quality advisories within 10 miles in the last 14 days.</div>
+                            </div>
+                        `}
+                        <div class="wq-source-credit">
+                            Beach advisory data: <a href="https://www.waterboards.ca.gov/water_issues/programs/beaches/beach_water_quality/" target="_blank">CA State Water Resources Control Board</a> &bull;
+                            <a href="https://www.sdcoastkeeper.org/beach-advisories/" target="_blank">SD Coastkeeper</a> &bull;
+                            <a href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank">CA Open Data</a>
+                        </div>
                     </div>
 
                     <div class="card full-width">
