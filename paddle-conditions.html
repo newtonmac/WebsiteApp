@@ -3037,7 +3037,6 @@
             const c = weather.current;
             const {score,factors,categories,tier} = calcScore(weather, sdBeach, beachAdvisories, marineSwell, riverFlow);
             const color = sClr(score);
-            const ti = tierInfo(tier.tier);
             const wwScore = categories.wind.score;
             const wwColor = sClr(wwScore);
             const q = wq(weather, sdBeach, beachAdvisories, marineSwell, riverFlow);
@@ -3047,13 +3046,45 @@
             addStationMarkers(allDEHStations.filter(s => s._dist <= 1));
             const localSrc = getLocalBeachSource(paddleLat, paddleLon);
 
-            // Update paddle pin color based on nearest DEH station
+            // Determine status from nearest monitoring station (not storm drains)
+            const nearbyStations = allDEHStations.filter(s => s._dist <= 1 && s.TypeID !== 2).sort((a,b) => a._dist - b._dist);
+            let pinStatusColor, pinStatusLabel, pinStatusSource;
+            if (nearbyStations.length > 0) {
+                const nearest = nearbyStations[0];
+                pinStatusColor = stationStatusColor(nearest);
+                pinStatusLabel = stationStatusText(nearest);
+                pinStatusSource = nearest.Name || 'DEH Station';
+            } else {
+                const ti2 = tierInfo(tier.tier);
+                pinStatusColor = ti2.color;
+                pinStatusLabel = ti2.label;
+                pinStatusSource = tier.detail || 'No nearby monitoring stations';
+            }
+
+            // Build status explanation for popup
+            const statusStations = nearbyStations.map(s =>
+                `<div style="margin:4px 0;display:flex;align-items:center;gap:6px;">` +
+                `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${stationStatusColor(s)};"></span>` +
+                `<strong>${s.Name || 'Station'}</strong> — ${stationStatusText(s)} (${s._dist.toFixed(2)} mi)` +
+                `</div>`
+            ).join('');
+            const statusExplain = nearbyStations.length > 0
+                ? `<div style="font-size:13px;color:#e2e8f0;line-height:1.6;">` +
+                  `<div style="margin-bottom:8px;color:#8b8fa3;">Status based on nearest DEH monitoring station:</div>` +
+                  statusStations +
+                  `<div style="margin-top:10px;border-top:1px solid #2d3040;padding-top:8px;color:#8b8fa3;font-size:11px;">` +
+                  `Source: <a href="https://www.sdbeachinfo.com" target="_blank" style="color:#06b6d4;">San Diego County DEH — Beach &amp; Bay Water Quality</a><br>` +
+                  `Overall tier: <strong style="color:${tierInfo(tier.tier).color};">${tierInfo(tier.tier).label}</strong>` +
+                  (tier.detail ? ` — ${tier.detail}` : '') +
+                  `</div></div>`
+                : `<div style="font-size:13px;color:#e2e8f0;">No DEH monitoring stations within 1 mile.<br>` +
+                  `Status based on regional data.` +
+                  (tier.detail ? `<br>${tier.detail}` : '') +
+                  `</div>`;
+
+            // Update paddle pin color to match nearest station
             if (paddleMarker) {
-                const nearbyStations = allDEHStations.filter(s => s._dist <= 1 && s.TypeID !== 2);
-                const nearestColor = nearbyStations.length > 0
-                    ? stationStatusColor(nearbyStations[0])
-                    : tierInfo(tier.tier).color;
-                const pinSvg = makePaddlePinSvg(nearestColor);
+                const pinSvg = makePaddlePinSvg(pinStatusColor);
                 paddleMarker.setIcon({
                     url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(pinSvg),
                     scaledSize: new google.maps.Size(44, 56),
@@ -3106,8 +3137,8 @@
             document.getElementById('conditionsArea').innerHTML=`
                 <div class="score-hero">
                     <div class="score-circles-stack">
-                        <div class="score-circle status-circle" style="--score-color:${ti.color};--score-pct:100;">
-                            <span class="score-number" style="color:${ti.color};">${ti.label}</span>
+                        <div class="score-circle status-circle" style="--score-color:${pinStatusColor};--score-pct:100;cursor:pointer;" onclick="document.getElementById('statusPopup').style.display=document.getElementById('statusPopup').style.display==='block'?'none':'block'">
+                            <span class="score-number" style="color:${pinStatusColor};">${pinStatusLabel}</span>
                             <span class="score-label">Status</span>
                         </div>
                         <div class="score-circle" style="--score-color:${color};--score-pct:${score};">
@@ -3140,6 +3171,14 @@
                             }).join('')}
                         </div>
                     </div>
+                </div>
+
+                <div id="statusPopup" style="display:none;background:#1a1d28;border:1px solid #2d3040;border-radius:12px;padding:16px;margin-bottom:20px;position:relative;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                        <span style="font-weight:700;color:${pinStatusColor};font-size:16px;">&#x1F50D; Water Quality Status</span>
+                        <span style="cursor:pointer;color:#8b8fa3;font-size:18px;" onclick="document.getElementById('statusPopup').style.display='none'">&times;</span>
+                    </div>
+                    ${statusExplain}
                 </div>
 
                 <div class="grid">
