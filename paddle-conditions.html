@@ -3051,12 +3051,12 @@
             const q = wq(weather, sdBeach, beachAdvisories, marineSwell, riverFlow);
             const sp = sports(weather);
 
-            // Add DEH station pins + storm drain pins within 1 mile of paddle spot
-            addStationMarkers(allDEHStations.filter(s => s._dist <= 1));
+            // Add DEH station pins + storm drain pins within 1.5 miles of paddle spot
+            addStationMarkers(allDEHStations.filter(s => s._dist <= 1.5));
             const localSrc = getLocalBeachSource(paddleLat, paddleLon);
 
             // Determine status from nearest monitoring station (not storm drains)
-            const nearbyStations = allDEHStations.filter(s => s._dist <= 1 && s.TypeID !== 2).sort((a,b) => a._dist - b._dist);
+            const nearbyStations = allDEHStations.filter(s => s._dist <= 1.5 && s.TypeID !== 2).sort((a,b) => a._dist - b._dist);
             let pinStatusColor, pinStatusLabel, pinStatusSource, pinStatusDetail = '';
             if (nearbyStations.length > 0) {
                 const nearest = nearbyStations[0];
