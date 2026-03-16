@@ -3,7 +3,7 @@
 // Deploy: npx wrangler deploy
 
 const SD_DISPATCH_API = 'https://webapps.sandiego.gov/SDFireDispatch/api/v1/Incidents';
-const ALLOWED_ORIGINS = ['https://jmlsd.org', 'http://localhost:8080', 'http://127.0.0.1:8080'];
+const ALLOWED_ORIGINS = ['https://jmlsd.org', 'https://www.jmlsd.org', 'https://paddlepoint.org', 'https://www.paddlepoint.org', 'http://localhost:8080', 'http://127.0.0.1:8080'];
 
 export default {
   async fetch(request) {
