@@ -576,6 +576,73 @@
             background: #06b6d410;
         }
         .nws-alert-link:hover { background: #06b6d420; text-decoration: underline; }
+        .beach-station {
+            background: #1e2130;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-top: 6px;
+            border-left: 3px solid #34d399;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+        .beach-station.status-red { border-left-color: #f87171; }
+        .beach-station.status-yellow { border-left-color: #fbbf24; }
+        .beach-station-info { flex: 1; min-width: 0; }
+        .beach-station-name { font-size: 12px; font-weight: 600; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .beach-station-code { font-size: 10px; color: #06b6d4; font-weight: 600; font-family: monospace; }
+        .beach-station-dist { font-size: 10px; color: #8b8fa3; }
+        .beach-station-status {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .beach-station-status.open { background: #34d39920; color: #34d399; }
+        .beach-station-status.advisory { background: #fbbf2420; color: #fbbf24; }
+        .beach-station-status.closed { background: #f8717120; color: #f87171; }
+        .beach-station-link { font-size: 10px; color: #06b6d4; text-decoration: none; display: block; margin-top: 3px; }
+        .beach-station-link:hover { text-decoration: underline; }
+        .river-gauge {
+            background: #1e2130;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-top: 6px;
+        }
+        .river-gauge-name { font-size: 12px; font-weight: 600; color: #e2e8f0; margin-bottom: 2px; }
+        .river-gauge-detail { font-size: 11px; color: #8b8fa3; }
+        .river-gauge-flow { font-size: 14px; font-weight: 700; color: #06b6d4; }
+        .river-gauge.high-flow { border-left: 3px solid #f87171; }
+        .river-gauge.moderate-flow { border-left: 3px solid #fbbf24; }
+        .river-gauge.low-flow { border-left: 3px solid #34d399; }
+        .resource-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        .resource-link {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 10px;
+            background: #1e2130;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #e2e8f0;
+            font-size: 11px;
+            font-weight: 500;
+            border: 1px solid #2d3040;
+            transition: all 0.2s;
+        }
+        .resource-link:hover { background: #252836; border-color: #06b6d440; color: #06b6d4; }
+        .resource-link .res-icon { font-size: 14px; flex-shrink: 0; }
+        @media (max-width: 600px) {
+            .resource-grid { grid-template-columns: 1fr; }
+        }
         .google-condition {
             display: flex;
             align-items: center;
@@ -1530,16 +1597,28 @@
         waterquality: {
             title: 'Water Quality — Data Sources',
             body: `
-                <p>Water quality combines data from 6 different sources to provide the most comprehensive picture possible.</p>
+                <p>Water quality combines data from 8 different sources to provide the most comprehensive picture possible.</p>
 
-                <h3>1. Rainfall Estimate (Open-Meteo)</h3>
+                <h3>1. Beach Monitoring Stations (SD County DEH)</h3>
+                <ul>
+                    <li>Real-time beach status (Open / Advisory / Closed) from ~80 monitoring stations</li>
+                    <li>Each station has a unique code (e.g., SE-020, FM-070, EH-310) assigned by the County of San Diego Department of Environmental Health</li>
+                    <li>Status is based on weekly bacteria sampling and storm event testing</li>
+                </ul>
+                <p>Verify:</p>
+                <ul>
+                    <li><a href="https://www.sdbeachinfo.com" target="_blank" style="color:#06b6d4">SD Beach &amp; Bay Water Quality (sdbeachinfo.com)</a></li>
+                    <li><a href="https://www.waterboards.ca.gov/water_issues/programs/beaches/search_beach_mon.html" target="_blank" style="color:#06b6d4">CA Water Board — Search Beach Monitoring Data</a></li>
+                </ul>
+
+                <h3>2. Rainfall Estimate (Open-Meteo)</h3>
                 <ul>
                     <li>Daily precipitation sum and current precipitation</li>
                     <li>Used to estimate runoff risk &mdash; heavy rain washes pollutants into waterways</li>
                 </ul>
                 <p>Verify: <a href="https://open-meteo.com" target="_blank" style="color:#06b6d4">open-meteo.com</a></p>
 
-                <h3>2. Bacteria Contamination (CA State Water Board)</h3>
+                <h3>3. Bacteria Contamination (CA State Water Board)</h3>
                 <ul>
                     <li><strong>Enterococcus</strong> &mdash; Primary saltwater indicator bacteria (EPA limit: 104 CFU/100mL)</li>
                     <li><strong>Fecal Coliform</strong> &mdash; Indicator of sewage contamination (limit: 400 CFU/100mL)</li>
@@ -1556,14 +1635,14 @@
                     <li><a href="https://www.sdbeachinfo.com" target="_blank" style="color:#06b6d4">SD County Beach Info</a></li>
                 </ul>
 
-                <h3>3. Harmful Algal Blooms — NOAA HABSOS</h3>
+                <h3>4. Harmful Algal Blooms — NOAA HABSOS</h3>
                 <ul>
                     <li>Cell count data for harmful algae species (Karenia brevis, cyanobacteria, Sargassum)</li>
                     <li>Monitoring station observations within ~50 miles</li>
                 </ul>
                 <p>Verify: <a href="https://habsos.noaa.gov" target="_blank" style="color:#06b6d4">NOAA HABSOS Interactive Map</a></p>
 
-                <h3>4. Harmful Algal Blooms — CA FHAB Satellite</h3>
+                <h3>5. Harmful Algal Blooms — CA FHAB Satellite</h3>
                 <ul>
                     <li>Satellite-detected cyanobacteria index from Sentinel-3 imagery</li>
                     <li>Covers 255+ California waterbodies</li>
@@ -1571,16 +1650,34 @@
                 </ul>
                 <p>Verify: <a href="https://fhab-api.sfei.org" target="_blank" style="color:#06b6d4">CA FHAB API (SFEI)</a></p>
 
-                <h3>5. NWS Weather Alerts</h3>
+                <h3>6. NWS Weather Alerts</h3>
                 <ul>
                     <li>Active alerts from National Weather Service: beach hazards, coastal floods, rip currents, storm warnings</li>
                 </ul>
                 <p>Verify: <a href="https://www.weather.gov" target="_blank" style="color:#06b6d4">weather.gov</a> &bull; <a href="https://api.weather.gov" target="_blank" style="color:#06b6d4">NWS API</a></p>
 
-                <h3>6. Storm Runoff (Calculated)</h3>
+                <h3>7. Storm Runoff (Calculated)</h3>
                 <ul>
                     <li>3-day cumulative precipitation from Open-Meteo</li>
                     <li>Thresholds based on EPA stormwater runoff guidelines</li>
+                </ul>
+
+                <h3>8. River &amp; Stream Flow (USGS)</h3>
+                <ul>
+                    <li>Real-time stream gauge data from USGS National Water Information System</li>
+                    <li>Discharge rate in cubic feet per second (ft³/s)</li>
+                    <li>High flow indicates increased runoff, pollution, and debris in waterways</li>
+                </ul>
+                <p>Verify: <a href="https://waterdata.usgs.gov/nwis" target="_blank" style="color:#06b6d4">USGS Water Data</a> &bull; <a href="https://www.ibwc.gov/water-quality/tijuana-river/" target="_blank" style="color:#06b6d4">IBWC Tijuana River</a></p>
+
+                <h3>Additional Resources</h3>
+                <ul>
+                    <li><a href="https://data.ca.gov/group/water" target="_blank" style="color:#06b6d4">CA Open Data — Water Group</a></li>
+                    <li><a href="https://beachreportcard.org" target="_blank" style="color:#06b6d4">Heal the Bay Beach Report Card</a></li>
+                    <li><a href="https://sccoos.org/california-hab-bulletin/" target="_blank" style="color:#06b6d4">SCCOOS HAB Bulletin</a></li>
+                    <li><a href="https://www.surfrider.org/programs/blue-water-task-force" target="_blank" style="color:#06b6d4">Surfrider Blue Water Task Force</a></li>
+                    <li><a href="https://www.cdph.ca.gov/Programs/CEH/DRSEM/Pages/EMB/Shellfish/Marine-Biotoxin-Monitoring-Program.aspx" target="_blank" style="color:#06b6d4">CDPH Marine Biotoxin Monitoring</a></li>
+                    <li><a href="https://oehha.ca.gov/fish/advisories" target="_blank" style="color:#06b6d4">OEHHA Fish Consumption Guidelines</a></li>
                 </ul>
             `
         },
@@ -2054,7 +2151,7 @@
             const station = nearestStation(paddleLat, paddleLon);
 
             try {
-                const [weather, tides, tideH, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab] = await Promise.all([
+                const [weather, tides, tideH, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach] = await Promise.all([
                     fetchWeather(paddleLat, paddleLon),
                     fetchTides(station.id).catch(() => null),
                     fetchTideHourly(station.id).catch(() => null),
@@ -2064,8 +2161,10 @@
                     fetchNWSAlerts(paddleLat, paddleLon).catch(() => []),
                     fetchHABData(paddleLat, paddleLon).catch(() => []),
                     fetchCAHAB(paddleLat, paddleLon).catch(() => null),
+                    fetchRiverFlow(paddleLat, paddleLon).catch(() => null),
+                    fetchSDBeachStatus(paddleLat, paddleLon).catch(() => null),
                 ]);
-                render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab);
+                render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach);
             } catch (e) {
                 document.getElementById('conditionsArea').innerHTML = `<div style="text-align:center;padding:48px;color:#f87171;">
                     <div style="font-size:36px;margin-bottom:12px;">&#x26A0;</div>
@@ -2094,6 +2193,30 @@
             const r = await fetch(`https://weather.googleapis.com/v1/forecast/hours:lookup?key=${GOOGLE_API_KEY}&location.latitude=${lat}&location.longitude=${lon}&hours=12`);
             if (!r.ok) throw new Error(`Google Hourly: ${r.status}`);
             return r.json();
+        }
+
+        // SD County Beach & Bay Water Quality Program (sdbeachinfo.com)
+        // Only covers San Diego County beaches (roughly south of ~33.15 lat)
+        async function fetchSDBeachStatus(lat, lon) {
+            // Skip if outside San Diego County area
+            if (lat > 33.25 || lon > -116.9 || lon < -117.7) return null;
+            const results = [];
+            for (const regionId of [1, 2, 3]) {
+                try {
+                    const r = await fetch(`https://sdbeachinfo.com/Home/GetTargetCityByID?id=${regionId}`);
+                    if (r.ok) {
+                        const data = await r.json();
+                        if (Array.isArray(data)) results.push(...data);
+                    }
+                } catch(e) {}
+            }
+            if (results.length === 0) return null;
+            // Filter to nearby stations (within ~8 miles) and sort by distance
+            return results.filter(s => {
+                if (!s.Latitude || !s.Longitude) return false;
+                s._dist = hav(lat, lon, s.Latitude, s.Longitude);
+                return s._dist < 8;
+            }).sort((a, b) => a._dist - b._dist);
         }
 
         // Beach water quality advisories from CA State Water Board via CA Open Data
@@ -2179,6 +2302,57 @@
                 } catch(e) {}
             }
             return null;
+        }
+
+        // AirNow AQI (EPA) - current air quality index by lat/lon
+        async function fetchAQI(lat, lon) {
+            const r = await fetch(`https://www.airnow.gov/aqi/current/?lat=${lat.toFixed(4)}&lng=${lon.toFixed(4)}`);
+            if (!r.ok) throw new Error(`AQI: ${r.status}`);
+            const text = await r.text();
+            // Parse AQI from the response - try JSON first
+            try {
+                const data = JSON.parse(text);
+                return data;
+            } catch(e) {}
+            return null;
+        }
+
+        // AirNow API - observation by lat/lon (no key needed for current)
+        async function fetchAirQuality(lat, lon) {
+            // Use the AirNow AQI observation endpoint
+            const r = await fetch(`https://www.airnow.gov/aqi-data/api/v2/observation/latLong/current/?format=application/json&latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&distance=50`);
+            if (r.ok) {
+                const data = await r.json();
+                if (data && data.length > 0) return data;
+            }
+            // Fallback: scrape the widget
+            return null;
+        }
+
+        // USGS Water Services - Tijuana River and nearby stream gauges
+        async function fetchRiverFlow(lat, lon) {
+            // Search for USGS stream gauges within ~25 miles
+            const bbox = `${(lon-0.4).toFixed(4)},${(lat-0.4).toFixed(4)},${(lon+0.4).toFixed(4)},${(lat+0.4).toFixed(4)}`;
+            const r = await fetch(`https://waterservices.usgs.gov/nwis/iv/?format=json&bBox=${bbox}&parameterCd=00060&siteType=ST&siteStatus=active`);
+            if (!r.ok) throw new Error(`USGS: ${r.status}`);
+            const data = await r.json();
+            const series = data?.value?.timeSeries || [];
+            if (series.length === 0) return null;
+            // Get the most relevant gauges (closest, with recent data)
+            return series.slice(0, 5).map(s => {
+                const info = s.sourceInfo;
+                const vals = s.values?.[0]?.value || [];
+                const latest = vals.length > 0 ? vals[vals.length - 1] : null;
+                return {
+                    name: info?.siteName || 'Unknown',
+                    siteCode: info?.siteCode?.[0]?.value || '',
+                    lat: info?.geoLocation?.geogLocation?.latitude,
+                    lon: info?.geoLocation?.geogLocation?.longitude,
+                    flow: latest ? parseFloat(latest.value) : null,
+                    unit: 'ft³/s',
+                    time: latest?.dateTime || null
+                };
+            }).filter(g => g.flow !== null && g.flow >= 0);
         }
 
         async function fetchTides(sid) {
@@ -2337,6 +2511,47 @@
             }
         }
 
+        // ======== Regional beach monitoring sources ========
+        // Maps paddle location to the correct local agency for beach water quality
+        function getLocalBeachSource(lat, lon) {
+            // San Diego County (south of ~33.15)
+            if (lat < 33.25 && lon > -117.7 && lon < -116.9) return {
+                name: 'SD Beach & Bay',
+                url: 'https://www.sdbeachinfo.com',
+                agency: 'County of San Diego DEH'
+            };
+            // Orange County (~33.25 to ~33.75)
+            if (lat >= 33.25 && lat < 33.78 && lon > -118.2 && lon < -117.4) return {
+                name: 'OC Health Care Agency',
+                url: 'https://www.ochealthinfo.com/about-hca/environmental-health/ocean-water-quality',
+                agency: 'OC Environmental Health'
+            };
+            // Los Angeles County (~33.7 to ~34.85)
+            if (lat >= 33.7 && lat < 34.85 && lon > -118.9 && lon < -117.6) return {
+                name: 'LA County Beaches',
+                url: 'https://www.publichealth.lacounty.gov/phcommon/public/eh/water_quality/beach_grades.cfm',
+                agency: 'LA County Dept of Public Health'
+            };
+            // Ventura County
+            if (lat >= 34.0 && lat < 34.5 && lon > -119.5 && lon < -118.8) return {
+                name: 'Ventura County EH',
+                url: 'https://vcrma.org/en/ocean-water-monitoring',
+                agency: 'Ventura County EHD'
+            };
+            // Santa Barbara County
+            if (lat >= 34.3 && lat < 35.0 && lon > -120.7 && lon < -119.4) return {
+                name: 'SB County EH',
+                url: 'https://www.countyofsb.org/phd/oceanwatermonitoring',
+                agency: 'Santa Barbara County PHD'
+            };
+            // Default: CA statewide
+            return {
+                name: 'CA Water Board',
+                url: 'https://www.waterboards.ca.gov/water_issues/programs/beaches/beach_water_quality/',
+                agency: 'CA State Water Board'
+            };
+        }
+
         // ======== Render ========
         // Google Weather helpers
         function gTemp(t) { // Convert Google temp to °F
@@ -2355,12 +2570,13 @@
             return v.distance * 0.621371; // km to mi
         }
 
-        function render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab) {
+        function render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach) {
             const c = weather.current;
             const {score,factors} = calcScore(weather);
             const color = sClr(score);
             const q = wq(weather);
             const sp = sports(weather);
+            const localSrc = getLocalBeachSource(paddleLat, paddleLon);
 
             let alertH='';
             if(c.weather_code>=95) alertH+=`<div class="alert-banner" style="border-color:#ef444460;background:#ef444415;color:#f87171;"><span class="alert-icon">&#x26A1;</span><span>Thunderstorm activity. Do NOT go on the water.</span></div>`;
@@ -2473,8 +2689,32 @@
                         <div class="wq-status ${q.cls}"><span class="wq-icon">${q.ico}</span><div class="wq-text"><h4>${q.l}</h4><p>${q.d}</p></div></div>
                         <div class="stat-row"><span class="stat-label">Precipitation Today</span><span class="stat-value">${(weather.daily.precipitation_sum?.[0]||0).toFixed(2)} in</span></div>
                         <div class="stat-row"><span class="stat-label">Current Precip</span><span class="stat-value">${c.precipitation.toFixed(2)} in</span></div>
+
+                        ${(() => {
+                            // SD County Beach & Bay monitoring stations
+                            if (!sdBeach || sdBeach.length === 0) return '';
+                            let bH = '<div class="source-divider">Beach Monitoring Stations <a class="src-link" href="' + localSrc.url + '" target="_blank">' + localSrc.name + '</a><a class="src-link" href="https://www.waterboards.ca.gov/water_issues/programs/beaches/search_beach_mon.html" target="_blank">CA Water Board</a></div>';
+                            sdBeach.slice(0, 8).forEach(s => {
+                                const color = (s.RBGColor || '').toLowerCase();
+                                const cls = color.includes('red') ? 'status-red' : color.includes('yellow') ? 'status-yellow' : '';
+                                const statusCls = color.includes('red') ? 'closed' : color.includes('yellow') ? 'advisory' : 'open';
+                                const statusTxt = color.includes('red') ? 'Closed/Advisory' : color.includes('yellow') ? 'Advisory' : 'Open';
+                                const code = s.DehID || '';
+                                const dist = s._dist ? s._dist.toFixed(1) + ' mi' : '';
+                                bH += '<div class="beach-station ' + cls + '">' +
+                                    '<div class="beach-station-info">' +
+                                        '<div class="beach-station-name">' + (s.Name || 'Beach') + '</div>' +
+                                        '<div><span class="beach-station-code">' + code + '</span> <span class="beach-station-dist">' + dist + '</span></div>' +
+                                        '<a class="beach-station-link" href="https://www.waterboards.ca.gov/water_issues/programs/beaches/search_beach_mon.html" target="_blank">View monitoring data →</a>' +
+                                    '</div>' +
+                                    '<div class="beach-station-status ' + statusCls + '">' + statusTxt + '</div>' +
+                                '</div>';
+                            });
+                            return bH;
+                        })()}
+
                         ${beachAdvisories && beachAdvisories.length > 0 ? `
-                            <div class="source-divider">Bacteria Contamination <a class="src-link" href="https://www.sdbeachinfo.com" target="_blank">SD Beach Info</a><a class="src-link" href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank">CA Open Data</a></div>
+                            <div class="source-divider">Bacteria Contamination <a class="src-link" href="${localSrc.url}" target="_blank">${localSrc.name}</a><a class="src-link" href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank">CA Open Data</a></div>
                             ${beachAdvisories.slice(0, 5).map(a => {
                                 const advDate = new Date(a.DateofAdvisory);
                                 const dateStr = advDate.toLocaleDateString([], {month:'short', day:'numeric', year:'numeric'});
@@ -2496,7 +2736,7 @@
                                 </div>`;
                             }).join('')}
                         ` : `
-                            <div class="source-divider">Bacteria Contamination <a class="src-link" href="https://www.sdbeachinfo.com" target="_blank">SD Beach Info</a><a class="src-link" href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank">CA Open Data</a></div>
+                            <div class="source-divider">Bacteria Contamination <a class="src-link" href="${localSrc.url}" target="_blank">${localSrc.name}</a><a class="src-link" href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank">CA Open Data</a></div>
                             <div class="beach-advisory adv-clear">
                                 <div class="beach-advisory-title">&#x2705; No Active Advisories Nearby</div>
                                 <div class="beach-advisory-detail">No beach bacteria advisories within 10 miles in the last 14 days.</div>
@@ -2539,7 +2779,7 @@
                         ${(() => {
                             // NWS weather alerts relevant to water safety
                             if (!nwsAlerts || nwsAlerts.length === 0) return '';
-                            let nwsH = '<div class="source-divider">NWS Weather Alerts <a class="src-link" href="https://alerts.weather.gov" target="_blank">NWS Alerts</a><a class="src-link" href="https://www.weather.gov/sgx/" target="_blank">NWS San Diego</a></div>';
+                            let nwsH = '<div class="source-divider">NWS Weather Alerts <a class="src-link" href="https://alerts.weather.gov" target="_blank">NWS Alerts</a></div>';
                             nwsAlerts.slice(0, 4).forEach(a => {
                                 const sev = (a.severity || 'minor').toLowerCase();
                                 const cls = sev === 'extreme' || sev === 'severe' ? 'sev-extreme' : sev === 'moderate' ? 'sev-moderate' : 'sev-minor';
@@ -2570,6 +2810,53 @@
                                 '</div>';
                         })()}
 
+                        ${(() => {
+                            // River / Stream Flow Gauges (USGS)
+                            if (!riverFlow || riverFlow.length === 0) return '';
+                            let rfH = '<div class="source-divider">River &amp; Stream Flow <a class="src-link" href="https://waterdata.usgs.gov/nwis" target="_blank">USGS Water Data</a></div>';
+                            riverFlow.slice(0, 3).forEach(g => {
+                                const cls = g.flow > 500 ? 'high-flow' : g.flow > 50 ? 'moderate-flow' : 'low-flow';
+                                const warn = g.flow > 500 ? ' — HIGH FLOW' : g.flow > 50 ? ' — Elevated' : '';
+                                const time = g.time ? new Date(g.time).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}) : '';
+                                rfH += '<div class="river-gauge ' + cls + '">' +
+                                    '<div class="river-gauge-name">' + g.name + warn + '</div>' +
+                                    '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+                                        '<span class="river-gauge-flow">' + g.flow.toFixed(1) + ' ' + g.unit + '</span>' +
+                                        '<span class="river-gauge-detail">' + time + '</span>' +
+                                    '</div>' +
+                                    '<div class="river-gauge-detail"><a href="https://waterdata.usgs.gov/nwis/uv?site_no=' + g.siteCode + '" target="_blank" style="color:#06b6d4;text-decoration:none;">View gauge on USGS →</a></div>' +
+                                '</div>';
+                            });
+                            return rfH;
+                        })()}
+
+                    </div>
+
+                    <div class="card full-width">
+                        <div class="card-title"><span class="icon">&#x1F4DA;</span> Resources</div>
+                        <div class="resource-grid">
+                            <a class="resource-link" href="https://beachreportcard.org" target="_blank"><span class="res-icon">&#x1F4CB;</span> Heal the Bay Report Card</a>
+                            <a class="resource-link" href="https://data.ca.gov/group/water" target="_blank"><span class="res-icon">&#x1F4CA;</span> CA Open Data — Water</a>
+                            <a class="resource-link" href="https://www.waterboards.ca.gov/water_issues/programs/beaches/beach_water_quality/" target="_blank"><span class="res-icon">&#x1F30A;</span> CA State Water Board</a>
+                            <a class="resource-link" href="https://www.waterboards.ca.gov/water_issues/programs/beaches/search_beach_mon.html" target="_blank"><span class="res-icon">&#x1F50D;</span> Search Beach Monitoring Data</a>
+                            <a class="resource-link" href="https://sccoos.org/california-hab-bulletin/" target="_blank"><span class="res-icon">&#x1F9EA;</span> SCCOOS HAB Bulletin</a>
+                            <a class="resource-link" href="https://www.surfrider.org/programs/blue-water-task-force" target="_blank"><span class="res-icon">&#x1F3C4;</span> Surfrider Blue Water Task Force</a>
+                            <a class="resource-link" href="https://www.surfline.com" target="_blank"><span class="res-icon">&#x1F30A;</span> Surfline</a>
+                            <a class="resource-link" href="https://www.parks.ca.gov" target="_blank"><span class="res-icon">&#x1F333;</span> California State Parks</a>
+                            <a class="resource-link" href="https://oehha.ca.gov/fish/advisories" target="_blank"><span class="res-icon">&#x1F41F;</span> Fish Consumption Guidelines (OEHHA)</a>
+                            <a class="resource-link" href="https://www.epa.gov/radnet" target="_blank"><span class="res-icon">&#x2622;</span> Pacific Ocean RadNet Monitoring</a>
+                            <a class="resource-link" href="https://www.cdph.ca.gov/Programs/CEH/DRSEM/Pages/EMB/Shellfish/Marine-Biotoxin-Monitoring-Program.aspx" target="_blank"><span class="res-icon">&#x1F41A;</span> CDPH Marine Biotoxin Program</a>
+                            <a class="resource-link" href="https://waterdata.usgs.gov/nwis" target="_blank"><span class="res-icon">&#x1F4C8;</span> USGS Water Data (Stream Flow)</a>
+                            <a class="resource-link" href="https://www.cnrfc.noaa.gov/rainfall_data.php" target="_blank"><span class="res-icon">&#x1F327;</span> NOAA Rainfall Observations</a>
+                            <a class="resource-link" href="https://www.airnow.gov" target="_blank"><span class="res-icon">&#x1F4A8;</span> AirNow Air Quality</a>
+                            ${sdBeach && sdBeach.length > 0 ? `
+                            <a class="resource-link" href="https://www.sdbeachinfo.com" target="_blank"><span class="res-icon">&#x1F3D6;</span> SD Beach &amp; Bay Water Quality</a>
+                            <a class="resource-link" href="https://www.sdcoastkeeper.org/beach-advisories" target="_blank"><span class="res-icon">&#x1F6A9;</span> SD Coastkeeper Advisories</a>
+                            <a class="resource-link" href="https://www.wildcoast.org" target="_blank"><span class="res-icon">&#x1F3DE;</span> WiLDCOAST</a>
+                            <a class="resource-link" href="https://oehha.ca.gov/fish/advisories/san-diego-bay" target="_blank"><span class="res-icon">&#x1F4D6;</span> SD Bay Fish Health Guide</a>
+                            <a class="resource-link" href="https://www.ibwc.gov/water-quality/tijuana-river/" target="_blank"><span class="res-icon">&#x1F6B0;</span> Tijuana River Flow (IBWC)</a>
+                            ` : ''}
+                        </div>
                     </div>
 
                     <div class="card full-width">
