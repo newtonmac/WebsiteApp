@@ -2892,14 +2892,27 @@
             const pW=W-p.l-p.r,pH=H-p.t-p.b;
             // Build points array
             const tPts=[];
-            let nX=null,nY=null;
+            const tTimes=[];
             preds.forEach((d,i)=>{
                 const x=p.l+(i/(preds.length-1))*pW;
                 const y=p.t+pH-((+d.v-mn)/rng)*pH;
                 tPts.push({x,y});
-                const pt=new Date(d.t.replace(' ','T'));
-                if(!nX&&pt>=now){nX=x;nY=y;}
+                tTimes.push(new Date(d.t.replace(' ','T')).getTime());
             });
+
+            // Interpolate NOW position between surrounding data points
+            let nX=null,nY=null;
+            const nowMs=now.getTime();
+            for(let i=0;i<tTimes.length-1;i++){
+                if(nowMs>=tTimes[i]&&nowMs<=tTimes[i+1]){
+                    const frac=(nowMs-tTimes[i])/(tTimes[i+1]-tTimes[i]);
+                    const v0=+preds[i].v,v1=+preds[i+1].v;
+                    const nowVal=v0+frac*(v1-v0);
+                    nX=tPts[i].x+frac*(tPts[i+1].x-tPts[i].x);
+                    nY=p.t+pH-((nowVal-mn)/rng)*pH;
+                    break;
+                }
+            }
 
             // Draw smooth Catmull-Rom spline
             ctx.beginPath();ctx.strokeStyle='#06b6d4';ctx.lineWidth=2;
@@ -3384,14 +3397,27 @@
 
                             // Build points array
                             const pts = [];
-                            let nowX = null, nowY = null;
+                            const times = [];
                             preds.forEach((d, i) => {
                                 const x = pad.l + (i / (preds.length - 1)) * pW;
                                 const y = pad.t + pH - ((+d.v - mn) / rng) * pH;
                                 pts.push({x, y});
-                                const pt = new Date(d.t.replace(' ','T'));
-                                if (!nowX && pt >= now) { nowX = x; nowY = y; }
+                                times.push(new Date(d.t.replace(' ','T')).getTime());
                             });
+
+                            // Interpolate NOW position between surrounding data points
+                            let nowX = null, nowY = null;
+                            const nowMs = now.getTime();
+                            for (let i = 0; i < times.length - 1; i++) {
+                                if (nowMs >= times[i] && nowMs <= times[i + 1]) {
+                                    const frac = (nowMs - times[i]) / (times[i + 1] - times[i]);
+                                    const v0 = +preds[i].v, v1 = +preds[i + 1].v;
+                                    const nowVal = v0 + frac * (v1 - v0);
+                                    nowX = pts[i].x + frac * (pts[i + 1].x - pts[i].x);
+                                    nowY = pad.t + pH - ((nowVal - mn) / rng) * pH;
+                                    break;
+                                }
+                            }
 
                             // Catmull-Rom to cubic Bezier smooth curve
                             let pathD = `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
