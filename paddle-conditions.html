@@ -576,6 +576,43 @@
             background: #06b6d410;
         }
         .nws-alert-link:hover { background: #06b6d420; text-decoration: underline; }
+        .river-gauge {
+            background: #1e2130;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-top: 6px;
+        }
+        .river-gauge-name { font-size: 12px; font-weight: 600; color: #e2e8f0; margin-bottom: 2px; }
+        .river-gauge-detail { font-size: 11px; color: #8b8fa3; }
+        .river-gauge-flow { font-size: 14px; font-weight: 700; color: #06b6d4; }
+        .river-gauge.high-flow { border-left: 3px solid #f87171; }
+        .river-gauge.moderate-flow { border-left: 3px solid #fbbf24; }
+        .river-gauge.low-flow { border-left: 3px solid #34d399; }
+        .resource-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        .resource-link {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 10px;
+            background: #1e2130;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #e2e8f0;
+            font-size: 11px;
+            font-weight: 500;
+            border: 1px solid #2d3040;
+            transition: all 0.2s;
+        }
+        .resource-link:hover { background: #252836; border-color: #06b6d440; color: #06b6d4; }
+        .resource-link .res-icon { font-size: 14px; flex-shrink: 0; }
+        @media (max-width: 600px) {
+            .resource-grid { grid-template-columns: 1fr; }
+        }
         .google-condition {
             display: flex;
             align-items: center;
@@ -1582,6 +1619,24 @@
                     <li>3-day cumulative precipitation from Open-Meteo</li>
                     <li>Thresholds based on EPA stormwater runoff guidelines</li>
                 </ul>
+
+                <h3>7. River &amp; Stream Flow (USGS)</h3>
+                <ul>
+                    <li>Real-time stream gauge data from USGS National Water Information System</li>
+                    <li>Discharge rate in cubic feet per second (ft³/s)</li>
+                    <li>High flow indicates increased runoff, pollution, and debris in waterways</li>
+                </ul>
+                <p>Verify: <a href="https://waterdata.usgs.gov/nwis" target="_blank" style="color:#06b6d4">USGS Water Data</a> &bull; <a href="https://www.ibwc.gov/water-quality/tijuana-river/" target="_blank" style="color:#06b6d4">IBWC Tijuana River</a></p>
+
+                <h3>Additional Resources</h3>
+                <ul>
+                    <li><a href="https://data.ca.gov/group/water" target="_blank" style="color:#06b6d4">CA Open Data — Water Group</a></li>
+                    <li><a href="https://beachreportcard.org" target="_blank" style="color:#06b6d4">Heal the Bay Beach Report Card</a></li>
+                    <li><a href="https://sccoos.org/california-hab-bulletin/" target="_blank" style="color:#06b6d4">SCCOOS HAB Bulletin</a></li>
+                    <li><a href="https://www.surfrider.org/programs/blue-water-task-force" target="_blank" style="color:#06b6d4">Surfrider Blue Water Task Force</a></li>
+                    <li><a href="https://www.cdph.ca.gov/Programs/CEH/DRSEM/Pages/EMB/Shellfish/Marine-Biotoxin-Monitoring-Program.aspx" target="_blank" style="color:#06b6d4">CDPH Marine Biotoxin Monitoring</a></li>
+                    <li><a href="https://oehha.ca.gov/fish/advisories" target="_blank" style="color:#06b6d4">OEHHA Fish Consumption Guidelines</a></li>
+                </ul>
             `
         },
         forecast: {
@@ -2054,7 +2109,7 @@
             const station = nearestStation(paddleLat, paddleLon);
 
             try {
-                const [weather, tides, tideH, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab] = await Promise.all([
+                const [weather, tides, tideH, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow] = await Promise.all([
                     fetchWeather(paddleLat, paddleLon),
                     fetchTides(station.id).catch(() => null),
                     fetchTideHourly(station.id).catch(() => null),
@@ -2064,8 +2119,9 @@
                     fetchNWSAlerts(paddleLat, paddleLon).catch(() => []),
                     fetchHABData(paddleLat, paddleLon).catch(() => []),
                     fetchCAHAB(paddleLat, paddleLon).catch(() => null),
+                    fetchRiverFlow(paddleLat, paddleLon).catch(() => null),
                 ]);
-                render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab);
+                render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow);
             } catch (e) {
                 document.getElementById('conditionsArea').innerHTML = `<div style="text-align:center;padding:48px;color:#f87171;">
                     <div style="font-size:36px;margin-bottom:12px;">&#x26A0;</div>
@@ -2179,6 +2235,57 @@
                 } catch(e) {}
             }
             return null;
+        }
+
+        // AirNow AQI (EPA) - current air quality index by lat/lon
+        async function fetchAQI(lat, lon) {
+            const r = await fetch(`https://www.airnow.gov/aqi/current/?lat=${lat.toFixed(4)}&lng=${lon.toFixed(4)}`);
+            if (!r.ok) throw new Error(`AQI: ${r.status}`);
+            const text = await r.text();
+            // Parse AQI from the response - try JSON first
+            try {
+                const data = JSON.parse(text);
+                return data;
+            } catch(e) {}
+            return null;
+        }
+
+        // AirNow API - observation by lat/lon (no key needed for current)
+        async function fetchAirQuality(lat, lon) {
+            // Use the AirNow AQI observation endpoint
+            const r = await fetch(`https://www.airnow.gov/aqi-data/api/v2/observation/latLong/current/?format=application/json&latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&distance=50`);
+            if (r.ok) {
+                const data = await r.json();
+                if (data && data.length > 0) return data;
+            }
+            // Fallback: scrape the widget
+            return null;
+        }
+
+        // USGS Water Services - Tijuana River and nearby stream gauges
+        async function fetchRiverFlow(lat, lon) {
+            // Search for USGS stream gauges within ~25 miles
+            const bbox = `${(lon-0.4).toFixed(4)},${(lat-0.4).toFixed(4)},${(lon+0.4).toFixed(4)},${(lat+0.4).toFixed(4)}`;
+            const r = await fetch(`https://waterservices.usgs.gov/nwis/iv/?format=json&bBox=${bbox}&parameterCd=00060&siteType=ST&siteStatus=active`);
+            if (!r.ok) throw new Error(`USGS: ${r.status}`);
+            const data = await r.json();
+            const series = data?.value?.timeSeries || [];
+            if (series.length === 0) return null;
+            // Get the most relevant gauges (closest, with recent data)
+            return series.slice(0, 5).map(s => {
+                const info = s.sourceInfo;
+                const vals = s.values?.[0]?.value || [];
+                const latest = vals.length > 0 ? vals[vals.length - 1] : null;
+                return {
+                    name: info?.siteName || 'Unknown',
+                    siteCode: info?.siteCode?.[0]?.value || '',
+                    lat: info?.geoLocation?.geogLocation?.latitude,
+                    lon: info?.geoLocation?.geogLocation?.longitude,
+                    flow: latest ? parseFloat(latest.value) : null,
+                    unit: 'ft³/s',
+                    time: latest?.dateTime || null
+                };
+            }).filter(g => g.flow !== null && g.flow >= 0);
         }
 
         async function fetchTides(sid) {
@@ -2355,7 +2462,7 @@
             return v.distance * 0.621371; // km to mi
         }
 
-        function render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab) {
+        function render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow) {
             const c = weather.current;
             const {score,factors} = calcScore(weather);
             const color = sClr(score);
@@ -2570,6 +2677,50 @@
                                 '</div>';
                         })()}
 
+                        ${(() => {
+                            // River / Stream Flow Gauges (USGS)
+                            if (!riverFlow || riverFlow.length === 0) return '';
+                            let rfH = '<div class="source-divider">River &amp; Stream Flow <a class="src-link" href="https://waterdata.usgs.gov/nwis" target="_blank">USGS Water Data</a></div>';
+                            riverFlow.slice(0, 3).forEach(g => {
+                                const cls = g.flow > 500 ? 'high-flow' : g.flow > 50 ? 'moderate-flow' : 'low-flow';
+                                const warn = g.flow > 500 ? ' — HIGH FLOW' : g.flow > 50 ? ' — Elevated' : '';
+                                const time = g.time ? new Date(g.time).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}) : '';
+                                rfH += '<div class="river-gauge ' + cls + '">' +
+                                    '<div class="river-gauge-name">' + g.name + warn + '</div>' +
+                                    '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+                                        '<span class="river-gauge-flow">' + g.flow.toFixed(1) + ' ' + g.unit + '</span>' +
+                                        '<span class="river-gauge-detail">' + time + '</span>' +
+                                    '</div>' +
+                                    '<div class="river-gauge-detail"><a href="https://waterdata.usgs.gov/nwis/uv?site_no=' + g.siteCode + '" target="_blank" style="color:#06b6d4;text-decoration:none;">View gauge on USGS →</a></div>' +
+                                '</div>';
+                            });
+                            return rfH;
+                        })()}
+
+                    </div>
+
+                    <div class="card full-width">
+                        <div class="card-title"><span class="icon">&#x1F4DA;</span> Local Resources</div>
+                        <div class="resource-grid">
+                            <a class="resource-link" href="https://www.sdbeachinfo.com" target="_blank"><span class="res-icon">&#x1F3D6;</span> SD Beach &amp; Bay Water Quality</a>
+                            <a class="resource-link" href="https://www.sdcoastkeeper.org/beach-advisories" target="_blank"><span class="res-icon">&#x1F6A9;</span> SD Coastkeeper Advisories</a>
+                            <a class="resource-link" href="https://beachreportcard.org" target="_blank"><span class="res-icon">&#x1F4CB;</span> Heal the Bay Report Card</a>
+                            <a class="resource-link" href="https://data.ca.gov/group/water" target="_blank"><span class="res-icon">&#x1F4CA;</span> CA Open Data — Water</a>
+                            <a class="resource-link" href="https://www.waterboards.ca.gov/water_issues/programs/beaches/beach_water_quality/" target="_blank"><span class="res-icon">&#x1F30A;</span> CA State Water Board</a>
+                            <a class="resource-link" href="https://sccoos.org/california-hab-bulletin/" target="_blank"><span class="res-icon">&#x1F9EA;</span> SCCOOS HAB Bulletin</a>
+                            <a class="resource-link" href="https://www.surfrider.org/programs/blue-water-task-force" target="_blank"><span class="res-icon">&#x1F3C4;</span> Surfrider Blue Water Task Force</a>
+                            <a class="resource-link" href="https://www.wildcoast.org" target="_blank"><span class="res-icon">&#x1F3DE;</span> WiLDCOAST</a>
+                            <a class="resource-link" href="https://www.surfline.com" target="_blank"><span class="res-icon">&#x1F30A;</span> Surfline</a>
+                            <a class="resource-link" href="https://www.parks.ca.gov" target="_blank"><span class="res-icon">&#x1F333;</span> California State Parks</a>
+                            <a class="resource-link" href="https://oehha.ca.gov/fish/advisories" target="_blank"><span class="res-icon">&#x1F41F;</span> Fish Consumption Guidelines</a>
+                            <a class="resource-link" href="https://oehha.ca.gov/fish/advisories/san-diego-bay" target="_blank"><span class="res-icon">&#x1F4D6;</span> SD Bay Fish Health Guide</a>
+                            <a class="resource-link" href="https://www.epa.gov/radnet" target="_blank"><span class="res-icon">&#x2622;</span> Pacific Ocean RadNet Monitoring</a>
+                            <a class="resource-link" href="https://www.cdph.ca.gov/Programs/CEH/DRSEM/Pages/EMB/Shellfish/Marine-Biotoxin-Monitoring-Program.aspx" target="_blank"><span class="res-icon">&#x1F41A;</span> CDPH Marine Biotoxin Program</a>
+                            <a class="resource-link" href="https://waterdata.usgs.gov/nwis" target="_blank"><span class="res-icon">&#x1F4C8;</span> USGS Water Data (Stream Flow)</a>
+                            <a class="resource-link" href="https://www.ibwc.gov/water-quality/tijuana-river/" target="_blank"><span class="res-icon">&#x1F6B0;</span> Tijuana River Flow (IBWC)</a>
+                            <a class="resource-link" href="https://www.cnrfc.noaa.gov/rainfall_data.php" target="_blank"><span class="res-icon">&#x1F327;</span> NOAA Rainfall Observations</a>
+                            <a class="resource-link" href="https://www.airnow.gov" target="_blank"><span class="res-icon">&#x1F4A8;</span> AirNow Air Quality</a>
+                        </div>
                     </div>
 
                     <div class="card full-width">
