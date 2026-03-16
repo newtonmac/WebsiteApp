@@ -2192,7 +2192,7 @@
             const station = nearestStation(paddleLat, paddleLon);
 
             try {
-                const [weather, tides, tideH, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell] = await Promise.all([
+                const [weather, tides, tideH, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell, noaaWaterTemp] = await Promise.all([
                     fetchWeather(paddleLat, paddleLon),
                     fetchTides(station.id).catch(() => null),
                     fetchTideHourly(station.id).catch(() => null),
@@ -2206,6 +2206,7 @@
                     fetchSDBeachStatus(paddleLat, paddleLon).catch(() => null),
                     fetchCoastalAccess(paddleLat, paddleLon).catch(() => []),
                     fetchMarineSwell(paddleLat, paddleLon).catch(() => null),
+                    fetchNOAAWaterTemp(station.id).catch(() => null),
                 ]);
                 render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell);
             } catch (e) {
@@ -2241,7 +2242,7 @@
         // Open-Meteo Marine API — swell direction and wave data
         // Used to detect south swell (transboundary flow) per SD County DEH tiered system
         async function fetchMarineSwell(lat, lon) {
-            const r = await fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&current=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period&timezone=auto`);
+            const r = await fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&current=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature&timezone=auto`);
             if (!r.ok) throw new Error(`Marine: ${r.status}`);
             return r.json();
         }
@@ -2473,6 +2474,17 @@
 
         function fd(d) { return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`; }
 
+        // NOAA water temperature (fallback for when Open-Meteo SST is unavailable)
+        async function fetchNOAAWaterTemp(sid) {
+            const d0 = new Date(), d1 = new Date(d0);
+            d0.setHours(d0.getHours() - 6); // last 6 hours
+            const r = await fetch(`${NOAA_TIDE_API}?begin_date=${fd(d0)}&end_date=${fd(d1)}&station=${sid}&product=water_temperature&units=english&time_zone=lst_ldt&format=json`);
+            if (!r.ok) throw new Error(`WaterTemp: ${r.status}`);
+            const d = await r.json();
+            if (d.data && d.data.length > 0) return parseFloat(d.data[d.data.length - 1].v);
+            return null;
+        }
+
         function nearestStation(lat, lon) {
             let best = TIDE_STATIONS[0], bd = Infinity;
             for (const s of TIDE_STATIONS) { const d = hav(lat,lon,s.lat,s.lon); if (d<bd) { bd=d; best=s; } }
@@ -2559,7 +2571,7 @@
         // Each category scored 0-100 independently. Overall is weighted average
         // but CAPPED by critical categories (water closure = can't paddle).
 
-        function calcScore(w, sdBeach, beachAdvisories, marineSwell, riverFlow) {
+        function calcScore(w, sdBeach, beachAdvisories, marineSwell, riverFlow, noaaWaterTemp) {
             const c = w.current;
             const wi = c.wind_speed_10m, g = c.wind_gusts_10m, wc = c.weather_code;
             const p = w.daily?.precipitation_sum?.[0] || 0;
@@ -2625,15 +2637,34 @@
             else if (uv >= 3) { uvScore = 85; uvFactors.push({l:`Moderate UV (${uv})`,c:'#22d3ee'}); }
             else { uvFactors.push({l:`Low UV (${uv})`,c:'#34d399'}); }
 
+            // --- WATER TEMPERATURE (0-100) ---
+            // Primary: NOAA station (real-time sensor, °F), Fallback: Open-Meteo SST (model, °C→°F)
+            let wtScore = 100, wtFactors = [];
+            const sstC = marineSwell?.current?.sea_surface_temperature;
+            let sstF = null;
+            if (noaaWaterTemp != null) { sstF = noaaWaterTemp; }
+            else if (sstC != null) { sstF = sstC * 9/5 + 32; }
+
+            if (sstF != null) {
+                if (sstF >= 75) { wtScore = 100; wtFactors.push({l:`Warm (${sstF.toFixed(0)}°F)`,c:'#34d399'}); }
+                else if (sstF >= 68) { wtScore = 90; wtFactors.push({l:`Comfortable (${sstF.toFixed(0)}°F)`,c:'#34d399'}); }
+                else if (sstF >= 60) { wtScore = 70; wtFactors.push({l:`Cool (${sstF.toFixed(0)}°F)`,c:'#22d3ee'}); }
+                else if (sstF >= 55) { wtScore = 50; wtFactors.push({l:`Cold (${sstF.toFixed(0)}°F)`,c:'#fbbf24'}); }
+                else { wtScore = 25; wtFactors.push({l:`Very Cold (${sstF.toFixed(0)}°F)`,c:'#f87171'}); }
+            } else {
+                wtScore = 75; wtFactors.push({l:'No data',c:'#6b7280'});
+            }
+
             // Clamp all sub-scores
             wqScore = Math.max(0, Math.min(100, wqScore));
             wwScore = Math.max(0, Math.min(100, wwScore));
             wsScore = Math.max(0, Math.min(100, wsScore));
             uvScore = Math.max(0, Math.min(100, uvScore));
+            wtScore = Math.max(0, Math.min(100, wtScore));
 
             // --- OVERALL SCORE ---
-            // Weighted average: water quality 35%, wind/weather 30%, surface 25%, UV 10%
-            let overall = Math.round(wqScore * 0.35 + wwScore * 0.30 + wsScore * 0.25 + uvScore * 0.10);
+            // Weighted average: water quality 35%, wind/weather 25%, surface 25%, UV 10%, water temp 5%
+            let overall = Math.round(wqScore * 0.35 + wwScore * 0.25 + wsScore * 0.25 + uvScore * 0.10 + wtScore * 0.05);
 
             // CRITICAL CAP: if water quality is compromised, overall shouldn't say "Good"
             if (tier.tier === 'closure') overall = Math.min(overall, 15);
@@ -2643,7 +2674,7 @@
             overall = Math.max(0, Math.min(100, overall));
 
             // Collect all factors for the dot display
-            const factors = [...wqFactors, ...wwFactors, ...wsFactors, ...uvFactors];
+            const factors = [...wqFactors, ...wwFactors, ...wsFactors, ...uvFactors, ...wtFactors];
 
             return {
                 score: overall, factors, tier,
@@ -2652,6 +2683,7 @@
                     wind: { score: wwScore, label: 'Wind & Weather', icon: '&#x1F4A8;', factors: wwFactors },
                     surface: { score: wsScore, label: 'Water Surface', icon: '&#x1F30A;', factors: wsFactors },
                     uv: { score: uvScore, label: 'UV & Sun', icon: '&#x2600;', factors: uvFactors },
+                    temp: { score: wtScore, label: 'Water Temp', icon: '&#x1F321;', factors: wtFactors },
                 },
             };
         }
@@ -3044,19 +3076,19 @@
 
         function render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell) {
             const c = weather.current;
-            const {score,factors,categories,tier} = calcScore(weather, sdBeach, beachAdvisories, marineSwell, riverFlow);
+            const {score,factors,categories,tier} = calcScore(weather, sdBeach, beachAdvisories, marineSwell, riverFlow, noaaWaterTemp);
             const color = sClr(score);
             const wwScore = categories.wind.score;
             const wwColor = sClr(wwScore);
             const q = wq(weather, sdBeach, beachAdvisories, marineSwell, riverFlow);
             const sp = sports(weather);
 
-            // Add DEH station pins + storm drain pins within 1 mile of paddle spot
-            addStationMarkers(allDEHStations.filter(s => s._dist <= 1));
+            // Add DEH station pins + storm drain pins within 1.5 miles of paddle spot
+            addStationMarkers(allDEHStations.filter(s => s._dist <= 1.5));
             const localSrc = getLocalBeachSource(paddleLat, paddleLon);
 
             // Determine status from nearest monitoring station (not storm drains)
-            const nearbyStations = allDEHStations.filter(s => s._dist <= 1 && s.TypeID !== 2).sort((a,b) => a._dist - b._dist);
+            const nearbyStations = allDEHStations.filter(s => s._dist <= 1.5 && s.TypeID !== 2).sort((a,b) => a._dist - b._dist);
             let pinStatusColor, pinStatusLabel, pinStatusSource, pinStatusDetail = '';
             if (nearbyStations.length > 0) {
                 const nearest = nearbyStations[0];
@@ -3098,6 +3130,39 @@
                   `&#x2022; <a href="https://www.sdbeachinfo.com" target="_blank" style="color:#06b6d4;">SD County DEH Beach &amp; Bay Program</a> — real-time station monitoring<br>` +
                   `&#x2022; <a href="https://data.ca.gov" target="_blank" style="color:#06b6d4;">CA Open Data</a> — statewide beach advisories &amp; closures` +
                   `</div></div>`;
+
+            // Build score explanation for popup
+            const scoreCats = Object.values(categories).map(cat => {
+                const cc = sClr(cat.score);
+                const fTags = cat.factors.length > 0 ? cat.factors.map(f => `<span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;background:rgba(255,255,255,0.06);color:${f.c};margin:2px;">${f.l}</span>`).join('') : '<span style="color:#8b8fa3;font-size:11px;">No issues</span>';
+                return `<div style="margin:6px 0;"><div style="display:flex;justify-content:space-between;align-items:center;"><span>${cat.icon} <strong>${cat.label}</strong></span><span style="color:${cc};font-weight:700;">${cat.score}</span></div><div style="height:4px;background:#2d3040;border-radius:2px;margin:4px 0;"><div style="height:100%;width:${cat.score}%;background:${cc};border-radius:2px;"></div></div><div>${fTags}</div></div>`;
+            }).join('');
+            const scoreExplain = `<div style="font-size:13px;color:#e2e8f0;line-height:1.6;">` +
+                `<div style="margin-bottom:8px;color:#8b8fa3;">Overall score is a weighted average of five categories:</div>` +
+                `<div style="margin-bottom:6px;color:#8b8fa3;font-size:11px;">Water Quality 35% · Wind &amp; Weather 25% · Water Surface 25% · UV 10% · Water Temp 5%</div>` +
+                scoreCats +
+                `<div style="margin-top:10px;border-top:1px solid #2d3040;padding-top:8px;color:#8b8fa3;font-size:11px;">` +
+                `Sources: <a href="https://open-meteo.com" target="_blank" style="color:#06b6d4;">Open-Meteo</a>, ` +
+                `<a href="https://www.sdbeachinfo.com" target="_blank" style="color:#06b6d4;">SD County DEH</a>, ` +
+                `<a href="https://tidesandcurrents.noaa.gov" target="_blank" style="color:#06b6d4;">NOAA</a>` +
+                `</div></div>`;
+
+            // Build weather score explanation for popup
+            const wwCat = categories.wind;
+            const wwFTags = wwCat.factors.length > 0 ? wwCat.factors.map(f => `<div style="margin:4px 0;display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${f.c};"></span><span>${f.l}</span></div>`).join('') : '<div style="color:#8b8fa3;">No adverse conditions detected</div>';
+            const wwExplain = `<div style="font-size:13px;color:#e2e8f0;line-height:1.6;">` +
+                `<div style="margin-bottom:8px;color:#8b8fa3;">Wind &amp; Weather score factors:</div>` +
+                `<div style="margin:8px 0;">` +
+                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Wind Speed</span><span>${c.wind_speed_10m ? c.wind_speed_10m.toFixed(0)+' mph' : '--'}</span></div>` +
+                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Gusts</span><span>${c.wind_gusts_10m ? c.wind_gusts_10m.toFixed(0)+' mph' : '--'}</span></div>` +
+                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Precipitation</span><span>${c.precipitation !== undefined ? c.precipitation+' mm' : '--'}</span></div>` +
+                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Visibility</span><span>${c.visibility ? (c.visibility/1000).toFixed(1)+' km' : '--'}</span></div>` +
+                `</div>` +
+                `<div style="margin-top:8px;"><strong>Active factors:</strong></div>` +
+                wwFTags +
+                `<div style="margin-top:10px;border-top:1px solid #2d3040;padding-top:8px;color:#8b8fa3;font-size:11px;">` +
+                `Source: <a href="https://open-meteo.com" target="_blank" style="color:#06b6d4;">Open-Meteo Weather API</a>` +
+                `</div></div>`;
 
             // Update paddle pin color to match nearest station
             if (paddleMarker) {
@@ -3157,16 +3222,18 @@
                         <div class="score-circle status-circle" style="--score-color:${pinStatusColor};--score-pct:100;cursor:pointer;" onclick="var p=document.getElementById('statusPopup'),o=document.getElementById('statusOverlay'),s=p.style.display==='block'?'none':'block';p.style.display=s;o.style.display=s">
                             <span class="score-number" style="color:${pinStatusColor};">${pinStatusLabel}</span>
                             <span class="score-label">Status</span>
-                            <span class="score-label" style="font-size:9px;color:#06b6d4;text-decoration:underline;margin-top:1px;">Source</span>
+                            <span class="score-label" style="font-size:9px;color:#06b6d4;text-decoration:underline;margin-top:4px;">Source</span>
                         </div>
                         ${pinStatusDetail ? `<div style="font-size:11px;color:${pinStatusColor};max-width:140px;text-align:center;line-height:1.3;margin-top:2px;">${pinStatusDetail}</div>` : ''}
-                        <div class="score-circle" style="--score-color:${color};--score-pct:${score};">
+                        <div class="score-circle" style="--score-color:${color};--score-pct:${score};cursor:pointer;" onclick="var p=document.getElementById('scorePopup'),o=document.getElementById('scoreOverlay'),s=p.style.display==='block'?'none':'block';p.style.display=s;o.style.display=s">
                             <span class="score-number" style="color:${color};">${score}</span>
                             <span class="score-label">Score</span>
+                            <span class="score-label" style="font-size:9px;color:#06b6d4;text-decoration:underline;margin-top:4px;">Source</span>
                         </div>
-                        <div class="score-circle" style="--score-color:${wwColor};--score-pct:${wwScore};">
+                        <div class="score-circle" style="--score-color:${wwColor};--score-pct:${wwScore};cursor:pointer;" onclick="var p=document.getElementById('wwPopup'),o=document.getElementById('wwOverlay'),s=p.style.display==='block'?'none':'block';p.style.display=s;o.style.display=s">
                             <span class="score-number" style="color:${wwColor};">${wwScore}</span>
                             <span class="score-label">Weather<br>Score</span>
+                            <span class="score-label" style="font-size:9px;color:#06b6d4;text-decoration:underline;margin-top:4px;">Source</span>
                         </div>
                     </div>
                     <div class="score-details">
@@ -3200,6 +3267,24 @@
                     ${statusExplain}
                 </div>
                 <div id="statusOverlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9998;" onclick="document.getElementById('statusPopup').style.display='none';this.style.display='none'"></div>
+
+                <div id="scorePopup" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a1d28;border:1px solid #2d3040;border-radius:12px;padding:20px;z-index:9999;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.6);max-height:80vh;overflow-y:auto;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                        <span style="font-weight:700;color:${color};font-size:16px;">&#x1F3AF; Paddle Score Breakdown</span>
+                        <span style="cursor:pointer;color:#8b8fa3;font-size:22px;line-height:1;" onclick="document.getElementById('scorePopup').style.display='none';document.getElementById('scoreOverlay').style.display='none'">&times;</span>
+                    </div>
+                    ${scoreExplain}
+                </div>
+                <div id="scoreOverlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9998;" onclick="document.getElementById('scorePopup').style.display='none';this.style.display='none'"></div>
+
+                <div id="wwPopup" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a1d28;border:1px solid #2d3040;border-radius:12px;padding:20px;z-index:9999;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.6);max-height:80vh;overflow-y:auto;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                        <span style="font-weight:700;color:${wwColor};font-size:16px;">&#x1F4A8; Wind &amp; Weather Details</span>
+                        <span style="cursor:pointer;color:#8b8fa3;font-size:22px;line-height:1;" onclick="document.getElementById('wwPopup').style.display='none';document.getElementById('wwOverlay').style.display='none'">&times;</span>
+                    </div>
+                    ${wwExplain}
+                </div>
+                <div id="wwOverlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9998;" onclick="document.getElementById('wwPopup').style.display='none';this.style.display='none'"></div>
 
                 <div class="grid">
                     <div class="card">
