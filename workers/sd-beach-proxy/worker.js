@@ -48,12 +48,15 @@ export default {
         Latitude: s.Latitude || null,
         Longitude: s.Longitude || null,
         RBGColor: s.RBGColor || '',
+        IndicatorID: s.IndicatorID || null,
         Advisory: s.Advisory || '',
         Closure: s.Closure || '',
         Description: s.Description || '',
+        GeneralAdvisoryMessage: s.GeneralAdvisoryMessage || '',
         Active: s.Active ?? true,
         TypeID: s.TypeID || null,
         RegionID: s.RegionID || null,
+        CityID: s.CityID || null,
         CityName: s.CityName || '',
       }));
 
