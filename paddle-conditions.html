@@ -2192,7 +2192,7 @@
             const station = nearestStation(paddleLat, paddleLon);
 
             try {
-                const [weather, tides, tideH, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell] = await Promise.all([
+                const [weather, tides, tideH, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell, noaaWaterTemp] = await Promise.all([
                     fetchWeather(paddleLat, paddleLon),
                     fetchTides(station.id).catch(() => null),
                     fetchTideHourly(station.id).catch(() => null),
@@ -2206,6 +2206,7 @@
                     fetchSDBeachStatus(paddleLat, paddleLon).catch(() => null),
                     fetchCoastalAccess(paddleLat, paddleLon).catch(() => []),
                     fetchMarineSwell(paddleLat, paddleLon).catch(() => null),
+                    fetchNOAAWaterTemp(station.id).catch(() => null),
                 ]);
                 render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell);
             } catch (e) {
@@ -2241,7 +2242,7 @@
         // Open-Meteo Marine API — swell direction and wave data
         // Used to detect south swell (transboundary flow) per SD County DEH tiered system
         async function fetchMarineSwell(lat, lon) {
-            const r = await fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&current=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period&timezone=auto`);
+            const r = await fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&current=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature&timezone=auto`);
             if (!r.ok) throw new Error(`Marine: ${r.status}`);
             return r.json();
         }
@@ -2473,6 +2474,17 @@
 
         function fd(d) { return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`; }
 
+        // NOAA water temperature (fallback for when Open-Meteo SST is unavailable)
+        async function fetchNOAAWaterTemp(sid) {
+            const d0 = new Date(), d1 = new Date(d0);
+            d0.setHours(d0.getHours() - 6); // last 6 hours
+            const r = await fetch(`${NOAA_TIDE_API}?begin_date=${fd(d0)}&end_date=${fd(d1)}&station=${sid}&product=water_temperature&units=english&time_zone=lst_ldt&format=json`);
+            if (!r.ok) throw new Error(`WaterTemp: ${r.status}`);
+            const d = await r.json();
+            if (d.data && d.data.length > 0) return parseFloat(d.data[d.data.length - 1].v);
+            return null;
+        }
+
         function nearestStation(lat, lon) {
             let best = TIDE_STATIONS[0], bd = Infinity;
             for (const s of TIDE_STATIONS) { const d = hav(lat,lon,s.lat,s.lon); if (d<bd) { bd=d; best=s; } }
@@ -2559,7 +2571,7 @@
         // Each category scored 0-100 independently. Overall is weighted average
         // but CAPPED by critical categories (water closure = can't paddle).
 
-        function calcScore(w, sdBeach, beachAdvisories, marineSwell, riverFlow) {
+        function calcScore(w, sdBeach, beachAdvisories, marineSwell, riverFlow, noaaWaterTemp) {
             const c = w.current;
             const wi = c.wind_speed_10m, g = c.wind_gusts_10m, wc = c.weather_code;
             const p = w.daily?.precipitation_sum?.[0] || 0;
@@ -2625,15 +2637,34 @@
             else if (uv >= 3) { uvScore = 85; uvFactors.push({l:`Moderate UV (${uv})`,c:'#22d3ee'}); }
             else { uvFactors.push({l:`Low UV (${uv})`,c:'#34d399'}); }
 
+            // --- WATER TEMPERATURE (0-100) ---
+            // Primary: Open-Meteo SST (Celsius), Fallback: NOAA station (Fahrenheit)
+            let wtScore = 100, wtFactors = [];
+            const sstC = marineSwell?.current?.sea_surface_temperature;
+            let sstF = null;
+            if (sstC != null) { sstF = sstC * 9/5 + 32; }
+            else if (noaaWaterTemp != null) { sstF = noaaWaterTemp; }
+
+            if (sstF != null) {
+                if (sstF >= 75) { wtScore = 100; wtFactors.push({l:`Warm (${sstF.toFixed(0)}°F)`,c:'#34d399'}); }
+                else if (sstF >= 68) { wtScore = 90; wtFactors.push({l:`Comfortable (${sstF.toFixed(0)}°F)`,c:'#34d399'}); }
+                else if (sstF >= 60) { wtScore = 70; wtFactors.push({l:`Cool (${sstF.toFixed(0)}°F)`,c:'#22d3ee'}); }
+                else if (sstF >= 55) { wtScore = 50; wtFactors.push({l:`Cold (${sstF.toFixed(0)}°F)`,c:'#fbbf24'}); }
+                else { wtScore = 25; wtFactors.push({l:`Very Cold (${sstF.toFixed(0)}°F)`,c:'#f87171'}); }
+            } else {
+                wtScore = 75; wtFactors.push({l:'No data',c:'#6b7280'});
+            }
+
             // Clamp all sub-scores
             wqScore = Math.max(0, Math.min(100, wqScore));
             wwScore = Math.max(0, Math.min(100, wwScore));
             wsScore = Math.max(0, Math.min(100, wsScore));
             uvScore = Math.max(0, Math.min(100, uvScore));
+            wtScore = Math.max(0, Math.min(100, wtScore));
 
             // --- OVERALL SCORE ---
-            // Weighted average: water quality 35%, wind/weather 30%, surface 25%, UV 10%
-            let overall = Math.round(wqScore * 0.35 + wwScore * 0.30 + wsScore * 0.25 + uvScore * 0.10);
+            // Weighted average: water quality 35%, wind/weather 25%, surface 25%, UV 10%, water temp 5%
+            let overall = Math.round(wqScore * 0.35 + wwScore * 0.25 + wsScore * 0.25 + uvScore * 0.10 + wtScore * 0.05);
 
             // CRITICAL CAP: if water quality is compromised, overall shouldn't say "Good"
             if (tier.tier === 'closure') overall = Math.min(overall, 15);
@@ -2643,7 +2674,7 @@
             overall = Math.max(0, Math.min(100, overall));
 
             // Collect all factors for the dot display
-            const factors = [...wqFactors, ...wwFactors, ...wsFactors, ...uvFactors];
+            const factors = [...wqFactors, ...wwFactors, ...wsFactors, ...uvFactors, ...wtFactors];
 
             return {
                 score: overall, factors, tier,
@@ -2652,6 +2683,7 @@
                     wind: { score: wwScore, label: 'Wind & Weather', icon: '&#x1F4A8;', factors: wwFactors },
                     surface: { score: wsScore, label: 'Water Surface', icon: '&#x1F30A;', factors: wsFactors },
                     uv: { score: uvScore, label: 'UV & Sun', icon: '&#x2600;', factors: uvFactors },
+                    temp: { score: wtScore, label: 'Water Temp', icon: '&#x1F321;', factors: wtFactors },
                 },
             };
         }
@@ -3044,7 +3076,7 @@
 
         function render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell) {
             const c = weather.current;
-            const {score,factors,categories,tier} = calcScore(weather, sdBeach, beachAdvisories, marineSwell, riverFlow);
+            const {score,factors,categories,tier} = calcScore(weather, sdBeach, beachAdvisories, marineSwell, riverFlow, noaaWaterTemp);
             const color = sClr(score);
             const wwScore = categories.wind.score;
             const wwColor = sClr(wwScore);
@@ -3106,8 +3138,8 @@
                 return `<div style="margin:6px 0;"><div style="display:flex;justify-content:space-between;align-items:center;"><span>${cat.icon} <strong>${cat.label}</strong></span><span style="color:${cc};font-weight:700;">${cat.score}</span></div><div style="height:4px;background:#2d3040;border-radius:2px;margin:4px 0;"><div style="height:100%;width:${cat.score}%;background:${cc};border-radius:2px;"></div></div><div>${fTags}</div></div>`;
             }).join('');
             const scoreExplain = `<div style="font-size:13px;color:#e2e8f0;line-height:1.6;">` +
-                `<div style="margin-bottom:8px;color:#8b8fa3;">Overall score is a weighted average of four categories:</div>` +
-                `<div style="margin-bottom:6px;color:#8b8fa3;font-size:11px;">Water Quality 35% · Wind &amp; Weather 30% · Water Surface 25% · UV 10%</div>` +
+                `<div style="margin-bottom:8px;color:#8b8fa3;">Overall score is a weighted average of five categories:</div>` +
+                `<div style="margin-bottom:6px;color:#8b8fa3;font-size:11px;">Water Quality 35% · Wind &amp; Weather 25% · Water Surface 25% · UV 10% · Water Temp 5%</div>` +
                 scoreCats +
                 `<div style="margin-top:10px;border-top:1px solid #2d3040;padding-top:8px;color:#8b8fa3;font-size:11px;">` +
                 `Sources: <a href="https://open-meteo.com" target="_blank" style="color:#06b6d4;">Open-Meteo</a>, ` +
