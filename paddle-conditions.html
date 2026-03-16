@@ -274,6 +274,17 @@
         .score-factor { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #9ca3af; }
         .factor-dot { width: 8px; height: 8px; border-radius: 50%; }
 
+        .score-categories { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; width: 100%; }
+        .score-cat { background: #0f111780; border-radius: 10px; padding: 10px 12px; }
+        .score-cat-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .score-cat-icon { font-size: 14px; }
+        .score-cat-label { font-size: 12px; font-weight: 600; color: #c0c4d0; flex: 1; }
+        .score-cat-value { font-size: 16px; font-weight: 800; }
+        .score-cat-bar { height: 6px; background: #2d3040; border-radius: 3px; overflow: hidden; }
+        .score-cat-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+        .score-cat-factors { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+        .score-cat-tag { font-size: 10px; padding: 2px 6px; background: #1a1d2880; border-radius: 4px; }
+
         /* Grid */
         .grid {
             display: grid;
@@ -2488,48 +2499,117 @@
             return { tier: 'open', score: 0, label: 'Open', detail: null, southSwell, tjFlowing };
         }
 
+        // ======== Multi-category scoring system ========
+        // Each category scored 0-100 independently. Overall is weighted average
+        // but CAPPED by critical categories (water closure = can't paddle).
+
         function calcScore(w, sdBeach, beachAdvisories, marineSwell, riverFlow) {
             const c = w.current;
-            let s = 100; const f = [];
-            const wi = c.wind_speed_10m, g = c.wind_gusts_10m;
+            const wi = c.wind_speed_10m, g = c.wind_gusts_10m, wc = c.weather_code;
+            const p = w.daily?.precipitation_sum?.[0] || 0;
 
-            if (wi>20){s-=40;f.push({l:'High winds',c:'#f87171'});}
-            else if(wi>15){s-=25;f.push({l:'Moderate winds',c:'#fbbf24'});}
-            else if(wi>10){s-=10;f.push({l:'Light winds',c:'#22d3ee'});}
-            else{f.push({l:'Calm winds',c:'#34d399'});}
-
-            if(g>30){s-=20;f.push({l:'Strong gusts',c:'#f87171'});}
-            else if(g>20){s-=10;f.push({l:'Gusty',c:'#fbbf24'});}
-
-            if(c.precipitation>0.1){s-=15;f.push({l:'Rain',c:'#fbbf24'});}
-            if(c.uv_index>=8)f.push({l:'High UV',c:'#f97316'});
-            if(c.visibility<5000){s-=15;f.push({l:'Low visibility',c:'#f87171'});}
-            else if(c.visibility<10000)s-=5;
-
-            const wc=c.weather_code;
-            if(wc>=95){s-=30;f.push({l:'Thunderstorms',c:'#f87171'});}
-            else if(wc>=71)s-=15;
-            else if(wc>=51)s-=10;
-
-            // Water quality: SD County DEH tiered system
+            // --- WATER QUALITY (0-100) ---
             const tier = dehTier(sdBeach, beachAdvisories, marineSwell, riverFlow);
-            if (tier.tier === 'closure') {s+=tier.score;f.push({l:tier.label,c:'#f87171'});}
-            else if (tier.tier === 'warning') {s+=tier.score;f.push({l:tier.label,c:'#f87171'});}
-            else if (tier.tier === 'advisory') {s+=tier.score;f.push({l:tier.label,c:'#fbbf24'});}
-            if (tier.southSwell && tier.tier !== 'open') f.push({l:'South swell (transboundary)',c:'#f97316'});
+            let wqScore = 100, wqFactors = [];
+            if (tier.tier === 'closure') { wqScore = 0; wqFactors.push({l:'Beach Closure',c:'#f87171'}); }
+            else if (tier.tier === 'warning') { wqScore = 15; wqFactors.push({l:'Warning — South Swell',c:'#f87171'}); }
+            else if (tier.tier === 'advisory') { wqScore = 40; wqFactors.push({l:'Bacteria Advisory',c:'#fbbf24'}); }
+            else { wqFactors.push({l:'No advisories',c:'#34d399'}); }
+            if (tier.southSwell && tier.tier !== 'open') wqFactors.push({l:'South swell',c:'#f97316'});
+            if (p > 1.0 && wqScore > 30) { wqScore = 30; wqFactors.push({l:'Heavy rain runoff',c:'#f87171'}); }
+            else if (p > 0.5 && wqScore > 60) { wqScore = 60; wqFactors.push({l:'Rain runoff',c:'#fbbf24'}); }
 
-            return{score:Math.max(0,Math.min(100,s)),factors:f};
+            // --- WIND & WEATHER (0-100) ---
+            let wwScore = 100, wwFactors = [];
+            if (wi > 20) { wwScore -= 40; wwFactors.push({l:`High winds (${wi.toFixed(0)} mph)`,c:'#f87171'}); }
+            else if (wi > 15) { wwScore -= 25; wwFactors.push({l:`Moderate winds (${wi.toFixed(0)} mph)`,c:'#fbbf24'}); }
+            else if (wi > 10) { wwScore -= 10; wwFactors.push({l:`Light winds (${wi.toFixed(0)} mph)`,c:'#22d3ee'}); }
+            else { wwFactors.push({l:`Calm (${wi.toFixed(0)} mph)`,c:'#34d399'}); }
+
+            if (g > 30) { wwScore -= 20; wwFactors.push({l:`Strong gusts (${g.toFixed(0)})`,c:'#f87171'}); }
+            else if (g > 20) { wwScore -= 10; wwFactors.push({l:`Gusty (${g.toFixed(0)})`,c:'#fbbf24'}); }
+
+            if (c.precipitation > 0.1) { wwScore -= 15; wwFactors.push({l:'Rain',c:'#fbbf24'}); }
+            if (c.visibility < 5000) { wwScore -= 15; wwFactors.push({l:'Low visibility',c:'#f87171'}); }
+            else if (c.visibility < 10000) wwScore -= 5;
+
+            if (wc >= 95) { wwScore -= 30; wwFactors.push({l:'Thunderstorms',c:'#f87171'}); }
+            else if (wc >= 71) { wwScore -= 15; wwFactors.push({l:'Snow/sleet',c:'#fbbf24'}); }
+            else if (wc >= 51) { wwScore -= 10; wwFactors.push({l:'Drizzle/rain',c:'#fbbf24'}); }
+
+            // --- WATER SURFACE / CHOPPINESS (0-100) ---
+            let wsScore = 100, wsFactors = [];
+            const waveH = marineSwell?.current?.wave_height || 0;
+            const swellH = marineSwell?.current?.swell_wave_height || 0;
+            const wavePeriod = marineSwell?.current?.swell_wave_period || marineSwell?.current?.wave_period || 0;
+            const maxWave = Math.max(waveH, swellH);
+
+            // Wave height impact (meters → feet for display, but scoring in meters)
+            if (maxWave > 2.5) { wsScore -= 50; wsFactors.push({l:`Very rough (${(maxWave*3.28).toFixed(1)} ft)`,c:'#f87171'}); }
+            else if (maxWave > 1.5) { wsScore -= 30; wsFactors.push({l:`Choppy (${(maxWave*3.28).toFixed(1)} ft)`,c:'#fbbf24'}); }
+            else if (maxWave > 0.8) { wsScore -= 15; wsFactors.push({l:`Moderate chop (${(maxWave*3.28).toFixed(1)} ft)`,c:'#22d3ee'}); }
+            else if (maxWave > 0) { wsFactors.push({l:`Calm water (${(maxWave*3.28).toFixed(1)} ft)`,c:'#34d399'}); }
+            else { wsFactors.push({l:'No wave data',c:'#6b7280'}); }
+
+            // Short wave period = steeper, choppier waves
+            if (wavePeriod > 0 && wavePeriod < 5) { wsScore -= 15; wsFactors.push({l:`Short period (${wavePeriod.toFixed(0)}s)`,c:'#fbbf24'}); }
+            else if (wavePeriod >= 10) { wsFactors.push({l:`Long period (${wavePeriod.toFixed(0)}s)`,c:'#34d399'}); }
+
+            // Wind-driven chop (wind speed affects surface)
+            if (wi > 15) { wsScore -= 20; wsFactors.push({l:'Wind chop',c:'#f87171'}); }
+            else if (wi > 10) { wsScore -= 10; wsFactors.push({l:'Light chop',c:'#fbbf24'}); }
+
+            // --- UV & SUN (0-100) ---
+            let uvScore = 100, uvFactors = [];
+            const uv = c.uv_index;
+            if (uv >= 11) { uvScore = 20; uvFactors.push({l:`Extreme UV (${uv})`,c:'#f87171'}); }
+            else if (uv >= 8) { uvScore = 45; uvFactors.push({l:`Very High UV (${uv})`,c:'#f97316'}); }
+            else if (uv >= 6) { uvScore = 65; uvFactors.push({l:`High UV (${uv})`,c:'#fbbf24'}); }
+            else if (uv >= 3) { uvScore = 85; uvFactors.push({l:`Moderate UV (${uv})`,c:'#22d3ee'}); }
+            else { uvFactors.push({l:`Low UV (${uv})`,c:'#34d399'}); }
+
+            // Clamp all sub-scores
+            wqScore = Math.max(0, Math.min(100, wqScore));
+            wwScore = Math.max(0, Math.min(100, wwScore));
+            wsScore = Math.max(0, Math.min(100, wsScore));
+            uvScore = Math.max(0, Math.min(100, uvScore));
+
+            // --- OVERALL SCORE ---
+            // Weighted average: water quality 35%, wind/weather 30%, surface 25%, UV 10%
+            let overall = Math.round(wqScore * 0.35 + wwScore * 0.30 + wsScore * 0.25 + uvScore * 0.10);
+
+            // CRITICAL CAP: if water is closed, overall can't suggest "go paddle"
+            if (tier.tier === 'closure') overall = Math.min(overall, 15);
+            else if (tier.tier === 'warning') overall = Math.min(overall, 30);
+            if (wc >= 95) overall = Math.min(overall, 20); // thunderstorms
+
+            overall = Math.max(0, Math.min(100, overall));
+
+            // Collect all factors for the dot display
+            const factors = [...wqFactors, ...wwFactors, ...wsFactors, ...uvFactors];
+
+            return {
+                score: overall, factors,
+                categories: {
+                    water: { score: wqScore, label: 'Water Quality', icon: '&#x1F4A7;', factors: wqFactors },
+                    wind: { score: wwScore, label: 'Wind & Weather', icon: '&#x1F4A8;', factors: wwFactors },
+                    surface: { score: wsScore, label: 'Water Surface', icon: '&#x1F30A;', factors: wsFactors },
+                    uv: { score: uvScore, label: 'UV & Sun', icon: '&#x2600;', factors: uvFactors },
+                },
+            };
         }
 
         function sClr(s){return s>=80?'#34d399':s>=60?'#22d3ee':s>=40?'#fbbf24':'#f87171';}
         function sVer(s){return s>=80?'Excellent Conditions':s>=60?'Good Conditions':s>=40?'Fair Conditions':s>=20?'Poor Conditions':'Stay On Shore';}
 
-        function sSum(s,w){
-            const c=w.current,wi=c.wind_speed_10m,g=c.wind_gusts_10m;
-            if(s>=80)return`Light winds at ${wi.toFixed(0)} mph with calm conditions. Great day to get on the water!`;
-            if(s>=60)return`Winds at ${wi.toFixed(0)} mph with gusts to ${g.toFixed(0)} mph. Good for experienced paddlers.`;
-            if(s>=40)return`Winds at ${wi.toFixed(0)} mph, gusts to ${g.toFixed(0)} mph. Use caution, stay near shore.`;
-            return`Winds ${wi.toFixed(0)} mph, gusts ${g.toFixed(0)} mph. Hazardous for paddle sports.`;
+        function sSum(s,w,cats){
+            if (!cats) return '';
+            const worst = Object.values(cats).reduce((a, b) => a.score < b.score ? a : b);
+            if (worst.score <= 15) return `${worst.label} is critical — ${worst.factors[0]?.l || 'unsafe'}. Do not enter the water.`;
+            if (worst.score <= 40) return `${worst.label} is poor — ${worst.factors[0]?.l || 'use caution'}. Not recommended for paddling.`;
+            if (s >= 80) return `All conditions favorable. Great day to get on the water!`;
+            if (s >= 60) return `Mostly good conditions. ${worst.label} is the limiting factor — ${worst.factors[0]?.l || 'monitor conditions'}.`;
+            return `${worst.label} is the main concern — ${worst.factors[0]?.l || 'use caution'}. Check conditions carefully.`;
         }
 
         function sports(w){
@@ -2733,7 +2813,7 @@
 
         function render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell) {
             const c = weather.current;
-            const {score,factors} = calcScore(weather, sdBeach, beachAdvisories, marineSwell, riverFlow);
+            const {score,factors,categories} = calcScore(weather, sdBeach, beachAdvisories, marineSwell, riverFlow);
             const color = sClr(score);
             const q = wq(weather, sdBeach, beachAdvisories, marineSwell, riverFlow);
             const sp = sports(weather);
@@ -2792,8 +2872,21 @@
                         <div class="score-place-sub" id="paddlePlaceAddr">${paddleAddress || (paddleLat.toFixed(4)+'°'+(paddleLat>=0?'N':'S')+', '+Math.abs(paddleLon).toFixed(4)+'°'+(paddleLon>=0?'E':'W'))}</div>
                         <div id="placeBadgeArea"></div>
                         <div class="score-verdict" style="color:${color};">${sVer(score)}</div>
-                        <div class="score-summary">${sSum(score,weather)}</div>
-                        <div class="score-factors">${factors.map(f=>`<div class="score-factor"><div class="factor-dot" style="background:${f.c};"></div>${f.l}</div>`).join('')}</div>
+                        <div class="score-summary">${sSum(score,weather,categories)}</div>
+                        <div class="score-categories">
+                            ${Object.values(categories).map(cat => {
+                                const cc = sClr(cat.score);
+                                return `<div class="score-cat">
+                                    <div class="score-cat-header">
+                                        <span class="score-cat-icon">${cat.icon}</span>
+                                        <span class="score-cat-label">${cat.label}</span>
+                                        <span class="score-cat-value" style="color:${cc};">${cat.score}</span>
+                                    </div>
+                                    <div class="score-cat-bar"><div class="score-cat-fill" style="width:${cat.score}%;background:${cc};"></div></div>
+                                    <div class="score-cat-factors">${cat.factors.map(f=>`<span class="score-cat-tag" style="color:${f.c};">${f.l}</span>`).join('')}</div>
+                                </div>`;
+                            }).join('')}
+                        </div>
                     </div>
                 </div>
 
