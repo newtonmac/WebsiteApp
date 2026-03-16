@@ -70,6 +70,7 @@
             margin: 0 auto;
             padding: 20px;
             width: 100%;
+            box-sizing: border-box;
         }
 
         /* Map */
@@ -215,6 +216,7 @@
             grid-template-columns: repeat(2, 1fr);
             gap: 16px;
             margin-bottom: 20px;
+            max-width: 100%;
         }
 
         .card {
@@ -222,6 +224,8 @@
             border: 1px solid #2d3040;
             border-radius: 16px;
             padding: 20px;
+            overflow: hidden;
+            min-width: 0;
         }
 
         .card-title {
