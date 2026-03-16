@@ -576,6 +576,36 @@
             background: #06b6d410;
         }
         .nws-alert-link:hover { background: #06b6d420; text-decoration: underline; }
+        .beach-station {
+            background: #1e2130;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-top: 6px;
+            border-left: 3px solid #34d399;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+        .beach-station.status-red { border-left-color: #f87171; }
+        .beach-station.status-yellow { border-left-color: #fbbf24; }
+        .beach-station-info { flex: 1; min-width: 0; }
+        .beach-station-name { font-size: 12px; font-weight: 600; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .beach-station-code { font-size: 10px; color: #06b6d4; font-weight: 600; font-family: monospace; }
+        .beach-station-dist { font-size: 10px; color: #8b8fa3; }
+        .beach-station-status {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .beach-station-status.open { background: #34d39920; color: #34d399; }
+        .beach-station-status.advisory { background: #fbbf2420; color: #fbbf24; }
+        .beach-station-status.closed { background: #f8717120; color: #f87171; }
+        .beach-station-link { font-size: 10px; color: #06b6d4; text-decoration: none; display: block; margin-top: 3px; }
+        .beach-station-link:hover { text-decoration: underline; }
         .river-gauge {
             background: #1e2130;
             border-radius: 8px;
@@ -1567,16 +1597,28 @@
         waterquality: {
             title: 'Water Quality — Data Sources',
             body: `
-                <p>Water quality combines data from 6 different sources to provide the most comprehensive picture possible.</p>
+                <p>Water quality combines data from 8 different sources to provide the most comprehensive picture possible.</p>
 
-                <h3>1. Rainfall Estimate (Open-Meteo)</h3>
+                <h3>1. Beach Monitoring Stations (SD County DEH)</h3>
+                <ul>
+                    <li>Real-time beach status (Open / Advisory / Closed) from ~80 monitoring stations</li>
+                    <li>Each station has a unique code (e.g., SE-020, FM-070, EH-310) assigned by the County of San Diego Department of Environmental Health</li>
+                    <li>Status is based on weekly bacteria sampling and storm event testing</li>
+                </ul>
+                <p>Verify:</p>
+                <ul>
+                    <li><a href="https://www.sdbeachinfo.com" target="_blank" style="color:#06b6d4">SD Beach &amp; Bay Water Quality (sdbeachinfo.com)</a></li>
+                    <li><a href="https://www.waterboards.ca.gov/water_issues/programs/beaches/search_beach_mon.html" target="_blank" style="color:#06b6d4">CA Water Board — Search Beach Monitoring Data</a></li>
+                </ul>
+
+                <h3>2. Rainfall Estimate (Open-Meteo)</h3>
                 <ul>
                     <li>Daily precipitation sum and current precipitation</li>
                     <li>Used to estimate runoff risk &mdash; heavy rain washes pollutants into waterways</li>
                 </ul>
                 <p>Verify: <a href="https://open-meteo.com" target="_blank" style="color:#06b6d4">open-meteo.com</a></p>
 
-                <h3>2. Bacteria Contamination (CA State Water Board)</h3>
+                <h3>3. Bacteria Contamination (CA State Water Board)</h3>
                 <ul>
                     <li><strong>Enterococcus</strong> &mdash; Primary saltwater indicator bacteria (EPA limit: 104 CFU/100mL)</li>
                     <li><strong>Fecal Coliform</strong> &mdash; Indicator of sewage contamination (limit: 400 CFU/100mL)</li>
@@ -1593,14 +1635,14 @@
                     <li><a href="https://www.sdbeachinfo.com" target="_blank" style="color:#06b6d4">SD County Beach Info</a></li>
                 </ul>
 
-                <h3>3. Harmful Algal Blooms — NOAA HABSOS</h3>
+                <h3>4. Harmful Algal Blooms — NOAA HABSOS</h3>
                 <ul>
                     <li>Cell count data for harmful algae species (Karenia brevis, cyanobacteria, Sargassum)</li>
                     <li>Monitoring station observations within ~50 miles</li>
                 </ul>
                 <p>Verify: <a href="https://habsos.noaa.gov" target="_blank" style="color:#06b6d4">NOAA HABSOS Interactive Map</a></p>
 
-                <h3>4. Harmful Algal Blooms — CA FHAB Satellite</h3>
+                <h3>5. Harmful Algal Blooms — CA FHAB Satellite</h3>
                 <ul>
                     <li>Satellite-detected cyanobacteria index from Sentinel-3 imagery</li>
                     <li>Covers 255+ California waterbodies</li>
@@ -1608,19 +1650,19 @@
                 </ul>
                 <p>Verify: <a href="https://fhab-api.sfei.org" target="_blank" style="color:#06b6d4">CA FHAB API (SFEI)</a></p>
 
-                <h3>5. NWS Weather Alerts</h3>
+                <h3>6. NWS Weather Alerts</h3>
                 <ul>
                     <li>Active alerts from National Weather Service: beach hazards, coastal floods, rip currents, storm warnings</li>
                 </ul>
                 <p>Verify: <a href="https://www.weather.gov" target="_blank" style="color:#06b6d4">weather.gov</a> &bull; <a href="https://api.weather.gov" target="_blank" style="color:#06b6d4">NWS API</a></p>
 
-                <h3>6. Storm Runoff (Calculated)</h3>
+                <h3>7. Storm Runoff (Calculated)</h3>
                 <ul>
                     <li>3-day cumulative precipitation from Open-Meteo</li>
                     <li>Thresholds based on EPA stormwater runoff guidelines</li>
                 </ul>
 
-                <h3>7. River &amp; Stream Flow (USGS)</h3>
+                <h3>8. River &amp; Stream Flow (USGS)</h3>
                 <ul>
                     <li>Real-time stream gauge data from USGS National Water Information System</li>
                     <li>Discharge rate in cubic feet per second (ft³/s)</li>
@@ -2109,7 +2151,7 @@
             const station = nearestStation(paddleLat, paddleLon);
 
             try {
-                const [weather, tides, tideH, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow] = await Promise.all([
+                const [weather, tides, tideH, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach] = await Promise.all([
                     fetchWeather(paddleLat, paddleLon),
                     fetchTides(station.id).catch(() => null),
                     fetchTideHourly(station.id).catch(() => null),
@@ -2120,8 +2162,9 @@
                     fetchHABData(paddleLat, paddleLon).catch(() => []),
                     fetchCAHAB(paddleLat, paddleLon).catch(() => null),
                     fetchRiverFlow(paddleLat, paddleLon).catch(() => null),
+                    fetchSDBeachStatus(paddleLat, paddleLon).catch(() => null),
                 ]);
-                render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow);
+                render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach);
             } catch (e) {
                 document.getElementById('conditionsArea').innerHTML = `<div style="text-align:center;padding:48px;color:#f87171;">
                     <div style="font-size:36px;margin-bottom:12px;">&#x26A0;</div>
@@ -2150,6 +2193,28 @@
             const r = await fetch(`https://weather.googleapis.com/v1/forecast/hours:lookup?key=${GOOGLE_API_KEY}&location.latitude=${lat}&location.longitude=${lon}&hours=12`);
             if (!r.ok) throw new Error(`Google Hourly: ${r.status}`);
             return r.json();
+        }
+
+        // SD County Beach & Bay Water Quality Program (sdbeachinfo.com)
+        async function fetchSDBeachStatus(lat, lon) {
+            // Fetch all regions (1=South, 2=Central, 3=North)
+            const results = [];
+            for (const regionId of [1, 2, 3]) {
+                try {
+                    const r = await fetch(`https://sdbeachinfo.com/Home/GetTargetCityByID?id=${regionId}`);
+                    if (r.ok) {
+                        const data = await r.json();
+                        if (Array.isArray(data)) results.push(...data);
+                    }
+                } catch(e) {}
+            }
+            if (results.length === 0) return null;
+            // Filter to nearby stations (within ~8 miles) and sort by distance
+            return results.filter(s => {
+                if (!s.Latitude || !s.Longitude) return false;
+                s._dist = hav(lat, lon, s.Latitude, s.Longitude);
+                return s._dist < 8;
+            }).sort((a, b) => a._dist - b._dist);
         }
 
         // Beach water quality advisories from CA State Water Board via CA Open Data
@@ -2462,7 +2527,7 @@
             return v.distance * 0.621371; // km to mi
         }
 
-        function render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow) {
+        function render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach) {
             const c = weather.current;
             const {score,factors} = calcScore(weather);
             const color = sClr(score);
@@ -2580,6 +2645,30 @@
                         <div class="wq-status ${q.cls}"><span class="wq-icon">${q.ico}</span><div class="wq-text"><h4>${q.l}</h4><p>${q.d}</p></div></div>
                         <div class="stat-row"><span class="stat-label">Precipitation Today</span><span class="stat-value">${(weather.daily.precipitation_sum?.[0]||0).toFixed(2)} in</span></div>
                         <div class="stat-row"><span class="stat-label">Current Precip</span><span class="stat-value">${c.precipitation.toFixed(2)} in</span></div>
+
+                        ${(() => {
+                            // SD County Beach & Bay monitoring stations
+                            if (!sdBeach || sdBeach.length === 0) return '';
+                            let bH = '<div class="source-divider">Beach Monitoring Stations <a class="src-link" href="https://www.sdbeachinfo.com" target="_blank">SD Beach &amp; Bay</a><a class="src-link" href="https://www.waterboards.ca.gov/water_issues/programs/beaches/search_beach_mon.html" target="_blank">CA Water Board</a></div>';
+                            sdBeach.slice(0, 8).forEach(s => {
+                                const color = (s.RBGColor || '').toLowerCase();
+                                const cls = color.includes('red') ? 'status-red' : color.includes('yellow') ? 'status-yellow' : '';
+                                const statusCls = color.includes('red') ? 'closed' : color.includes('yellow') ? 'advisory' : 'open';
+                                const statusTxt = color.includes('red') ? 'Closed/Advisory' : color.includes('yellow') ? 'Advisory' : 'Open';
+                                const code = s.DehID || '';
+                                const dist = s._dist ? s._dist.toFixed(1) + ' mi' : '';
+                                bH += '<div class="beach-station ' + cls + '">' +
+                                    '<div class="beach-station-info">' +
+                                        '<div class="beach-station-name">' + (s.Name || 'Beach') + '</div>' +
+                                        '<div><span class="beach-station-code">' + code + '</span> <span class="beach-station-dist">' + dist + '</span></div>' +
+                                        '<a class="beach-station-link" href="https://www.waterboards.ca.gov/water_issues/programs/beaches/search_beach_mon.html" target="_blank">View monitoring data →</a>' +
+                                    '</div>' +
+                                    '<div class="beach-station-status ' + statusCls + '">' + statusTxt + '</div>' +
+                                '</div>';
+                            });
+                            return bH;
+                        })()}
+
                         ${beachAdvisories && beachAdvisories.length > 0 ? `
                             <div class="source-divider">Bacteria Contamination <a class="src-link" href="https://www.sdbeachinfo.com" target="_blank">SD Beach Info</a><a class="src-link" href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank">CA Open Data</a></div>
                             ${beachAdvisories.slice(0, 5).map(a => {
