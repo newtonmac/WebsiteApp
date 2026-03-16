@@ -270,23 +270,10 @@
             mask-composite: exclude;
         }
 
-        .score-circle-sm {
-            width: 72px; height: 72px;
-            border-radius: 50%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            position: relative;
-            border: 3px solid var(--score-color);
-        }
-
-        .score-circle-sm .score-number { font-size: 13px; font-weight: 800; line-height: 1; }
-        .score-circle-sm .score-label { font-size: 9px; color: #8b8fa3; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.3px; }
-
         .score-number { font-size: 36px; font-weight: 800; line-height: 1; }
         .score-label { font-size: 11px; color: #8b8fa3; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .score-circle.status-circle .score-number { font-size: 18px; }
+        .score-circle.status-circle .score-label { font-size: 10px; }
         .score-details { flex: 1; min-width: 200px; }
         .score-place { font-size: 20px; font-weight: 700; color: #06b6d4; margin-bottom: 4px; }
         .score-place-sub { font-size: 12px; color: #6b7280; margin-bottom: 10px; font-family: monospace; word-break: break-all; overflow-wrap: break-word; }
@@ -2669,34 +2656,37 @@
             return { label: 'OPEN', color: '#22c55e' };
         }
 
-        function makePaddlePinSvg(tierName) {
+        function makePaddlePinSvg(tierName, score) {
             const ti = tierInfo(tierName);
+            const sc = sClr(score || 0);
             // The fill for the inner pin shape — was #ffffffee (white), now tinted by status
             const fillColor = ti.color + 'dd';
-            return `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="62" viewBox="0 0 48 62" fill="none">
+            // Extended viewBox: score circle on top (center at 24,16, r=16), pin shifted down by 36
+            return `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="98" viewBox="0 0 48 98" fill="none">
   <defs>
-    <linearGradient id="border" x1="0" y1="0" x2="48" y2="62" gradientUnits="userSpaceOnUse">
+    <linearGradient id="border" x1="0" y1="36" x2="48" y2="98" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#2563eb"/>
       <stop offset="50%" stop-color="#7c3aed"/>
       <stop offset="100%" stop-color="#f97316"/>
     </linearGradient>
-    <linearGradient id="paddle" x1="22" y1="8" x2="26" y2="38" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#1e3a8a"/>
-      <stop offset="100%" stop-color="#2563eb"/>
-    </linearGradient>
-    <linearGradient id="ball" x1="16" y1="18" x2="32" y2="34" gradientUnits="userSpaceOnUse">
+    <linearGradient id="ball" x1="16" y1="54" x2="32" y2="70" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#3b82f6"/>
       <stop offset="100%" stop-color="#1e3a8a"/>
     </linearGradient>
   </defs>
-  <path d="M24 2C12.954 2 4 10.954 4 22c0 12 20 37 20 37s20-25 20-37C44 10.954 35.046 2 24 2z" fill="url(#border)"/>
-  <path d="M24 5C14.611 5 7 12.611 7 22c0 10.2 17 31.5 17 31.5S41 32.2 41 22C41 12.611 33.389 5 24 5z" fill="${fillColor}"/>
-  <circle cx="24" cy="22" r="10" fill="url(#ball)"/>
-  <path d="M24 10c-1.2 0-2.2 1-2.2 2.2v5.6c0 1.8 1 3.2 2.2 3.2s2.2-1.4 2.2-3.2v-5.6C26.2 11 25.2 10 24 10z" fill="#1e3a8a"/>
-  <rect x="23.2" y="20" width="1.6" height="12" rx="0.8" fill="#1e3a8a"/>
-  <rect x="21.5" y="31" width="5" height="2" rx="1" fill="#1e3a8a"/>
-  <path d="M11 28c3-2 5 1 8-1s5-3 8-1 5 2 8 0" stroke="#38bdf8" stroke-width="2" fill="none" stroke-linecap="round"/>
-  <path d="M12 31c3-2 5 1 8-1s5-2 7 0 4 1 7-1" stroke="#ef4444" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+  <!-- Score circle above pin -->
+  <circle cx="24" cy="16" r="15" fill="#1a1d28" stroke="${sc}" stroke-width="3"/>
+  <text x="24" y="14" text-anchor="middle" font-size="14" font-weight="800" fill="${sc}" font-family="system-ui,sans-serif">${score != null ? score : '--'}</text>
+  <text x="24" y="24" text-anchor="middle" font-size="6" fill="#8b8fa3" font-family="system-ui,sans-serif" text-transform="uppercase">SCORE</text>
+  <!-- Pin shape (shifted down 36px) -->
+  <path d="M24 38C12.954 38 4 46.954 4 58c0 12 20 37 20 37s20-25 20-37C44 46.954 35.046 38 24 38z" fill="url(#border)"/>
+  <path d="M24 41C14.611 41 7 48.611 7 58c0 10.2 17 31.5 17 31.5S41 68.2 41 58C41 48.611 33.389 41 24 41z" fill="${fillColor}"/>
+  <circle cx="24" cy="58" r="10" fill="url(#ball)"/>
+  <path d="M24 46c-1.2 0-2.2 1-2.2 2.2v5.6c0 1.8 1 3.2 2.2 3.2s2.2-1.4 2.2-3.2v-5.6C26.2 47 25.2 46 24 46z" fill="#1e3a8a"/>
+  <rect x="23.2" y="56" width="1.6" height="12" rx="0.8" fill="#1e3a8a"/>
+  <rect x="21.5" y="67" width="5" height="2" rx="1" fill="#1e3a8a"/>
+  <path d="M11 64c3-2 5 1 8-1s5-3 8-1 5 2 8 0" stroke="#38bdf8" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <path d="M12 67c3-2 5 1 8-1s5-2 7 0 4 1 7-1" stroke="#ef4444" stroke-width="1.8" fill="none" stroke-linecap="round"/>
 </svg>`;
         }
 
@@ -3066,13 +3056,13 @@
             addStationMarkers(allDEHStations.filter(s => s._dist <= 1));
             const localSrc = getLocalBeachSource(paddleLat, paddleLon);
 
-            // Update paddle pin color based on DEH status
+            // Update paddle pin color + score badge based on DEH status
             if (paddleMarker) {
-                const pinSvg = makePaddlePinSvg(tier.tier);
+                const pinSvg = makePaddlePinSvg(tier.tier, score);
                 paddleMarker.setIcon({
                     url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(pinSvg),
-                    scaledSize: new google.maps.Size(44, 56),
-                    anchor: new google.maps.Point(22, 56),
+                    scaledSize: new google.maps.Size(44, 90),
+                    anchor: new google.maps.Point(22, 90),
                 });
             }
 
@@ -3121,7 +3111,7 @@
             document.getElementById('conditionsArea').innerHTML=`
                 <div class="score-hero">
                     <div class="score-circles-stack">
-                        <div class="score-circle-sm" style="--score-color:${ti.color};">
+                        <div class="score-circle status-circle" style="--score-color:${ti.color};--score-pct:100;">
                             <span class="score-number" style="color:${ti.color};">${ti.label}</span>
                             <span class="score-label">Status</span>
                         </div>
@@ -3129,7 +3119,7 @@
                             <span class="score-number" style="color:${color};">${score}</span>
                             <span class="score-label">Score</span>
                         </div>
-                        <div class="score-circle-sm" style="--score-color:${wwColor};">
+                        <div class="score-circle" style="--score-color:${wwColor};--score-pct:${wwScore};">
                             <span class="score-number" style="color:${wwColor};">${wwScore}</span>
                             <span class="score-label">Weather</span>
                         </div>
