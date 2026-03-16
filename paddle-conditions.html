@@ -271,7 +271,7 @@
         }
 
         .score-number { font-size: 36px; font-weight: 800; line-height: 1; }
-        .score-label { font-size: 11px; color: #8b8fa3; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .score-label { font-size: 11px; color: #8b8fa3; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; line-height: 1.2; }
         .score-circle.status-circle .score-number { font-size: 18px; }
         .score-circle.status-circle .score-label { font-size: 10px; }
         .score-details { flex: 1; min-width: 200px; }
@@ -2656,9 +2656,8 @@
             return { label: 'OPEN', color: '#22c55e' };
         }
 
-        function makePaddlePinSvg(tierName) {
-            const ti = tierInfo(tierName);
-            const fillColor = ti.color + 'dd';
+        function makePaddlePinSvg(statusColor) {
+            const fillColor = statusColor + 'dd';
             return `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="62" viewBox="0 0 48 62" fill="none">
   <defs>
     <linearGradient id="border" x1="0" y1="0" x2="48" y2="62" gradientUnits="userSpaceOnUse">
@@ -3048,9 +3047,13 @@
             addStationMarkers(allDEHStations.filter(s => s._dist <= 1));
             const localSrc = getLocalBeachSource(paddleLat, paddleLon);
 
-            // Update paddle pin color based on DEH status
+            // Update paddle pin color based on nearest DEH station
             if (paddleMarker) {
-                const pinSvg = makePaddlePinSvg(tier.tier);
+                const nearbyStations = allDEHStations.filter(s => s._dist <= 1 && s.TypeID !== 2);
+                const nearestColor = nearbyStations.length > 0
+                    ? stationStatusColor(nearbyStations[0])
+                    : tierInfo(tier.tier).color;
+                const pinSvg = makePaddlePinSvg(nearestColor);
                 paddleMarker.setIcon({
                     url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(pinSvg),
                     scaledSize: new google.maps.Size(44, 56),
@@ -3113,7 +3116,7 @@
                         </div>
                         <div class="score-circle" style="--score-color:${wwColor};--score-pct:${wwScore};">
                             <span class="score-number" style="color:${wwColor};">${wwScore}</span>
-                            <span class="score-label">Weather Score</span>
+                            <span class="score-label">Weather<br>Score</span>
                         </div>
                     </div>
                     <div class="score-details">
