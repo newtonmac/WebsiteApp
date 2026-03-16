@@ -2149,24 +2149,6 @@
             if(c.weather_code>=95) alertH+=`<div class="alert-banner" style="border-color:#ef444460;background:#ef444415;color:#f87171;"><span class="alert-icon">&#x26A1;</span><span>Thunderstorm activity. Do NOT go on the water.</span></div>`;
             else if(score<40) alertH+=`<div class="alert-banner"><span class="alert-icon">&#x26A0;</span><span>Conditions unfavorable for most paddle sports.</span></div>`;
 
-            // NWS alerts in top alert area (beach hazards, warnings, etc.)
-            if(nwsAlerts && nwsAlerts.length > 0) {
-                const waterAlerts = nwsAlerts.filter(a => {
-                    const evt = (a.event || '').toLowerCase();
-                    return evt.includes('beach') || evt.includes('surf') || evt.includes('rip') ||
-                           evt.includes('coastal') || evt.includes('marine') || evt.includes('storm') ||
-                           evt.includes('flood') || evt.includes('wind') || evt.includes('thunder') ||
-                           evt.includes('tornado') || evt.includes('hurricane') || evt.includes('tsunami') ||
-                           evt.includes('heat') || evt.includes('fog');
-                });
-                waterAlerts.slice(0, 3).forEach(a => {
-                    const sev = (a.severity || '').toLowerCase();
-                    const color = sev === 'extreme' || sev === 'severe' ? '#f87171' : sev === 'moderate' ? '#fbbf24' : '#60a5fa';
-                    const bg = sev === 'extreme' || sev === 'severe' ? '#ef444415' : sev === 'moderate' ? '#f59e0b15' : '#3b82f615';
-                    const border = sev === 'extreme' || sev === 'severe' ? '#ef444460' : sev === 'moderate' ? '#f59e0b40' : '#3b82f640';
-                    alertH += `<div class="alert-banner" style="border-color:${border};background:${bg};color:${color};"><span class="alert-icon">&#x26A0;</span><span><strong>${a.event}</strong>: ${a.headline || ''}</span></div>`;
-                });
-            }
             document.getElementById('alertArea').innerHTML=alertH;
 
             const nh=new Date().getHours();
