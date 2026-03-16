@@ -1068,10 +1068,17 @@
             .card { padding: 14px; }
         }
         /* Dark theme for Google Maps InfoWindow */
-        .gm-style-iw-d { overflow: auto !important; }
-        .gm-style .gm-style-iw-c { background: #1a1d28 !important; border: 1px solid #2d3040 !important; border-radius: 10px !important; padding: 0 !important; box-shadow: 0 4px 24px rgba(0,0,0,0.5) !important; }
+        .gm-style-iw-d { overflow: auto !important; background: #1a1d28 !important; }
+        .gm-style .gm-style-iw-c { background: #1a1d28 !important; border: 1px solid #2d3040 !important; border-radius: 10px !important; padding: 0 !important; box-shadow: 0 4px 24px rgba(0,0,0,0.5) !important; max-width: 360px !important; }
         .gm-style .gm-style-iw-tc::after { background: #1a1d28 !important; }
         .gm-style .gm-style-iw-chr button { filter: invert(0.7) !important; }
+        .gm-style .gm-style-iw { background: #1a1d28 !important; }
+        .gm-style .gm-style-iw-t::after { background: #1a1d28 !important; }
+        .gm-style-iw-d::-webkit-scrollbar { width: 6px; }
+        .gm-style-iw-d::-webkit-scrollbar-track { background: #1a1d28; }
+        .gm-style-iw-d::-webkit-scrollbar-thumb { background: #3d4055; border-radius: 3px; }
+        .gm-style-iw-d::-webkit-scrollbar-thumb:hover { background: #555a70; }
+        .gm-style .gm-style-iw-chr { background: #1a1d28 !important; }
     </style>
 </head>
 <body>
@@ -1953,6 +1960,7 @@
             if (!navigator.geolocation) {
                 btn.disabled = false;
                 btn.innerHTML = '<span>&#x1F4CD;</span> Locate Me';
+                alert('Geolocation is not supported by your browser.');
                 return;
             }
 
@@ -1984,11 +1992,17 @@
                         });
                     }
                 },
-                () => {
+                (err) => {
                     btn.disabled = false;
                     btn.innerHTML = '<span>&#x1F4CD;</span> Locate Me';
+                    const msgs = {
+                        1: 'Location access denied. Please allow location access in your browser settings.',
+                        2: 'Could not determine your location. This can happen on hotspots or VPNs — try using your phone\'s GPS or enter your location in the search bar instead.',
+                        3: 'Location request timed out. Please try again.'
+                    };
+                    alert(msgs[err.code] || 'Could not get your location. Try searching for your location instead.');
                 },
-                { enableHighAccuracy: true, timeout: 10000 }
+                { enableHighAccuracy: true, timeout: 15000 }
             );
         }
 
