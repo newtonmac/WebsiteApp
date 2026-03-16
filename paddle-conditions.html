@@ -564,6 +564,107 @@
             height: 28px;
         }
 
+        /* Beach advisory cards */
+        .beach-advisory {
+            padding: 10px 12px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        .beach-advisory.adv-active {
+            background: #f8717115;
+            border: 1px solid #f8717140;
+        }
+        .beach-advisory.adv-clear {
+            background: #34d39915;
+            border: 1px solid #34d39940;
+        }
+        .beach-advisory-title {
+            font-weight: 600;
+            color: #e1e4e8;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .beach-advisory-detail {
+            color: #8b8fa3;
+            font-size: 11px;
+        }
+        .beach-advisory-bacteria {
+            display: flex;
+            gap: 10px;
+            margin-top: 6px;
+            flex-wrap: wrap;
+        }
+        .bacteria-chip {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: #252836;
+            color: #c0c4d0;
+        }
+        .bacteria-chip.elevated { background: #f8717130; color: #f87171; }
+        .wq-source-credit {
+            font-size: 10px;
+            color: #6b7280;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #2d304040;
+        }
+        .wq-source-credit a { color: #06b6d4; text-decoration: none; }
+        .nws-alert {
+            padding: 10px 12px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        .nws-alert.sev-extreme, .nws-alert.sev-severe {
+            background: #ef444420;
+            border: 1px solid #ef444460;
+        }
+        .nws-alert.sev-moderate {
+            background: #f59e0b15;
+            border: 1px solid #f59e0b40;
+        }
+        .nws-alert.sev-minor {
+            background: #3b82f615;
+            border: 1px solid #3b82f640;
+        }
+        .nws-alert-event {
+            font-weight: 600;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .nws-alert-event .sev-extreme, .nws-alert-event .sev-severe { color: #f87171; }
+        .nws-alert-event .sev-moderate { color: #fbbf24; }
+        .nws-alert-event .sev-minor { color: #60a5fa; }
+        .nws-alert-detail {
+            color: #8b8fa3;
+            font-size: 11px;
+        }
+        .nws-alert-headline {
+            color: #c0c4d0;
+            font-size: 11px;
+            margin-top: 4px;
+        }
+        .hab-indicator {
+            padding: 10px 12px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+        .hab-clear { background: #34d39910; border: 1px solid #34d39930; }
+        .hab-low { background: #3b82f615; border: 1px solid #3b82f640; }
+        .hab-moderate { background: #f59e0b15; border: 1px solid #f59e0b40; }
+        .hab-high { background: #ef444415; border: 1px solid #ef444440; }
+        .hab-title { font-weight: 600; color: #e1e4e8; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
+        .hab-detail { color: #8b8fa3; font-size: 11px; }
+
         /* Google Place badge in score hero */
         .place-badge {
             display: inline-flex;
@@ -889,7 +990,10 @@
         <div class="data-source">
             Data: <a href="https://open-meteo.com" target="_blank">Open-Meteo</a> &bull;
             <a href="https://developers.google.com/maps/documentation/weather" target="_blank">Google Weather</a> &bull;
-            <a href="https://tidesandcurrents.noaa.gov" target="_blank">NOAA Tides</a> &bull;
+            <a href="https://tidesandcurrents.noaa.gov" target="_blank">NOAA</a> &bull;
+            <a href="https://www.weather.gov" target="_blank">NWS</a> &bull;
+            <a href="https://habsos.noaa.gov" target="_blank">HABSOS</a> &bull;
+            <a href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank">CA WQ</a> &bull;
             Updated <span id="lastUpdate">--</span>
         </div>
 
@@ -953,6 +1057,11 @@
                     <li><strong><a href="https://tidesandcurrents.noaa.gov" target="_blank" style="color:#06b6d4">NOAA Tides &amp; Currents</a></strong> &mdash; Official US government tide predictions and real-time water level observations from NOAA monitoring stations</li>
                     <li><strong><a href="https://air-quality-api.open-meteo.com" target="_blank" style="color:#06b6d4">Open-Meteo Air Quality</a></strong> &mdash; Air quality and UV index data</li>
                     <li><strong><a href="https://maps.google.com" target="_blank" style="color:#06b6d4">Google Maps &amp; Places API</a></strong> &mdash; Interactive map display, location search, and place information</li>
+                    <li><strong><a href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank" style="color:#06b6d4">California State Water Resources Control Board</a></strong> &mdash; Official beach water quality advisories, postings, and closures based on bacteria testing (Enterococcus, Fecal Coliforms, Total Coliforms, E. Coli) via the CA Open Data Portal. Data collected by county health departments including the <a href="https://www.sdcoastkeeper.org/beach-advisories/" target="_blank" style="color:#06b6d4">San Diego Coastkeeper</a> and the <a href="https://www.sandiegocounty.gov/content/sdc/deh/lwqd/beachandbay.html" target="_blank" style="color:#06b6d4">SD County Dept. of Environmental Health</a></li>
+                    <li><strong><a href="https://www.weather.gov" target="_blank" style="color:#06b6d4">National Weather Service (NWS)</a></strong> &mdash; Active weather alerts including beach hazard statements, coastal flood warnings, rip current advisories, storm warnings, and heat advisories</li>
+                    <li><strong><a href="https://habsos.noaa.gov" target="_blank" style="color:#06b6d4">NOAA HABSOS</a></strong> &mdash; Harmful Algal Bloom Observing System providing cell count data for toxic algae species (Karenia brevis, cyanobacteria, Sargassum) from monitoring stations</li>
+                    <li><strong><a href="https://fhab-api.sfei.org" target="_blank" style="color:#06b6d4">CA FHAB (SFEI)</a></strong> &mdash; California Freshwater Harmful Algal Bloom satellite detection using cyanobacteria index from Sentinel-3 imagery for 255+ California waterbodies</li>
+                    <li><strong><a href="https://www.theswimguide.org" target="_blank" style="color:#06b6d4">Swim Drink Fish / Swim Guide</a></strong> &mdash; Beach water quality information aggregator with 100+ affiliates worldwide, used by organizations like SD Coastkeeper to share monitoring data</li>
                 </ul>
                 <p>PaddlePoint cross-references data from both Open-Meteo and Google Weather to give you a more complete picture. When both sources are shown side-by-side (<span class="source-tag source-om">OM</span> = Open-Meteo, <span class="source-tag source-gw">G</span> = Google), you can compare readings and make a more informed decision.</p>
                 <p>The paddle score is calculated algorithmically by combining the above data points. It is an <strong>estimate</strong>, not a professional safety assessment. PaddlePoint has no proprietary data collection, sensors, weather stations, or monitoring equipment.</p>
@@ -1067,7 +1176,7 @@
                 <p><em>Please read this carefully before using PaddlePoint.</em></p>
 
                 <h3>For Informational Purposes Only</h3>
-                <p><strong>PaddlePoint is not a substitute for professional judgment, local knowledge, or official safety advisories.</strong> PaddlePoint is merely a data aggregator &mdash; it collects and displays publicly available data from third-party sources including <a href="https://open-meteo.com" target="_blank" style="color:#06b6d4">Open-Meteo</a>, <a href="https://developers.google.com/maps/documentation/weather" target="_blank" style="color:#06b6d4">Google Weather API</a>, <a href="https://tidesandcurrents.noaa.gov" target="_blank" style="color:#06b6d4">NOAA Tides &amp; Currents</a>, and <a href="https://maps.google.com" target="_blank" style="color:#06b6d4">Google Maps</a>. PaddlePoint does not independently verify, validate, or guarantee this data. It may be inaccurate, delayed, incomplete, or unavailable at any time. You should <strong>never</strong> rely solely on PaddlePoint to make decisions about whether to enter the water.</p>
+                <p><strong>PaddlePoint is not a substitute for professional judgment, local knowledge, or official safety advisories.</strong> PaddlePoint is merely a data aggregator &mdash; it collects and displays publicly available data from third-party sources including <a href="https://open-meteo.com" target="_blank" style="color:#06b6d4">Open-Meteo</a>, <a href="https://developers.google.com/maps/documentation/weather" target="_blank" style="color:#06b6d4">Google Weather API</a>, <a href="https://tidesandcurrents.noaa.gov" target="_blank" style="color:#06b6d4">NOAA Tides</a>, <a href="https://www.weather.gov" target="_blank" style="color:#06b6d4">NWS</a>, <a href="https://habsos.noaa.gov" target="_blank" style="color:#06b6d4">NOAA HABSOS</a>, <a href="https://data.ca.gov" target="_blank" style="color:#06b6d4">CA Open Data</a>, <a href="https://www.theswimguide.org" target="_blank" style="color:#06b6d4">Swim Guide</a>, and <a href="https://maps.google.com" target="_blank" style="color:#06b6d4">Google Maps</a>. PaddlePoint does not independently verify, validate, or guarantee this data. It may be inaccurate, delayed, incomplete, or unavailable at any time. You should <strong>never</strong> rely solely on PaddlePoint to make decisions about whether to enter the water.</p>
 
                 <h3>Conditions Can Change Rapidly and Without Warning</h3>
                 <p><strong>Weather, water, wind, and tide conditions are inherently unpredictable and can change suddenly.</strong> Conditions that appear favorable at the time you check may deteriorate rapidly &mdash; within minutes &mdash; including but not limited to sudden storms, wind shifts, fog, lightning, rogue waves, flash flooding, and rapid tide changes. PaddlePoint displays a snapshot of estimated conditions at a single point in time. This data may already be outdated by the time you view it. <strong>A favorable paddle score or conditions reading is not a guarantee that conditions will remain favorable.</strong></p>
@@ -1201,13 +1310,18 @@
                 </ul>
 
                 <h3>How does Water Quality work?</h3>
-                <p>Water quality is estimated based on recent rainfall. Heavy rain causes runoff that can carry pollutants, bacteria, and debris into waterways. The ratings are:</p>
+                <p>Water quality has two components:</p>
+                <p><strong>1. Rainfall estimate:</strong> Based on recent precipitation data. Heavy rain causes runoff that can carry pollutants, bacteria, and debris into waterways:</p>
                 <ul>
                     <li><strong>Good &mdash; Safe for Contact</strong> &mdash; No significant recent rain</li>
                     <li><strong>Moderate &mdash; Use Caution</strong> &mdash; Some recent rain, avoid swallowing water</li>
                     <li><strong>Poor &mdash; Heavy Rain Runoff</strong> &mdash; Significant recent rain, avoid water contact for 72 hours after heavy rainfall</li>
                 </ul>
-                <p>This is an estimate only. It does not account for sewage spills, algae blooms, industrial discharge, or other localized pollution events. Always check local beach advisories.</p>
+                <p><strong>2. Bacteria contamination:</strong> PaddlePoint pulls real bacteria testing data from the California State Water Resources Control Board. When beaches near your paddle spot have active advisories (Enterococcus, Fecal Coliform, Total Coliform, E. Coli), they appear with the specific bacteria levels. This data comes from organizations like <a href="https://www.sdcoastkeeper.org/beach-advisories/" target="_blank" style="color:#06b6d4">San Diego Coastkeeper</a>, county health departments, and <a href="https://www.theswimguide.org" target="_blank" style="color:#06b6d4">Swim Guide</a>.</p>
+                <p><strong>3. Harmful Algal Blooms (HABs):</strong> Toxic algae data from <a href="https://habsos.noaa.gov" target="_blank" style="color:#06b6d4">NOAA HABSOS</a> (monitoring stations) and <a href="https://fhab-api.sfei.org" target="_blank" style="color:#06b6d4">CA FHAB</a> (satellite detection). HABs can cause skin rashes, respiratory issues, and serious illness if you swallow contaminated water.</p>
+                <p><strong>4. NWS weather alerts:</strong> Active alerts from the <a href="https://www.weather.gov" target="_blank" style="color:#06b6d4">National Weather Service</a> including beach hazard statements, coastal flood warnings, rip current risks, storm warnings, and heat advisories.</p>
+                <p><strong>5. Storm runoff warnings:</strong> Based on 3-day precipitation totals. Heavy rain washes pollutants, sewage overflows, and debris into waterways. Avoid water contact for 72 hours after heavy rainfall.</p>
+                <p>Even with all this data, always check local beach advisory signs and official sources before entering the water.</p>
 
                 <h3>How do tides work?</h3>
                 <p>Tide data comes from the nearest NOAA monitoring station. PaddlePoint shows the current tide level and upcoming high/low tide times. Tides matter for paddlers because:</p>
@@ -1723,14 +1837,18 @@
             const station = nearestStation(paddleLat, paddleLon);
 
             try {
-                const [weather, tides, tideH, gWeather, gHourly] = await Promise.all([
+                const [weather, tides, tideH, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab] = await Promise.all([
                     fetchWeather(paddleLat, paddleLon),
                     fetchTides(station.id).catch(() => null),
                     fetchTideHourly(station.id).catch(() => null),
                     fetchGoogleWeather(paddleLat, paddleLon).catch(() => null),
                     fetchGoogleHourly(paddleLat, paddleLon).catch(() => null),
+                    fetchBeachAdvisories(paddleLat, paddleLon).catch(() => []),
+                    fetchNWSAlerts(paddleLat, paddleLon).catch(() => []),
+                    fetchHABData(paddleLat, paddleLon).catch(() => []),
+                    fetchCAHAB(paddleLat, paddleLon).catch(() => null),
                 ]);
-                render(weather, tides, tideH, station, gWeather, gHourly);
+                render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab);
             } catch (e) {
                 document.getElementById('conditionsArea').innerHTML = `<div style="text-align:center;padding:48px;color:#f87171;">
                     <div style="font-size:36px;margin-bottom:12px;">&#x26A0;</div>
@@ -1759,6 +1877,91 @@
             const r = await fetch(`https://weather.googleapis.com/v1/forecast/hours:lookup?key=${GOOGLE_API_KEY}&location.latitude=${lat}&location.longitude=${lon}&hours=12`);
             if (!r.ok) throw new Error(`Google Hourly: ${r.status}`);
             return r.json();
+        }
+
+        // Beach water quality advisories from CA State Water Board via CA Open Data
+        const CA_BEACH_API = 'https://data.ca.gov/api/3/action/datastore_search';
+        const CA_BEACH_RESOURCE = 'd5cd6a23-829c-426d-a63e-689a55a3db9c';
+
+        async function fetchBeachAdvisories(lat, lon) {
+            // Get recent advisories (last 30 days) and filter by proximity
+            const d = new Date();
+            d.setDate(d.getDate() - 30);
+            const since = d.toISOString().split('T')[0];
+            const url = `${CA_BEACH_API}?resource_id=${CA_BEACH_RESOURCE}&limit=100&sort=_id desc&filters={"Beach_Status":"Active"}`;
+            const r = await fetch(url);
+            if (!r.ok) throw new Error(`Beach WQ: ${r.status}`);
+            const data = await r.json();
+            if (!data.success || !data.result?.records) return [];
+
+            // Filter to advisories near the paddle spot (within ~10 miles)
+            return data.result.records.filter(rec => {
+                const sLat = parseFloat(rec.Station_UpperLat || rec.Beach_UpperLat);
+                const sLon = parseFloat(rec.Station_UpperLon || rec.Beach_UpperLon);
+                if (!sLat || !sLon) return false;
+                const dist = hav(lat, lon, sLat, sLon);
+                rec._dist = dist;
+                // Check if advisory is recent (within 14 days)
+                const advDate = new Date(rec.DateofAdvisory);
+                const daysSince = (Date.now() - advDate.getTime()) / 86400000;
+                return dist < 10 && daysSince < 14;
+            }).sort((a, b) => a._dist - b._dist);
+        }
+
+        // NWS Weather Alerts (beach hazards, storm warnings, etc.)
+        async function fetchNWSAlerts(lat, lon) {
+            const r = await fetch(`https://api.weather.gov/alerts/active?point=${lat.toFixed(4)},${lon.toFixed(4)}`, {
+                headers: { 'User-Agent': 'PaddlePoint/1.0 (nwtjml@gmail.com)' }
+            });
+            if (!r.ok) throw new Error(`NWS: ${r.status}`);
+            const data = await r.json();
+            return (data.features || []).map(f => f.properties);
+        }
+
+        // NOAA HABSOS - Harmful Algal Blooms (ArcGIS)
+        async function fetchHABData(lat, lon) {
+            // Query HABSOS cell counts within ~50 miles, last 30 days
+            const buf = 0.75; // ~50mi in degrees
+            const thirtyDaysAgo = Date.now() - 30 * 86400000;
+            const geom = JSON.stringify({
+                xmin: lon - buf, ymin: lat - buf,
+                xmax: lon + buf, ymax: lat + buf,
+                spatialReference: { wkid: 4326 }
+            });
+            const params = new URLSearchParams({
+                where: `SAMPLE_DATE >= ${thirtyDaysAgo}`,
+                geometry: geom,
+                geometryType: 'esriGeometryEnvelope',
+                spatialRel: 'esriSpatialRelIntersects',
+                outFields: 'DESCRIPTION,LATITUDE,LONGITUDE,SAMPLE_DATE,GENUS,SPECIES,CELLCOUNT,CELLCOUNT_UNIT,CATEGORY',
+                orderByFields: 'SAMPLE_DATE DESC',
+                resultRecordCount: 20,
+                f: 'json'
+            });
+            const r = await fetch(`https://gis.ncdc.noaa.gov/arcgis/rest/services/ms/HABSOS_CellCounts/MapServer/0/query?${params}`);
+            if (!r.ok) throw new Error(`HAB: ${r.status}`);
+            const data = await r.json();
+            return (data.features || []).map(f => f.attributes);
+        }
+
+        // CA FHAB satellite HAB detection (pixel value at lat/lon)
+        async function fetchCAHAB(lat, lon) {
+            const d = new Date();
+            const dateStr = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+            // Try today, fallback to yesterday
+            for (let offset = 0; offset < 3; offset++) {
+                const dd = new Date(d);
+                dd.setDate(dd.getDate() - offset);
+                const ds = dd.getFullYear() + String(dd.getMonth() + 1).padStart(2, '0') + String(dd.getDate()).padStart(2, '0');
+                try {
+                    const r = await fetch(`https://fhab-api.sfei.org/cyano/1daymax/${ds}/lon/${lon.toFixed(4)}/lat/${lat.toFixed(4)}/json`);
+                    if (r.ok) {
+                        const data = await r.json();
+                        if (data && data.value !== null && data.value !== undefined) return data;
+                    }
+                } catch(e) {}
+            }
+            return null;
         }
 
         async function fetchTides(sid) {
@@ -1935,7 +2138,7 @@
             return v.distance * 0.621371; // km to mi
         }
 
-        function render(weather, tides, tideH, station, gWeather, gHourly) {
+        function render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab) {
             const c = weather.current;
             const {score,factors} = calcScore(weather);
             const color = sClr(score);
@@ -1943,8 +2146,27 @@
             const sp = sports(weather);
 
             let alertH='';
-            if(c.weather_code>=95) alertH=`<div class="alert-banner" style="border-color:#ef444460;background:#ef444415;color:#f87171;"><span class="alert-icon">&#x26A1;</span><span>Thunderstorm activity. Do NOT go on the water.</span></div>`;
-            else if(score<40) alertH=`<div class="alert-banner"><span class="alert-icon">&#x26A0;</span><span>Conditions unfavorable for most paddle sports.</span></div>`;
+            if(c.weather_code>=95) alertH+=`<div class="alert-banner" style="border-color:#ef444460;background:#ef444415;color:#f87171;"><span class="alert-icon">&#x26A1;</span><span>Thunderstorm activity. Do NOT go on the water.</span></div>`;
+            else if(score<40) alertH+=`<div class="alert-banner"><span class="alert-icon">&#x26A0;</span><span>Conditions unfavorable for most paddle sports.</span></div>`;
+
+            // NWS alerts in top alert area (beach hazards, warnings, etc.)
+            if(nwsAlerts && nwsAlerts.length > 0) {
+                const waterAlerts = nwsAlerts.filter(a => {
+                    const evt = (a.event || '').toLowerCase();
+                    return evt.includes('beach') || evt.includes('surf') || evt.includes('rip') ||
+                           evt.includes('coastal') || evt.includes('marine') || evt.includes('storm') ||
+                           evt.includes('flood') || evt.includes('wind') || evt.includes('thunder') ||
+                           evt.includes('tornado') || evt.includes('hurricane') || evt.includes('tsunami') ||
+                           evt.includes('heat') || evt.includes('fog');
+                });
+                waterAlerts.slice(0, 3).forEach(a => {
+                    const sev = (a.severity || '').toLowerCase();
+                    const color = sev === 'extreme' || sev === 'severe' ? '#f87171' : sev === 'moderate' ? '#fbbf24' : '#60a5fa';
+                    const bg = sev === 'extreme' || sev === 'severe' ? '#ef444415' : sev === 'moderate' ? '#f59e0b15' : '#3b82f615';
+                    const border = sev === 'extreme' || sev === 'severe' ? '#ef444460' : sev === 'moderate' ? '#f59e0b40' : '#3b82f640';
+                    alertH += `<div class="alert-banner" style="border-color:${border};background:${bg};color:${color};"><span class="alert-icon">&#x26A0;</span><span><strong>${a.event}</strong>: ${a.headline || ''}</span></div>`;
+                });
+            }
             document.getElementById('alertArea').innerHTML=alertH;
 
             const nh=new Date().getHours();
@@ -2052,6 +2274,111 @@
                         <div class="wq-status ${q.cls}"><span class="wq-icon">${q.ico}</span><div class="wq-text"><h4>${q.l}</h4><p>${q.d}</p></div></div>
                         <div class="stat-row"><span class="stat-label">Precipitation Today</span><span class="stat-value">${(weather.daily.precipitation_sum?.[0]||0).toFixed(2)} in</span></div>
                         <div class="stat-row"><span class="stat-label">Current Precip</span><span class="stat-value">${c.precipitation.toFixed(2)} in</span></div>
+                        ${beachAdvisories && beachAdvisories.length > 0 ? `
+                            <div class="source-divider">Bacteria Contamination</div>
+                            ${beachAdvisories.slice(0, 5).map(a => {
+                                const advDate = new Date(a.DateofAdvisory);
+                                const dateStr = advDate.toLocaleDateString([], {month:'short', day:'numeric', year:'numeric'});
+                                const dist = a._dist ? a._dist.toFixed(1) + ' mi away' : '';
+                                const enterococcus = parseInt(a.Enterococcus) || 0;
+                                const fecal = parseInt(a['Fecal Coliforms']) || 0;
+                                const totalCol = parseInt(a['Total Coliforms']) || 0;
+                                const eColi = parseInt(a['E.Coli']) || 0;
+                                return `<div class="beach-advisory adv-active">
+                                    <div class="beach-advisory-title">&#x1F6A9; ${a.Beach_Name || a.Station_Description || 'Beach'}</div>
+                                    <div class="beach-advisory-detail">${a.AdvisoryCause || 'Advisory'} &bull; ${dateStr} &bull; ${dist}</div>
+                                    ${a.DescriptionofArea ? `<div class="beach-advisory-detail">${a.DescriptionofArea}</div>` : ''}
+                                    <div class="beach-advisory-bacteria">
+                                        ${enterococcus ? `<span class="bacteria-chip ${enterococcus > 104 ? 'elevated' : ''}">Enterococcus: ${enterococcus}</span>` : ''}
+                                        ${fecal ? `<span class="bacteria-chip ${fecal > 400 ? 'elevated' : ''}">Fecal Coliform: ${fecal}</span>` : ''}
+                                        ${totalCol ? `<span class="bacteria-chip ${totalCol > 10000 ? 'elevated' : ''}">Total Coliform: ${totalCol}</span>` : ''}
+                                        ${eColi ? `<span class="bacteria-chip ${eColi > 235 ? 'elevated' : ''}">E. Coli: ${eColi}</span>` : ''}
+                                    </div>
+                                </div>`;
+                            }).join('')}
+                        ` : `
+                            <div class="source-divider">Bacteria Contamination</div>
+                            <div class="beach-advisory adv-clear">
+                                <div class="beach-advisory-title">&#x2705; No Active Advisories Nearby</div>
+                                <div class="beach-advisory-detail">No beach bacteria advisories within 10 miles in the last 14 days.</div>
+                            </div>
+                        `}
+
+                        ${(() => {
+                            // Harmful Algal Blooms section
+                            let habH = '<div class="source-divider">Harmful Algal Blooms (HABs)</div>';
+                            const activeHabs = habData ? habData.filter(h => h.CELLCOUNT > 0) : [];
+                            const caHabLevel = caHab?.value || 0;
+
+                            if (activeHabs.length > 0) {
+                                activeHabs.slice(0, 3).forEach(h => {
+                                    const cc = h.CELLCOUNT;
+                                    const cls = cc > 100000 ? 'hab-high' : cc > 10000 ? 'hab-moderate' : 'hab-low';
+                                    const lvl = cc > 100000 ? 'HIGH' : cc > 10000 ? 'MODERATE' : 'LOW';
+                                    const sDate = h.SAMPLE_DATE ? new Date(h.SAMPLE_DATE).toLocaleDateString([], {month:'short',day:'numeric'}) : '';
+                                    habH += '<div class="hab-indicator ' + cls + '">' +
+                                        '<div class="hab-title">&#x1F9EA; ' + (h.GENUS || '') + ' ' + (h.SPECIES || '') + ' — ' + lvl + '</div>' +
+                                        '<div class="hab-detail">' + (h.DESCRIPTION || '') + ' &bull; ' + cc.toLocaleString() + ' ' + (h.CELLCOUNT_UNIT || 'cells/L') + ' &bull; ' + sDate + '</div>' +
+                                    '</div>';
+                                });
+                            } else if (caHabLevel > 0) {
+                                const cls = caHabLevel > 50 ? 'hab-high' : caHabLevel > 10 ? 'hab-moderate' : 'hab-low';
+                                const lvl = caHabLevel > 50 ? 'HIGH' : caHabLevel > 10 ? 'MODERATE' : 'LOW';
+                                habH += '<div class="hab-indicator ' + cls + '">' +
+                                    '<div class="hab-title">&#x1F9EA; Cyanobacteria Detected — ' + lvl + '</div>' +
+                                    '<div class="hab-detail">Satellite-detected cyano index: ' + caHabLevel.toFixed(2) + ' (CA FHAB)</div>' +
+                                '</div>';
+                            } else {
+                                habH += '<div class="hab-indicator hab-clear">' +
+                                    '<div class="hab-title">&#x2705; No Harmful Algal Blooms Detected</div>' +
+                                    '<div class="hab-detail">No HAB activity reported nearby in the last 30 days.</div>' +
+                                '</div>';
+                            }
+                            return habH;
+                        })()}
+
+                        ${(() => {
+                            // NWS weather alerts relevant to water safety
+                            if (!nwsAlerts || nwsAlerts.length === 0) return '';
+                            let nwsH = '<div class="source-divider">NWS Weather Alerts</div>';
+                            nwsAlerts.slice(0, 4).forEach(a => {
+                                const sev = (a.severity || 'minor').toLowerCase();
+                                const cls = sev === 'extreme' || sev === 'severe' ? 'sev-extreme' : sev === 'moderate' ? 'sev-moderate' : 'sev-minor';
+                                const expires = a.expires ? new Date(a.expires).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '';
+                                nwsH += '<div class="nws-alert ' + cls + '">' +
+                                    '<div class="nws-alert-event"><span class="' + cls + '">&#x26A0;</span> ' + (a.event || 'Alert') + '</div>' +
+                                    (a.headline ? '<div class="nws-alert-headline">' + a.headline + '</div>' : '') +
+                                    '<div class="nws-alert-detail">' + (a.senderName || '') + (expires ? ' &bull; Expires ' + expires : '') + '</div>' +
+                                '</div>';
+                            });
+                            return nwsH;
+                        })()}
+
+                        ${(() => {
+                            // Storm runoff warning based on precipitation
+                            const precip = weather.daily?.precipitation_sum?.[0] || 0;
+                            const precip3d = (weather.daily?.precipitation_sum || []).slice(0, 3).reduce((a, b) => a + b, 0);
+                            if (precip3d < 0.3) return '';
+                            const sevCls = precip3d > 2 ? 'adv-active' : 'adv-clear';
+                            const sevIco = precip3d > 2 ? '&#x1F6A8;' : '&#x26A0;';
+                            return '<div class="source-divider">Storm Runoff Warning</div>' +
+                                '<div class="beach-advisory ' + sevCls + '">' +
+                                '<div class="beach-advisory-title">' + sevIco + ' Storm Water Runoff ' + (precip3d > 2 ? 'Alert' : 'Advisory') + '</div>' +
+                                '<div class="beach-advisory-detail">' + precip3d.toFixed(2) + ' inches of rain in the last 3 days. ' +
+                                (precip3d > 2 ? 'Heavy runoff likely carrying pollutants, bacteria, and debris. Avoid water contact for 72 hours after heavy rain.' :
+                                 'Moderate runoff possible. Use caution and avoid swallowing water.') + '</div>' +
+                                '</div>';
+                        })()}
+
+                        <div class="wq-source-credit">
+                            Sources: <a href="https://www.waterboards.ca.gov/water_issues/programs/beaches/beach_water_quality/" target="_blank">CA Water Board</a> &bull;
+                            <a href="https://www.sdcoastkeeper.org/beach-advisories/" target="_blank">SD Coastkeeper</a> /
+                            <a href="https://www.theswimguide.org" target="_blank">Swim Guide</a> &bull;
+                            <a href="https://www.weather.gov" target="_blank">NWS</a> &bull;
+                            <a href="https://habsos.noaa.gov" target="_blank">NOAA HABSOS</a> &bull;
+                            <a href="https://fhab-api.sfei.org" target="_blank">CA FHAB</a> &bull;
+                            <a href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank">CA Open Data</a>
+                        </div>
                     </div>
 
                     <div class="card full-width">
