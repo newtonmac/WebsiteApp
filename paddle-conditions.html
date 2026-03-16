@@ -2196,8 +2196,10 @@
         }
 
         // SD County Beach & Bay Water Quality Program (sdbeachinfo.com)
+        // Only covers San Diego County beaches (roughly south of ~33.15 lat)
         async function fetchSDBeachStatus(lat, lon) {
-            // Fetch all regions (1=South, 2=Central, 3=North)
+            // Skip if outside San Diego County area
+            if (lat > 33.25 || lon > -116.9 || lon < -117.7) return null;
             const results = [];
             for (const regionId of [1, 2, 3]) {
                 try {
@@ -2670,7 +2672,7 @@
                         })()}
 
                         ${beachAdvisories && beachAdvisories.length > 0 ? `
-                            <div class="source-divider">Bacteria Contamination <a class="src-link" href="https://www.sdbeachinfo.com" target="_blank">SD Beach Info</a><a class="src-link" href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank">CA Open Data</a></div>
+                            <div class="source-divider">Bacteria Contamination <a class="src-link" href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank">CA Open Data</a><a class="src-link" href="https://www.waterboards.ca.gov/water_issues/programs/beaches/search_beach_mon.html" target="_blank">CA Water Board</a></div>
                             ${beachAdvisories.slice(0, 5).map(a => {
                                 const advDate = new Date(a.DateofAdvisory);
                                 const dateStr = advDate.toLocaleDateString([], {month:'short', day:'numeric', year:'numeric'});
@@ -2692,7 +2694,7 @@
                                 </div>`;
                             }).join('')}
                         ` : `
-                            <div class="source-divider">Bacteria Contamination <a class="src-link" href="https://www.sdbeachinfo.com" target="_blank">SD Beach Info</a><a class="src-link" href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank">CA Open Data</a></div>
+                            <div class="source-divider">Bacteria Contamination <a class="src-link" href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank">CA Open Data</a><a class="src-link" href="https://www.waterboards.ca.gov/water_issues/programs/beaches/search_beach_mon.html" target="_blank">CA Water Board</a></div>
                             <div class="beach-advisory adv-clear">
                                 <div class="beach-advisory-title">&#x2705; No Active Advisories Nearby</div>
                                 <div class="beach-advisory-detail">No beach bacteria advisories within 10 miles in the last 14 days.</div>
@@ -2735,7 +2737,7 @@
                         ${(() => {
                             // NWS weather alerts relevant to water safety
                             if (!nwsAlerts || nwsAlerts.length === 0) return '';
-                            let nwsH = '<div class="source-divider">NWS Weather Alerts <a class="src-link" href="https://alerts.weather.gov" target="_blank">NWS Alerts</a><a class="src-link" href="https://www.weather.gov/sgx/" target="_blank">NWS San Diego</a></div>';
+                            let nwsH = '<div class="source-divider">NWS Weather Alerts <a class="src-link" href="https://alerts.weather.gov" target="_blank">NWS Alerts</a></div>';
                             nwsAlerts.slice(0, 4).forEach(a => {
                                 const sev = (a.severity || 'minor').toLowerCase();
                                 const cls = sev === 'extreme' || sev === 'severe' ? 'sev-extreme' : sev === 'moderate' ? 'sev-moderate' : 'sev-minor';
@@ -2789,26 +2791,29 @@
                     </div>
 
                     <div class="card full-width">
-                        <div class="card-title"><span class="icon">&#x1F4DA;</span> Local Resources</div>
+                        <div class="card-title"><span class="icon">&#x1F4DA;</span> Resources</div>
                         <div class="resource-grid">
-                            <a class="resource-link" href="https://www.sdbeachinfo.com" target="_blank"><span class="res-icon">&#x1F3D6;</span> SD Beach &amp; Bay Water Quality</a>
-                            <a class="resource-link" href="https://www.sdcoastkeeper.org/beach-advisories" target="_blank"><span class="res-icon">&#x1F6A9;</span> SD Coastkeeper Advisories</a>
                             <a class="resource-link" href="https://beachreportcard.org" target="_blank"><span class="res-icon">&#x1F4CB;</span> Heal the Bay Report Card</a>
                             <a class="resource-link" href="https://data.ca.gov/group/water" target="_blank"><span class="res-icon">&#x1F4CA;</span> CA Open Data — Water</a>
                             <a class="resource-link" href="https://www.waterboards.ca.gov/water_issues/programs/beaches/beach_water_quality/" target="_blank"><span class="res-icon">&#x1F30A;</span> CA State Water Board</a>
+                            <a class="resource-link" href="https://www.waterboards.ca.gov/water_issues/programs/beaches/search_beach_mon.html" target="_blank"><span class="res-icon">&#x1F50D;</span> Search Beach Monitoring Data</a>
                             <a class="resource-link" href="https://sccoos.org/california-hab-bulletin/" target="_blank"><span class="res-icon">&#x1F9EA;</span> SCCOOS HAB Bulletin</a>
                             <a class="resource-link" href="https://www.surfrider.org/programs/blue-water-task-force" target="_blank"><span class="res-icon">&#x1F3C4;</span> Surfrider Blue Water Task Force</a>
-                            <a class="resource-link" href="https://www.wildcoast.org" target="_blank"><span class="res-icon">&#x1F3DE;</span> WiLDCOAST</a>
                             <a class="resource-link" href="https://www.surfline.com" target="_blank"><span class="res-icon">&#x1F30A;</span> Surfline</a>
                             <a class="resource-link" href="https://www.parks.ca.gov" target="_blank"><span class="res-icon">&#x1F333;</span> California State Parks</a>
-                            <a class="resource-link" href="https://oehha.ca.gov/fish/advisories" target="_blank"><span class="res-icon">&#x1F41F;</span> Fish Consumption Guidelines</a>
-                            <a class="resource-link" href="https://oehha.ca.gov/fish/advisories/san-diego-bay" target="_blank"><span class="res-icon">&#x1F4D6;</span> SD Bay Fish Health Guide</a>
+                            <a class="resource-link" href="https://oehha.ca.gov/fish/advisories" target="_blank"><span class="res-icon">&#x1F41F;</span> Fish Consumption Guidelines (OEHHA)</a>
                             <a class="resource-link" href="https://www.epa.gov/radnet" target="_blank"><span class="res-icon">&#x2622;</span> Pacific Ocean RadNet Monitoring</a>
                             <a class="resource-link" href="https://www.cdph.ca.gov/Programs/CEH/DRSEM/Pages/EMB/Shellfish/Marine-Biotoxin-Monitoring-Program.aspx" target="_blank"><span class="res-icon">&#x1F41A;</span> CDPH Marine Biotoxin Program</a>
                             <a class="resource-link" href="https://waterdata.usgs.gov/nwis" target="_blank"><span class="res-icon">&#x1F4C8;</span> USGS Water Data (Stream Flow)</a>
-                            <a class="resource-link" href="https://www.ibwc.gov/water-quality/tijuana-river/" target="_blank"><span class="res-icon">&#x1F6B0;</span> Tijuana River Flow (IBWC)</a>
                             <a class="resource-link" href="https://www.cnrfc.noaa.gov/rainfall_data.php" target="_blank"><span class="res-icon">&#x1F327;</span> NOAA Rainfall Observations</a>
                             <a class="resource-link" href="https://www.airnow.gov" target="_blank"><span class="res-icon">&#x1F4A8;</span> AirNow Air Quality</a>
+                            ${sdBeach && sdBeach.length > 0 ? `
+                            <a class="resource-link" href="https://www.sdbeachinfo.com" target="_blank"><span class="res-icon">&#x1F3D6;</span> SD Beach &amp; Bay Water Quality</a>
+                            <a class="resource-link" href="https://www.sdcoastkeeper.org/beach-advisories" target="_blank"><span class="res-icon">&#x1F6A9;</span> SD Coastkeeper Advisories</a>
+                            <a class="resource-link" href="https://www.wildcoast.org" target="_blank"><span class="res-icon">&#x1F3DE;</span> WiLDCOAST</a>
+                            <a class="resource-link" href="https://oehha.ca.gov/fish/advisories/san-diego-bay" target="_blank"><span class="res-icon">&#x1F4D6;</span> SD Bay Fish Health Guide</a>
+                            <a class="resource-link" href="https://www.ibwc.gov/water-quality/tijuana-river/" target="_blank"><span class="res-icon">&#x1F6B0;</span> Tijuana River Flow (IBWC)</a>
+                            ` : ''}
                         </div>
                     </div>
 
