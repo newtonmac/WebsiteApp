@@ -601,13 +601,28 @@
         @media (max-width: 700px) {
             .header {
                 padding: 10px 14px;
-                flex-direction: column;
-                align-items: flex-start;
+                flex-direction: row;
+                align-items: center;
             }
             .header h1 { font-size: 17px; }
-            .header-right { width: 100%; justify-content: flex-end; }
-            .container { padding: 10px; overflow-x: hidden; }
-            .map-section { height: 240px; border-radius: 12px; }
+            .header .subtitle { display: none; }
+            .header-right { display: none; }
+            .container {
+                padding: 0 10px 10px;
+                overflow-x: hidden;
+                display: flex;
+                flex-direction: column;
+            }
+            .map-search-wrap {
+                order: -1;
+                margin-bottom: 10px;
+                margin-top: 10px;
+            }
+            .map-section {
+                height: calc(100dvh - 100px);
+                border-radius: 12px;
+                margin-bottom: 10px;
+            }
             .map-hint { font-size: 11px; padding: 6px 12px; }
             .locate-btn { padding: 8px 12px; font-size: 12px; }
             .score-hero {
@@ -643,7 +658,6 @@
 
         @media (max-width: 380px) {
             .header h1 { font-size: 15px; }
-            .map-section { height: 200px; }
             .score-hero { padding: 14px; }
             .score-circle { width: 80px; height: 80px; }
             .score-number { font-size: 24px; }
