@@ -509,6 +509,61 @@
         .fm-body ul { padding-left: 18px; margin: 6px 0; }
         .fm-body li { margin-bottom: 4px; }
 
+        /* Dual-source comparison */
+        .source-tag {
+            display: inline-block;
+            font-size: 9px;
+            font-weight: 600;
+            padding: 1px 5px;
+            border-radius: 4px;
+            letter-spacing: 0.3px;
+            vertical-align: middle;
+        }
+        .source-om { background: #06b6d420; color: #06b6d4; }
+        .source-gw { background: #f59e0b20; color: #f59e0b; }
+        .dual-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid #2d304040;
+            font-size: 13px;
+        }
+        .dual-row:last-child { border-bottom: none; }
+        .dual-label { color: #8b8fa3; flex: 1; }
+        .dual-values { display: flex; gap: 12px; }
+        .dual-val {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: #e1e4e8;
+            font-size: 12px;
+        }
+        .source-divider {
+            padding: 10px 0 6px;
+            font-size: 10px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #2d3040;
+            margin-top: 6px;
+        }
+        .google-condition {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: #252836;
+            border-radius: 8px;
+            margin-top: 8px;
+            font-size: 12px;
+            color: #c0c4d0;
+        }
+        .google-condition img {
+            width: 28px;
+            height: 28px;
+        }
+
         /* Google Place badge in score hero */
         .place-badge {
             display: inline-flex;
@@ -833,6 +888,7 @@
 
         <div class="data-source">
             Data: <a href="https://open-meteo.com" target="_blank">Open-Meteo</a> &bull;
+            <a href="https://developers.google.com/maps/documentation/weather" target="_blank">Google Weather</a> &bull;
             <a href="https://tidesandcurrents.noaa.gov" target="_blank">NOAA Tides</a> &bull;
             Updated <span id="lastUpdate">--</span>
         </div>
@@ -893,10 +949,12 @@
                 <h3>Data Sources</h3>
                 <ul>
                     <li><strong><a href="https://open-meteo.com" target="_blank" style="color:#06b6d4">Open-Meteo</a></strong> &mdash; Open-source weather API providing wind speed, wind direction, wind gusts, temperature, UV index, visibility, precipitation, cloud cover, and marine data (wave height, wave period, swell direction)</li>
+                    <li><strong><a href="https://developers.google.com/maps/documentation/weather" target="_blank" style="color:#06b6d4">Google Weather API</a></strong> &mdash; Google's weather service providing current conditions, hourly forecasts, temperature, wind, humidity, UV index, precipitation probability, thunderstorm probability, and weather condition descriptions with icons. Powered by Google DeepMind's AI weather models.</li>
                     <li><strong><a href="https://tidesandcurrents.noaa.gov" target="_blank" style="color:#06b6d4">NOAA Tides &amp; Currents</a></strong> &mdash; Official US government tide predictions and real-time water level observations from NOAA monitoring stations</li>
                     <li><strong><a href="https://air-quality-api.open-meteo.com" target="_blank" style="color:#06b6d4">Open-Meteo Air Quality</a></strong> &mdash; Air quality and UV index data</li>
                     <li><strong><a href="https://maps.google.com" target="_blank" style="color:#06b6d4">Google Maps &amp; Places API</a></strong> &mdash; Interactive map display, location search, and place information</li>
                 </ul>
+                <p>PaddlePoint cross-references data from both Open-Meteo and Google Weather to give you a more complete picture. When both sources are shown side-by-side (<span class="source-tag source-om">OM</span> = Open-Meteo, <span class="source-tag source-gw">G</span> = Google), you can compare readings and make a more informed decision.</p>
                 <p>The paddle score is calculated algorithmically by combining the above data points. It is an <strong>estimate</strong>, not a professional safety assessment. PaddlePoint has no proprietary data collection, sensors, weather stations, or monitoring equipment.</p>
 
                 <h3>Technology</h3>
@@ -1009,7 +1067,7 @@
                 <p><em>Please read this carefully before using PaddlePoint.</em></p>
 
                 <h3>For Informational Purposes Only</h3>
-                <p><strong>PaddlePoint is not a substitute for professional judgment, local knowledge, or official safety advisories.</strong> PaddlePoint is merely a data aggregator &mdash; it collects and displays publicly available data from third-party sources including <a href="https://open-meteo.com" target="_blank" style="color:#06b6d4">Open-Meteo</a>, <a href="https://tidesandcurrents.noaa.gov" target="_blank" style="color:#06b6d4">NOAA Tides &amp; Currents</a>, and <a href="https://maps.google.com" target="_blank" style="color:#06b6d4">Google Maps</a>. PaddlePoint does not independently verify, validate, or guarantee this data. It may be inaccurate, delayed, incomplete, or unavailable at any time. You should <strong>never</strong> rely solely on PaddlePoint to make decisions about whether to enter the water.</p>
+                <p><strong>PaddlePoint is not a substitute for professional judgment, local knowledge, or official safety advisories.</strong> PaddlePoint is merely a data aggregator &mdash; it collects and displays publicly available data from third-party sources including <a href="https://open-meteo.com" target="_blank" style="color:#06b6d4">Open-Meteo</a>, <a href="https://developers.google.com/maps/documentation/weather" target="_blank" style="color:#06b6d4">Google Weather API</a>, <a href="https://tidesandcurrents.noaa.gov" target="_blank" style="color:#06b6d4">NOAA Tides &amp; Currents</a>, and <a href="https://maps.google.com" target="_blank" style="color:#06b6d4">Google Maps</a>. PaddlePoint does not independently verify, validate, or guarantee this data. It may be inaccurate, delayed, incomplete, or unavailable at any time. You should <strong>never</strong> rely solely on PaddlePoint to make decisions about whether to enter the water.</p>
 
                 <h3>Conditions Can Change Rapidly and Without Warning</h3>
                 <p><strong>Weather, water, wind, and tide conditions are inherently unpredictable and can change suddenly.</strong> Conditions that appear favorable at the time you check may deteriorate rapidly &mdash; within minutes &mdash; including but not limited to sudden storms, wind shifts, fog, lightning, rogue waves, flash flooding, and rapid tide changes. PaddlePoint displays a snapshot of estimated conditions at a single point in time. This data may already be outdated by the time you view it. <strong>A favorable paddle score or conditions reading is not a guarantee that conditions will remain favorable.</strong></p>
@@ -1665,12 +1723,14 @@
             const station = nearestStation(paddleLat, paddleLon);
 
             try {
-                const [weather, tides, tideH] = await Promise.all([
+                const [weather, tides, tideH, gWeather, gHourly] = await Promise.all([
                     fetchWeather(paddleLat, paddleLon),
                     fetchTides(station.id).catch(() => null),
                     fetchTideHourly(station.id).catch(() => null),
+                    fetchGoogleWeather(paddleLat, paddleLon).catch(() => null),
+                    fetchGoogleHourly(paddleLat, paddleLon).catch(() => null),
                 ]);
-                render(weather, tides, tideH, station);
+                render(weather, tides, tideH, station, gWeather, gHourly);
             } catch (e) {
                 document.getElementById('conditionsArea').innerHTML = `<div style="text-align:center;padding:48px;color:#f87171;">
                     <div style="font-size:36px;margin-bottom:12px;">&#x26A0;</div>
@@ -1681,9 +1741,23 @@
         }
 
         // ======== APIs ========
+        const GOOGLE_API_KEY = 'AIzaSyAR81pUTUz5ON7ZBuoouTh2RTHyECr6yvg';
+
         async function fetchWeather(lat, lon) {
             const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index,visibility,pressure_msl&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,precipitation_probability,weather_code,uv_index,visibility&daily=sunrise,sunset,uv_index_max,wind_speed_10m_max,wind_gusts_10m_max,precipitation_sum,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=3`);
             if (!r.ok) throw new Error(`Weather: ${r.status}`);
+            return r.json();
+        }
+
+        async function fetchGoogleWeather(lat, lon) {
+            const r = await fetch(`https://weather.googleapis.com/v1/currentConditions:lookup?key=${GOOGLE_API_KEY}&location.latitude=${lat}&location.longitude=${lon}`);
+            if (!r.ok) throw new Error(`Google Weather: ${r.status}`);
+            return r.json();
+        }
+
+        async function fetchGoogleHourly(lat, lon) {
+            const r = await fetch(`https://weather.googleapis.com/v1/forecast/hours:lookup?key=${GOOGLE_API_KEY}&location.latitude=${lat}&location.longitude=${lon}&hours=12`);
+            if (!r.ok) throw new Error(`Google Hourly: ${r.status}`);
             return r.json();
         }
 
@@ -1844,7 +1918,24 @@
         }
 
         // ======== Render ========
-        function render(weather, tides, tideH, station) {
+        // Google Weather helpers
+        function gTemp(t) { // Convert Google temp to °F
+            if (!t) return null;
+            if (t.unit === 'FAHRENHEIT') return t.degrees;
+            return t.degrees * 9/5 + 32; // Celsius to F
+        }
+        function gSpeed(s) { // Convert Google speed to mph
+            if (!s) return null;
+            if (s.unit === 'MILES_PER_HOUR') return s.value;
+            return s.value * 0.621371; // km/h to mph
+        }
+        function gVis(v) { // Convert Google visibility to miles
+            if (!v) return null;
+            if (v.unit === 'MILES') return v.distance;
+            return v.distance * 0.621371; // km to mi
+        }
+
+        function render(weather, tides, tideH, station, gWeather, gHourly) {
             const c = weather.current;
             const {score,factors} = calcScore(weather);
             const color = sClr(score);
@@ -1863,6 +1954,18 @@
                 if(idx>=weather.hourly.wind_speed_10m.length)break;
                 const hr=idx%24,ap=hr>=12?'PM':'AM',h12=hr===0?12:hr>12?hr-12:hr;
                 hrH+=`<div class="hourly-item"><span class="hour">${i===0?'Now':h12+ap}</span><div class="mini-arrow" style="transform:rotate(${weather.hourly.wind_direction_10m[idx]}deg);"></div><span class="wind-speed">${weather.hourly.wind_speed_10m[idx].toFixed(0)}</span><span class="wind-unit">mph</span></div>`;
+            }
+
+            // Google hourly forecast
+            let gHrH='';
+            if(gHourly?.forecastHours){
+                gHourly.forecastHours.slice(0,12).forEach((h,i)=>{
+                    const dd=h.displayDateTime;
+                    const hr=dd?.hours||0,ap=hr>=12?'PM':'AM',h12=hr===0?12:hr>12?hr-12:hr;
+                    const ws=gSpeed(h.wind?.speed)||0;
+                    const wd=h.wind?.direction?.degrees||0;
+                    gHrH+=`<div class="hourly-item"><span class="hour">${i===0?'Now':h12+ap}</span><div class="mini-arrow" style="transform:rotate(${wd}deg);"></div><span class="wind-speed">${ws.toFixed(0)}</span><span class="wind-unit">mph</span></div>`;
+                });
             }
 
             let tdH='';
@@ -1913,19 +2016,29 @@
                         <div class="wind-detail-row"><span class="label">Gusts</span><span class="value">${c.wind_gusts_10m.toFixed(0)} mph</span></div>
                         <div class="wind-detail-row"><span class="label">Max Today</span><span class="value">${weather.daily.wind_speed_10m_max[0].toFixed(0)} mph</span></div>
                         <div class="wind-detail-row"><span class="label">Max Gusts Today</span><span class="value">${weather.daily.wind_gusts_10m_max[0].toFixed(0)} mph</span></div>
+                        ${gWeather?.wind ? `
+                        <div class="source-divider"><span class="source-tag source-gw">Google Weather</span> Wind</div>
+                        <div class="wind-detail-row"><span class="label">Speed</span><span class="value">${gSpeed(gWeather.wind.speed).toFixed(0)} mph ${gWeather.wind.direction?.cardinal?.replace(/_/g,' ') || ''}</span></div>
+                        <div class="wind-detail-row"><span class="label">Gusts</span><span class="value">${gSpeed(gWeather.wind.gust).toFixed(0)} mph</span></div>
+                        ` : ''}
                     </div>
 
                     <div class="card">
                         <div class="card-title"><span class="icon">&#x2600;</span> Weather</div>
                         <div class="stat-row"><span class="stat-label">Conditions</span><span class="stat-value">${wxD(c.weather_code)}</span></div>
-                        <div class="stat-row"><span class="stat-label">Temperature</span><span class="stat-value">${c.temperature_2m.toFixed(0)}°F</span></div>
-                        <div class="stat-row"><span class="stat-label">Feels Like</span><span class="stat-value">${c.apparent_temperature.toFixed(0)}°F</span></div>
-                        <div class="stat-row"><span class="stat-label">Humidity</span><span class="stat-value">${c.relative_humidity_2m}%</span></div>
-                        <div class="stat-row"><span class="stat-label">UV Index</span><span class="stat-value" style="color:${c.uv_index>=8?'#f87171':c.uv_index>=5?'#fbbf24':'#34d399'};">${c.uv_index.toFixed(1)}</span></div>
-                        <div class="stat-row"><span class="stat-label">Visibility</span><span class="stat-value">${(c.visibility/1609.34).toFixed(1)} mi</span></div>
-                        <div class="stat-row"><span class="stat-label">Pressure</span><span class="stat-value">${c.pressure_msl.toFixed(0)} hPa</span></div>
+                        ${gWeather ? `<div class="google-condition"><img src="${gWeather.weatherCondition?.iconBaseUri}.svg" alt="" onerror="this.style.display='none'"><span><span class="source-tag source-gw">Google</span> ${gWeather.weatherCondition?.description?.text || ''}</span></div>` : ''}
+                        <div class="source-divider">Temperature</div>
+                        <div class="dual-row"><span class="dual-label">Temperature</span><div class="dual-values"><div class="dual-val"><span class="source-tag source-om">OM</span>${c.temperature_2m.toFixed(0)}°F</div>${gWeather ? `<div class="dual-val"><span class="source-tag source-gw">G</span>${gTemp(gWeather.temperature).toFixed(0)}°F</div>` : ''}</div></div>
+                        <div class="dual-row"><span class="dual-label">Feels Like</span><div class="dual-values"><div class="dual-val"><span class="source-tag source-om">OM</span>${c.apparent_temperature.toFixed(0)}°F</div>${gWeather ? `<div class="dual-val"><span class="source-tag source-gw">G</span>${gTemp(gWeather.feelsLikeTemperature).toFixed(0)}°F</div>` : ''}</div></div>
+                        <div class="source-divider">Details</div>
+                        <div class="dual-row"><span class="dual-label">Humidity</span><div class="dual-values"><div class="dual-val"><span class="source-tag source-om">OM</span>${c.relative_humidity_2m}%</div>${gWeather ? `<div class="dual-val"><span class="source-tag source-gw">G</span>${gWeather.relativeHumidity}%</div>` : ''}</div></div>
+                        <div class="dual-row"><span class="dual-label">UV Index</span><div class="dual-values"><div class="dual-val"><span class="source-tag source-om">OM</span><span style="color:${c.uv_index>=8?'#f87171':c.uv_index>=5?'#fbbf24':'#34d399'};">${c.uv_index.toFixed(1)}</span></div>${gWeather ? `<div class="dual-val"><span class="source-tag source-gw">G</span><span style="color:${gWeather.uvIndex>=8?'#f87171':gWeather.uvIndex>=5?'#fbbf24':'#34d399'};">${gWeather.uvIndex}</span></div>` : ''}</div></div>
+                        <div class="dual-row"><span class="dual-label">Visibility</span><div class="dual-values"><div class="dual-val"><span class="source-tag source-om">OM</span>${(c.visibility/1609.34).toFixed(1)} mi</div>${gWeather ? `<div class="dual-val"><span class="source-tag source-gw">G</span>${gVis(gWeather.visibility).toFixed(1)} mi</div>` : ''}</div></div>
+                        <div class="dual-row"><span class="dual-label">Pressure</span><div class="dual-values"><div class="dual-val">${c.pressure_msl.toFixed(0)} hPa</div>${gWeather?.airPressure ? `<div class="dual-val"><span class="source-tag source-gw">G</span>${gWeather.airPressure.meanSeaLevelMillibars?.toFixed(0) || '--'} hPa</div>` : ''}</div></div>
                         <div class="stat-row"><span class="stat-label">&#x1F305; Sunrise</span><span class="stat-value">${srT}</span></div>
                         <div class="stat-row"><span class="stat-label">&#x1F307; Sunset</span><span class="stat-value">${ssT}</span></div>
+                        ${gWeather?.precipitation ? `<div class="dual-row"><span class="dual-label">Rain Probability</span><div class="dual-values"><div class="dual-val"><span class="source-tag source-gw">G</span>${gWeather.precipitation.probability?.percent || 0}%</div></div></div>` : ''}
+                        ${gWeather?.thunderstormProbability != null ? `<div class="dual-row"><span class="dual-label">Thunderstorm</span><div class="dual-values"><div class="dual-val"><span class="source-tag source-gw">G</span><span style="color:${gWeather.thunderstormProbability>30?'#f87171':'#34d399'};">${gWeather.thunderstormProbability}%</span></div></div></div>` : ''}
                     </div>
 
                     <div class="card">
@@ -1943,7 +2056,9 @@
 
                     <div class="card full-width">
                         <div class="card-title"><span class="icon">&#x1F552;</span> Wind Forecast (12 Hours)</div>
+                        <div style="font-size:10px;color:#6b7280;margin-bottom:4px;"><span class="source-tag source-om">Open-Meteo</span></div>
                         <div class="hourly-scroll">${hrH}</div>
+                        ${gHrH ? `<div style="font-size:10px;color:#6b7280;margin:10px 0 4px;"><span class="source-tag source-gw">Google Weather</span></div><div class="hourly-scroll">${gHrH}</div>` : ''}
                     </div>
 
                     <div class="card full-width">
