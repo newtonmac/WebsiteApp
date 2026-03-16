@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-    <title>Paddle Conditions - JMLSD</title>
+    <title>PaddlePoint</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -36,7 +36,14 @@
             gap: 10px;
         }
 
-        .header-left { display: flex; align-items: center; gap: 16px; }
+        .header-left { display: flex; align-items: center; gap: 10px; }
+
+        .header-logo {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            object-fit: cover;
+        }
 
         .header h1 {
             font-size: 20px;
@@ -696,8 +703,9 @@
 <body>
     <div class="header">
         <div class="header-left">
+            <img src="paddlepoint-logo.png" alt="PaddlePoint" class="header-logo">
             <div>
-                <h1>&#x1F6F6; Paddle Conditions</h1>
+                <h1>PaddlePoint</h1>
                 <div class="subtitle">Tap the map where you'll paddle</div>
             </div>
         </div>
