@@ -840,8 +840,11 @@
         <footer class="site-footer">
             <div class="footer-links">
                 <a onclick="openFooterModal('about')">About</a>
+                <a onclick="openFooterModal('safety')">Safety Disclaimer</a>
                 <a onclick="openFooterModal('privacy')">Privacy Policy</a>
+                <a onclick="openFooterModal('cookies')">Cookie Policy</a>
                 <a onclick="openFooterModal('terms')">Terms of Service</a>
+                <a onclick="openFooterModal('accessibility')">Accessibility</a>
                 <a onclick="openFooterModal('contact')">Contact</a>
             </div>
             <div class="footer-copy">&copy; 2026 PaddlePoint. All rights reserved.</div>
@@ -952,6 +955,125 @@
 
                 <h3>Changes</h3>
                 <p>We reserve the right to modify or discontinue the service at any time. These terms may be updated periodically.</p>
+            `
+        },
+        safety: {
+            title: 'Safety Disclaimer',
+            body: `
+                <p><em>Please read this carefully before using PaddlePoint.</em></p>
+
+                <h3>For Informational Purposes Only</h3>
+                <p><strong>PaddlePoint is not a substitute for professional judgment, local knowledge, or official safety advisories.</strong> The conditions data displayed is sourced from third-party APIs and may be inaccurate, delayed, incomplete, or unavailable at any time.</p>
+
+                <h3>Water Safety is Your Responsibility</h3>
+                <p>Paddling, kayaking, stand-up paddleboarding, canoeing, and all water activities carry inherent risks including but not limited to:</p>
+                <ul>
+                    <li><strong>Drowning</strong> &mdash; The leading cause of fatality in water sports</li>
+                    <li><strong>Hypothermia</strong> &mdash; Cold water can incapacitate even strong swimmers in minutes</li>
+                    <li><strong>Sudden weather changes</strong> &mdash; Conditions can deteriorate rapidly and without warning</li>
+                    <li><strong>Strong currents &amp; rip tides</strong> &mdash; Can overpower even experienced paddlers</li>
+                    <li><strong>Boat traffic &amp; collisions</strong> &mdash; Shared waterways pose collision risks</li>
+                    <li><strong>Wildlife hazards</strong> &mdash; Jellyfish, sharks, alligators, and other marine life</li>
+                    <li><strong>Submerged obstacles</strong> &mdash; Rocks, debris, and shallow areas</li>
+                </ul>
+
+                <h3>Before You Go Out</h3>
+                <ul>
+                    <li><strong>Always wear a personal flotation device (PFD / life jacket)</strong></li>
+                    <li>Check official weather and marine forecasts from <a href="https://weather.gov" target="_blank" style="color:#06b6d4">weather.gov</a> and <a href="https://tidesandcurrents.noaa.gov" target="_blank" style="color:#06b6d4">NOAA</a></li>
+                    <li>Tell someone where you're going and when you expect to return</li>
+                    <li>Know the local hazards, regulations, and no-go zones</li>
+                    <li>Carry a whistle, light, and communication device</li>
+                    <li>Dress for the water temperature, not the air temperature</li>
+                    <li>Never paddle alone, especially in unfamiliar waters</li>
+                    <li>Check for local advisories, red flags, and beach closures</li>
+                    <li>Know your skill level and don't exceed it</li>
+                    <li>Be aware of tidal changes &mdash; outgoing tides can pull you offshore</li>
+                </ul>
+
+                <h3>Paddle Score is a Guide, Not a Guarantee</h3>
+                <p>The paddle score and all conditions data are algorithmically generated estimates. A high score does <strong>not</strong> mean conditions are safe. A low score does <strong>not</strong> capture every possible hazard. Local factors like boat wakes, underwater currents, pollution events, and wildlife activity are not reflected in our data.</p>
+
+                <h3>Emergency Information</h3>
+                <ul>
+                    <li><strong>US Coast Guard:</strong> VHF Channel 16 or call <strong>911</strong></li>
+                    <li><strong>Non-emergency:</strong> Contact your local harbor master or port authority</li>
+                    <li><strong>Float plan:</strong> Always file one with a trusted person onshore</li>
+                </ul>
+
+                <p style="margin-top:18px;padding:14px;background:#f59e0b15;border:1px solid #f59e0b40;border-radius:10px;color:#fbbf24;font-size:13px;"><strong>By using PaddlePoint, you acknowledge that you understand the risks of water activities and that you are solely responsible for your own safety.</strong></p>
+            `
+        },
+        cookies: {
+            title: 'Cookie Policy',
+            body: `
+                <p><em>Last updated: March 2026</em></p>
+
+                <h3>Our Use of Cookies</h3>
+                <p>PaddlePoint itself does <strong>not</strong> set any cookies, use local storage for tracking, or employ any analytics or advertising trackers.</p>
+
+                <h3>Third-Party Cookies</h3>
+                <p>Our site uses Google Maps to display the interactive map. Google may set cookies on your device as part of its mapping service. These cookies are governed by <a href="https://policies.google.com/technologies/cookies" target="_blank" style="color:#06b6d4">Google's Cookie Policy</a>.</p>
+                <p>Common Google cookies include:</p>
+                <ul>
+                    <li><strong>NID / CONSENT</strong> &mdash; Used by Google to store preferences and serve maps</li>
+                    <li><strong>1P_JAR</strong> &mdash; Used by Google to gather site statistics</li>
+                </ul>
+
+                <h3>How to Manage Cookies</h3>
+                <p>You can control and delete cookies through your browser settings. Most browsers allow you to:</p>
+                <ul>
+                    <li>View what cookies are stored</li>
+                    <li>Delete individual or all cookies</li>
+                    <li>Block cookies from specific or all sites</li>
+                    <li>Set preferences for first-party vs third-party cookies</li>
+                </ul>
+                <p>Please note that blocking all cookies may affect the Google Maps functionality on this site.</p>
+
+                <h3>Do Not Track</h3>
+                <p>PaddlePoint honors Do Not Track (DNT) browser signals. Since we do not track users in any way, no changes are needed when DNT is enabled.</p>
+
+                <h3>Contact</h3>
+                <p>If you have questions about cookies on this site, contact us at <a href="mailto:nwtjml@gmail.com" style="color:#06b6d4">nwtjml@gmail.com</a>.</p>
+            `
+        },
+        accessibility: {
+            title: 'Accessibility Statement',
+            body: `
+                <p><em>Last updated: March 2026</em></p>
+
+                <h3>Our Commitment</h3>
+                <p>PaddlePoint is committed to making our website accessible to all users, including people with disabilities. We strive to conform to the <a href="https://www.w3.org/WAI/WCAG21/quickref/" target="_blank" style="color:#06b6d4">Web Content Accessibility Guidelines (WCAG) 2.1</a> Level AA standards.</p>
+
+                <h3>Accessibility Features</h3>
+                <ul>
+                    <li>Semantic HTML structure for screen readers</li>
+                    <li>High contrast color scheme for readability</li>
+                    <li>Responsive design that works across devices and screen sizes</li>
+                    <li>Text-based data presentation alongside visual elements</li>
+                    <li>Keyboard-navigable interface</li>
+                </ul>
+
+                <h3>Known Limitations</h3>
+                <p>Some parts of our site may have accessibility limitations:</p>
+                <ul>
+                    <li>The interactive Google Map may not be fully accessible to all assistive technologies</li>
+                    <li>Wind compass and directional graphics rely on visual presentation</li>
+                    <li>Some color-coded condition indicators may be difficult for users with color vision deficiencies</li>
+                </ul>
+
+                <h3>Feedback</h3>
+                <p>We welcome your feedback on the accessibility of PaddlePoint. If you encounter any barriers or have suggestions for improvement, please contact us at <a href="mailto:nwtjml@gmail.com" style="color:#06b6d4">nwtjml@gmail.com</a>.</p>
+                <p>We aim to respond to accessibility feedback within 5 business days and to resolve issues as quickly as possible.</p>
+
+                <h3>Assistive Technology</h3>
+                <p>PaddlePoint is designed to work with:</p>
+                <ul>
+                    <li>Screen readers (VoiceOver, NVDA, JAWS)</li>
+                    <li>Screen magnification software</li>
+                    <li>Voice recognition software</li>
+                    <li>Keyboard-only navigation</li>
+                </ul>
             `
         },
         contact: {
