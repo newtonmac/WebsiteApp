@@ -156,6 +156,9 @@
             border: 1px solid #2d3040;
             pointer-events: none;
             white-space: nowrap;
+            max-width: 80vw;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         /* Score Hero */
@@ -313,7 +316,7 @@
         .hourly-item .mini-arrow::after { content: ''; position: absolute; top: -2px; left: 50%; transform: translateX(-50%); border-left: 4px solid transparent; border-right: 4px solid transparent; border-bottom: 5px solid #06b6d4; }
 
         /* Sports */
-        .sport-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .sport-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
         .sport-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #0f111780; border-radius: 10px; }
         .sport-icon { font-size: 22px; }
         .sport-info .sport-name { font-size: 12px; font-weight: 600; }
@@ -362,24 +365,32 @@
             top: 0; right: 0; bottom: 0; left: 0;
             background: rgba(0,0,0,0.67);
             z-index: 9999;
-            align-items: center;
+            align-items: flex-end;
             justify-content: center;
-            padding: 20px;
+            padding: 0;
             -webkit-overflow-scrolling: touch;
+        }
+
+        @media (min-width: 701px) {
+            .place-modal-overlay { align-items: center; padding: 20px; }
         }
         .place-modal-overlay.open { display: flex; }
 
         .place-modal {
             background: #1a1d28;
             border: 1px solid #2d3040;
-            border-radius: 20px;
+            border-radius: 20px 20px 0 0;
             max-width: 560px;
             width: 100%;
-            max-height: 85vh;
+            max-height: 90vh;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
             scrollbar-width: thin;
             scrollbar-color: #2d3040 transparent;
+        }
+
+        @media (min-width: 701px) {
+            .place-modal { border-radius: 20px; max-height: 85vh; }
         }
 
         .pm-header {
@@ -471,6 +482,19 @@
             border: 1px solid #2d3040;
         }
 
+        @media (max-width: 700px) {
+            .pm-photo { width: 160px; height: 110px; }
+            .pm-header { padding: 16px 16px 0; }
+            .pm-rating-bar { padding: 10px 16px; }
+            .pm-meta { padding: 0 16px 10px; }
+            .pm-link { margin: 0 16px 12px; }
+            .pm-photos { padding: 0 16px 12px; }
+            .pm-reviews-title { padding: 0 16px; }
+            .pm-review { padding: 12px 16px; }
+            .pm-title { font-size: 17px; }
+            .pm-rating-big { font-size: 24px; }
+        }
+
         /* Reviews */
         .pm-reviews-title {
             padding: 0 24px;
@@ -511,21 +535,66 @@
             font-size: 13px;
         }
 
+        @media (max-width: 900px) {
+            .sport-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
         @media (max-width: 700px) {
-            .header { padding: 10px 14px; }
+            .header {
+                padding: 10px 14px;
+                flex-direction: column;
+                align-items: flex-start;
+            }
             .header h1 { font-size: 17px; }
-            .container { padding: 14px; overflow-x: hidden; }
-            .map-section { height: 300px; border-radius: 12px; }
-            .score-hero { padding: 20px; gap: 20px; border-radius: 12px; }
-            .score-details { min-width: 0; }
+            .header-right { width: 100%; justify-content: flex-end; }
+            .container { padding: 10px; overflow-x: hidden; }
+            .map-section { height: 240px; border-radius: 12px; }
+            .map-hint { font-size: 11px; padding: 6px 12px; }
+            .locate-btn { padding: 8px 12px; font-size: 12px; }
+            .score-hero {
+                padding: 16px;
+                gap: 16px;
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                border-radius: 14px;
+            }
+            .score-details { min-width: 0; width: 100%; }
             .score-circle { width: 90px; height: 90px; }
             .score-number { font-size: 28px; }
             .score-verdict { font-size: 18px; }
-            .grid { grid-template-columns: 1fr; max-width: 100%; }
-            .card { border-radius: 12px; }
-            .sport-grid { grid-template-columns: 1fr; }
+            .score-place { font-size: 17px; word-break: break-word; }
+            .score-place-sub { font-size: 11px; word-break: break-all; }
+            .score-factors { justify-content: center; }
+            .place-badge { font-size: 11px; }
+            .grid { grid-template-columns: 1fr; gap: 12px; }
+            .card { padding: 16px; border-radius: 12px; }
+            .wind-main { gap: 14px; }
+            .wind-values h3 { font-size: 24px; }
+            .sport-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+            .sport-item { padding: 8px 10px; }
+            .sport-icon { font-size: 18px; }
+            .sport-info .sport-name { font-size: 11px; }
+            .sport-info .sport-rating { font-size: 10px; }
             .tide-times { grid-template-columns: 1fr; }
-            .hourly-scroll { max-width: calc(100vw - 28px - 40px); }
+            .hourly-item { min-width: 62px; padding: 8px 10px; }
+            .alert-banner { font-size: 12px; padding: 10px 12px; }
+            .data-source { font-size: 10px; }
+        }
+
+        @media (max-width: 380px) {
+            .header h1 { font-size: 15px; }
+            .map-section { height: 200px; }
+            .score-hero { padding: 14px; }
+            .score-circle { width: 80px; height: 80px; }
+            .score-number { font-size: 24px; }
+            .score-verdict { font-size: 16px; }
+            .score-summary { font-size: 13px; }
+            .sport-grid { grid-template-columns: 1fr; }
+            .wind-compass { width: 64px; height: 64px; }
+            .wind-arrow { height: 26px; }
+            .wind-values h3 { font-size: 22px; }
+            .card { padding: 14px; }
         }
     </style>
 </head>
