@@ -43,7 +43,18 @@
         .topbar .subtitle {
             font-size: 12px;
             color: #8b8fa3;
+        }
+        .app-version {
             margin-left: auto;
+            font-size: 11px;
+            color: #34d399;
+            background: #34d39915;
+            border: 1px solid #34d39933;
+            border-radius: 6px;
+            padding: 2px 8px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
         }
 
         /* ── Main layout ── */
@@ -1087,6 +1098,7 @@
 <div class="topbar">
     <h1>EV Route Planner</h1>
     <span class="subtitle">Minimize elevation gain &bull; Save battery</span>
+    <span class="app-version" id="appVersion">v2.0</span>
     <button id="settingsBtn" title="Settings" style="margin-left:auto; background:none; border:1px solid #2d3040; border-radius:8px; width:36px; height:36px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#8b8fa3; font-size:20px; transition:all 0.2s;" onmouseover="this.style.borderColor='#34d399';this.style.color='#34d399'" onmouseout="this.style.borderColor='#2d3040';this.style.color='#8b8fa3'">&#9881;</button>
 </div>
 
@@ -3684,8 +3696,20 @@ function refreshDisplay() {
     }
 }
 
-// Initialize settings panel when DOM is ready
-document.addEventListener('DOMContentLoaded', initSettingsPanel);
+// App version & build info
+const APP_VERSION = 'v2.0';
+const BUILD_TIMESTAMP = '2026-03-16T' + new Date().toISOString().split('T')[1];
+
+// Initialize settings panel and version display when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    initSettingsPanel();
+    // Set version badge
+    const verEl = document.getElementById('appVersion');
+    if (verEl) verEl.textContent = APP_VERSION;
+    // Set build timestamp in footer
+    const tsEl = document.getElementById('buildTimestamp');
+    if (tsEl) tsEl.textContent = 'Deploy: ' + new Date().toLocaleString();
+});
 
 // ─── PDF Export ───
 function generatePDF() {
@@ -3778,7 +3802,7 @@ function generatePDF() {
 
 <!-- Footer bar -->
 <div class="footer-bar">
-    <span>&copy; 2026 EV Route Planner &nbsp;·&nbsp; v2.0 &nbsp;·&nbsp; Updated Mar 16, 2026</span>
+    <span>&copy; 2026 EV Route Planner &nbsp;·&nbsp; v2.0 &nbsp;·&nbsp; Build: Mar 16, 2026 &nbsp;·&nbsp; <span id="buildTimestamp" style="color:#34d399;"></span></span>
     <button class="footer-link" data-modal="aboutModal">About</button>
     <button class="footer-link" data-modal="newsModal">News</button>
     <button class="footer-link" data-modal="legalModal">Disclaimer & Privacy</button>
