@@ -41,10 +41,10 @@
         .header-left { display: flex; align-items: center; gap: 10px; }
 
         .header-logo {
-            width: 72px;
-            height: 72px;
-            border-radius: 8px;
-            object-fit: cover;
+            width: 90px;
+            height: 90px;
+            border-radius: 10px;
+            object-fit: contain;
         }
 
         .header h1 {
@@ -56,21 +56,6 @@
         }
 
         .header .subtitle { color: #8b8fa3; font-size: 12px; margin-top: 2px; }
-        .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-
-        .nav-link {
-            padding: 6px 12px;
-            background: #252836;
-            color: #60a5fa;
-            text-decoration: none;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 500;
-            border: 1px solid #2d3040;
-            transition: all 0.2s;
-        }
-        .nav-link:hover { background: #2d3040; color: #06b6d4; }
-
         .refresh-btn {
             padding: 6px 14px;
             background: #06b6d420;
@@ -563,7 +548,34 @@
             letter-spacing: 0.5px;
             border-bottom: 1px solid #2d3040;
             margin-top: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
+        .source-divider .src-link {
+            margin-left: auto;
+            font-size: 9px;
+            color: #06b6d4;
+            text-transform: none;
+            letter-spacing: 0;
+            text-decoration: none;
+            padding: 1px 6px;
+            border-radius: 3px;
+            background: #06b6d410;
+            white-space: nowrap;
+        }
+        .source-divider .src-link:hover { background: #06b6d420; text-decoration: underline; }
+        .nws-alert-link {
+            display: inline-block;
+            font-size: 10px;
+            color: #06b6d4;
+            text-decoration: none;
+            margin-top: 4px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: #06b6d410;
+        }
+        .nws-alert-link:hover { background: #06b6d420; text-decoration: underline; }
         .google-condition {
             display: flex;
             align-items: center;
@@ -889,8 +901,8 @@
                 align-items: center;
             }
             .header h1 { font-size: 17px; }
+            .header-logo { width: 60px; height: 60px; }
             .header .subtitle { display: none; }
-            .header-right { display: none; }
             .container {
                 padding: 0 10px 10px;
                 overflow-x: hidden;
@@ -954,6 +966,7 @@
 
         @media (max-width: 380px) {
             .header h1 { font-size: 15px; }
+            .header-logo { width: 50px; height: 50px; }
             .score-hero { padding: 14px; }
             .score-circle { width: 80px; height: 80px; }
             .score-number { font-size: 24px; }
@@ -975,10 +988,6 @@
                 <h1>PaddlePoint</h1>
                 <div class="subtitle">Tap the map where you'll paddle</div>
             </div>
-        </div>
-        <div class="header-right">
-            <button class="refresh-btn" onclick="refresh()">&#8635; Refresh</button>
-            <a href="index.html" class="nav-link">&larr; Home</a>
         </div>
     </div>
 
@@ -2465,7 +2474,7 @@
                         <div class="stat-row"><span class="stat-label">Precipitation Today</span><span class="stat-value">${(weather.daily.precipitation_sum?.[0]||0).toFixed(2)} in</span></div>
                         <div class="stat-row"><span class="stat-label">Current Precip</span><span class="stat-value">${c.precipitation.toFixed(2)} in</span></div>
                         ${beachAdvisories && beachAdvisories.length > 0 ? `
-                            <div class="source-divider">Bacteria Contamination</div>
+                            <div class="source-divider">Bacteria Contamination <a class="src-link" href="https://www.sdbeachinfo.com" target="_blank">SD Beach Info</a><a class="src-link" href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank">CA Open Data</a></div>
                             ${beachAdvisories.slice(0, 5).map(a => {
                                 const advDate = new Date(a.DateofAdvisory);
                                 const dateStr = advDate.toLocaleDateString([], {month:'short', day:'numeric', year:'numeric'});
@@ -2487,7 +2496,7 @@
                                 </div>`;
                             }).join('')}
                         ` : `
-                            <div class="source-divider">Bacteria Contamination</div>
+                            <div class="source-divider">Bacteria Contamination <a class="src-link" href="https://www.sdbeachinfo.com" target="_blank">SD Beach Info</a><a class="src-link" href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank">CA Open Data</a></div>
                             <div class="beach-advisory adv-clear">
                                 <div class="beach-advisory-title">&#x2705; No Active Advisories Nearby</div>
                                 <div class="beach-advisory-detail">No beach bacteria advisories within 10 miles in the last 14 days.</div>
@@ -2496,7 +2505,7 @@
 
                         ${(() => {
                             // Harmful Algal Blooms section
-                            let habH = '<div class="source-divider">Harmful Algal Blooms (HABs)</div>';
+                            let habH = '<div class="source-divider">Harmful Algal Blooms (HABs) <a class="src-link" href="https://habsos.noaa.gov" target="_blank">NOAA HABSOS</a><a class="src-link" href="https://mywaterquality.ca.gov/habs/where/freshwater_events.html" target="_blank">CA FHAB</a></div>';
                             const activeHabs = habData ? habData.filter(h => h.CELLCOUNT > 0) : [];
                             const caHabLevel = caHab?.value || 0;
 
@@ -2530,7 +2539,7 @@
                         ${(() => {
                             // NWS weather alerts relevant to water safety
                             if (!nwsAlerts || nwsAlerts.length === 0) return '';
-                            let nwsH = '<div class="source-divider">NWS Weather Alerts</div>';
+                            let nwsH = '<div class="source-divider">NWS Weather Alerts <a class="src-link" href="https://alerts.weather.gov" target="_blank">NWS Alerts</a><a class="src-link" href="https://www.weather.gov/sgx/" target="_blank">NWS San Diego</a></div>';
                             nwsAlerts.slice(0, 4).forEach(a => {
                                 const sev = (a.severity || 'minor').toLowerCase();
                                 const cls = sev === 'extreme' || sev === 'severe' ? 'sev-extreme' : sev === 'moderate' ? 'sev-moderate' : 'sev-minor';
@@ -2539,6 +2548,7 @@
                                     '<div class="nws-alert-event"><span class="' + cls + '">&#x26A0;</span> ' + (a.event || 'Alert') + '</div>' +
                                     (a.headline ? '<div class="nws-alert-headline">' + a.headline + '</div>' : '') +
                                     '<div class="nws-alert-detail">' + (a.senderName || '') + (expires ? ' &bull; Expires ' + expires : '') + '</div>' +
+                                    (a.web ? '<a class="nws-alert-link" href="' + a.web + '" target="_blank">View Full Alert on weather.gov &rarr;</a>' : '') +
                                 '</div>';
                             });
                             return nwsH;
@@ -2551,7 +2561,7 @@
                             if (precip3d < 0.3) return '';
                             const sevCls = precip3d > 2 ? 'adv-active' : 'adv-clear';
                             const sevIco = precip3d > 2 ? '&#x1F6A8;' : '&#x26A0;';
-                            return '<div class="source-divider">Storm Runoff Warning</div>' +
+                            return '<div class="source-divider">Storm Runoff Warning <a class="src-link" href="https://open-meteo.com" target="_blank">Open-Meteo</a></div>' +
                                 '<div class="beach-advisory ' + sevCls + '">' +
                                 '<div class="beach-advisory-title">' + sevIco + ' Storm Water Runoff ' + (precip3d > 2 ? 'Alert' : 'Advisory') + '</div>' +
                                 '<div class="beach-advisory-detail">' + precip3d.toFixed(2) + ' inches of rain in the last 3 days. ' +
