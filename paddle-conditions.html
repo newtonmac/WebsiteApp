@@ -3320,14 +3320,34 @@
                         const valStyle = 'color:#e2e8f0;font-weight:600;';
                         let html = '';
 
-                        // Wind summary
+                        // Wind summary with compass
                         const ws = c.wind_speed_10m, wg = c.wind_gusts_10m, wd = c.wind_direction_10m;
+                        const compassSize = 60, cx = compassSize / 2, cy = compassSize / 2, cr = 26;
+                        const arrowRad = (wd || 0) * Math.PI / 180;
+                        const aTipX = cx + Math.sin(arrowRad) * (cr - 4), aTipY = cy - Math.cos(arrowRad) * (cr - 4);
+                        const aBaseX = cx - Math.sin(arrowRad) * 8, aBaseY = cy + Math.cos(arrowRad) * 8;
+                        const aLX = cx + Math.cos(arrowRad) * 4, aLY = cy + Math.sin(arrowRad) * 4;
+                        const aRX = cx - Math.cos(arrowRad) * 4, aRY = cy - Math.sin(arrowRad) * 4;
+                        const compassSvg = `<svg width="${compassSize}" height="${compassSize}" viewBox="0 0 ${compassSize} ${compassSize}" style="flex-shrink:0;">` +
+                            `<circle cx="${cx}" cy="${cy}" r="${cr}" fill="#0f1117" stroke="#2d3040" stroke-width="1.5"/>` +
+                            `<text x="${cx}" y="8" fill="#6b7280" font-size="7" font-weight="600" text-anchor="middle">N</text>` +
+                            `<text x="${cx}" y="${compassSize - 3}" fill="#6b7280" font-size="7" font-weight="600" text-anchor="middle">S</text>` +
+                            `<text x="${compassSize - 3}" y="${cy + 3}" fill="#6b7280" font-size="7" font-weight="600" text-anchor="middle">E</text>` +
+                            `<text x="3" y="${cy + 3}" fill="#6b7280" font-size="7" font-weight="600" text-anchor="middle">W</text>` +
+                            `<polygon points="${aTipX.toFixed(1)},${aTipY.toFixed(1)} ${aLX.toFixed(1)},${aLY.toFixed(1)} ${aRX.toFixed(1)},${aRY.toFixed(1)}" fill="#06b6d4"/>` +
+                            `<polygon points="${aBaseX.toFixed(1)},${aBaseY.toFixed(1)} ${aLX.toFixed(1)},${aLY.toFixed(1)} ${aRX.toFixed(1)},${aRY.toFixed(1)}" fill="#3b82f6" opacity="0.5"/>` +
+                            `</svg>`;
+
                         html += `<div style="${secStyle}">` +
                             `<div style="${headStyle}">&#x1F4A8; Wind</div>` +
-                            `<div style="${rowStyle}"><span>Speed</span><span style="${valStyle}">${ws?.toFixed(0) || '--'} mph ${wDir(wd)}</span></div>` +
+                            `<div style="display:flex;align-items:center;gap:12px;">` +
+                            compassSvg +
+                            `<div style="flex:1;">` +
+                            `<div style="font-size:16px;font-weight:700;color:#e2e8f0;">${ws?.toFixed(0) || '--'} <span style="font-size:11px;color:#8b8fa3;font-weight:400;">mph</span></div>` +
+                            `<div style="font-size:10px;color:#06b6d4;margin-bottom:3px;">${wDir(wd)} (${wd?.toFixed(0) || '--'}°)</div>` +
                             `<div style="${rowStyle}"><span>Gusts</span><span style="${valStyle}">${wg?.toFixed(0) || '--'} mph</span></div>` +
                             `<div style="${rowStyle}"><span>Max today</span><span style="${valStyle}">${weather.daily?.wind_speed_10m_max?.[0]?.toFixed(0) || '--'} mph</span></div>` +
-                            `</div>`;
+                            `</div></div></div>`;
 
                         // Weather summary
                         const temp = c.temperature_2m, feels = c.apparent_temperature, hum = c.relative_humidity_2m, uv = c.uv_index;
@@ -3341,22 +3361,78 @@
                             `<div style="${rowStyle}"><span>Sunrise / Sunset</span><span style="${valStyle}">${srT} / ${ssT}</span></div>` +
                             `</div>`;
 
-                        // Tides summary
-                        if (tides?.predictions) {
+                        // Tides summary with inline SVG chart
+                        if (tides?.predictions && tides.predictions.length > 1) {
                             const now = new Date();
-                            const upcoming = tides.predictions.filter(p => new Date(p.t.replace(' ','T')) >= now).slice(0, 3);
-                            if (upcoming.length > 0) {
-                                html += `<div style="${secStyle}">` +
-                                    `<div style="${headStyle}">&#x1F30A; Tides</div>`;
-                                upcoming.forEach(p => {
-                                    const t = new Date(p.t.replace(' ','T'));
-                                    const tm = t.toLocaleTimeString([], {hour:'numeric', minute:'2-digit', hour12:true});
-                                    const hi = +p.v > 3;
-                                    const tColor = hi ? '#06b6d4' : '#8b8fa3';
-                                    html += `<div style="${rowStyle}"><span style="color:${tColor};font-weight:600;font-size:9px;">${hi ? 'HIGH' : 'LOW'}</span><span>${tm}</span><span style="${valStyle}">${(+p.v).toFixed(1)} ft</span></div>`;
-                                });
-                                html += `</div>`;
+                            const preds = tides.predictions;
+                            const vs = preds.map(x => +x.v);
+                            const mn = Math.min(...vs), mx = Math.max(...vs), rng = mx - mn || 1;
+                            const svgW = 300, svgH = 80;
+                            const pad = {t:12, r:6, b:18, l:28};
+                            const pW = svgW - pad.l - pad.r, pH = svgH - pad.t - pad.b;
+
+                            // Build SVG path
+                            let pathD = '';
+                            let nowX = null, nowY = null;
+                            preds.forEach((d, i) => {
+                                const x = pad.l + (i / (preds.length - 1)) * pW;
+                                const y = pad.t + pH - ((+d.v - mn) / rng) * pH;
+                                pathD += (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1);
+                                const pt = new Date(d.t.replace(' ','T'));
+                                if (!nowX && pt >= now) { nowX = x; nowY = y; }
+                            });
+
+                            // Fill area path
+                            const fillD = pathD + `L${(pad.l + pW).toFixed(1)},${(pad.t + pH).toFixed(1)}L${pad.l},${(pad.t + pH).toFixed(1)}Z`;
+
+                            // Grid lines + labels
+                            let gridSvg = '';
+                            for (let i = 0; i <= 3; i++) {
+                                const y = pad.t + pH * i / 3;
+                                const val = (mx - (rng * i / 3)).toFixed(1);
+                                gridSvg += `<line x1="${pad.l}" y1="${y.toFixed(1)}" x2="${svgW - pad.r}" y2="${y.toFixed(1)}" stroke="#2d304060" stroke-width="0.5"/>`;
+                                gridSvg += `<text x="${pad.l - 3}" y="${(y + 3).toFixed(1)}" fill="#6b7280" font-size="7" text-anchor="end">${val}</text>`;
                             }
+
+                            // Time labels along bottom
+                            let timeSvg = '';
+                            const step = Math.max(1, Math.floor(preds.length / 5));
+                            for (let i = 0; i < preds.length; i += step) {
+                                const x = pad.l + (i / (preds.length - 1)) * pW;
+                                const t = new Date(preds[i].t.replace(' ','T'));
+                                const lbl = t.toLocaleTimeString([], {hour:'numeric', hour12:true});
+                                timeSvg += `<text x="${x.toFixed(1)}" y="${(svgH - 4).toFixed(1)}" fill="#6b7280" font-size="7" text-anchor="middle">${lbl}</text>`;
+                            }
+
+                            // Now marker
+                            let nowSvg = '';
+                            if (nowX !== null) {
+                                nowSvg = `<circle cx="${nowX.toFixed(1)}" cy="${nowY.toFixed(1)}" r="3.5" fill="#f97316" stroke="#1a1d28" stroke-width="1.5"/>` +
+                                    `<text x="${nowX.toFixed(1)}" y="${(nowY - 6).toFixed(1)}" fill="#f97316" font-size="7" font-weight="bold" text-anchor="middle">NOW</text>`;
+                            }
+
+                            const svg = `<svg width="100%" viewBox="0 0 ${svgW} ${svgH}" style="display:block;margin:4px 0;">` +
+                                gridSvg +
+                                `<defs><linearGradient id="tgp" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#06b6d4" stop-opacity="0.15"/><stop offset="100%" stop-color="#06b6d4" stop-opacity="0.02"/></linearGradient></defs>` +
+                                `<path d="${fillD}" fill="url(#tgp)"/>` +
+                                `<path d="${pathD}" fill="none" stroke="#06b6d4" stroke-width="1.5"/>` +
+                                nowSvg + timeSvg +
+                                `</svg>`;
+
+                            // Upcoming tide events
+                            const upcoming = preds.filter(p => new Date(p.t.replace(' ','T')) >= now).slice(0, 3);
+                            let eventsHtml = '';
+                            upcoming.forEach(p => {
+                                const t = new Date(p.t.replace(' ','T'));
+                                const tm = t.toLocaleTimeString([], {hour:'numeric', minute:'2-digit', hour12:true});
+                                const hi = +p.v > 3;
+                                const tColor = hi ? '#06b6d4' : '#8b8fa3';
+                                eventsHtml += `<div style="${rowStyle}"><span style="color:${tColor};font-weight:600;font-size:9px;">${hi ? 'HIGH' : 'LOW'}</span><span>${tm}</span><span style="${valStyle}">${(+p.v).toFixed(1)} ft</span></div>`;
+                            });
+
+                            html += `<div style="${secStyle}">` +
+                                `<div style="${headStyle}">&#x1F30A; Tides</div>` +
+                                svg + eventsHtml + `</div>`;
                         }
 
                         // Water Quality summary
