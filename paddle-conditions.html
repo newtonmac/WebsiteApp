@@ -2862,8 +2862,12 @@
         }
 
         function isStormDrain(station) {
+            // TypeID=2 is storm drains/outfalls in the DEH API; TypeID=1 is monitoring stations
+            if (station.TypeID === 2) return true;
+            if (station.TypeID === 1) return false;
+            // Fallback to name-based detection if TypeID is missing
             const n = (station.Name || '').toLowerCase();
-            return n.includes('storm drain') || n.includes('outfall') || n.includes('outlet') || n.includes('runoff');
+            return n.includes('storm drain') || n.includes('outfall') || n.includes('runoff');
         }
 
         function stationStatusText(station) {
