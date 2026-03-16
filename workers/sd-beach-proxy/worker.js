@@ -40,16 +40,20 @@ export default {
       }
 
       // Normalize station data for consistent client-side consumption
+      // Raw API field names: Advisory (HTML), Closure (HTML), Description (HTML), Active (bool)
       const stations = allStations.map(s => ({
         Name: s.Name || '',
         DehID: s.DehID || '',
+        SiteID: s.SiteID || null,
         Latitude: s.Latitude || null,
         Longitude: s.Longitude || null,
         RBGColor: s.RBGColor || '',
-        AdvisoryDesc: s.AdvisoryDesc || '',
-        ClosureDesc: s.ClosureDesc || '',
-        PostDate: s.PostDate || '',
-        Region: s.Region || '',
+        Advisory: s.Advisory || '',
+        Closure: s.Closure || '',
+        Description: s.Description || '',
+        Active: s.Active ?? true,
+        TypeID: s.TypeID || null,
+        RegionID: s.RegionID || null,
         CityName: s.CityName || '',
       }));
 

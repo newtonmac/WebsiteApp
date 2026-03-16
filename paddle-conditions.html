@@ -2989,11 +2989,20 @@
                                 const statusTxt = color.includes('red') ? 'Closed/Advisory' : color.includes('yellow') ? 'Advisory' : 'Open';
                                 const code = s.DehID || '';
                                 const dist = s._dist ? s._dist.toFixed(1) + ' mi' : '';
+                                // Extract status date from Advisory/Closure HTML (e.g. "Status Since: January 22, 2026")
+                                const advHtml = s.Advisory || s.Closure || '';
+                                const sinceMatch = advHtml.match(/Status Since[:<\/strong>]*\s*([A-Za-z]+ \d{1,2},?\s*\d{4})/i);
+                                const sinceDate = sinceMatch ? sinceMatch[1] : '';
+                                // Extract advisory reason (text between <u><strong><a...>...</a></strong></u>)
+                                const reasonMatch = advHtml.match(/<a[^>]*>([^<]+)<\/a>\s*<\/strong>/i);
+                                const reason = reasonMatch ? reasonMatch[1] : '';
                                 bH += '<div class="beach-station ' + cls + '">' +
                                     '<div class="beach-station-info">' +
                                         '<div class="beach-station-name">' + (s.Name || 'Beach') + '</div>' +
                                         '<div><span class="beach-station-code">' + code + '</span> <span class="beach-station-dist">' + dist + '</span></div>' +
-                                        '<a class="beach-station-link" href="https://www.waterboards.ca.gov/water_issues/programs/beaches/search_beach_mon.html" target="_blank">View monitoring data →</a>' +
+                                        (sinceDate ? '<div class="beach-station-dist" style="color:' + (statusCls === 'closed' ? '#f87171' : statusCls === 'advisory' ? '#fbbf24' : '#8b8fa3') + ';">Since ' + sinceDate + '</div>' : '') +
+                                        (reason ? '<div class="beach-station-dist" style="font-size:10px;">' + reason + '</div>' : '') +
+                                        '<a class="beach-station-link" href="https://www.sdbeachinfo.com" target="_blank">View on sdbeachinfo.com →</a>' +
                                     '</div>' +
                                     '<div class="beach-station-status ' + statusCls + '">' + statusTxt + '</div>' +
                                 '</div>';
