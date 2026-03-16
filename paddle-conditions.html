@@ -2192,7 +2192,7 @@
             const station = nearestStation(paddleLat, paddleLon);
 
             try {
-                const [weather, tides, tideH, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell, noaaWaterTemp] = await Promise.all([
+                const [weather, tides, tideH, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell, noaaWaterTemp, usgsWaterTemp] = await Promise.all([
                     fetchWeather(paddleLat, paddleLon),
                     fetchTides(station.id).catch(() => null),
                     fetchTideHourly(station.id).catch(() => null),
@@ -2207,8 +2207,9 @@
                     fetchCoastalAccess(paddleLat, paddleLon).catch(() => []),
                     fetchMarineSwell(paddleLat, paddleLon).catch(() => null),
                     fetchNOAAWaterTemp(station.id).catch(() => null),
+                    fetchUSGSWaterTemp(paddleLat, paddleLon).catch(() => null),
                 ]);
-                render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell, noaaWaterTemp);
+                render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell, noaaWaterTemp, usgsWaterTemp);
             } catch (e) {
                 document.getElementById('conditionsArea').innerHTML = `<div style="text-align:center;padding:48px;color:#f87171;">
                     <div style="font-size:36px;margin-bottom:12px;">&#x26A0;</div>
@@ -2474,6 +2475,37 @@
 
         function fd(d) { return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`; }
 
+        // USGS water temperature — for inland lakes/rivers (parameter code 00010)
+        // Searches a bounding box around the location for active USGS stations with water temp
+        async function fetchUSGSWaterTemp(lat, lon) {
+            const delta = 0.3; // ~20 mile search radius
+            const bbox = `${(lon-delta).toFixed(4)},${(lat-delta).toFixed(4)},${(lon+delta).toFixed(4)},${(lat+delta).toFixed(4)}`;
+            const url = `https://waterservices.usgs.gov/nwis/iv/?format=json&bBox=${bbox}&parameterCd=00010&siteStatus=active`;
+            const r = await fetch(url);
+            if (!r.ok) throw new Error(`USGS: ${r.status}`);
+            const d = await r.json();
+            const ts = d?.value?.timeSeries;
+            if (!ts || ts.length === 0) return null;
+            // Find the closest station with a valid recent reading
+            let bestTemp = null, bestDist = Infinity;
+            for (const series of ts) {
+                const info = series.sourceInfo;
+                const sLat = parseFloat(info?.geoLocation?.geogLocation?.latitude);
+                const sLon = parseFloat(info?.geoLocation?.geogLocation?.longitude);
+                const vals = series.values?.[0]?.value;
+                if (!vals || vals.length === 0) continue;
+                const lastVal = parseFloat(vals[vals.length - 1].value);
+                if (isNaN(lastVal) || lastVal < -10) continue; // skip bad readings
+                const dist = hav(lat, lon, sLat, sLon);
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    // USGS returns °C — convert to °F
+                    bestTemp = lastVal * 9/5 + 32;
+                }
+            }
+            return bestTemp;
+        }
+
         // NOAA water temperature (fallback for when Open-Meteo SST is unavailable)
         async function fetchNOAAWaterTemp(sid) {
             const d0 = new Date(), d1 = new Date(d0);
@@ -2571,7 +2603,7 @@
         // Each category scored 0-100 independently. Overall is weighted average
         // but CAPPED by critical categories (water closure = can't paddle).
 
-        function calcScore(w, sdBeach, beachAdvisories, marineSwell, riverFlow, noaaWaterTemp) {
+        function calcScore(w, sdBeach, beachAdvisories, marineSwell, riverFlow, noaaWaterTemp, usgsWaterTemp) {
             const c = w.current;
             const wi = c.wind_speed_10m, g = c.wind_gusts_10m, wc = c.weather_code;
             const p = w.daily?.precipitation_sum?.[0] || 0;
@@ -2638,11 +2670,12 @@
             else { uvFactors.push({l:`Low UV (${uv})`,c:'#34d399'}); }
 
             // --- WATER TEMPERATURE (0-100) ---
-            // Primary: NOAA station (real-time sensor, °F), Fallback: Open-Meteo SST (model, °C→°F)
+            // Fallback chain: NOAA coastal (local) → USGS inland (local) → Open-Meteo SST (national/global)
             let wtScore = 100, wtFactors = [];
             const sstC = marineSwell?.current?.sea_surface_temperature;
             let sstF = null;
             if (noaaWaterTemp != null) { sstF = noaaWaterTemp; }
+            else if (usgsWaterTemp != null) { sstF = usgsWaterTemp; }
             else if (sstC != null) { sstF = sstC * 9/5 + 32; }
 
             if (sstF != null) {
@@ -3074,9 +3107,9 @@
 
         }
 
-        function render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell, noaaWaterTemp) {
+        function render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell, noaaWaterTemp, usgsWaterTemp) {
             const c = weather.current;
-            const {score,factors,categories,tier} = calcScore(weather, sdBeach, beachAdvisories, marineSwell, riverFlow, noaaWaterTemp);
+            const {score,factors,categories,tier} = calcScore(weather, sdBeach, beachAdvisories, marineSwell, riverFlow, noaaWaterTemp, usgsWaterTemp);
             const color = sClr(score);
             const wwScore = categories.wind.score;
             const wwColor = sClr(wwScore);
