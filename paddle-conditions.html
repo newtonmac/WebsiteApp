@@ -769,31 +769,55 @@
             locateMe();
         }
 
-        // ======== Water Validation via Overpass API ========
+        // ======== Water Validation via Google Geocoding API ========
+        const geocoder = new google.maps.Geocoder();
+
         function checkWaterNearby(lat, lng) {
-            // ~50 meters to give some tap tolerance near shorelines
-            const radius = 50;
-            const query = `[out:json][timeout:5];(
-              way["natural"="water"](around:${radius},${lat},${lng});
-              way["natural"="coastline"](around:${radius},${lat},${lng});
-              way["waterway"](around:${radius},${lat},${lng});
-              relation["natural"="water"](around:${radius},${lat},${lng});
-              way["leisure"="marina"](around:${radius},${lat},${lng});
-              way["harbour"](around:${radius},${lat},${lng});
-            );out count;`;
-            return fetch('https://overpass-api.de/api/interpreter', {
-                method: 'POST',
-                body: 'data=' + encodeURIComponent(query),
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-            })
-            .then(r => r.json())
-            .then(data => {
-                const count = data.elements?.[0]?.tags?.total || data.elements?.length || 0;
-                return parseInt(count) > 0;
-            })
-            .catch(() => {
-                // If Overpass fails, allow the tap (fallback gracefully)
-                return true;
+            return new Promise((resolve) => {
+                geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+                    if (status !== 'OK' || !results || results.length === 0) {
+                        // No results often means open water (ocean, large lake)
+                        resolve(true);
+                        return;
+                    }
+
+                    // Water-related result types from Google
+                    const waterTypes = [
+                        'natural_feature', 'water_body',
+                        'archipelago', 'colloquial_area'
+                    ];
+
+                    // Water keywords to match in result names / formatted addresses
+                    const waterKeywords = /\b(ocean|sea|lake|river|creek|bay|harbor|harbour|marina|lagoon|reservoir|pond|canal|strait|cove|inlet|estuary|waterway|beach|surf|coast|shore|wharf|dock|pier|port|channel|sound|gulf|cape|rapids|falls|spring|brook|stream)\b/i;
+
+                    for (const result of results) {
+                        // Check if any result type is water-related
+                        for (const type of result.types) {
+                            if (waterTypes.includes(type)) {
+                                resolve(true);
+                                return;
+                            }
+                        }
+
+                        // Check result name / address for water keywords
+                        const text = (result.formatted_address || '') + ' ' +
+                            result.address_components.map(c => c.long_name).join(' ');
+                        if (waterKeywords.test(text)) {
+                            resolve(true);
+                            return;
+                        }
+                    }
+
+                    // If the most precise result is just a plus code with no
+                    // street address, it's likely open water
+                    const top = results[0];
+                    if (top.types.includes('plus_code') && results.length <= 2) {
+                        resolve(true);
+                        return;
+                    }
+
+                    resolve(false);
+                });
             });
         }
 
