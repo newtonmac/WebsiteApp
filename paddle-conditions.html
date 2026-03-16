@@ -770,9 +770,10 @@
         }
 
         // ======== Water Validation via Google Geocoding API ========
-        const geocoder = new google.maps.Geocoder();
+        let geocoder;
 
         function checkWaterNearby(lat, lng) {
+            if (!geocoder) geocoder = new google.maps.Geocoder();
             return new Promise((resolve) => {
                 geocoder.geocode({ location: { lat, lng } }, (results, status) => {
                     if (status !== 'OK' || !results || results.length === 0) {
