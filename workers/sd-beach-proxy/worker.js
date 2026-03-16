@@ -6,7 +6,7 @@
 // Deploy: npx wrangler deploy
 
 const SD_BEACH_API = 'https://sdbeachinfo.com/Home/GetTargetCityByID';
-const ALLOWED_ORIGINS = ['https://jmlsd.org', 'http://localhost:8080', 'http://127.0.0.1:8080'];
+const ALLOWED_ORIGINS = ['https://jmlsd.org', 'https://www.jmlsd.org', 'https://paddlepoint.org', 'https://www.paddlepoint.org', 'http://localhost:8080', 'http://127.0.0.1:8080'];
 
 // SD County DEH regions: 1=South Bay/IB, 2=City of SD, 3=North County
 const REGION_IDS = [1, 2, 3];
