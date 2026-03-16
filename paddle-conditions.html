@@ -421,6 +421,94 @@
         .data-source { text-align: center; padding: 16px; color: #6b7280; font-size: 11px; }
         .data-source a { color: #06b6d4; text-decoration: none; }
 
+        /* Footer */
+        .site-footer {
+            text-align: center;
+            padding: 20px 16px 28px;
+            border-top: 1px solid #2d3040;
+            margin-top: 8px;
+        }
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 6px 16px;
+            margin-bottom: 10px;
+        }
+        .footer-links a {
+            color: #8b8fa3;
+            text-decoration: none;
+            font-size: 12px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .footer-links a:hover { color: #06b6d4; }
+        .footer-copy { color: #4b5063; font-size: 10px; }
+
+        /* Footer modal */
+        .footer-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; right: 0; bottom: 0; left: 0;
+            background: rgba(0,0,0,0.67);
+            z-index: 9999;
+            align-items: flex-end;
+            justify-content: center;
+            padding: 0;
+            -webkit-overflow-scrolling: touch;
+        }
+        @media (min-width: 701px) {
+            .footer-modal-overlay { align-items: center; padding: 20px; }
+        }
+        .footer-modal-overlay.open { display: flex; }
+        .footer-modal {
+            background: #1a1d28;
+            border: 1px solid #2d3040;
+            border-radius: 20px 20px 0 0;
+            max-width: 560px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            scrollbar-color: #2d3040 transparent;
+        }
+        @media (min-width: 701px) {
+            .footer-modal { border-radius: 20px; max-height: 85vh; }
+        }
+        .fm-header {
+            padding: 20px 24px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .fm-title { font-size: 20px; font-weight: 700; color: #e1e4e8; }
+        .fm-close {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            background: #252836;
+            border: 1px solid #2d3040;
+            color: #8b8fa3;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        .fm-close:hover { background: #2d3040; color: #e1e4e8; }
+        .fm-body {
+            padding: 16px 24px 24px;
+            color: #c0c4d0;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+        .fm-body h3 { color: #e1e4e8; font-size: 15px; margin: 18px 0 8px 0; }
+        .fm-body h3:first-child { margin-top: 4px; }
+        .fm-body ul { padding-left: 18px; margin: 6px 0; }
+        .fm-body li { margin-bottom: 4px; }
+
         /* Google Place badge in score hero */
         .place-badge {
             display: inline-flex;
@@ -748,12 +836,157 @@
             <a href="https://tidesandcurrents.noaa.gov" target="_blank">NOAA Tides</a> &bull;
             Updated <span id="lastUpdate">--</span>
         </div>
+
+        <footer class="site-footer">
+            <div class="footer-links">
+                <a onclick="openFooterModal('about')">About</a>
+                <a onclick="openFooterModal('privacy')">Privacy Policy</a>
+                <a onclick="openFooterModal('terms')">Terms of Service</a>
+                <a onclick="openFooterModal('contact')">Contact</a>
+            </div>
+            <div class="footer-copy">&copy; 2026 PaddlePoint. All rights reserved.</div>
+        </footer>
     </div>
 
     <!-- Place Details Modal -->
     <div class="place-modal-overlay" id="placeModal" onclick="if(event.target===this)closePlaceModal()">
         <div class="place-modal" id="placeModalContent"></div>
     </div>
+
+    <!-- Footer Modals -->
+    <div class="footer-modal-overlay" id="footerModal" onclick="if(event.target===this)closeFooterModal()">
+        <div class="footer-modal">
+            <div class="fm-header">
+                <div class="fm-title" id="fmTitle"></div>
+                <button class="fm-close" onclick="closeFooterModal()">&times;</button>
+            </div>
+            <div class="fm-body" id="fmBody"></div>
+        </div>
+    </div>
+
+    <script>
+    const footerContent = {
+        about: {
+            title: 'About PaddlePoint',
+            body: `
+                <h3>What is PaddlePoint?</h3>
+                <p>PaddlePoint is a free, real-time conditions checker built for paddlers &mdash; kayakers, stand-up paddleboarders, canoers, and anyone who loves being on the water. Just tap a spot on the map and instantly get a detailed breakdown of conditions at that location.</p>
+
+                <h3>What We Show You</h3>
+                <ul>
+                    <li><strong>Paddle Score</strong> &mdash; An overall 0&ndash;100 rating of how good conditions are right now</li>
+                    <li><strong>Wind</strong> &mdash; Speed, gusts, and direction with a live compass</li>
+                    <li><strong>Waves &amp; Swell</strong> &mdash; Wave height, period, and direction for coastal spots</li>
+                    <li><strong>Tides</strong> &mdash; Current tide level and upcoming high/low times from NOAA stations</li>
+                    <li><strong>Weather</strong> &mdash; Temperature, UV index, visibility, and precipitation</li>
+                    <li><strong>Water Quality</strong> &mdash; Estimated quality based on recent rainfall and conditions</li>
+                    <li><strong>Hourly Forecast</strong> &mdash; See how conditions change throughout the day</li>
+                </ul>
+
+                <h3>Technology</h3>
+                <p>PaddlePoint combines data from multiple sources to give you accurate, up-to-date information:</p>
+                <ul>
+                    <li><strong>Open-Meteo</strong> &mdash; Weather, marine, and air quality data via their open API</li>
+                    <li><strong>NOAA Tides &amp; Currents</strong> &mdash; Official US tide predictions and observations</li>
+                    <li><strong>Google Maps &amp; Places</strong> &mdash; Interactive map and location search</li>
+                </ul>
+                <p>The app runs entirely in your browser &mdash; no accounts, no downloads, no server-side processing. All data is fetched directly from public APIs in real time.</p>
+            `
+        },
+        privacy: {
+            title: 'Privacy Policy',
+            body: `
+                <p><em>Last updated: March 2026</em></p>
+
+                <h3>No Data Collection</h3>
+                <p>PaddlePoint does not collect, store, or transmit any personal data. We do not have user accounts, databases, or analytics tracking.</p>
+
+                <h3>Location Data</h3>
+                <p>When you use the "Locate Me" feature, your device's location is used solely within your browser to center the map. Your coordinates are sent directly to weather APIs (Open-Meteo, NOAA) to fetch conditions data. We never see, store, or log your location.</p>
+
+                <h3>Cookies &amp; Local Storage</h3>
+                <p>PaddlePoint does not use cookies or local storage to track you. Google Maps, which powers our map, may use its own cookies as described in <a href="https://policies.google.com/privacy" target="_blank" style="color:#06b6d4">Google's Privacy Policy</a>.</p>
+
+                <h3>Third-Party Services</h3>
+                <p>We use the following third-party services that have their own privacy policies:</p>
+                <ul>
+                    <li><strong>Google Maps / Places API</strong> &mdash; Map display and location search</li>
+                    <li><strong>Open-Meteo API</strong> &mdash; Weather and marine data</li>
+                    <li><strong>NOAA Tides API</strong> &mdash; Tide data</li>
+                </ul>
+                <p>These services receive your requested coordinates to return data. We recommend reviewing their respective privacy policies.</p>
+
+                <h3>Children's Privacy</h3>
+                <p>PaddlePoint is not directed at children under 13 and does not knowingly collect information from children.</p>
+
+                <h3>Changes</h3>
+                <p>We may update this policy from time to time. Any changes will be reflected on this page with an updated date.</p>
+            `
+        },
+        terms: {
+            title: 'Terms of Service',
+            body: `
+                <p><em>Last updated: March 2026</em></p>
+
+                <h3>Acceptance of Terms</h3>
+                <p>By using PaddlePoint, you agree to these terms. If you do not agree, please do not use the site.</p>
+
+                <h3>Service Description</h3>
+                <p>PaddlePoint provides informational weather and water conditions data for recreational paddling. The service is provided free of charge, as-is.</p>
+
+                <h3>Disclaimer</h3>
+                <p><strong>PaddlePoint is for informational purposes only.</strong> Conditions data comes from third-party sources and may be inaccurate, delayed, or incomplete. Always use your own judgment and check official sources before going on the water.</p>
+                <p>We are not responsible for decisions made based on data shown on this site. Paddling and water activities carry inherent risks. Always wear a life jacket and follow local safety guidelines.</p>
+
+                <h3>No Warranties</h3>
+                <p>PaddlePoint is provided "as is" and "as available" without warranties of any kind, either express or implied, including but not limited to accuracy, reliability, or fitness for a particular purpose.</p>
+
+                <h3>Limitation of Liability</h3>
+                <p>To the fullest extent permitted by law, PaddlePoint and its creators shall not be liable for any damages arising from your use of the service, including but not limited to personal injury, property damage, or data loss.</p>
+
+                <h3>Intellectual Property</h3>
+                <p>All original content, design, and code on PaddlePoint are protected by copyright. Weather data is provided by third-party APIs under their respective terms.</p>
+
+                <h3>Changes</h3>
+                <p>We reserve the right to modify or discontinue the service at any time. These terms may be updated periodically.</p>
+            `
+        },
+        contact: {
+            title: 'Contact Us',
+            body: `
+                <h3>Get in Touch</h3>
+                <p>Have questions, feedback, or found a bug? We'd love to hear from you.</p>
+
+                <h3>Report an Issue</h3>
+                <p>If something isn't working correctly or you notice inaccurate data for a location, please let us know with details about:</p>
+                <ul>
+                    <li>The location you were checking</li>
+                    <li>What seemed wrong or unexpected</li>
+                    <li>Your device and browser</li>
+                </ul>
+
+                <h3>Feature Requests</h3>
+                <p>Have an idea for PaddlePoint? We're always looking to improve the experience for paddlers. Suggestions for new data, features, or supported locations are welcome.</p>
+
+                <h3>General Inquiries</h3>
+                <p>For all other questions, reach out and we'll get back to you as soon as we can.</p>
+            `
+        }
+    };
+
+    function openFooterModal(key) {
+        const c = footerContent[key];
+        if (!c) return;
+        document.getElementById('fmTitle').textContent = c.title;
+        document.getElementById('fmBody').innerHTML = c.body;
+        document.getElementById('footerModal').classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeFooterModal() {
+        document.getElementById('footerModal').classList.remove('open');
+        document.body.style.overflow = '';
+    }
+    </script>
 
     <script>
         let map, userMarker, paddleMarker, paddleLat, paddleLon, paddleName, paddleAddress;
