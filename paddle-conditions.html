@@ -1975,6 +1975,12 @@
             // Hide hint
             document.getElementById('mapHint').classList.add('faded');
 
+            // Zoom to ~2 square miles centered on pin (zoom 15 ≈ 1.4mi across)
+            if (map) {
+                map.setCenter({ lat, lng: lon });
+                map.setZoom(15);
+            }
+
             // Drop/move paddle marker
             if (paddleMarker) paddleMarker.setMap(null);
             paddleMarker = new google.maps.Marker({
@@ -2256,10 +2262,11 @@
             }
 
             if (results.length === 0) return null;
-            // Deduplicate stations (proxy + fallback or API can return dupes)
+            // Deduplicate stations (proxy fetches 3 regions, API can return dupes)
+            // Use SiteID as primary key (unique per station/drain), fall back to lat+lon
             const seenStations = new Set();
             results = results.filter(s => {
-                const key = s.DehID || s.Name || `${s.Latitude},${s.Longitude}`;
+                const key = s.SiteID ? `site-${s.SiteID}` : `${s.Latitude},${s.Longitude}`;
                 if (seenStations.has(key)) return false;
                 seenStations.add(key);
                 return true;
@@ -2609,8 +2616,9 @@
             // Weighted average: water quality 35%, wind/weather 30%, surface 25%, UV 10%
             let overall = Math.round(wqScore * 0.35 + wwScore * 0.30 + wsScore * 0.25 + uvScore * 0.10);
 
-            // CRITICAL CAP: if water is closed, overall can't suggest "go paddle"
+            // CRITICAL CAP: if water quality is compromised, overall shouldn't say "Good"
             if (tier.tier === 'closure') overall = Math.min(overall, 15);
+            else if (tier.tier === 'advisory') overall = Math.min(overall, 55); // cap at Fair
             if (wc >= 95) overall = Math.min(overall, 20); // thunderstorms
 
             overall = Math.max(0, Math.min(100, overall));
