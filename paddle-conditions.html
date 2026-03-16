@@ -844,6 +844,7 @@
                 <a onclick="openFooterModal('privacy')">Privacy Policy</a>
                 <a onclick="openFooterModal('cookies')">Cookie Policy</a>
                 <a onclick="openFooterModal('terms')">Terms of Service</a>
+                <a onclick="openFooterModal('faq')">FAQ</a>
                 <a onclick="openFooterModal('accessibility')">Accessibility</a>
                 <a onclick="openFooterModal('contact')">Contact</a>
             </div>
@@ -1113,6 +1114,72 @@
 
                 <h3>Contact</h3>
                 <p>If you have questions about cookies on this site, contact us at <a href="mailto:nwtjml@gmail.com" style="color:#06b6d4">nwtjml@gmail.com</a>.</p>
+            `
+        },
+        faq: {
+            title: 'FAQ & How to Use',
+            body: `
+                <h3>How do I use PaddlePoint?</h3>
+                <p>Tap anywhere on the map near a body of water (ocean, lake, river, bay) and PaddlePoint will instantly fetch and display current conditions for that spot. You can also use the search bar to find a location by name, or tap the locate button to jump to your current position.</p>
+
+                <h3>What is the Paddle Score?</h3>
+                <p>The paddle score is a number from 0 to 100 that estimates how favorable conditions are for paddling at that moment. It's calculated algorithmically by combining wind, waves, weather, and other factors. The ranges are:</p>
+                <ul>
+                    <li><strong>80&ndash;100 &mdash; Excellent Conditions</strong> &mdash; Light winds, calm water, great visibility</li>
+                    <li><strong>60&ndash;79 &mdash; Good Conditions</strong> &mdash; Manageable winds, suitable for experienced paddlers</li>
+                    <li><strong>40&ndash;59 &mdash; Fair Conditions</strong> &mdash; Moderate winds or choppy water, use caution</li>
+                    <li><strong>20&ndash;39 &mdash; Poor Conditions</strong> &mdash; Strong winds or rough water, not recommended for most</li>
+                    <li><strong>0&ndash;19 &mdash; Stay On Shore</strong> &mdash; Dangerous conditions, do not go out</li>
+                </ul>
+                <p><strong>Important:</strong> The paddle score is an estimate, not a safety guarantee. Always check official sources and use your own judgment. See our <a onclick="openFooterModal('safety')" style="color:#06b6d4;cursor:pointer">Safety Disclaimer</a> for more.</p>
+
+                <h3>What do the wind ratings mean?</h3>
+                <p>Wind conditions are rated based on your paddle type (kayak, SUP, canoe). Each type has different wind tolerances:</p>
+                <ul>
+                    <li><strong>Great</strong> &mdash; Light winds well within comfortable range</li>
+                    <li><strong>Good</strong> &mdash; Moderate winds, manageable for most paddlers</li>
+                    <li><strong>Fair</strong> &mdash; Getting gusty, recommended for experienced paddlers only</li>
+                    <li><strong>Poor</strong> &mdash; Strong winds, not recommended</li>
+                </ul>
+
+                <h3>How does Water Quality work?</h3>
+                <p>Water quality is estimated based on recent rainfall. Heavy rain causes runoff that can carry pollutants, bacteria, and debris into waterways. The ratings are:</p>
+                <ul>
+                    <li><strong>Good &mdash; Safe for Contact</strong> &mdash; No significant recent rain</li>
+                    <li><strong>Moderate &mdash; Use Caution</strong> &mdash; Some recent rain, avoid swallowing water</li>
+                    <li><strong>Poor &mdash; Heavy Rain Runoff</strong> &mdash; Significant recent rain, avoid water contact for 72 hours after heavy rainfall</li>
+                </ul>
+                <p>This is an estimate only. It does not account for sewage spills, algae blooms, industrial discharge, or other localized pollution events. Always check local beach advisories.</p>
+
+                <h3>How do tides work?</h3>
+                <p>Tide data comes from the nearest NOAA monitoring station. PaddlePoint shows the current tide level and upcoming high/low tide times. Tides matter for paddlers because:</p>
+                <ul>
+                    <li>Outgoing tides can pull you away from shore</li>
+                    <li>Low tides may expose rocks and shallow areas</li>
+                    <li>Tidal currents can be strong in channels and inlets</li>
+                    <li>Launching and landing conditions change with tide level</li>
+                </ul>
+
+                <h3>What does the hourly forecast show?</h3>
+                <p>The hourly forecast shows wind speed and direction for each hour throughout the day, so you can plan the best time to paddle. Look for hours with lower wind speeds and consistent direction.</p>
+
+                <h3>Why does it say "Please tap near water"?</h3>
+                <p>PaddlePoint is designed for water activities. If you tap too far inland, the marine and tide data won't be relevant. Try tapping directly on or right next to a body of water on the map.</p>
+
+                <h3>Why is the data different from what I see outside?</h3>
+                <p>PaddlePoint displays data from weather APIs that use weather models and nearby monitoring stations. Conditions can vary significantly over short distances, especially near coastlines, mountains, or urban areas. Local microclimates, building effects, and terrain can all cause what you experience to differ from what models predict. Always trust what you observe in person over any app.</p>
+
+                <h3>Does PaddlePoint work everywhere?</h3>
+                <p>Weather data (wind, temperature, etc.) is available globally via Open-Meteo. Tide data is available for US coastal locations via NOAA. Marine data (waves, swell) is available for coastal and ocean locations. Inland lakes and rivers will show wind and weather but may not have wave or tide data.</p>
+
+                <h3>What devices and browsers are supported?</h3>
+                <p>PaddlePoint works in any modern web browser on phones, tablets, and computers. For the best experience, use the latest version of Chrome, Safari, Firefox, or Edge. No app download is needed &mdash; it runs entirely in your browser.</p>
+
+                <h3>Is PaddlePoint free?</h3>
+                <p>Yes, PaddlePoint is completely free to use. No accounts, no subscriptions, no ads.</p>
+
+                <h3>Does PaddlePoint track me or collect data?</h3>
+                <p>No. See our <a onclick="openFooterModal('privacy')" style="color:#06b6d4;cursor:pointer">Privacy Policy</a> for details.</p>
             `
         },
         accessibility: {
