@@ -192,9 +192,10 @@
         .score-number { font-size: 36px; font-weight: 800; line-height: 1; }
         .score-label { font-size: 11px; color: #8b8fa3; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
         .score-details { flex: 1; min-width: 200px; }
+        .score-place { font-size: 20px; font-weight: 700; color: #06b6d4; margin-bottom: 4px; }
+        .score-place-sub { font-size: 12px; color: #6b7280; margin-bottom: 10px; font-family: monospace; }
         .score-verdict { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
         .score-summary { color: #8b8fa3; font-size: 14px; line-height: 1.5; }
-        .score-location { color: #06b6d4; font-size: 13px; margin-top: 6px; }
 
         .score-factors { display: flex; gap: 16px; margin-top: 14px; flex-wrap: wrap; }
         .score-factor { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #9ca3af; }
@@ -329,6 +330,180 @@
         .data-source { text-align: center; padding: 16px; color: #6b7280; font-size: 11px; }
         .data-source a { color: #06b6d4; text-decoration: none; }
 
+        /* Google Place badge in score hero */
+        .place-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+            padding: 6px 12px;
+            background: #252836;
+            border: 1px solid #2d3040;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 12px;
+        }
+        .place-badge:hover { border-color: #06b6d4; background: #1e2535; }
+        .place-stars { color: #fbbf24; letter-spacing: 1px; }
+        .place-rating-num { color: #fbbf24; font-weight: 700; }
+        .place-review-count { color: #8b8fa3; }
+        .place-badge-arrow { color: #06b6d4; }
+
+        /* Place modal */
+        .place-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: #000000aa;
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .place-modal-overlay.open { display: flex; }
+
+        .place-modal {
+            background: #1a1d28;
+            border: 1px solid #2d3040;
+            border-radius: 20px;
+            max-width: 560px;
+            width: 100%;
+            max-height: 85vh;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #2d3040 transparent;
+        }
+
+        .pm-header {
+            padding: 20px 24px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .pm-title { font-size: 20px; font-weight: 700; color: #e1e4e8; }
+        .pm-type { font-size: 12px; color: #8b8fa3; margin-top: 2px; }
+
+        .pm-close {
+            width: 32px; height: 32px;
+            background: #252836;
+            border: 1px solid #2d3040;
+            border-radius: 8px;
+            color: #8b8fa3;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .pm-close:hover { color: #e1e4e8; border-color: #06b6d4; }
+
+        .pm-rating-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 24px;
+        }
+
+        .pm-rating-big { font-size: 28px; font-weight: 800; color: #fbbf24; }
+        .pm-stars-big { color: #fbbf24; font-size: 18px; letter-spacing: 2px; }
+        .pm-review-count { color: #8b8fa3; font-size: 13px; }
+
+        .pm-meta {
+            padding: 0 24px 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .pm-tag {
+            padding: 4px 10px;
+            background: #252836;
+            border-radius: 6px;
+            font-size: 11px;
+            color: #8b8fa3;
+        }
+        .pm-tag.open { color: #34d399; }
+        .pm-tag.closed { color: #f87171; }
+
+        .pm-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin: 0 24px 16px;
+            padding: 8px 14px;
+            background: #06b6d415;
+            border: 1px solid #06b6d430;
+            border-radius: 8px;
+            color: #22d3ee;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .pm-link:hover { background: #06b6d425; }
+
+        /* Photos */
+        .pm-photos {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 0 24px 16px;
+            scrollbar-width: thin;
+            scrollbar-color: #2d3040 transparent;
+        }
+
+        .pm-photo {
+            flex-shrink: 0;
+            width: 200px;
+            height: 140px;
+            border-radius: 12px;
+            object-fit: cover;
+            border: 1px solid #2d3040;
+        }
+
+        /* Reviews */
+        .pm-reviews-title {
+            padding: 0 24px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #e1e4e8;
+            margin-bottom: 12px;
+        }
+
+        .pm-review {
+            padding: 14px 24px;
+            border-top: 1px solid #2d304060;
+        }
+
+        .pm-review-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .pm-review-avatar {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #252836;
+        }
+
+        .pm-review-author { font-size: 13px; font-weight: 600; }
+        .pm-review-time { font-size: 11px; color: #6b7280; }
+        .pm-review-stars { color: #fbbf24; font-size: 12px; margin-bottom: 6px; }
+        .pm-review-text { font-size: 13px; color: #9ca3af; line-height: 1.5; }
+
+        .pm-no-data {
+            padding: 24px;
+            text-align: center;
+            color: #6b7280;
+            font-size: 13px;
+        }
+
         @media (max-width: 700px) {
             .header { padding: 10px 14px; }
             .header h1 { font-size: 17px; }
@@ -379,8 +554,14 @@
         </div>
     </div>
 
+    <!-- Place Details Modal -->
+    <div class="place-modal-overlay" id="placeModal" onclick="if(event.target===this)closePlaceModal()">
+        <div class="place-modal" id="placeModalContent"></div>
+    </div>
+
     <script>
         let map, userMarker, paddleMarker, paddleLat, paddleLon, paddleName;
+        let placesService, nearbyPlace = null;
 
         const NOAA_TIDE_API = 'https://api.tidesandcurrents.noaa.gov/api/prod/datagetter';
         const TIDE_STATIONS = [
@@ -420,6 +601,8 @@
                 disableDefaultUI: true,
                 zoomControl: true,
             });
+
+            placesService = new google.maps.places.PlacesService(map);
 
             // Tap to set paddle spot
             map.addListener('click', (e) => {
@@ -502,22 +685,161 @@
                 }
             });
 
-            // Reverse geocode to get place name
+            // Reverse geocode - search all results for the best water/place name
             const geocoder = new google.maps.Geocoder();
             geocoder.geocode({ location: { lat, lng: lon } }, (results, status) => {
-                if (status === 'OK' && results[0]) {
-                    // Find a meaningful name - prefer natural features, neighborhoods, cities
-                    const comps = results[0].address_components;
-                    const neighborhood = comps.find(c => c.types.includes('neighborhood'));
-                    const locality = comps.find(c => c.types.includes('locality'));
-                    const feature = comps.find(c => c.types.includes('natural_feature'));
-                    const area = comps.find(c => c.types.includes('sublocality'));
-                    paddleName = (feature || neighborhood || area || locality)?.long_name || results[0].formatted_address.split(',')[0];
-                } else {
-                    paddleName = `${lat.toFixed(4)}°, ${lon.toFixed(4)}°`;
+                paddleName = null;
+                if (status === 'OK' && results) {
+                    // First pass: look for natural_feature or water body across ALL results
+                    for (const r of results) {
+                        if (r.types.includes('natural_feature')) {
+                            paddleName = r.formatted_address.split(',')[0];
+                            break;
+                        }
+                    }
+                    // Second pass: look for point_of_interest, park, marina
+                    if (!paddleName) {
+                        for (const r of results) {
+                            if (r.types.some(t => ['point_of_interest','park','marina','harbor'].includes(t))) {
+                                paddleName = r.formatted_address.split(',')[0];
+                                break;
+                            }
+                        }
+                    }
+                    // Third: neighborhood, sublocality, or locality from first result
+                    if (!paddleName && results[0]) {
+                        const comps = results[0].address_components;
+                        const pick = comps.find(c => c.types.includes('natural_feature'))
+                            || comps.find(c => c.types.includes('neighborhood'))
+                            || comps.find(c => c.types.includes('sublocality'))
+                            || comps.find(c => c.types.includes('locality'));
+                        paddleName = pick?.long_name || results[0].formatted_address.split(',')[0];
+                    }
                 }
+                if (!paddleName) paddleName = `${lat.toFixed(4)}°, ${lon.toFixed(4)}°`;
                 loadConditions();
+                searchNearbyPlace(lat, lon);
             });
+        }
+
+        // ======== Google Places nearby search ========
+        function searchNearbyPlace(lat, lon) {
+            nearbyPlace = null;
+            if (!placesService) return;
+
+            const loc = new google.maps.LatLng(lat, lon);
+            // Search for nearby water-related places
+            placesService.nearbySearch({
+                location: loc,
+                radius: 2000,
+                type: 'park',
+                keyword: 'beach bay harbor marina lake river paddle kayak boat launch'
+            }, (results, status) => {
+                if (status === google.maps.places.PlacesServiceStatus.OK && results.length > 0) {
+                    // Pick the closest result with reviews
+                    const best = results.find(r => r.rating && r.user_ratings_total > 0) || results[0];
+                    // Get full details
+                    placesService.getDetails({
+                        placeId: best.place_id,
+                        fields: ['name','rating','user_ratings_total','reviews','photos','formatted_address','types','opening_hours','url','website','business_status']
+                    }, (place, dStatus) => {
+                        if (dStatus === google.maps.places.PlacesServiceStatus.OK && place) {
+                            nearbyPlace = place;
+                            renderPlaceBadge();
+                        }
+                    });
+                }
+            });
+        }
+
+        function renderPlaceBadge() {
+            const el = document.getElementById('placeBadgeArea');
+            if (!el || !nearbyPlace) return;
+            const p = nearbyPlace;
+            const stars = '★'.repeat(Math.round(p.rating || 0)) + '☆'.repeat(5 - Math.round(p.rating || 0));
+            el.innerHTML = `<div class="place-badge" onclick="openPlaceModal()">
+                <span class="place-stars">${stars}</span>
+                <span class="place-rating-num">${(p.rating||0).toFixed(1)}</span>
+                <span class="place-review-count">(${p.user_ratings_total||0} reviews)</span>
+                <span style="color:#8b8fa3;">•</span>
+                <span style="color:#e1e4e8;font-weight:600;">${p.name}</span>
+                <span class="place-badge-arrow">→</span>
+            </div>`;
+        }
+
+        function openPlaceModal() {
+            const p = nearbyPlace;
+            if (!p) return;
+
+            const stars = '★'.repeat(Math.round(p.rating || 0)) + '☆'.repeat(5 - Math.round(p.rating || 0));
+
+            // Photos
+            let photosH = '';
+            if (p.photos?.length) {
+                photosH = `<div class="pm-photos">${p.photos.slice(0, 6).map(ph =>
+                    `<img class="pm-photo" src="${ph.getUrl({ maxWidth: 400, maxHeight: 300 })}" alt="Photo" loading="lazy">`
+                ).join('')}</div>`;
+            }
+
+            // Type tags
+            const typeLabels = { park:'Park', marina:'Marina', beach:'Beach', campground:'Campground', harbor:'Harbor', natural_feature:'Natural Feature' };
+            const typeTags = (p.types || []).filter(t => typeLabels[t]).map(t => `<span class="pm-tag">${typeLabels[t]}</span>`).join('');
+
+            const isOpen = p.opening_hours?.isOpen?.();
+            let openTag = '';
+            if (isOpen === true) openTag = '<span class="pm-tag open">Open Now</span>';
+            else if (isOpen === false) openTag = '<span class="pm-tag closed">Closed</span>';
+
+            // Reviews
+            let reviewsH = '';
+            if (p.reviews?.length) {
+                reviewsH = `<div class="pm-reviews-title">Reviews</div>` +
+                    p.reviews.slice(0, 5).map(r => {
+                        const rStars = '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating);
+                        return `<div class="pm-review">
+                            <div class="pm-review-header">
+                                <img class="pm-review-avatar" src="${r.profile_photo_url || ''}" alt="">
+                                <div>
+                                    <div class="pm-review-author">${r.author_name}</div>
+                                    <div class="pm-review-time">${r.relative_time_description}</div>
+                                </div>
+                            </div>
+                            <div class="pm-review-stars">${rStars}</div>
+                            <div class="pm-review-text">${r.text || '<em>No comment</em>'}</div>
+                        </div>`;
+                    }).join('');
+            } else {
+                reviewsH = '<div class="pm-no-data">No reviews available</div>';
+            }
+
+            document.getElementById('placeModalContent').innerHTML = `
+                <div class="pm-header">
+                    <div>
+                        <div class="pm-title">${p.name}</div>
+                        <div class="pm-type">${p.formatted_address || ''}</div>
+                    </div>
+                    <button class="pm-close" onclick="closePlaceModal()">✕</button>
+                </div>
+
+                <div class="pm-rating-bar">
+                    <span class="pm-rating-big">${(p.rating||0).toFixed(1)}</span>
+                    <span class="pm-stars-big">${stars}</span>
+                    <span class="pm-review-count">${p.user_ratings_total||0} reviews</span>
+                </div>
+
+                <div class="pm-meta">${typeTags}${openTag}</div>
+
+                ${p.url ? `<a class="pm-link" href="${p.url}" target="_blank">&#x1F4CD; View on Google Maps →</a>` : ''}
+
+                ${photosH}
+                ${reviewsH}
+            `;
+
+            document.getElementById('placeModal').classList.add('open');
+        }
+
+        function closePlaceModal() {
+            document.getElementById('placeModal').classList.remove('open');
         }
 
         // ======== Refresh ========
@@ -755,9 +1077,11 @@
                         <span class="score-label">Score</span>
                     </div>
                     <div class="score-details">
+                        <div class="score-place">&#x1F4CD; ${paddleName}</div>
+                        <div class="score-place-sub">${paddleLat.toFixed(4)}°${paddleLat>=0?'N':'S'}, ${Math.abs(paddleLon).toFixed(4)}°${paddleLon>=0?'E':'W'}</div>
+                        <div id="placeBadgeArea"></div>
                         <div class="score-verdict" style="color:${color};">${sVer(score)}</div>
                         <div class="score-summary">${sSum(score,weather)}</div>
-                        <div class="score-location">&#x1F4CD; ${paddleName} &mdash; ${paddleLat.toFixed(4)}°, ${paddleLon.toFixed(4)}°</div>
                         <div class="score-factors">${factors.map(f=>`<div class="score-factor"><div class="factor-dot" style="background:${f.c};"></div>${f.l}</div>`).join('')}</div>
                     </div>
                 </div>
@@ -821,6 +1145,8 @@
 
             document.getElementById('lastUpdate').textContent=new Date().toLocaleTimeString();
             if(tideH?.predictions) setTimeout(()=>drawTide('tideCanvas',tideH.predictions),50);
+            // Render place badge if available
+            if(nearbyPlace) renderPlaceBadge();
         }
 
         // Resize
@@ -836,6 +1162,6 @@
         });
     </script>
 
-    <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAR81pUTUz5ON7ZBuoouTh2RTHyECr6yvg&callback=initMap"></script>
+    <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAR81pUTUz5ON7ZBuoouTh2RTHyECr6yvg&libraries=places&callback=initMap"></script>
 </body>
 </html>
