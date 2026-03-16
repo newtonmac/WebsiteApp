@@ -239,6 +239,14 @@
             overflow: hidden;
         }
 
+        .score-circles-stack {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
         .score-circle {
             width: 120px; height: 120px;
             border-radius: 50%;
@@ -261,6 +269,21 @@
             -webkit-mask-composite: xor;
             mask-composite: exclude;
         }
+
+        .score-circle-sm {
+            width: 72px; height: 72px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            position: relative;
+            border: 3px solid var(--score-color);
+        }
+
+        .score-circle-sm .score-number { font-size: 13px; font-weight: 800; line-height: 1; }
+        .score-circle-sm .score-label { font-size: 9px; color: #8b8fa3; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.3px; }
 
         .score-number { font-size: 36px; font-weight: 800; line-height: 1; }
         .score-label { font-size: 11px; color: #8b8fa3; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -2627,7 +2650,7 @@
             const factors = [...wqFactors, ...wwFactors, ...wsFactors, ...uvFactors];
 
             return {
-                score: overall, factors,
+                score: overall, factors, tier,
                 categories: {
                     water: { score: wqScore, label: 'Water Quality', icon: '&#x1F4A7;', factors: wqFactors },
                     wind: { score: wwScore, label: 'Wind & Weather', icon: '&#x1F4A8;', factors: wwFactors },
@@ -2639,6 +2662,43 @@
 
         function sClr(s){return s>=80?'#34d399':s>=60?'#22d3ee':s>=40?'#fbbf24':'#f87171';}
         function sVer(s){return s>=80?'Excellent Conditions':s>=60?'Good Conditions':s>=40?'Fair Conditions':s>=20?'Poor Conditions':'Stay On Shore';}
+
+        function tierInfo(tier) {
+            if (tier === 'closure') return { label: 'CLOSED', color: '#dc2626' };
+            if (tier === 'advisory') return { label: 'ADVISORY', color: '#eab308' };
+            return { label: 'OPEN', color: '#22c55e' };
+        }
+
+        function makePaddlePinSvg(tierName) {
+            const ti = tierInfo(tierName);
+            // The fill for the inner pin shape — was #ffffffee (white), now tinted by status
+            const fillColor = ti.color + 'dd';
+            return `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="62" viewBox="0 0 48 62" fill="none">
+  <defs>
+    <linearGradient id="border" x1="0" y1="0" x2="48" y2="62" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="50%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#f97316"/>
+    </linearGradient>
+    <linearGradient id="paddle" x1="22" y1="8" x2="26" y2="38" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1e3a8a"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="ball" x1="16" y1="18" x2="32" y2="34" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#1e3a8a"/>
+    </linearGradient>
+  </defs>
+  <path d="M24 2C12.954 2 4 10.954 4 22c0 12 20 37 20 37s20-25 20-37C44 10.954 35.046 2 24 2z" fill="url(#border)"/>
+  <path d="M24 5C14.611 5 7 12.611 7 22c0 10.2 17 31.5 17 31.5S41 32.2 41 22C41 12.611 33.389 5 24 5z" fill="${fillColor}"/>
+  <circle cx="24" cy="22" r="10" fill="url(#ball)"/>
+  <path d="M24 10c-1.2 0-2.2 1-2.2 2.2v5.6c0 1.8 1 3.2 2.2 3.2s2.2-1.4 2.2-3.2v-5.6C26.2 11 25.2 10 24 10z" fill="#1e3a8a"/>
+  <rect x="23.2" y="20" width="1.6" height="12" rx="0.8" fill="#1e3a8a"/>
+  <rect x="21.5" y="31" width="5" height="2" rx="1" fill="#1e3a8a"/>
+  <path d="M11 28c3-2 5 1 8-1s5-3 8-1 5 2 8 0" stroke="#38bdf8" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <path d="M12 31c3-2 5 1 8-1s5-2 7 0 4 1 7-1" stroke="#ef4444" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+</svg>`;
+        }
 
         function sSum(s,w,cats){
             if (!cats) return '';
@@ -2994,14 +3054,27 @@
 
         function render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell) {
             const c = weather.current;
-            const {score,factors,categories} = calcScore(weather, sdBeach, beachAdvisories, marineSwell, riverFlow);
+            const {score,factors,categories,tier} = calcScore(weather, sdBeach, beachAdvisories, marineSwell, riverFlow);
             const color = sClr(score);
+            const ti = tierInfo(tier.tier);
+            const wwScore = categories.wind.score;
+            const wwColor = sClr(wwScore);
             const q = wq(weather, sdBeach, beachAdvisories, marineSwell, riverFlow);
             const sp = sports(weather);
 
             // Add DEH station pins + storm drain pins within 1 mile of paddle spot
             addStationMarkers(allDEHStations.filter(s => s._dist <= 1));
             const localSrc = getLocalBeachSource(paddleLat, paddleLon);
+
+            // Update paddle pin color based on DEH status
+            if (paddleMarker) {
+                const pinSvg = makePaddlePinSvg(tier.tier);
+                paddleMarker.setIcon({
+                    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(pinSvg),
+                    scaledSize: new google.maps.Size(44, 56),
+                    anchor: new google.maps.Point(22, 56),
+                });
+            }
 
             let alertH='';
             if(c.weather_code>=95) alertH+=`<div class="alert-banner" style="border-color:#ef444460;background:#ef444415;color:#f87171;"><span class="alert-icon">&#x26A1;</span><span>Thunderstorm activity. Do NOT go on the water.</span></div>`;
@@ -3047,9 +3120,19 @@
 
             document.getElementById('conditionsArea').innerHTML=`
                 <div class="score-hero">
-                    <div class="score-circle" style="--score-color:${color};--score-pct:${score};">
-                        <span class="score-number" style="color:${color};">${score}</span>
-                        <span class="score-label">Score</span>
+                    <div class="score-circles-stack">
+                        <div class="score-circle-sm" style="--score-color:${ti.color};">
+                            <span class="score-number" style="color:${ti.color};">${ti.label}</span>
+                            <span class="score-label">Status</span>
+                        </div>
+                        <div class="score-circle" style="--score-color:${color};--score-pct:${score};">
+                            <span class="score-number" style="color:${color};">${score}</span>
+                            <span class="score-label">Score</span>
+                        </div>
+                        <div class="score-circle-sm" style="--score-color:${wwColor};">
+                            <span class="score-number" style="color:${wwColor};">${wwScore}</span>
+                            <span class="score-label">Weather</span>
+                        </div>
                     </div>
                     <div class="score-details">
                         <div class="score-place" id="paddlePlaceName">&#x1F4CD; ${paddleName}</div>
