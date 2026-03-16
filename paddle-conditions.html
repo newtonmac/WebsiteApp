@@ -2224,28 +2224,49 @@
         const CA_BEACH_RESOURCE = 'd5cd6a23-829c-426d-a63e-689a55a3db9c';
 
         async function fetchBeachAdvisories(lat, lon) {
-            // Get recent advisories (last 30 days) and filter by proximity
-            const d = new Date();
-            d.setDate(d.getDate() - 30);
-            const since = d.toISOString().split('T')[0];
-            const url = `${CA_BEACH_API}?resource_id=${CA_BEACH_RESOURCE}&limit=100&sort=_id desc&filters={"Beach_Status":"Active"}`;
-            const r = await fetch(url);
-            if (!r.ok) throw new Error(`Beach WQ: ${r.status}`);
-            const data = await r.json();
-            if (!data.success || !data.result?.records) return [];
+            // Fetch both recent advisories and active closures from CA State Water Board
+            // Closures (e.g. Tijuana River sewage) are ongoing and re-posted periodically,
+            // so we use a longer time window for them vs temporary postings.
+            const results = [];
+            const seen = new Set();
 
-            // Filter to advisories near the paddle spot (within ~10 miles)
-            return data.result.records.filter(rec => {
-                const sLat = parseFloat(rec.Station_UpperLat || rec.Beach_UpperLat);
-                const sLon = parseFloat(rec.Station_UpperLon || rec.Beach_UpperLon);
-                if (!sLat || !sLon) return false;
-                const dist = hav(lat, lon, sLat, sLon);
-                rec._dist = dist;
-                // Check if advisory is recent (within 14 days)
-                const advDate = new Date(rec.DateofAdvisory);
-                const daysSince = (Date.now() - advDate.getTime()) / 86400000;
-                return dist < 10 && daysSince < 14;
-            }).sort((a, b) => a._dist - b._dist);
+            // Fetch 1: Recent advisories/postings (last 30 days)
+            const url1 = `${CA_BEACH_API}?resource_id=${CA_BEACH_RESOURCE}&limit=100&sort=_id desc&filters={"Beach_Status":"Active"}`;
+            // Fetch 2: Active closures specifically (longer window, they persist)
+            const url2 = `${CA_BEACH_API}?resource_id=${CA_BEACH_RESOURCE}&limit=100&sort=_id desc&filters={"Beach_Status":"Active","AdvisoryType":"Closure"}`;
+
+            const responses = await Promise.all([
+                fetch(url1).then(r => r.ok ? r.json() : null).catch(() => null),
+                fetch(url2).then(r => r.ok ? r.json() : null).catch(() => null)
+            ]);
+
+            for (const data of responses) {
+                if (!data?.success || !data.result?.records) continue;
+                for (const rec of data.result.records) {
+                    const key = `${rec.Advisory_id || rec['Advisory id']}-${rec.Station_Name}`;
+                    if (seen.has(key)) continue;
+                    seen.add(key);
+
+                    const sLat = parseFloat(rec.Station_UpperLat || rec.Beach_UpperLat);
+                    const sLon = parseFloat(rec.Station_UpperLon || rec.Beach_UpperLon);
+                    if (!sLat || !sLon) continue;
+                    const dist = hav(lat, lon, sLat, sLon);
+                    if (dist >= 10) continue;
+                    rec._dist = dist;
+
+                    const advDate = new Date(rec.DateofAdvisory);
+                    const daysSince = (Date.now() - advDate.getTime()) / 86400000;
+                    const isClosure = (rec.AdvisoryType || '').toLowerCase() === 'closure';
+
+                    // Closures are ongoing — accept up to 120 days old (re-posted quarterly)
+                    // Regular postings — accept within 14 days
+                    if (isClosure ? daysSince < 120 : daysSince < 14) {
+                        results.push(rec);
+                    }
+                }
+            }
+
+            return results.sort((a, b) => a._dist - b._dist);
         }
 
         // NWS Weather Alerts (beach hazards, storm warnings, etc.)
@@ -2410,9 +2431,11 @@
             // Water quality: beach closures/advisories from real monitoring data
             const closedStations = (sdBeach||[]).filter(st => (st.RBGColor||'').toLowerCase().includes('red'));
             const advisoryStations = (sdBeach||[]).filter(st => (st.RBGColor||'').toLowerCase().includes('yellow'));
-            const hasActiveAdvisories = beachAdvisories && beachAdvisories.length > 0;
+            const caClosures = (beachAdvisories||[]).filter(r => (r.AdvisoryType||'').toLowerCase() === 'closure');
+            const caPostings = (beachAdvisories||[]).filter(r => (r.AdvisoryType||'').toLowerCase() !== 'closure');
             if (closedStations.length > 0) {s-=25;f.push({l:'Beach closure nearby',c:'#f87171'});}
-            else if (hasActiveAdvisories) {s-=20;f.push({l:'Bacteria advisory',c:'#f87171'});}
+            else if (caClosures.length > 0) {s-=25;f.push({l:'Beach closure (sewage/contamination)',c:'#f87171'});}
+            else if (caPostings.length > 0) {s-=20;f.push({l:'Bacteria advisory',c:'#f87171'});}
             else if (advisoryStations.length > 0) {s-=10;f.push({l:'Water quality advisory',c:'#fbbf24'});}
 
             return{score:Math.max(0,Math.min(100,s)),factors:f};
@@ -2459,16 +2482,25 @@
             // Check real monitoring data first — these override rain-based estimates
             const closedStations = (sdBeach||[]).filter(s => (s.RBGColor||'').toLowerCase().includes('red'));
             const advisoryStations = (sdBeach||[]).filter(s => (s.RBGColor||'').toLowerCase().includes('yellow'));
-            const hasActiveAdvisories = beachAdvisories && beachAdvisories.length > 0;
+
+            // Separate CA state data into closures (sewage, ongoing) vs postings (temporary)
+            const closures = (beachAdvisories||[]).filter(r => (r.AdvisoryType||'').toLowerCase() === 'closure');
+            const postings = (beachAdvisories||[]).filter(r => (r.AdvisoryType||'').toLowerCase() !== 'closure');
 
             // Beach closures from monitoring stations = most severe
             if (closedStations.length > 0) {
                 const names = closedStations.slice(0,3).map(s => s.Name).join(', ');
                 return{l:'Poor - Beach Closure Nearby',d:`${closedStations.length} station${closedStations.length>1?'s':''} closed/advisory: ${names}. Avoid water contact.`,cls:'wq-poor',ico:'&#x1F6AB;'};
             }
-            // Active bacteria advisories from CA data
-            if (hasActiveAdvisories) {
-                return{l:'Advisory - Bacteria Detected',d:`${beachAdvisories.length} active advisory${beachAdvisories.length>1?'ies':'y'} nearby. Check details below.`,cls:'wq-poor',ico:'&#x1F6AB;'};
+            // Active beach closures from CA state data (e.g. Tijuana River sewage)
+            if (closures.length > 0) {
+                const names = [...new Set(closures.slice(0,3).map(r => r.Beach_Name || r.Station_Description))].join(', ');
+                const cause = closures[0].AdvisoryCause || 'contamination';
+                return{l:'Poor - Beach Closure',d:`${closures.length} active closure${closures.length>1?'s':''} nearby: ${names}. Cause: ${cause}. Avoid water contact.`,cls:'wq-poor',ico:'&#x1F6AB;'};
+            }
+            // Active bacteria advisories/postings from CA data
+            if (postings.length > 0) {
+                return{l:'Advisory - Bacteria Detected',d:`${postings.length} active advisory${postings.length>1?'ies':'y'} nearby. Check details below.`,cls:'wq-poor',ico:'&#x1F6AB;'};
             }
             // Advisory-level stations (yellow)
             if (advisoryStations.length > 0) {
@@ -2753,8 +2785,9 @@
                                 const fecal = parseInt(a['Fecal Coliforms']) || 0;
                                 const totalCol = parseInt(a['Total Coliforms']) || 0;
                                 const eColi = parseInt(a['E.Coli']) || 0;
+                                const isClosure = (a.AdvisoryType||'').toLowerCase() === 'closure';
                                 return `<div class="beach-advisory adv-active">
-                                    <div class="beach-advisory-title">&#x1F6A9; ${a.Beach_Name || a.Station_Description || 'Beach'}</div>
+                                    <div class="beach-advisory-title">${isClosure ? '&#x1F6AB;' : '&#x1F6A9;'} ${a.Beach_Name || a.Station_Description || 'Beach'}${isClosure ? ' — CLOSED' : ''}</div>
                                     <div class="beach-advisory-detail">${a.AdvisoryCause || 'Advisory'} &bull; ${dateStr} &bull; ${dist}</div>
                                     ${a.DescriptionofArea ? `<div class="beach-advisory-detail">${a.DescriptionofArea}</div>` : ''}
                                     <div class="beach-advisory-bacteria">
