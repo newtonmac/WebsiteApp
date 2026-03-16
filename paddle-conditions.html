@@ -41,10 +41,10 @@
         .header-left { display: flex; align-items: center; gap: 10px; }
 
         .header-logo {
-            width: 72px;
-            height: 72px;
-            border-radius: 8px;
-            object-fit: cover;
+            width: 90px;
+            height: 90px;
+            border-radius: 10px;
+            object-fit: contain;
         }
 
         .header h1 {
@@ -56,21 +56,6 @@
         }
 
         .header .subtitle { color: #8b8fa3; font-size: 12px; margin-top: 2px; }
-        .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-
-        .nav-link {
-            padding: 6px 12px;
-            background: #252836;
-            color: #60a5fa;
-            text-decoration: none;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 500;
-            border: 1px solid #2d3040;
-            transition: all 0.2s;
-        }
-        .nav-link:hover { background: #2d3040; color: #06b6d4; }
-
         .refresh-btn {
             padding: 6px 14px;
             background: #06b6d420;
@@ -916,8 +901,8 @@
                 align-items: center;
             }
             .header h1 { font-size: 17px; }
+            .header-logo { width: 60px; height: 60px; }
             .header .subtitle { display: none; }
-            .header-right { display: none; }
             .container {
                 padding: 0 10px 10px;
                 overflow-x: hidden;
@@ -981,6 +966,7 @@
 
         @media (max-width: 380px) {
             .header h1 { font-size: 15px; }
+            .header-logo { width: 50px; height: 50px; }
             .score-hero { padding: 14px; }
             .score-circle { width: 80px; height: 80px; }
             .score-number { font-size: 24px; }
@@ -1002,10 +988,6 @@
                 <h1>PaddlePoint</h1>
                 <div class="subtitle">Tap the map where you'll paddle</div>
             </div>
-        </div>
-        <div class="header-right">
-            <button class="refresh-btn" onclick="refresh()">&#8635; Refresh</button>
-            <a href="index.html" class="nav-link">&larr; Home</a>
         </div>
     </div>
 
