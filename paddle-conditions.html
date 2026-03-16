@@ -2511,6 +2511,47 @@
             }
         }
 
+        // ======== Regional beach monitoring sources ========
+        // Maps paddle location to the correct local agency for beach water quality
+        function getLocalBeachSource(lat, lon) {
+            // San Diego County (south of ~33.15)
+            if (lat < 33.25 && lon > -117.7 && lon < -116.9) return {
+                name: 'SD Beach & Bay',
+                url: 'https://www.sdbeachinfo.com',
+                agency: 'County of San Diego DEH'
+            };
+            // Orange County (~33.25 to ~33.75)
+            if (lat >= 33.25 && lat < 33.78 && lon > -118.2 && lon < -117.4) return {
+                name: 'OC Health Care Agency',
+                url: 'https://www.ochealthinfo.com/about-hca/environmental-health/ocean-water-quality',
+                agency: 'OC Environmental Health'
+            };
+            // Los Angeles County (~33.7 to ~34.85)
+            if (lat >= 33.7 && lat < 34.85 && lon > -118.9 && lon < -117.6) return {
+                name: 'LA County Beaches',
+                url: 'https://www.publichealth.lacounty.gov/phcommon/public/eh/water_quality/beach_grades.cfm',
+                agency: 'LA County Dept of Public Health'
+            };
+            // Ventura County
+            if (lat >= 34.0 && lat < 34.5 && lon > -119.5 && lon < -118.8) return {
+                name: 'Ventura County EH',
+                url: 'https://vcrma.org/en/ocean-water-monitoring',
+                agency: 'Ventura County EHD'
+            };
+            // Santa Barbara County
+            if (lat >= 34.3 && lat < 35.0 && lon > -120.7 && lon < -119.4) return {
+                name: 'SB County EH',
+                url: 'https://www.countyofsb.org/phd/oceanwatermonitoring',
+                agency: 'Santa Barbara County PHD'
+            };
+            // Default: CA statewide
+            return {
+                name: 'CA Water Board',
+                url: 'https://www.waterboards.ca.gov/water_issues/programs/beaches/beach_water_quality/',
+                agency: 'CA State Water Board'
+            };
+        }
+
         // ======== Render ========
         // Google Weather helpers
         function gTemp(t) { // Convert Google temp to °F
@@ -2535,6 +2576,7 @@
             const color = sClr(score);
             const q = wq(weather);
             const sp = sports(weather);
+            const localSrc = getLocalBeachSource(paddleLat, paddleLon);
 
             let alertH='';
             if(c.weather_code>=95) alertH+=`<div class="alert-banner" style="border-color:#ef444460;background:#ef444415;color:#f87171;"><span class="alert-icon">&#x26A1;</span><span>Thunderstorm activity. Do NOT go on the water.</span></div>`;
@@ -2651,7 +2693,7 @@
                         ${(() => {
                             // SD County Beach & Bay monitoring stations
                             if (!sdBeach || sdBeach.length === 0) return '';
-                            let bH = '<div class="source-divider">Beach Monitoring Stations <a class="src-link" href="https://www.sdbeachinfo.com" target="_blank">SD Beach &amp; Bay</a><a class="src-link" href="https://www.waterboards.ca.gov/water_issues/programs/beaches/search_beach_mon.html" target="_blank">CA Water Board</a></div>';
+                            let bH = '<div class="source-divider">Beach Monitoring Stations <a class="src-link" href="' + localSrc.url + '" target="_blank">' + localSrc.name + '</a><a class="src-link" href="https://www.waterboards.ca.gov/water_issues/programs/beaches/search_beach_mon.html" target="_blank">CA Water Board</a></div>';
                             sdBeach.slice(0, 8).forEach(s => {
                                 const color = (s.RBGColor || '').toLowerCase();
                                 const cls = color.includes('red') ? 'status-red' : color.includes('yellow') ? 'status-yellow' : '';
@@ -2672,7 +2714,7 @@
                         })()}
 
                         ${beachAdvisories && beachAdvisories.length > 0 ? `
-                            <div class="source-divider">Bacteria Contamination <a class="src-link" href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank">CA Open Data</a><a class="src-link" href="https://www.waterboards.ca.gov/water_issues/programs/beaches/search_beach_mon.html" target="_blank">CA Water Board</a></div>
+                            <div class="source-divider">Bacteria Contamination <a class="src-link" href="${localSrc.url}" target="_blank">${localSrc.name}</a><a class="src-link" href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank">CA Open Data</a></div>
                             ${beachAdvisories.slice(0, 5).map(a => {
                                 const advDate = new Date(a.DateofAdvisory);
                                 const dateStr = advDate.toLocaleDateString([], {month:'short', day:'numeric', year:'numeric'});
@@ -2694,7 +2736,7 @@
                                 </div>`;
                             }).join('')}
                         ` : `
-                            <div class="source-divider">Bacteria Contamination <a class="src-link" href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank">CA Open Data</a><a class="src-link" href="https://www.waterboards.ca.gov/water_issues/programs/beaches/search_beach_mon.html" target="_blank">CA Water Board</a></div>
+                            <div class="source-divider">Bacteria Contamination <a class="src-link" href="${localSrc.url}" target="_blank">${localSrc.name}</a><a class="src-link" href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank">CA Open Data</a></div>
                             <div class="beach-advisory adv-clear">
                                 <div class="beach-advisory-title">&#x2705; No Active Advisories Nearby</div>
                                 <div class="beach-advisory-detail">No beach bacteria advisories within 10 miles in the last 14 days.</div>
