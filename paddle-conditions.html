@@ -2208,7 +2208,7 @@
                     fetchMarineSwell(paddleLat, paddleLon).catch(() => null),
                     fetchNOAAWaterTemp(station.id).catch(() => null),
                 ]);
-                render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell);
+                render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell, noaaWaterTemp);
             } catch (e) {
                 document.getElementById('conditionsArea').innerHTML = `<div style="text-align:center;padding:48px;color:#f87171;">
                     <div style="font-size:36px;margin-bottom:12px;">&#x26A0;</div>
@@ -3074,7 +3074,7 @@
 
         }
 
-        function render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell) {
+        function render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell, noaaWaterTemp) {
             const c = weather.current;
             const {score,factors,categories,tier} = calcScore(weather, sdBeach, beachAdvisories, marineSwell, riverFlow, noaaWaterTemp);
             const color = sClr(score);
