@@ -83,7 +83,7 @@
             position: relative;
             width: 100%;
             max-width: calc(100vw - 32px);
-            height: 380px;
+            height: 760px;
             border-radius: 16px;
             overflow: hidden;
             -webkit-mask-image: -webkit-radial-gradient(white, black);
@@ -2384,7 +2384,7 @@
         }
 
         // ======== Scoring ========
-        function calcScore(w) {
+        function calcScore(w, sdBeach, beachAdvisories) {
             const c = w.current;
             let s = 100; const f = [];
             const wi = c.wind_speed_10m, g = c.wind_gusts_10m;
@@ -2406,6 +2406,14 @@
             if(wc>=95){s-=30;f.push({l:'Thunderstorms',c:'#f87171'});}
             else if(wc>=71)s-=15;
             else if(wc>=51)s-=10;
+
+            // Water quality: beach closures/advisories from real monitoring data
+            const closedStations = (sdBeach||[]).filter(st => (st.RBGColor||'').toLowerCase().includes('red'));
+            const advisoryStations = (sdBeach||[]).filter(st => (st.RBGColor||'').toLowerCase().includes('yellow'));
+            const hasActiveAdvisories = beachAdvisories && beachAdvisories.length > 0;
+            if (closedStations.length > 0) {s-=25;f.push({l:'Beach closure nearby',c:'#f87171'});}
+            else if (hasActiveAdvisories) {s-=20;f.push({l:'Bacteria advisory',c:'#f87171'});}
+            else if (advisoryStations.length > 0) {s-=10;f.push({l:'Water quality advisory',c:'#fbbf24'});}
 
             return{score:Math.max(0,Math.min(100,s)),factors:f};
         }
@@ -2445,8 +2453,30 @@
 
         function wxD(c){return{0:'Clear sky',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45:'Foggy',48:'Rime fog',51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',61:'Light rain',63:'Rain',65:'Heavy rain',71:'Light snow',73:'Snow',75:'Heavy snow',80:'Rain showers',81:'Moderate showers',82:'Heavy showers',95:'Thunderstorm',96:'Thunderstorm w/ hail',99:'Severe thunderstorm'}[c]||'Unknown';}
 
-        function wq(w){
+        function wq(w, sdBeach, beachAdvisories){
             const p=w.daily?.precipitation_sum?.[0]||0,wc=w.current.weather_code;
+
+            // Check real monitoring data first — these override rain-based estimates
+            const closedStations = (sdBeach||[]).filter(s => (s.RBGColor||'').toLowerCase().includes('red'));
+            const advisoryStations = (sdBeach||[]).filter(s => (s.RBGColor||'').toLowerCase().includes('yellow'));
+            const hasActiveAdvisories = beachAdvisories && beachAdvisories.length > 0;
+
+            // Beach closures from monitoring stations = most severe
+            if (closedStations.length > 0) {
+                const names = closedStations.slice(0,3).map(s => s.Name).join(', ');
+                return{l:'Poor - Beach Closure Nearby',d:`${closedStations.length} station${closedStations.length>1?'s':''} closed/advisory: ${names}. Avoid water contact.`,cls:'wq-poor',ico:'&#x1F6AB;'};
+            }
+            // Active bacteria advisories from CA data
+            if (hasActiveAdvisories) {
+                return{l:'Advisory - Bacteria Detected',d:`${beachAdvisories.length} active advisory${beachAdvisories.length>1?'ies':'y'} nearby. Check details below.`,cls:'wq-poor',ico:'&#x1F6AB;'};
+            }
+            // Advisory-level stations (yellow)
+            if (advisoryStations.length > 0) {
+                const names = advisoryStations.slice(0,3).map(s => s.Name).join(', ');
+                return{l:'Caution - Advisory Nearby',d:`${advisoryStations.length} station${advisoryStations.length>1?'s':''} under advisory: ${names}. Use caution.`,cls:'wq-fair',ico:'&#x26A0;'};
+            }
+
+            // Fall back to rain-based estimate
             if(p>1.0)return{l:'Poor - Heavy Rain Runoff',d:'Significant runoff. Avoid water contact 72h after heavy rain.',cls:'wq-poor',ico:'&#x1F6AB;'};
             if(p>0.5||wc>=80)return{l:'Advisory - Recent Rain',d:'Runoff may affect quality. Check local advisories.',cls:'wq-fair',ico:'&#x26A0;'};
             return{l:'Good - Safe for Contact',d:'No recent rain. Water quality expected good.',cls:'wq-good',ico:'&#x2705;'};
@@ -2572,9 +2602,9 @@
 
         function render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach) {
             const c = weather.current;
-            const {score,factors} = calcScore(weather);
+            const {score,factors} = calcScore(weather, sdBeach, beachAdvisories);
             const color = sClr(score);
-            const q = wq(weather);
+            const q = wq(weather, sdBeach, beachAdvisories);
             const sp = sports(weather);
             const localSrc = getLocalBeachSource(paddleLat, paddleLon);
 
@@ -2735,13 +2765,33 @@
                                     </div>
                                 </div>`;
                             }).join('')}
-                        ` : `
-                            <div class="source-divider">Bacteria Contamination <a class="src-link" href="${localSrc.url}" target="_blank">${localSrc.name}</a><a class="src-link" href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank">CA Open Data</a></div>
+                        ` : (() => {
+                            // Check if sdBeach stations show closures/advisories even though CA data is empty
+                            const closedNearby = (sdBeach||[]).filter(s => (s.RBGColor||'').toLowerCase().includes('red'));
+                            const advisoryNearby = (sdBeach||[]).filter(s => (s.RBGColor||'').toLowerCase().includes('yellow'));
+                            if (closedNearby.length > 0) {
+                                return `<div class="source-divider">Bacteria Contamination <a class="src-link" href="${localSrc.url}" target="_blank">${localSrc.name}</a><a class="src-link" href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank">CA Open Data</a></div>
+                                ${closedNearby.map(s => `<div class="beach-advisory adv-active">
+                                    <div class="beach-advisory-title">&#x1F6A9; ${s.Name || 'Beach'} — Closed/Advisory</div>
+                                    <div class="beach-advisory-detail">Beach monitoring station reports closure or advisory. ${s._dist ? s._dist.toFixed(1) + ' mi away.' : ''} Avoid water contact near this area.</div>
+                                </div>`).join('')}
+                                ${advisoryNearby.map(s => `<div class="beach-advisory adv-active" style="border-color:#fbbf2460;">
+                                    <div class="beach-advisory-title">&#x26A0; ${s.Name || 'Beach'} — Advisory</div>
+                                    <div class="beach-advisory-detail">Beach monitoring station reports advisory. ${s._dist ? s._dist.toFixed(1) + ' mi away.' : ''} Use caution.</div>
+                                </div>`).join('')}`;
+                            } else if (advisoryNearby.length > 0) {
+                                return `<div class="source-divider">Bacteria Contamination <a class="src-link" href="${localSrc.url}" target="_blank">${localSrc.name}</a><a class="src-link" href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank">CA Open Data</a></div>
+                                ${advisoryNearby.map(s => `<div class="beach-advisory adv-active" style="border-color:#fbbf2460;">
+                                    <div class="beach-advisory-title">&#x26A0; ${s.Name || 'Beach'} — Advisory</div>
+                                    <div class="beach-advisory-detail">Beach monitoring station reports advisory. ${s._dist ? s._dist.toFixed(1) + ' mi away.' : ''} Use caution.</div>
+                                </div>`).join('')}`;
+                            }
+                            return `<div class="source-divider">Bacteria Contamination <a class="src-link" href="${localSrc.url}" target="_blank">${localSrc.name}</a><a class="src-link" href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank">CA Open Data</a></div>
                             <div class="beach-advisory adv-clear">
                                 <div class="beach-advisory-title">&#x2705; No Active Advisories Nearby</div>
                                 <div class="beach-advisory-detail">No beach bacteria advisories within 10 miles in the last 14 days.</div>
-                            </div>
-                        `}
+                            </div>`;
+                        })()}
 
                         ${(() => {
                             // Harmful Algal Blooms section
