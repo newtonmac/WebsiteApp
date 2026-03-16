@@ -3128,7 +3128,7 @@
             const c = weather.current;
             const {score,factors,categories,tier} = calcScore(weather, sdBeach, beachAdvisories, marineSwell, riverFlow, noaaWaterTemp, usgsWaterTemp);
             const color = sClr(score);
-            const wwScore = categories.wind.score;
+            const wwScore = Math.round(categories.wind.score * 0.6 + categories.uv.score * 0.25 + categories.temp.score * 0.15);
             const wwColor = sClr(wwScore);
             const q = wq(weather, sdBeach, beachAdvisories, marineSwell, riverFlow);
             const sp = sports(weather);
@@ -3202,19 +3202,28 @@
 
             // Build weather score explanation for popup
             const wwCat = categories.wind;
-            const wwFTags = wwCat.factors.length > 0 ? wwCat.factors.map(f => `<div style="margin:4px 0;display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${f.c};"></span><span>${f.l}</span></div>`).join('') : '<div style="color:#8b8fa3;">No adverse conditions detected</div>';
+            const uvCat = categories.uv;
+            const wtCat = categories.temp;
+            const allWwFactors = [...wwCat.factors, ...uvCat.factors, ...wtCat.factors];
+            const wwFTags = allWwFactors.length > 0 ? allWwFactors.map(f => `<div style="margin:4px 0;display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${f.c};"></span><span>${f.l}</span></div>`).join('') : '<div style="color:#8b8fa3;">No adverse conditions detected</div>';
             const wwExplain = `<div style="font-size:13px;color:#e2e8f0;line-height:1.6;">` +
-                `<div style="margin-bottom:8px;color:#8b8fa3;">Wind &amp; Weather score factors:</div>` +
+                `<div style="margin-bottom:8px;color:#8b8fa3;">Weather score = Wind (60%) + UV &amp; Sun (25%) + Water Temp (15%)</div>` +
                 `<div style="margin:8px 0;">` +
-                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Wind Speed</span><span>${c.wind_speed_10m ? c.wind_speed_10m.toFixed(0)+' mph' : '--'}</span></div>` +
-                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Gusts</span><span>${c.wind_gusts_10m ? c.wind_gusts_10m.toFixed(0)+' mph' : '--'}</span></div>` +
-                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Precipitation</span><span>${c.precipitation !== undefined ? c.precipitation+' mm' : '--'}</span></div>` +
-                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Visibility</span><span>${c.visibility ? (c.visibility/1000).toFixed(1)+' km' : '--'}</span></div>` +
+                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>&#x1F4A8; Wind</span><span style="color:${sClr(wwCat.score)};font-weight:600;">${wwCat.score}</span></div>` +
+                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;padding-left:12px;font-size:12px;color:#8b8fa3;"><span>Speed</span><span>${c.wind_speed_10m ? c.wind_speed_10m.toFixed(0)+' mph' : '--'}</span></div>` +
+                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;padding-left:12px;font-size:12px;color:#8b8fa3;"><span>Gusts</span><span>${c.wind_gusts_10m ? c.wind_gusts_10m.toFixed(0)+' mph' : '--'}</span></div>` +
+                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;padding-left:12px;font-size:12px;color:#8b8fa3;"><span>Precipitation</span><span>${c.precipitation !== undefined ? c.precipitation+' mm' : '--'}</span></div>` +
+                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;padding-left:12px;font-size:12px;color:#8b8fa3;"><span>Visibility</span><span>${c.visibility ? (c.visibility/1000).toFixed(1)+' km' : '--'}</span></div>` +
+                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>&#x2600; UV &amp; Sun</span><span style="color:${sClr(uvCat.score)};font-weight:600;">${uvCat.score}</span></div>` +
+                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;padding-left:12px;font-size:12px;color:#8b8fa3;"><span>UV Index</span><span>${c.uv_index !== undefined ? c.uv_index.toFixed(1) : '--'}</span></div>` +
+                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>&#x1F321; Water Temp</span><span style="color:${sClr(wtCat.score)};font-weight:600;">${wtCat.score}</span></div>` +
+                `<div style="display:flex;justify-content:space-between;margin-bottom:4px;padding-left:12px;font-size:12px;color:#8b8fa3;"><span>Temperature</span><span>${wtCat.factors[0] ? wtCat.factors[0].l : '--'}</span></div>` +
                 `</div>` +
                 `<div style="margin-top:8px;"><strong>Active factors:</strong></div>` +
                 wwFTags +
                 `<div style="margin-top:10px;border-top:1px solid #2d3040;padding-top:8px;color:#8b8fa3;font-size:11px;">` +
-                `Source: <a href="https://open-meteo.com" target="_blank" style="color:#06b6d4;">Open-Meteo Weather API</a>` +
+                `Sources: <a href="https://open-meteo.com" target="_blank" style="color:#06b6d4;">Open-Meteo</a>, ` +
+                `<a href="https://tidesandcurrents.noaa.gov" target="_blank" style="color:#06b6d4;">NOAA</a>` +
                 `</div></div>`;
 
             // Update paddle pin color to match nearest station
@@ -3384,7 +3393,7 @@
 
                 <div id="wwPopup" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a1d28;border:1px solid #2d3040;border-radius:12px;padding:20px;z-index:9999;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.6);max-height:80vh;overflow-y:auto;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                        <span style="font-weight:700;color:${wwColor};font-size:16px;">&#x1F4A8; Wind &amp; Weather Details</span>
+                        <span style="font-weight:700;color:${wwColor};font-size:16px;">&#x1F4A8; Weather Score Details</span>
                         <span style="cursor:pointer;color:#8b8fa3;font-size:22px;line-height:1;" onclick="document.getElementById('wwPopup').style.display='none';document.getElementById('wwOverlay').style.display='none'">&times;</span>
                     </div>
                     ${wwExplain}
