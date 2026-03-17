@@ -60,30 +60,27 @@ async function recordVisit(request, env) {
 
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
-  // --- Update total counter ---
-  const totalStr = await env.VISITORS.get('total');
-  const total = (parseInt(totalStr) || 0) + 1;
-  await env.VISITORS.put('total', total.toString());
-
   // --- Update daily data ---
   const dayKey = `day:${today}`;
   const dayData = JSON.parse(await env.VISITORS.get(dayKey) || '{}');
 
   if (!dayData.visitors) dayData.visitors = [];
   if (!dayData.cities) dayData.cities = {};
-  if (!dayData.totalHits) dayData.totalHits = 0;
 
-  dayData.totalHits += 1;
-
-  // Track unique visitor
+  // Only count unique visitors
   const isNew = !dayData.visitors.includes(visitorHash);
   if (isNew) {
     dayData.visitors.push(visitorHash);
-  }
 
-  // Track city
-  const cityLabel = city !== 'Unknown' ? `${city}, ${region ? region + ', ' : ''}${country}` : 'Unknown';
-  dayData.cities[cityLabel] = (dayData.cities[cityLabel] || 0) + 1;
+    // Track city only for unique visitors
+    const cityLabel = city !== 'Unknown' ? `${city}, ${region ? region + ', ' : ''}${country}` : 'Unknown';
+    dayData.cities[cityLabel] = (dayData.cities[cityLabel] || 0) + 1;
+
+    // Increment total only for unique visitors
+    const totalStr = await env.VISITORS.get('total');
+    const total = (parseInt(totalStr) || 0) + 1;
+    await env.VISITORS.put('total', total.toString());
+  }
 
   await env.VISITORS.put(dayKey, JSON.stringify(dayData));
 
@@ -95,6 +92,8 @@ async function recordVisit(request, env) {
     while (indexData.length > 30) indexData.shift();
     await env.VISITORS.put('date_index', JSON.stringify(indexData));
   }
+
+  const total = parseInt(await env.VISITORS.get('total') || '0');
 
   return new Response(JSON.stringify({
     total,
