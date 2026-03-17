@@ -55,6 +55,8 @@ async function recordVisit(request, env) {
   const city = cf.city || 'Unknown';
   const country = cf.country || 'Unknown';
   const region = cf.region || '';
+  const lat = parseFloat(cf.latitude) || null;
+  const lng = parseFloat(cf.longitude) || null;
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
   const visitorHash = await hashIP(ip);
 
@@ -66,6 +68,7 @@ async function recordVisit(request, env) {
 
   if (!dayData.visitors) dayData.visitors = [];
   if (!dayData.cities) dayData.cities = {};
+  if (!dayData.coords) dayData.coords = {};
 
   // Only count unique visitors
   const isNew = !dayData.visitors.includes(visitorHash);
@@ -75,6 +78,11 @@ async function recordVisit(request, env) {
     // Track city only for unique visitors
     const cityLabel = city !== 'Unknown' ? `${city}, ${region ? region + ', ' : ''}${country}` : 'Unknown';
     dayData.cities[cityLabel] = (dayData.cities[cityLabel] || 0) + 1;
+
+    // Store coordinates for map visualization
+    if (lat && lng) {
+      dayData.coords[cityLabel] = { lat, lng };
+    }
 
     // Increment total only for unique visitors
     const totalStr = await env.VISITORS.get('total');
@@ -119,6 +127,7 @@ async function getStats(env) {
       uniqueVisitors: (dayData.visitors || []).length,
       totalHits: dayData.totalHits || 0,
       cities: dayData.cities || {},
+      coords: dayData.coords || {},
     });
   }
 
