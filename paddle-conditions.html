@@ -73,10 +73,9 @@
 
         .suggest-btn, .updates-btn {
             cursor: pointer;
-            padding: 5px 12px;
+            padding: 2px 8px;
             border-radius: 10px;
             font-size: 12px;
-            font-weight: 600;
             transition: all 0.2s ease;
             user-select: none;
             border: 1px solid;
@@ -84,13 +83,13 @@
         }
 
         .suggest-btn {
-            background: rgba(167, 139, 250, 0.1);
-            border-color: rgba(167, 139, 250, 0.25);
-            color: #a78bfa;
+            background: rgba(96, 165, 250, 0.1);
+            border-color: rgba(96, 165, 250, 0.2);
+            color: #60a5fa;
         }
         .suggest-btn:hover {
-            background: rgba(167, 139, 250, 0.2);
-            border-color: rgba(167, 139, 250, 0.4);
+            background: rgba(96, 165, 250, 0.18);
+            border-color: rgba(96, 165, 250, 0.4);
         }
 
         .updates-btn {
@@ -1137,7 +1136,7 @@
             .header-logo { width: 60px; height: 60px; }
             .header .subtitle { display: none; }
             .header-right { gap: 6px; }
-            .suggest-btn, .updates-btn { font-size: 11px; padding: 4px 9px; }
+            .suggest-btn, .updates-btn { font-size: 11px; padding: 2px 7px; }
             .container {
                 padding: 0 10px 10px;
                 overflow-x: hidden;
@@ -1438,6 +1437,19 @@
                 <div class="pp-form-group">
                     <label for="suggestClub">Paddling Club (optional)</label>
                     <input type="text" id="suggestClub" placeholder="e.g. San Diego Outrigger Club">
+                </div>
+                <div class="pp-form-group">
+                    <label for="suggestCraft">Craft Type (optional)</label>
+                    <select id="suggestCraft">
+                        <option value="">-- Select --</option>
+                        <option value="SUP">SUP</option>
+                        <option value="Kayak">Kayak</option>
+                        <option value="Outrigger">Outrigger</option>
+                        <option value="Canoe">Canoe</option>
+                        <option value="Surfski">Surfski</option>
+                        <option value="Prone">Prone</option>
+                        <option value="Other">Other</option>
+                    </select>
                 </div>
                 <div class="pp-form-group">
                     <label for="suggestDesc">Description</label>
@@ -4772,6 +4784,7 @@
             const name = document.getElementById('suggestName').value.trim() || 'Anonymous';
             const title = document.getElementById('suggestTitle').value.trim();
             const club = document.getElementById('suggestClub').value.trim();
+            const craft = document.getElementById('suggestCraft').value;
             const description = document.getElementById('suggestDesc').value.trim();
             if (!title) return;
 
@@ -4784,7 +4797,7 @@
                 const res = await fetch(`${SUGGEST_API}/suggest`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, title, description, club }),
+                    body: JSON.stringify({ name, title, description, club, craft }),
                 });
                 if (!res.ok) throw new Error('Failed');
                 msg.style.color = '#22c55e';
@@ -4824,7 +4837,7 @@
                             <span class="update-title">${u.title}</span>
                         </div>
                         ${u.description ? `<div class="update-desc">${u.description}</div>` : ''}
-                        <div class="update-date">${date}</div>
+                        <div class="update-date">${date}${u.suggestedBy ? ` &middot; Suggested by ${u.suggestedBy}` : ''}</div>
                     </div>`;
                 }).join('');
             } catch {

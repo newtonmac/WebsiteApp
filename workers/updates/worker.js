@@ -109,7 +109,7 @@ async function getUpdates(env) {
 
 async function addUpdate(request, env) {
   const body = await request.json();
-  const { title, description, status } = body;
+  const { title, description, status, suggestedBy } = body;
 
   if (!title || typeof title !== 'string' || title.trim().length === 0) {
     return new Response(JSON.stringify({ error: 'Title is required' }), {
@@ -125,6 +125,7 @@ async function addUpdate(request, env) {
     id,
     title: title.trim().slice(0, 200),
     description: (description || '').slice(0, 1000),
+    suggestedBy: (suggestedBy || '').slice(0, 200),
     status: updateStatus,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

@@ -337,19 +337,26 @@
                         month: 'short', day: 'numeric', year: 'numeric',
                         hour: 'numeric', minute: '2-digit'
                     });
-                    return `<div class="card" id="sug-${s.id}">
-                        <div class="card-top">
-                            <div class="card-left">
-                                <span class="card-title">${escapeHtml(s.title)}</span>
-                            </div>
-                        </div>
+                    // Build "City Paddler" label from city
+                    const cityName = (s.city && s.city !== 'Unknown') ? s.city : '';
+                    const suggestedBy = cityName ? cityName + ' Paddler' : (s.name || 'A Paddler');
+
+                    return `<div class="card" id="sug-${s.id}" data-suggested-by="${escapeAttr(suggestedBy)}">
                         <div class="suggestion-meta">
                             <span>From: <strong>${escapeHtml(s.name)}</strong></span>
                             ${s.club ? `<span>Club: <strong>${escapeHtml(s.club)}</strong></span>` : ''}
+                            ${s.craft ? `<span>Craft: <strong>${escapeHtml(s.craft)}</strong></span>` : ''}
                             <span>${escapeHtml(s.city)}, ${escapeHtml(s.country)}</span>
                             <span>${date}</span>
                         </div>
-                        ${s.description ? `<div class="card-desc">${escapeHtml(s.description)}</div>` : ''}
+                        <div class="form-row">
+                            <label>Title</label>
+                            <input type="text" id="sug-title-${s.id}" value="${escapeAttr(s.title)}">
+                        </div>
+                        <div class="form-row">
+                            <label>Description (edit before approving)</label>
+                            <textarea id="sug-desc-${s.id}">${escapeHtml(s.description || '')}</textarea>
+                        </div>
                         <div class="approve-bar">
                             <select id="approve-status-${s.id}">
                                 <option value="planned">Planned</option>
@@ -372,12 +379,12 @@
 
         async function approveSuggestion(sugId) {
             const card = document.getElementById(`sug-${sugId}`);
-            const titleEl = card.querySelector('.card-title');
-            const descEl = card.querySelector('.card-desc');
+            const title = document.getElementById(`sug-title-${sugId}`).value.trim();
+            const description = document.getElementById(`sug-desc-${sugId}`).value.trim();
             const status = document.getElementById(`approve-status-${sugId}`).value;
+            const suggestedBy = card.getAttribute('data-suggested-by') || '';
 
-            const title = titleEl.textContent;
-            const description = descEl ? descEl.textContent : '';
+            if (!title) { alert('Title cannot be empty.'); return; }
 
             try {
                 const res = await fetch(`${UPDATES_API}/admin/updates`, {
@@ -386,7 +393,7 @@
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${adminKey}`,
                     },
-                    body: JSON.stringify({ title, description, status }),
+                    body: JSON.stringify({ title, description, status, suggestedBy }),
                 });
 
                 if (res.status === 401) {
@@ -562,6 +569,10 @@
             const div = document.createElement('div');
             div.textContent = str;
             return div.innerHTML;
+        }
+
+        function escapeAttr(str) {
+            return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
     </script>
 </body>
