@@ -1245,6 +1245,18 @@
         .stats-loading { display: flex; align-items: center; justify-content: center; padding: 40px; color: #6b7280; font-size: 13px; gap: 10px; }
         .stats-spinner { width: 18px; height: 18px; border: 2px solid #2d3040; border-top-color: #60a5fa; border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Visitor world map */
+        .stats-map-section { margin-top: 20px; }
+        .stats-map-wrap {
+            width: 100%;
+            height: 220px;
+            border-radius: 14px;
+            overflow: hidden;
+            border: 1px solid #2d3040;
+            margin-top: 10px;
+        }
+        @media (min-width: 701px) { .stats-map-wrap { height: 260px; } }
     </style>
 </head>
 <body>
@@ -4400,6 +4412,28 @@
                             <div class="stats-cities">${cityTags || '<span style="color:#6b7080;font-size:12px;">No city data</span>'}</div>
                         </div>`;
                     }).join('');
+
+                    // Visitor world map — aggregate coords across last 7 days
+                    const allCoords = {};
+                    days.forEach(day => {
+                        if (day.coords) {
+                            Object.entries(day.coords).forEach(([city, pos]) => {
+                                if (!allCoords[city]) {
+                                    allCoords[city] = { lat: pos.lat, lng: pos.lng, count: 0 };
+                                }
+                                allCoords[city].count += (day.cities && day.cities[city]) || 1;
+                            });
+                        }
+                    });
+
+                    if (Object.keys(allCoords).length > 0) {
+                        html += `<div class="stats-map-section">
+                            <div class="stats-chart-title">Visitor Locations — Last 7 Days</div>
+                            <div class="stats-map-wrap" id="statsMapContainer"></div>
+                        </div>`;
+                        // Store coords for map init after DOM update
+                        window._statsMapCoords = allCoords;
+                    }
                 } else {
                     html += '<p style="color:#6b7080;font-size:13px;text-align:center;">No data yet.</p>';
                 }
@@ -4423,10 +4457,90 @@
                     });
                 }, 100);
 
+                // Initialize visitor world map
+                if (window._statsMapCoords) {
+                    setTimeout(() => initStatsMap(window._statsMapCoords), 200);
+                }
+
             } catch {
                 document.getElementById('statsContent').innerHTML =
                     '<p style="color:#ef4444;font-size:13px;text-align:center;padding:30px;">Could not load stats.</p>';
             }
+        }
+
+        let statsMap = null;
+        function initStatsMap(coords) {
+            const container = document.getElementById('statsMapContainer');
+            if (!container || !google || !google.maps) return;
+
+            const entries = Object.entries(coords);
+            if (entries.length === 0) return;
+
+            // Dark map style
+            const darkStyle = [
+                { elementType: 'geometry', stylers: [{ color: '#1a1d28' }] },
+                { elementType: 'labels.text.fill', stylers: [{ color: '#6b7280' }] },
+                { elementType: 'labels.text.stroke', stylers: [{ color: '#1a1d28' }] },
+                { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#2d3040' }] },
+                { featureType: 'administrative.land_parcel', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+                { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+                { featureType: 'road', stylers: [{ visibility: 'off' }] },
+                { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+                { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#252836' }] },
+                { featureType: 'water', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+            ];
+
+            // Compute bounds
+            const bounds = new google.maps.LatLngBounds();
+            entries.forEach(([, c]) => bounds.extend({ lat: c.lat, lng: c.lng }));
+
+            statsMap = new google.maps.Map(container, {
+                center: bounds.getCenter(),
+                zoom: 3,
+                styles: darkStyle,
+                disableDefaultUI: true,
+                zoomControl: true,
+                gestureHandling: 'cooperative',
+                backgroundColor: '#1a1d28',
+            });
+
+            statsMap.fitBounds(bounds, 30);
+
+            // Clamp max zoom so single-point doesn't zoom too far
+            google.maps.event.addListenerOnce(statsMap, 'bounds_changed', () => {
+                if (statsMap.getZoom() > 10) statsMap.setZoom(10);
+            });
+
+            // Add blue dot markers with size based on visitor count
+            const maxCount = Math.max(...entries.map(([, c]) => c.count), 1);
+            entries.forEach(([city, c], i) => {
+                const scale = 6 + (c.count / maxCount) * 14; // 6px to 20px
+                setTimeout(() => {
+                    const marker = new google.maps.Marker({
+                        position: { lat: c.lat, lng: c.lng },
+                        map: statsMap,
+                        icon: {
+                            path: google.maps.SymbolPath.CIRCLE,
+                            fillColor: '#60a5fa',
+                            fillOpacity: 0.7,
+                            strokeColor: '#93c5fd',
+                            strokeWeight: 1.5,
+                            scale: scale,
+                        },
+                        title: `${city}: ${c.count} visitor${c.count !== 1 ? 's' : ''}`,
+                        animation: google.maps.Animation.DROP,
+                    });
+
+                    const infoWindow = new google.maps.InfoWindow({
+                        content: `<div style="font-family:system-ui;font-size:12px;color:#1a1d28;padding:2px 4px;">
+                            <strong>${city}</strong><br>${c.count} visitor${c.count !== 1 ? 's' : ''}
+                        </div>`,
+                    });
+                    marker.addListener('click', () => {
+                        infoWindow.open(statsMap, marker);
+                    });
+                }, i * 100); // stagger drops
+            });
         }
     </script>
 
