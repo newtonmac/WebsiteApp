@@ -69,6 +69,150 @@
         }
         .refresh-btn:hover { background: #06b6d430; }
 
+        .header-right { display: flex; align-items: center; gap: 8px; }
+
+        .suggest-btn, .updates-btn {
+            cursor: pointer;
+            padding: 5px 12px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            user-select: none;
+            border: 1px solid;
+            white-space: nowrap;
+        }
+
+        .suggest-btn {
+            background: rgba(167, 139, 250, 0.1);
+            border-color: rgba(167, 139, 250, 0.25);
+            color: #a78bfa;
+        }
+        .suggest-btn:hover {
+            background: rgba(167, 139, 250, 0.2);
+            border-color: rgba(167, 139, 250, 0.4);
+        }
+
+        .updates-btn {
+            background: rgba(34, 197, 94, 0.1);
+            border-color: rgba(34, 197, 94, 0.25);
+            color: #22c55e;
+        }
+        .updates-btn:hover {
+            background: rgba(34, 197, 94, 0.2);
+            border-color: rgba(34, 197, 94, 0.4);
+        }
+
+        /* Modals */
+        .pp-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+        .pp-modal-overlay.open { display: flex; }
+
+        .pp-modal {
+            background: #1a1d28;
+            border: 1px solid #2d3040;
+            border-radius: 20px;
+            padding: 28px;
+            width: 90%;
+            max-width: 460px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            animation: ppModalIn 0.2s ease;
+        }
+        @keyframes ppModalIn {
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .pp-modal-close {
+            position: absolute;
+            top: 14px; right: 14px;
+            background: none; border: none;
+            color: #6b7080; font-size: 20px;
+            cursor: pointer; padding: 4px 8px;
+            border-radius: 8px; transition: all 0.2s;
+        }
+        .pp-modal-close:hover { background: #252836; color: #e1e4e8; }
+
+        .pp-modal h2 {
+            font-size: 20px; font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .pp-modal h2.suggest-title {
+            background: linear-gradient(90deg, #a78bfa, #f472b6);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .pp-modal h2.updates-title {
+            background: linear-gradient(90deg, #22c55e, #3b82f6);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .pp-modal .pp-subtitle {
+            color: #6b7080; font-size: 13px; margin-bottom: 18px;
+        }
+
+        .pp-form-group { margin-bottom: 14px; }
+        .pp-form-group label {
+            display: block; font-size: 13px; font-weight: 600;
+            color: #a0a4b8; margin-bottom: 5px;
+        }
+        .pp-form-group input, .pp-form-group textarea {
+            width: 100%; padding: 10px 14px;
+            background: #252836; border: 1px solid #2d3040;
+            border-radius: 10px; color: #e1e4e8;
+            font-size: 14px; font-family: inherit;
+            transition: border-color 0.2s; outline: none;
+        }
+        .pp-form-group input:focus, .pp-form-group textarea:focus { border-color: #a78bfa; }
+        .pp-form-group textarea { resize: vertical; min-height: 70px; }
+        .pp-form-group input::placeholder, .pp-form-group textarea::placeholder { color: #4b5060; }
+
+        .pp-submit-btn {
+            width: 100%; padding: 12px;
+            background: linear-gradient(135deg, #a78bfa, #7c3aed);
+            border: none; border-radius: 12px;
+            color: #fff; font-size: 15px; font-weight: 600;
+            font-family: inherit; cursor: pointer; transition: opacity 0.2s;
+        }
+        .pp-submit-btn:hover { opacity: 0.9; }
+        .pp-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .pp-form-msg {
+            text-align: center; font-size: 13px;
+            margin-top: 10px; min-height: 18px;
+        }
+
+        /* Updates list */
+        .update-item {
+            padding: 12px 0;
+            border-bottom: 1px solid #2d3040;
+        }
+        .update-item:last-child { border-bottom: none; }
+
+        .update-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+
+        .update-status {
+            font-size: 10px; font-weight: 700;
+            padding: 2px 7px; border-radius: 6px;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .update-status.planned { background: rgba(96, 165, 250, 0.15); color: #60a5fa; }
+        .update-status.in_progress { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+        .update-status.completed { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+
+        .update-title { font-size: 14px; font-weight: 600; color: #e1e4e8; }
+        .update-desc { font-size: 13px; color: #8b8fa3; line-height: 1.4; margin-top: 2px; }
+        .update-date { font-size: 11px; color: #4b5060; margin-top: 4px; }
+        .updates-empty { text-align: center; color: #6b7080; font-size: 14px; padding: 30px 0; }
+
         .container {
             max-width: 100vw;
             margin: 0 auto;
@@ -992,6 +1136,8 @@
             .header h1 { font-size: 17px; }
             .header-logo { width: 60px; height: 60px; }
             .header .subtitle { display: none; }
+            .header-right { gap: 6px; }
+            .suggest-btn, .updates-btn { font-size: 11px; padding: 4px 9px; }
             .container {
                 padding: 0 10px 10px;
                 overflow-x: hidden;
@@ -1267,6 +1413,45 @@
                 <h1>PaddlePoint</h1>
                 <div class="subtitle">Tap the map where you'll paddle</div>
             </div>
+        </div>
+        <div class="header-right">
+            <span class="suggest-btn" onclick="openSuggestModal()">Suggest</span>
+            <span class="updates-btn" onclick="openUpdatesModal()">Updates</span>
+        </div>
+    </div>
+
+    <!-- Suggestion Modal -->
+    <div class="pp-modal-overlay" id="suggestModal" onclick="closeSuggestModal(event)">
+        <div class="pp-modal" onclick="event.stopPropagation()">
+            <button class="pp-modal-close" onclick="closeSuggestModal()">&times;</button>
+            <h2 class="suggest-title">Suggest a Feature</h2>
+            <p class="pp-subtitle">Have an idea for PaddlePoint? We'd love to hear it!</p>
+            <form id="suggestForm" onsubmit="submitSuggestion(event)">
+                <div class="pp-form-group">
+                    <label for="suggestName">Your Name (optional)</label>
+                    <input type="text" id="suggestName" placeholder="Anonymous">
+                </div>
+                <div class="pp-form-group">
+                    <label for="suggestTitle">Your Idea *</label>
+                    <input type="text" id="suggestTitle" placeholder="e.g. Add surf forecast overlay" required>
+                </div>
+                <div class="pp-form-group">
+                    <label for="suggestDesc">Description</label>
+                    <textarea id="suggestDesc" placeholder="What should it do? Any specific data or features you'd like?"></textarea>
+                </div>
+                <button type="submit" class="pp-submit-btn" id="suggestSubmitBtn">Submit Suggestion</button>
+                <div class="pp-form-msg" id="suggestMsg"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Updates Modal -->
+    <div class="pp-modal-overlay" id="updatesModal" onclick="closeUpdatesModal(event)">
+        <div class="pp-modal" onclick="event.stopPropagation()">
+            <button class="pp-modal-close" onclick="closeUpdatesModal()">&times;</button>
+            <h2 class="updates-title">Updates & Roadmap</h2>
+            <p class="pp-subtitle">What's coming next and what we've shipped</p>
+            <div id="updatesContent"><div class="updates-empty">Loading...</div></div>
         </div>
     </div>
 
@@ -4542,6 +4727,104 @@
                     });
                 }, i * 100); // stagger drops
             });
+        }
+    </script>
+
+    <script>
+        // --- Suggest & Updates Modals ---
+        const SUGGEST_API = 'https://suggestions.newtonmac.workers.dev';
+        const UPDATES_API = 'https://updates.newtonmac.workers.dev';
+
+        function openSuggestModal() {
+            document.getElementById('suggestModal').classList.add('open');
+        }
+        function closeSuggestModal(e) {
+            if (e && e.target !== e.currentTarget) return;
+            document.getElementById('suggestModal').classList.remove('open');
+            document.getElementById('suggestMsg').textContent = '';
+        }
+
+        let updatesLoaded = false;
+        function openUpdatesModal() {
+            document.getElementById('updatesModal').classList.add('open');
+            if (!updatesLoaded) loadUpdates();
+        }
+        function closeUpdatesModal(e) {
+            if (e && e.target !== e.currentTarget) return;
+            document.getElementById('updatesModal').classList.remove('open');
+        }
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') {
+                closeSuggestModal();
+                closeUpdatesModal();
+            }
+        });
+
+        async function submitSuggestion(e) {
+            e.preventDefault();
+            const btn = document.getElementById('suggestSubmitBtn');
+            const msg = document.getElementById('suggestMsg');
+            const name = document.getElementById('suggestName').value.trim() || 'Anonymous';
+            const title = document.getElementById('suggestTitle').value.trim();
+            const description = document.getElementById('suggestDesc').value.trim();
+            if (!title) return;
+
+            btn.disabled = true;
+            btn.textContent = 'Submitting...';
+            msg.textContent = '';
+            msg.style.color = '';
+
+            try {
+                const res = await fetch(`${SUGGEST_API}/suggest`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, title, description }),
+                });
+                if (!res.ok) throw new Error('Failed');
+                msg.style.color = '#22c55e';
+                msg.textContent = 'Thanks! Your suggestion has been submitted.';
+                document.getElementById('suggestForm').reset();
+                setTimeout(() => closeSuggestModal(), 2000);
+            } catch {
+                msg.style.color = '#ef4444';
+                msg.textContent = 'Could not submit. Please try again.';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Submit Suggestion';
+            }
+        }
+
+        async function loadUpdates() {
+            const container = document.getElementById('updatesContent');
+            try {
+                const res = await fetch(`${UPDATES_API}/updates`);
+                const data = await res.json();
+                updatesLoaded = true;
+
+                if (!data.updates || data.updates.length === 0) {
+                    container.innerHTML = '<div class="updates-empty">No updates yet. Check back soon!</div>';
+                    return;
+                }
+
+                const statusLabels = { planned: 'Planned', in_progress: 'In Progress', completed: 'Shipped' };
+
+                container.innerHTML = data.updates.map(u => {
+                    const date = new Date(u.createdAt).toLocaleDateString('en-US', {
+                        month: 'short', day: 'numeric', year: 'numeric'
+                    });
+                    return `<div class="update-item">
+                        <div class="update-header">
+                            <span class="update-status ${u.status}">${statusLabels[u.status] || u.status}</span>
+                            <span class="update-title">${u.title}</span>
+                        </div>
+                        ${u.description ? `<div class="update-desc">${u.description}</div>` : ''}
+                        <div class="update-date">${date}</div>
+                    </div>`;
+                }).join('');
+            } catch {
+                container.innerHTML = '<div class="updates-empty">Could not load updates.</div>';
+            }
         }
     </script>
 

@@ -5,3 +5,6 @@ compatibility_date = "2024-01-01"
 [[kv_namespaces]]
 binding = "SUGGESTIONS"
 id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+# Set these secrets via: npx wrangler secret put NOTIFY_EMAIL
+# and: npx wrangler secret put FROM_EMAIL

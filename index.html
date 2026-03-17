@@ -214,161 +214,6 @@
             opacity: 1;
         }
 
-        /* Suggestion Modal */
-        .suggest-btn {
-            cursor: pointer;
-            padding: 3px 10px;
-            border-radius: 12px;
-            background: rgba(167, 139, 250, 0.1);
-            border: 1px solid rgba(167, 139, 250, 0.2);
-            color: #a78bfa;
-            transition: all 0.2s ease;
-            user-select: none;
-            font-size: inherit;
-            font-family: inherit;
-        }
-
-        .suggest-btn:hover {
-            background: rgba(167, 139, 250, 0.18);
-            border-color: rgba(167, 139, 250, 0.4);
-        }
-
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(4px);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-overlay.open {
-            display: flex;
-        }
-
-        .modal {
-            background: #1a1d28;
-            border: 1px solid #2d3040;
-            border-radius: 20px;
-            padding: 32px;
-            width: 90%;
-            max-width: 460px;
-            position: relative;
-            animation: modalIn 0.2s ease;
-        }
-
-        @keyframes modalIn {
-            from { opacity: 0; transform: scale(0.95) translateY(10px); }
-            to { opacity: 1; transform: scale(1) translateY(0); }
-        }
-
-        .modal-close {
-            position: absolute;
-            top: 16px;
-            right: 16px;
-            background: none;
-            border: none;
-            color: #6b7080;
-            font-size: 20px;
-            cursor: pointer;
-            padding: 4px 8px;
-            border-radius: 8px;
-            transition: all 0.2s;
-        }
-
-        .modal-close:hover {
-            background: #252836;
-            color: #e1e4e8;
-        }
-
-        .modal h2 {
-            font-size: 20px;
-            font-weight: 700;
-            background: linear-gradient(90deg, #a78bfa, #f472b6);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 4px;
-        }
-
-        .modal p.subtitle {
-            color: #6b7080;
-            font-size: 13px;
-            margin-bottom: 20px;
-        }
-
-        .form-group {
-            margin-bottom: 16px;
-        }
-
-        .form-group label {
-            display: block;
-            font-size: 13px;
-            font-weight: 600;
-            color: #a0a4b8;
-            margin-bottom: 6px;
-        }
-
-        .form-group input,
-        .form-group textarea {
-            width: 100%;
-            padding: 10px 14px;
-            background: #252836;
-            border: 1px solid #2d3040;
-            border-radius: 10px;
-            color: #e1e4e8;
-            font-size: 14px;
-            font-family: inherit;
-            transition: border-color 0.2s;
-            outline: none;
-        }
-
-        .form-group input:focus,
-        .form-group textarea:focus {
-            border-color: #a78bfa;
-        }
-
-        .form-group textarea {
-            resize: vertical;
-            min-height: 80px;
-        }
-
-        .form-group input::placeholder,
-        .form-group textarea::placeholder {
-            color: #4b5060;
-        }
-
-        .submit-btn {
-            width: 100%;
-            padding: 12px;
-            background: linear-gradient(135deg, #a78bfa, #7c3aed);
-            border: none;
-            border-radius: 12px;
-            color: #fff;
-            font-size: 15px;
-            font-weight: 600;
-            font-family: inherit;
-            cursor: pointer;
-            transition: opacity 0.2s;
-        }
-
-        .submit-btn:hover {
-            opacity: 0.9;
-        }
-
-        .submit-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .form-msg {
-            text-align: center;
-            font-size: 13px;
-            margin-top: 12px;
-            min-height: 18px;
-        }
-
         @media (max-width: 600px) {
             .mosaic {
                 grid-template-columns: repeat(2, 1fr);
@@ -396,8 +241,6 @@
             <span class="visitor-badge" id="visitorBadge" onclick="toggleStats()" title="Click for visitor details">
                 Stats
             </span>
-            <span class="dot"></span>
-            <span class="suggest-btn" onclick="openSuggestModal()">Suggest an App</span>
         </div>
         <div class="stats-panel" id="statsPanel">
             <h3>Visitor Stats</h3>
@@ -520,31 +363,6 @@
         </a>
     </div>
 
-    <!-- Suggestion Modal -->
-    <div class="modal-overlay" id="suggestModal" onclick="closeSuggestModal(event)">
-        <div class="modal" onclick="event.stopPropagation()">
-            <button class="modal-close" onclick="closeSuggestModal()">&times;</button>
-            <h2>Suggest an App</h2>
-            <p class="subtitle">Have an idea for a new dashboard? Let us know!</p>
-            <form id="suggestForm" onsubmit="submitSuggestion(event)">
-                <div class="form-group">
-                    <label for="suggestName">Your Name (optional)</label>
-                    <input type="text" id="suggestName" placeholder="Anonymous">
-                </div>
-                <div class="form-group">
-                    <label for="suggestTitle">App Idea *</label>
-                    <input type="text" id="suggestTitle" placeholder="e.g. Surf Conditions Tracker" required>
-                </div>
-                <div class="form-group">
-                    <label for="suggestDesc">Description</label>
-                    <textarea id="suggestDesc" placeholder="What should it do? Any specific data sources or features?"></textarea>
-                </div>
-                <button type="submit" class="submit-btn" id="suggestSubmitBtn">Submit Suggestion</button>
-                <div class="form-msg" id="suggestMsg"></div>
-            </form>
-        </div>
-    </div>
-
     <script>
         // --- Visitor Counter ---
         const COUNTER_API = 'https://visitor-counter.newtonmac.workers.dev';
@@ -612,60 +430,6 @@
             } catch {
                 document.getElementById('statsContent').innerHTML =
                     '<p style="color:#ef4444;font-size:13px;">Could not load stats.</p>';
-            }
-        }
-        // --- Suggestion Modal ---
-        const SUGGEST_API = 'https://suggestions.newtonmac.workers.dev';
-
-        function openSuggestModal() {
-            document.getElementById('suggestModal').classList.add('open');
-        }
-
-        function closeSuggestModal(e) {
-            if (e && e.target !== e.currentTarget) return;
-            document.getElementById('suggestModal').classList.remove('open');
-            document.getElementById('suggestMsg').textContent = '';
-        }
-
-        // Close on Escape
-        document.addEventListener('keydown', e => {
-            if (e.key === 'Escape') closeSuggestModal();
-        });
-
-        async function submitSuggestion(e) {
-            e.preventDefault();
-            const btn = document.getElementById('suggestSubmitBtn');
-            const msg = document.getElementById('suggestMsg');
-            const name = document.getElementById('suggestName').value.trim() || 'Anonymous';
-            const title = document.getElementById('suggestTitle').value.trim();
-            const description = document.getElementById('suggestDesc').value.trim();
-
-            if (!title) return;
-
-            btn.disabled = true;
-            btn.textContent = 'Submitting...';
-            msg.textContent = '';
-            msg.style.color = '';
-
-            try {
-                const res = await fetch(`${SUGGEST_API}/suggest`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, title, description }),
-                });
-
-                if (!res.ok) throw new Error('Failed');
-
-                msg.style.color = '#22c55e';
-                msg.textContent = 'Thanks! Your suggestion has been submitted.';
-                document.getElementById('suggestForm').reset();
-                setTimeout(() => closeSuggestModal(), 2000);
-            } catch {
-                msg.style.color = '#ef4444';
-                msg.textContent = 'Could not submit. Please try again.';
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Submit Suggestion';
             }
         }
     </script>

@@ -1,6 +1,14 @@
 // Cloudflare Worker: App Suggestions
-// Stores user-submitted app ideas in KV.
+// Stores user-submitted app ideas in KV and sends email notification.
 // Deploy: npx wrangler deploy
+//
+// Required env vars (set via wrangler secret or dashboard):
+//   NOTIFY_EMAIL - email address to receive suggestion notifications
+//   FROM_EMAIL   - sender email (must be from a verified domain)
+//
+// Email is sent via MailChannels (free for Cloudflare Workers).
+// Setup: Add a DNS TXT record for your domain:
+//   _mailchannels.yourdomain.com  TXT  "v=mc1 cfid=your-worker-subdomain"
 
 const ALLOWED_ORIGINS = [
   'https://jmlsd.org',
@@ -84,8 +92,42 @@ async function submitSuggestion(request, env) {
   index.push(id);
   await env.SUGGESTIONS.put('index', JSON.stringify(index));
 
+  // Send email notification (fire-and-forget)
+  sendEmailNotification(suggestion, env).catch(() => {});
+
   return new Response(JSON.stringify({ success: true, id }), {
     headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+async function sendEmailNotification(suggestion, env) {
+  const toEmail = env.NOTIFY_EMAIL;
+  const fromEmail = env.FROM_EMAIL;
+  if (!toEmail || !fromEmail) return;
+
+  await fetch('https://api.mailchannels.net/tx/v1/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      personalizations: [{ to: [{ email: toEmail }] }],
+      from: { email: fromEmail, name: 'JMLSD Apps' },
+      subject: `New App Suggestion: ${suggestion.title}`,
+      content: [{
+        type: 'text/plain',
+        value: [
+          `New suggestion from ${suggestion.name}`,
+          `Location: ${suggestion.city}, ${suggestion.country}`,
+          `Time: ${suggestion.timestamp}`,
+          '',
+          `Title: ${suggestion.title}`,
+          '',
+          `Description:`,
+          suggestion.description || '(none)',
+          '',
+          `ID: ${suggestion.id}`,
+        ].join('\n'),
+      }],
+    }),
   });
 }
 
