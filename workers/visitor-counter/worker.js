@@ -6,6 +6,8 @@
 const ALLOWED_ORIGINS = [
   'https://jmlsd.org',
   'https://www.jmlsd.org',
+  'https://paddlepoint.org',
+  'https://www.paddlepoint.org',
   'http://localhost:8080',
   'http://127.0.0.1:8080',
 ];
