@@ -4514,7 +4514,7 @@
             // Add blue dot markers with size based on visitor count
             const maxCount = Math.max(...entries.map(([, c]) => c.count), 1);
             entries.forEach(([city, c], i) => {
-                const scale = 6 + (c.count / maxCount) * 14; // 6px to 20px
+                const scale = 3 + (c.count / maxCount) * 7; // 3px to 10px
                 setTimeout(() => {
                     const marker = new google.maps.Marker({
                         position: { lat: c.lat, lng: c.lng },
