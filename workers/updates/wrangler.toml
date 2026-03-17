@@ -4,6 +4,6 @@ compatibility_date = "2024-01-01"
 
 [[kv_namespaces]]
 binding = "UPDATES"
-id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+id = "a1ae8dedf0de495090a42e7b1fd2ba4c"
 
 # Set the admin key via: npx wrangler secret put ADMIN_KEY
