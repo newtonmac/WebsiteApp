@@ -3989,7 +3989,7 @@
                 </div>
             `;
 
-            document.getElementById('lastUpdate').textContent=new Date().toLocaleDateString([],{month:'short',day:'numeric'})+' '+new Date().toLocaleTimeString();
+            document.getElementById('lastUpdate').textContent=new Date().toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'})+' '+new Date().toLocaleTimeString();
             if(tideH?.predictions) setTimeout(()=>drawTide('tideCanvas',tideH.predictions),50);
             // Render place badge if available
             if(nearbyPlace) renderPlaceBadge();
