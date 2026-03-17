@@ -1085,6 +1085,42 @@
         .gm-style .gm-style-iw-chr { background: #1a1d28 !important; }
         .gm-style .gm-style-iw-c > div { background: #1a1d28 !important; }
         .gm-style .gm-style-iw-c > button { background: #1a1d28 !important; }
+        .visitor-badge {
+            cursor: pointer;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: rgba(96, 165, 250, 0.1);
+            border: 1px solid rgba(96, 165, 250, 0.2);
+            color: #60a5fa;
+            font-size: 12px;
+            transition: all 0.2s ease;
+            user-select: none;
+            margin-left: 6px;
+        }
+        .visitor-badge:hover {
+            background: rgba(96, 165, 250, 0.18);
+            border-color: rgba(96, 165, 250, 0.4);
+        }
+        .stats-panel {
+            display: none;
+            max-width: 420px;
+            margin: 10px auto;
+            background: #1a1d28;
+            border: 1px solid #2d3040;
+            border-radius: 14px;
+            padding: 18px;
+            text-align: left;
+        }
+        .stats-panel.open { display: block; }
+        .stats-panel h3 { font-size: 14px; font-weight: 600; color: #e1e4e8; margin-bottom: 12px; }
+        .stats-day { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #2d3040; }
+        .stats-day:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+        .stats-day-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .stats-day-date { font-size: 13px; font-weight: 600; color: #a0a4b8; }
+        .stats-day-count { font-size: 12px; color: #60a5fa; background: rgba(96, 165, 250, 0.1); padding: 2px 8px; border-radius: 8px; }
+        .stats-cities { display: flex; flex-wrap: wrap; gap: 5px; }
+        .stats-city { font-size: 11px; color: #8b8fa3; background: #252836; padding: 2px 7px; border-radius: 6px; }
+        .stats-city span { color: #60a5fa; font-weight: 600; margin-left: 3px; }
     </style>
 </head>
 <body>
@@ -1129,6 +1165,22 @@
             <a href="https://www.coastal.ca.gov/YourCoast/" target="_blank">CA Coastal</a> &bull;
             <a href="https://www.theswimguide.org" target="_blank">Swim Guide</a> &bull;
             Updated <span id="lastUpdate">--</span>
+            &bull; <span class="visitor-badge" onclick="toggleStats()">Stats</span>
+        </div>
+        <div class="stats-panel" id="statsPanel">
+            <h3>Visitor Stats</h3>
+            <div style="display:flex;gap:20px;margin-bottom:14px;">
+                <div style="font-size:13px;color:#a0a4b8;">
+                    Total visitors<br>
+                    <span id="statsTotal" style="font-size:22px;font-weight:700;color:#60a5fa;">--</span>
+                </div>
+                <div style="font-size:13px;color:#a0a4b8;">
+                    Today<br>
+                    <span id="statsToday" style="font-size:22px;font-weight:700;color:#a78bfa;">--</span>
+                </div>
+            </div>
+            <h3 style="margin-bottom:10px;">Last 7 Days</h3>
+            <div id="statsContent">Loading...</div>
         </div>
 
         <footer class="site-footer">
@@ -4089,6 +4141,67 @@
                 }
             },250);
         });
+    </script>
+
+    <script>
+        // --- Visitor Counter ---
+        const COUNTER_API = 'https://visitor-counter.newtonmac.workers.dev';
+
+        (async () => {
+            try {
+                const res = await fetch(`${COUNTER_API}/visit`, { method: 'POST' });
+            } catch { /* silent */ }
+        })();
+
+        let statsLoaded = false;
+
+        function toggleStats() {
+            const panel = document.getElementById('statsPanel');
+            const isOpen = panel.classList.toggle('open');
+            if (isOpen && !statsLoaded) loadStats();
+        }
+
+        async function loadStats() {
+            try {
+                const res = await fetch(`${COUNTER_API}/stats`);
+                const data = await res.json();
+                statsLoaded = true;
+
+                document.getElementById('statsTotal').textContent = data.total.toLocaleString();
+
+                const today = new Date().toISOString().slice(0, 10);
+                const todayData = data.days.find(d => d.date === today);
+                document.getElementById('statsToday').textContent = todayData
+                    ? todayData.uniqueVisitors.toLocaleString() : '0';
+
+                const container = document.getElementById('statsContent');
+                if (!data.days || data.days.length === 0) {
+                    container.innerHTML = '<p style="color:#6b7080;font-size:13px;">No data yet.</p>';
+                    return;
+                }
+
+                container.innerHTML = data.days.slice().reverse().map(day => {
+                    const dateLabel = new Date(day.date + 'T12:00:00').toLocaleDateString('en-US', {
+                        weekday: 'short', month: 'short', day: 'numeric'
+                    });
+                    const cityTags = Object.entries(day.cities)
+                        .sort((a, b) => b[1] - a[1])
+                        .map(([city, count]) => `<span class="stats-city">${city}<span>${count}</span></span>`)
+                        .join('');
+
+                    return `<div class="stats-day">
+                        <div class="stats-day-header">
+                            <span class="stats-day-date">${dateLabel}</span>
+                            <span class="stats-day-count">${day.uniqueVisitors} unique &middot; ${day.totalHits} hits</span>
+                        </div>
+                        <div class="stats-cities">${cityTags || '<span style="color:#6b7080;font-size:12px;">No city data</span>'}</div>
+                    </div>`;
+                }).join('');
+            } catch {
+                document.getElementById('statsContent').innerHTML =
+                    '<p style="color:#ef4444;font-size:13px;">Could not load stats.</p>';
+            }
+        }
     </script>
 
     <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAR81pUTUz5ON7ZBuoouTh2RTHyECr6yvg&libraries=places&callback=initMap"></script>
