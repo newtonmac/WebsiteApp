@@ -189,6 +189,33 @@
             margin-top: 10px; min-height: 18px;
         }
 
+        /* Coming Next section */
+        .coming-next {
+            background: linear-gradient(135deg, rgba(34,197,94,0.08), rgba(59,130,246,0.08));
+            border: 1px solid rgba(34,197,94,0.18);
+            border-radius: 12px;
+            padding: 16px 18px;
+            margin-bottom: 18px;
+        }
+        .coming-next h3 {
+            font-size: 14px; font-weight: 700; color: #22c55e;
+            margin: 0 0 10px 0; letter-spacing: 0.3px;
+        }
+        .coming-next p {
+            font-size: 13px; color: #a0a4b8; line-height: 1.55; margin: 0 0 8px 0;
+        }
+        .coming-next p:last-child { margin-bottom: 0; }
+        .coming-next .cn-label {
+            font-size: 11px; font-weight: 600; color: #60a5fa;
+            text-transform: uppercase; letter-spacing: 0.5px;
+            margin: 10px 0 4px 0;
+        }
+        .coming-next ul {
+            margin: 0; padding: 0 0 0 16px;
+            font-size: 12px; color: #8b8fa3; line-height: 1.6;
+        }
+        .coming-next ul li { margin-bottom: 2px; }
+
         /* Updates list */
         .update-item {
             padding: 12px 0;
@@ -4820,14 +4847,34 @@
                 const data = await res.json();
                 updatesLoaded = true;
 
+                const comingNextBlock = `<div class="coming-next">
+                    <h3>Coming Next</h3>
+                    <p>PaddlePoint currently covers <strong>San Diego County</strong> with real-time conditions powered by:</p>
+                    <ul>
+                        <li>NOAA Tides &amp; Currents &mdash; tide predictions &amp; water levels</li>
+                        <li>National Weather Service (NWS) &mdash; coastal alerts &amp; hazard statements</li>
+                        <li>Open-Meteo &mdash; wind, waves, swell, UV &amp; air quality</li>
+                        <li>Google Weather API &mdash; forecasts &amp; precipitation</li>
+                        <li>CA State Water Board / SD County DEH &mdash; beach water quality</li>
+                        <li>NOAA HABSOS &amp; CA FHAB (SFEI) &mdash; harmful algal bloom monitoring</li>
+                        <li>Swim Drink Fish / Swim Guide &mdash; community water quality</li>
+                    </ul>
+                    <p class="cn-label">Expanding Coverage</p>
+                    <p>We're adding localized data for more regions&mdash;Lake Tahoe, coastal California, and beyond&mdash;so you can check conditions wherever you paddle.</p>
+                    <p class="cn-label">Paddling Club Directory</p>
+                    <p>A nationwide directory (U.S. &amp; Canada) of paddling clubs. Tap any location to find local clubs with links to their websites and social media.</p>
+                    <p class="cn-label">Craft &amp; Location Matching</p>
+                    <p>Each spot will show which craft types locals use there&mdash;surfskis, outrigger canoes, SUPs, K1s, and more&mdash;so you know what works for the conditions before you go.</p>
+                </div>`;
+
                 if (!data.updates || data.updates.length === 0) {
-                    container.innerHTML = '<div class="updates-empty">No updates yet. Check back soon!</div>';
+                    container.innerHTML = comingNextBlock + '<div class="updates-empty">No updates yet. Check back soon!</div>';
                     return;
                 }
 
                 const statusLabels = { planned: 'Planned', in_progress: 'In Progress', completed: 'Shipped' };
 
-                container.innerHTML = data.updates.map(u => {
+                container.innerHTML = comingNextBlock + data.updates.map(u => {
                     const date = new Date(u.createdAt).toLocaleDateString('en-US', {
                         month: 'short', day: 'numeric', year: 'numeric'
                     });
