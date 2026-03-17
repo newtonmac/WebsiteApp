@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PaddlePoint Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f1117;
+            color: #e1e4e8;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container { max-width: 800px; margin: 0 auto; }
+
+        h1 {
+            font-size: 28px; font-weight: 700;
+            background: linear-gradient(90deg, #22c55e, #3b82f6);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            margin-bottom: 6px;
+        }
+
+        .page-subtitle { color: #6b7080; font-size: 14px; margin-bottom: 24px; }
+
+        /* Login */
+        .login-section {
+            background: #1a1d28; border: 1px solid #2d3040;
+            border-radius: 16px; padding: 28px; margin-bottom: 24px;
+        }
+        .login-section h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+        .login-row { display: flex; gap: 10px; }
+        .login-row input { flex: 1; }
+
+        /* Inputs */
+        input, textarea, select {
+            width: 100%; padding: 10px 14px;
+            background: #252836; border: 1px solid #2d3040;
+            border-radius: 10px; color: #e1e4e8;
+            font-size: 14px; font-family: inherit;
+            transition: border-color 0.2s; outline: none;
+        }
+        input:focus, textarea:focus, select:focus { border-color: #22c55e; }
+        input::placeholder, textarea::placeholder { color: #4b5060; }
+        textarea { resize: vertical; min-height: 70px; }
+        select {
+            cursor: pointer; appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%236b7080' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 12px center;
+            padding-right: 32px;
+        }
+        select option { background: #252836; color: #e1e4e8; }
+        label { display: block; font-size: 13px; font-weight: 600; color: #a0a4b8; margin-bottom: 5px; }
+
+        /* Tabs */
+        .tabs {
+            display: flex; gap: 4px; margin-bottom: 20px;
+            background: #1a1d28; border-radius: 12px; padding: 4px;
+            border: 1px solid #2d3040;
+        }
+        .tab {
+            flex: 1; padding: 10px 16px; text-align: center;
+            border-radius: 10px; font-size: 14px; font-weight: 600;
+            cursor: pointer; transition: all 0.2s; color: #6b7080;
+            border: none; background: none; font-family: inherit;
+        }
+        .tab:hover { color: #a0a4b8; }
+        .tab.active { background: #252836; color: #e1e4e8; }
+        .tab .tab-count {
+            font-size: 11px; padding: 1px 7px; border-radius: 8px;
+            margin-left: 6px; font-weight: 700;
+        }
+        .tab .tab-count.purple { background: rgba(167, 139, 250, 0.2); color: #a78bfa; }
+        .tab .tab-count.green { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 20px; border: none; border-radius: 10px;
+            font-size: 14px; font-weight: 600; font-family: inherit;
+            cursor: pointer; transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.9; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary { background: linear-gradient(135deg, #22c55e, #16a34a); color: #fff; }
+        .btn-blue { background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff; }
+        .btn-purple { background: linear-gradient(135deg, #a78bfa, #7c3aed); color: #fff; }
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.15); color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3); padding: 6px 12px; font-size: 12px;
+        }
+        .btn-sm { padding: 5px 12px; font-size: 12px; border-radius: 8px; }
+        .btn-outline {
+            background: transparent; border: 1px solid #2d3040; color: #8b8fa3;
+            padding: 6px 12px; font-size: 12px;
+        }
+        .btn-outline:hover { border-color: #4b5060; color: #e1e4e8; }
+
+        /* Cards */
+        .card {
+            background: #1a1d28; border: 1px solid #2d3040;
+            border-radius: 14px; padding: 18px; margin-bottom: 12px;
+            transition: border-color 0.2s;
+        }
+        .card:hover { border-color: #3d4055; }
+
+        .card-top {
+            display: flex; align-items: center;
+            justify-content: space-between; gap: 10px; margin-bottom: 8px;
+        }
+        .card-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+
+        .card-title {
+            font-size: 15px; font-weight: 600; color: #e1e4e8;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .card-desc { font-size: 13px; color: #8b8fa3; line-height: 1.5; margin-bottom: 10px; }
+
+        .card-footer {
+            display: flex; align-items: center;
+            justify-content: space-between; gap: 10px; flex-wrap: wrap;
+        }
+        .card-date { font-size: 12px; color: #4b5060; }
+        .card-actions { display: flex; gap: 6px; align-items: center; }
+
+        /* Status badges */
+        .status-badge {
+            font-size: 11px; font-weight: 700; padding: 3px 9px;
+            border-radius: 8px; text-transform: uppercase;
+            letter-spacing: 0.5px; white-space: nowrap; flex-shrink: 0;
+        }
+        .status-badge.planned { background: rgba(96, 165, 250, 0.15); color: #60a5fa; }
+        .status-badge.in_progress { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+        .status-badge.completed { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+
+        .status-select {
+            width: auto; padding: 5px 30px 5px 10px;
+            font-size: 12px; border-radius: 8px;
+        }
+
+        /* Suggestion card extras */
+        .suggestion-meta {
+            font-size: 12px; color: #4b5060; margin-bottom: 8px;
+            display: flex; gap: 12px; flex-wrap: wrap;
+        }
+        .suggestion-meta span { display: flex; align-items: center; gap: 4px; }
+
+        .approve-bar {
+            display: flex; gap: 8px; align-items: center;
+            margin-top: 10px; padding-top: 10px; border-top: 1px solid #2d3040;
+        }
+        .approve-bar select { width: auto; flex-shrink: 0; }
+        .approve-bar .btn { flex-shrink: 0; }
+
+        /* Add form */
+        .add-section {
+            background: #1a1d28; border: 1px solid #2d3040;
+            border-radius: 16px; padding: 28px; margin-bottom: 24px;
+        }
+        .add-section h2 { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
+        .form-row { margin-bottom: 14px; }
+        .form-actions { display: flex; gap: 10px; margin-top: 18px; }
+
+        .section-header {
+            display: flex; justify-content: space-between;
+            align-items: center; margin-bottom: 16px;
+        }
+        .section-header h2 { font-size: 18px; font-weight: 600; }
+
+        .empty-state {
+            text-align: center; color: #6b7080;
+            font-size: 14px; padding: 40px 0;
+        }
+
+        .msg {
+            text-align: center; font-size: 13px;
+            margin-top: 10px; min-height: 18px;
+        }
+        .msg.success { color: #22c55e; }
+        .msg.error { color: #ef4444; }
+
+        .hidden { display: none !important; }
+
+        .dismiss-note {
+            font-size: 11px; color: #4b5060; font-style: italic; margin-top: 4px;
+        }
+
+        @media (max-width: 600px) {
+            body { padding: 14px; }
+            h1 { font-size: 22px; }
+            .card-top { flex-direction: column; align-items: flex-start; }
+            .card-footer { flex-direction: column; align-items: flex-start; }
+            .approve-bar { flex-direction: column; align-items: stretch; }
+            .suggestion-meta { flex-direction: column; gap: 4px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>PaddlePoint Admin</h1>
+        <p class="page-subtitle">Review suggestions and manage your roadmap</p>
+
+        <!-- Login -->
+        <div class="login-section" id="loginSection">
+            <h2>Enter Admin Key</h2>
+            <div class="login-row">
+                <input type="password" id="adminKeyInput" placeholder="Your admin key" onkeydown="if(event.key==='Enter')login()">
+                <button class="btn btn-primary" onclick="login()">Connect</button>
+            </div>
+            <div class="msg" id="loginMsg"></div>
+        </div>
+
+        <!-- Main Content (hidden until login) -->
+        <div id="mainContent" class="hidden">
+
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('suggestions')">
+                    Suggestions <span class="tab-count purple" id="suggestCount">0</span>
+                </button>
+                <button class="tab" onclick="switchTab('updates')">
+                    Updates <span class="tab-count green" id="updateCount">0</span>
+                </button>
+            </div>
+
+            <!-- Suggestions Tab -->
+            <div class="tab-panel active" id="panel-suggestions">
+                <div class="section-header">
+                    <h2>Incoming Suggestions</h2>
+                    <button class="btn btn-purple btn-sm" onclick="loadSuggestions()">Refresh</button>
+                </div>
+                <div id="suggestionsList"></div>
+            </div>
+
+            <!-- Updates Tab -->
+            <div class="tab-panel" id="panel-updates">
+                <!-- Add Form -->
+                <div class="add-section">
+                    <h2>Add New Update</h2>
+                    <div class="form-row">
+                        <label for="addTitle">Title *</label>
+                        <input type="text" id="addTitle" placeholder="e.g. Surf forecast overlay">
+                    </div>
+                    <div class="form-row">
+                        <label for="addDesc">Description</label>
+                        <textarea id="addDesc" placeholder="What is this update about?"></textarea>
+                    </div>
+                    <div class="form-row">
+                        <label for="addStatus">Status</label>
+                        <select id="addStatus">
+                            <option value="planned">Planned</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="completed">Done</option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn btn-primary" id="addBtn" onclick="addUpdate()">Add Update</button>
+                    </div>
+                    <div class="msg" id="addMsg"></div>
+                </div>
+
+                <!-- Updates List -->
+                <div class="section-header">
+                    <h2>All Updates</h2>
+                    <button class="btn btn-blue btn-sm" onclick="loadUpdates()">Refresh</button>
+                </div>
+                <div id="updatesList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const UPDATES_API = 'https://updates.newtonmac.workers.dev';
+        const SUGGEST_API = 'https://suggestions.newtonmac.workers.dev';
+        let adminKey = '';
+
+        // --- Login ---
+        function login() {
+            const key = document.getElementById('adminKeyInput').value.trim();
+            const msg = document.getElementById('loginMsg');
+            if (!key) {
+                msg.className = 'msg error';
+                msg.textContent = 'Please enter your admin key.';
+                return;
+            }
+            adminKey = key;
+            msg.className = 'msg';
+            msg.textContent = 'Connecting...';
+
+            // Verify by trying to add then cancel — just fetch updates to confirm API works
+            fetch(`${UPDATES_API}/updates`)
+                .then(r => r.json())
+                .then(() => {
+                    document.getElementById('loginSection').classList.add('hidden');
+                    document.getElementById('mainContent').classList.remove('hidden');
+                    loadSuggestions();
+                    loadUpdates();
+                })
+                .catch(() => {
+                    msg.className = 'msg error';
+                    msg.textContent = 'Could not connect to the API.';
+                });
+        }
+
+        // --- Tabs ---
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            document.getElementById(`panel-${tab}`).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+
+        // --- Suggestions ---
+        async function loadSuggestions() {
+            const container = document.getElementById('suggestionsList');
+            container.innerHTML = '<div class="empty-state">Loading...</div>';
+
+            try {
+                const res = await fetch(`${SUGGEST_API}/suggestions`);
+                const data = await res.json();
+                const suggestions = data.suggestions || [];
+
+                document.getElementById('suggestCount').textContent = suggestions.length;
+
+                if (suggestions.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No suggestions yet. They\'ll appear here when users submit them.</div>';
+                    return;
+                }
+
+                container.innerHTML = suggestions.map(s => {
+                    const date = new Date(s.timestamp).toLocaleDateString('en-US', {
+                        month: 'short', day: 'numeric', year: 'numeric',
+                        hour: 'numeric', minute: '2-digit'
+                    });
+                    return `<div class="card" id="sug-${s.id}">
+                        <div class="card-top">
+                            <div class="card-left">
+                                <span class="card-title">${escapeHtml(s.title)}</span>
+                            </div>
+                        </div>
+                        <div class="suggestion-meta">
+                            <span>From: <strong>${escapeHtml(s.name)}</strong></span>
+                            ${s.club ? `<span>Club: <strong>${escapeHtml(s.club)}</strong></span>` : ''}
+                            <span>${escapeHtml(s.city)}, ${escapeHtml(s.country)}</span>
+                            <span>${date}</span>
+                        </div>
+                        ${s.description ? `<div class="card-desc">${escapeHtml(s.description)}</div>` : ''}
+                        <div class="approve-bar">
+                            <select id="approve-status-${s.id}">
+                                <option value="planned">Planned</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="completed">Done</option>
+                            </select>
+                            <button class="btn btn-primary btn-sm" onclick="approveSuggestion('${s.id}')">
+                                Approve &amp; Add to Updates
+                            </button>
+                            <button class="btn btn-outline btn-sm" onclick="dismissSuggestion('${s.id}')">
+                                Dismiss
+                            </button>
+                        </div>
+                    </div>`;
+                }).join('');
+            } catch {
+                container.innerHTML = '<div class="empty-state">Could not load suggestions.</div>';
+            }
+        }
+
+        async function approveSuggestion(sugId) {
+            const card = document.getElementById(`sug-${sugId}`);
+            const titleEl = card.querySelector('.card-title');
+            const descEl = card.querySelector('.card-desc');
+            const status = document.getElementById(`approve-status-${sugId}`).value;
+
+            const title = titleEl.textContent;
+            const description = descEl ? descEl.textContent : '';
+
+            try {
+                const res = await fetch(`${UPDATES_API}/admin/updates`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${adminKey}`,
+                    },
+                    body: JSON.stringify({ title, description, status }),
+                });
+
+                if (res.status === 401) {
+                    alert('Invalid admin key.');
+                    return;
+                }
+                if (!res.ok) throw new Error('Failed');
+
+                // Fade out the card
+                card.style.opacity = '0.4';
+                card.innerHTML = `<div style="text-align:center;padding:10px;color:#22c55e;font-weight:600;">
+                    Approved and added to Updates as "${status.replace('_', ' ')}"
+                </div>`;
+
+                // Update the updates count
+                loadUpdates();
+            } catch {
+                alert('Could not approve suggestion.');
+            }
+        }
+
+        function dismissSuggestion(sugId) {
+            if (!confirm('Dismiss this suggestion? It will still be stored but hidden from this view.')) return;
+            const card = document.getElementById(`sug-${sugId}`);
+            card.style.opacity = '0.3';
+            card.innerHTML = `<div style="text-align:center;padding:10px;color:#6b7080;font-style:italic;">
+                Dismissed
+            </div>`;
+        }
+
+        // --- Updates ---
+        async function loadUpdates() {
+            const container = document.getElementById('updatesList');
+            container.innerHTML = '<div class="empty-state">Loading...</div>';
+
+            try {
+                const res = await fetch(`${UPDATES_API}/updates`);
+                const data = await res.json();
+                const updates = data.updates || [];
+
+                document.getElementById('updateCount').textContent = updates.length;
+
+                if (updates.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No updates yet. Add one above or approve a suggestion!</div>';
+                    return;
+                }
+
+                const statusLabels = { planned: 'Planned', in_progress: 'In Progress', completed: 'Done' };
+
+                container.innerHTML = updates.map(u => {
+                    const created = new Date(u.createdAt).toLocaleDateString('en-US', {
+                        month: 'short', day: 'numeric', year: 'numeric',
+                        hour: 'numeric', minute: '2-digit'
+                    });
+                    const updated = new Date(u.updatedAt).toLocaleDateString('en-US', {
+                        month: 'short', day: 'numeric', year: 'numeric',
+                        hour: 'numeric', minute: '2-digit'
+                    });
+
+                    return `<div class="card" id="card-${u.id}">
+                        <div class="card-top">
+                            <div class="card-left">
+                                <span class="status-badge ${u.status}">${statusLabels[u.status] || u.status}</span>
+                                <span class="card-title">${escapeHtml(u.title)}</span>
+                            </div>
+                        </div>
+                        ${u.description ? `<div class="card-desc">${escapeHtml(u.description)}</div>` : ''}
+                        <div class="card-footer">
+                            <div class="card-date">
+                                Created: ${created}${u.updatedAt !== u.createdAt ? ` &middot; Updated: ${updated}` : ''}
+                            </div>
+                            <div class="card-actions">
+                                <select class="status-select" onchange="changeStatus('${u.id}', this.value)">
+                                    <option value="planned" ${u.status === 'planned' ? 'selected' : ''}>Planned</option>
+                                    <option value="in_progress" ${u.status === 'in_progress' ? 'selected' : ''}>In Progress</option>
+                                    <option value="completed" ${u.status === 'completed' ? 'selected' : ''}>Done</option>
+                                </select>
+                                <button class="btn btn-danger btn-sm" onclick="deleteUpdate('${u.id}')">Delete</button>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+            } catch {
+                container.innerHTML = '<div class="empty-state">Could not load updates.</div>';
+            }
+        }
+
+        async function addUpdate() {
+            const title = document.getElementById('addTitle').value.trim();
+            const description = document.getElementById('addDesc').value.trim();
+            const status = document.getElementById('addStatus').value;
+            const btn = document.getElementById('addBtn');
+            const msg = document.getElementById('addMsg');
+
+            if (!title) {
+                msg.className = 'msg error';
+                msg.textContent = 'Title is required.';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Adding...';
+            msg.className = 'msg';
+            msg.textContent = '';
+
+            try {
+                const res = await fetch(`${UPDATES_API}/admin/updates`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${adminKey}`,
+                    },
+                    body: JSON.stringify({ title, description, status }),
+                });
+
+                if (res.status === 401) {
+                    msg.className = 'msg error';
+                    msg.textContent = 'Invalid admin key.';
+                    return;
+                }
+                if (!res.ok) throw new Error('Failed');
+
+                msg.className = 'msg success';
+                msg.textContent = 'Update added!';
+                document.getElementById('addTitle').value = '';
+                document.getElementById('addDesc').value = '';
+                document.getElementById('addStatus').value = 'planned';
+                loadUpdates();
+                setTimeout(() => { msg.textContent = ''; }, 2000);
+            } catch {
+                msg.className = 'msg error';
+                msg.textContent = 'Could not add update.';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Add Update';
+            }
+        }
+
+        async function changeStatus(id, newStatus) {
+            try {
+                const res = await fetch(`${UPDATES_API}/admin/updates/${id}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${adminKey}`,
+                    },
+                    body: JSON.stringify({ status: newStatus }),
+                });
+                if (res.status === 401) { alert('Invalid admin key.'); return; }
+                if (!res.ok) throw new Error('Failed');
+                loadUpdates();
+            } catch {
+                alert('Could not update status.');
+            }
+        }
+
+        async function deleteUpdate(id) {
+            if (!confirm('Delete this update?')) return;
+            try {
+                const res = await fetch(`${UPDATES_API}/admin/updates/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${adminKey}` },
+                });
+                if (res.status === 401) { alert('Invalid admin key.'); return; }
+                if (!res.ok) throw new Error('Failed');
+                loadUpdates();
+            } catch {
+                alert('Could not delete update.');
+            }
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
