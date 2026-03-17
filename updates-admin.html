@@ -337,10 +337,15 @@
                         month: 'short', day: 'numeric', year: 'numeric',
                         hour: 'numeric', minute: '2-digit'
                     });
-                    return `<div class="card" id="sug-${s.id}">
+                    // Build "City Paddler" label from city
+                    const cityName = (s.city && s.city !== 'Unknown') ? s.city : '';
+                    const suggestedBy = cityName ? cityName + ' Paddler' : (s.name || 'A Paddler');
+
+                    return `<div class="card" id="sug-${s.id}" data-suggested-by="${escapeAttr(suggestedBy)}">
                         <div class="suggestion-meta">
                             <span>From: <strong>${escapeHtml(s.name)}</strong></span>
                             ${s.club ? `<span>Club: <strong>${escapeHtml(s.club)}</strong></span>` : ''}
+                            ${s.craft ? `<span>Craft: <strong>${escapeHtml(s.craft)}</strong></span>` : ''}
                             <span>${escapeHtml(s.city)}, ${escapeHtml(s.country)}</span>
                             <span>${date}</span>
                         </div>
@@ -377,6 +382,7 @@
             const title = document.getElementById(`sug-title-${sugId}`).value.trim();
             const description = document.getElementById(`sug-desc-${sugId}`).value.trim();
             const status = document.getElementById(`approve-status-${sugId}`).value;
+            const suggestedBy = card.getAttribute('data-suggested-by') || '';
 
             if (!title) { alert('Title cannot be empty.'); return; }
 
@@ -387,7 +393,7 @@
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${adminKey}`,
                     },
-                    body: JSON.stringify({ title, description, status }),
+                    body: JSON.stringify({ title, description, status, suggestedBy }),
                 });
 
                 if (res.status === 401) {

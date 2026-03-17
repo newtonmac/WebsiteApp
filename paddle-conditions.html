@@ -1439,6 +1439,19 @@
                     <input type="text" id="suggestClub" placeholder="e.g. San Diego Outrigger Club">
                 </div>
                 <div class="pp-form-group">
+                    <label for="suggestCraft">Craft Type (optional)</label>
+                    <select id="suggestCraft">
+                        <option value="">-- Select --</option>
+                        <option value="SUP">SUP</option>
+                        <option value="Kayak">Kayak</option>
+                        <option value="Outrigger">Outrigger</option>
+                        <option value="Canoe">Canoe</option>
+                        <option value="Surfski">Surfski</option>
+                        <option value="Prone">Prone</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="pp-form-group">
                     <label for="suggestDesc">Description</label>
                     <textarea id="suggestDesc" placeholder="What should it do? Any specific data or features you'd like?"></textarea>
                 </div>
@@ -4771,6 +4784,7 @@
             const name = document.getElementById('suggestName').value.trim() || 'Anonymous';
             const title = document.getElementById('suggestTitle').value.trim();
             const club = document.getElementById('suggestClub').value.trim();
+            const craft = document.getElementById('suggestCraft').value;
             const description = document.getElementById('suggestDesc').value.trim();
             if (!title) return;
 
@@ -4783,7 +4797,7 @@
                 const res = await fetch(`${SUGGEST_API}/suggest`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, title, description, club }),
+                    body: JSON.stringify({ name, title, description, club, craft }),
                 });
                 if (!res.ok) throw new Error('Failed');
                 msg.style.color = '#22c55e';
@@ -4823,7 +4837,7 @@
                             <span class="update-title">${u.title}</span>
                         </div>
                         ${u.description ? `<div class="update-desc">${u.description}</div>` : ''}
-                        <div class="update-date">${date}</div>
+                        <div class="update-date">${date}${u.suggestedBy ? ` &middot; Suggested by ${u.suggestedBy}` : ''}</div>
                     </div>`;
                 }).join('');
             } catch {
