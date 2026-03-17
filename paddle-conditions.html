@@ -1436,6 +1436,10 @@
                     <input type="text" id="suggestTitle" placeholder="e.g. Add surf forecast overlay" required>
                 </div>
                 <div class="pp-form-group">
+                    <label for="suggestClub">Paddling Club (optional)</label>
+                    <input type="text" id="suggestClub" placeholder="e.g. San Diego Outrigger Club">
+                </div>
+                <div class="pp-form-group">
                     <label for="suggestDesc">Description</label>
                     <textarea id="suggestDesc" placeholder="What should it do? Any specific data or features you'd like?"></textarea>
                 </div>
@@ -4767,6 +4771,7 @@
             const msg = document.getElementById('suggestMsg');
             const name = document.getElementById('suggestName').value.trim() || 'Anonymous';
             const title = document.getElementById('suggestTitle').value.trim();
+            const club = document.getElementById('suggestClub').value.trim();
             const description = document.getElementById('suggestDesc').value.trim();
             if (!title) return;
 
@@ -4779,7 +4784,7 @@
                 const res = await fetch(`${SUGGEST_API}/suggest`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, title, description }),
+                    body: JSON.stringify({ name, title, description, club }),
                 });
                 if (!res.ok) throw new Error('Failed');
                 msg.style.color = '#22c55e';

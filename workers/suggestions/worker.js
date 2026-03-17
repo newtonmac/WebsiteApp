@@ -49,7 +49,7 @@ export default {
 
 async function submitSuggestion(request, env) {
   const body = await request.json();
-  const { name, title, description } = body;
+  const { name, title, description, club } = body;
 
   if (!title || typeof title !== 'string' || title.trim().length === 0) {
     return new Response(JSON.stringify({ error: 'Title is required' }), {
@@ -80,6 +80,7 @@ async function submitSuggestion(request, env) {
     name: (name || 'Anonymous').slice(0, 100),
     title: title.trim().slice(0, 200),
     description: (description || '').slice(0, 1000),
+    club: (club || '').slice(0, 200),
     timestamp: new Date().toISOString(),
     city: (request.cf && request.cf.city) || 'Unknown',
     country: (request.cf && request.cf.country) || 'Unknown',
@@ -117,6 +118,7 @@ async function sendEmailNotification(suggestion, env) {
         value: [
           `New suggestion from ${suggestion.name}`,
           `Location: ${suggestion.city}, ${suggestion.country}`,
+          suggestion.club ? `Paddling Club: ${suggestion.club}` : '',
           `Time: ${suggestion.timestamp}`,
           '',
           `Title: ${suggestion.title}`,
