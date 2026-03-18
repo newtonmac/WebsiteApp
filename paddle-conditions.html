@@ -2425,13 +2425,22 @@
         // Query: is this point inside a water polygon? (ocean, lake, river, bay, reservoir)
         // Most reliable single signal — OSM has precise water body boundaries worldwide.
         function checkWaterViaOSM(lat, lng) {
+            // Use `out count` for minimal response size — returns a single element with total count
             const query = `[out:json][timeout:5];(way["natural"="water"](around:20,${lat},${lng});way["waterway"](around:20,${lat},${lng});relation["natural"="water"](around:20,${lat},${lng});way["landuse"="reservoir"](around:20,${lat},${lng});way["leisure"="marina"](around:20,${lat},${lng}););out count;`;
-            return fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`)
+            return fetch('https://overpass-api.de/api/interpreter', {
+                method: 'POST',
+                body: `data=${encodeURIComponent(query)}`,
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            })
                 .then(r => r.ok ? r.json() : null)
                 .then(d => {
-                    if (!d || !d.elements) return null;
-                    // If any water features found within 20m, it's water
-                    return d.elements.length > 0 || (d.elements[0]?.tags?.total > 0);
+                    if (!d) return null;
+                    // `out count` returns elements array with one count object
+                    // whose tags.total is the number of matching features
+                    const count = d.elements?.[0]?.tags?.total;
+                    if (count !== undefined) return parseInt(count) > 0;
+                    // Fallback: if elements exist beyond the count object
+                    return (d.elements?.length || 0) > 0;
                 })
                 .catch(() => null); // API down — return null (no vote)
         }
