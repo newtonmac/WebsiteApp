@@ -3939,7 +3939,7 @@
                       ).join('<br>')
                     : '<span style="color:#6b7280;">No nearby stations</span>';
 
-                const nearbyDrains = sortedDEH.filter(s => isStormDrain(s)).slice(0, 5);
+                const nearbyDrains = sortedDEH.filter(s => isStormDrain(s) && s._dist <= dehRadius).slice(0, 5);
                 const drainsLabel = nearbyDrains.length > 0
                     ? nearbyDrains.map(s =>
                         `<span style="display:inline-flex;align-items:center;gap:3px;"><span style="color:#38bdf8;font-size:10px;">&#x1F4A7;</span>${s.Name || 'Storm Drain'} (${s._dist.toFixed(1)}mi ${s._dir ? s._dir.a + s._dir.l : ''})</span>`
@@ -4145,12 +4145,12 @@
 
                         return html;
                     })() +
-                    // Nearest DEH monitors
-                    `<div style="border-top:1px solid #2d3040;padding-top:6px;margin-top:6px;font-size:10px;color:#c0c4d0;">` +
-                    `<div style="font-weight:600;margin-bottom:3px;color:#8b8fa3;">Nearest DEH Monitors:</div>${nearestLabel}</div>` +
-                    // Storm drains / outfalls
-                    `<div style="border-top:1px solid #2d3040;padding-top:6px;margin-top:6px;font-size:10px;color:#c0c4d0;">` +
-                    `<div style="font-weight:600;margin-bottom:3px;color:#8b8fa3;">Storm Drains / Outfalls:</div>${drainsLabel}</div>` +
+                    // Nearest DEH monitors (only if nearby)
+                    (nearbyStations.length > 0 ? `<div style="border-top:1px solid #2d3040;padding-top:6px;margin-top:6px;font-size:10px;color:#c0c4d0;">` +
+                    `<div style="font-weight:600;margin-bottom:3px;color:#8b8fa3;">Nearest DEH Monitors:</div>${nearestLabel}</div>` : '') +
+                    // Storm drains / outfalls (only if nearby)
+                    (nearbyDrains.length > 0 ? `<div style="border-top:1px solid #2d3040;padding-top:6px;margin-top:6px;font-size:10px;color:#c0c4d0;">` +
+                    `<div style="font-weight:600;margin-bottom:3px;color:#8b8fa3;">Storm Drains / Outfalls:</div>${drainsLabel}</div>` : '') +
                     `</div>`;
 
                 if (!paddleInfoWindow) paddleInfoWindow = new google.maps.InfoWindow();
