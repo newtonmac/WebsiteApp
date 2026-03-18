@@ -380,10 +380,15 @@
             backdrop-filter: blur(8px);
             text-align: center;
             max-width: 90vw;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
         }
         .water-toast.show {
             opacity: 1;
             transform: translateX(-50%) translateY(0);
+            pointer-events: auto;
         }
 
         .tap-label {
@@ -2389,11 +2394,13 @@
                 if (geoResult === 'water') { setTapMemory(lat, lng, true); return true; }
 
                 // --- TIER 2: Weighted voting for ambiguous cases ---
+                // (OSM true/false + geocoder water/land already handled in TIER 1)
                 let score = 0;
 
-                // OSM (high weight — authoritative geodata)
-                if (osm === true) score += 4;
-                else if (osm === false) score -= 3;
+                // OSM returned data but wasn't definitive enough for TIER 1
+                // (e.g., osm=false but geocoder wasn't 'land')
+                if (osm === false) score -= 3;
+                // osm === null means API failed, no vote
 
                 // Static Maps pixel checks (reliable — uses Google's own water classification)
                 if (pixel16) score += 3;
@@ -2510,7 +2517,7 @@
 
                     const streetSuffixes = /\b(ocean|sea|lake|river|creek|bay|harbor|harbour|marina|lagoon|reservoir|pond|canal|cove|inlet|shore|wharf|dock|pier|port|channel|sound|gulf|cape|spring|brook|stream|point|landing|waterfront|embarcadero|boardwalk)\s+(dr|drive|ave|avenue|blvd|boulevard|st|street|rd|road|way|ln|lane|ct|court|pl|place|cir|circle|pkwy|parkway|hwy|highway|ter|terrace|loop|walk|row|path|trail|pass|run|crossing|xing)\b/gi;
 
-                    const landKeywords = /\b(airport|airfield|runway|terminal|hangar|parking\s*(lot|garage|structure)|mall|shopping|school|university|college|hospital|clinic|church|temple|mosque|synagogue|cemetery|freeway|highway|interstate|plaza|military|naval\s*base|navy|air\s*force|army|barracks|commissary|exchange|base\s+san|fort\s+\w+|camp\s+\w+)\b/i;
+                    const landKeywords = /\b(airport|airfield|runway|terminal|hangar|parking\s*(lot|garage|structure)|mall|shopping\s*(center|mall|plaza)|school|university|college|hospital|clinic|church|temple|mosque|synagogue|cemetery|freeway|highway|interstate|plaza|military\s+base|naval\s*(base|station|air\s*station)|air\s*force\s*base|army\s*base|barracks|commissary|navy\s+exchange|fort\s+\w+|camp\s+\w+|industrial\s+park|warehouse|factory|power\s*plant|sewage|wastewater|treatment\s*plant|landfill|junkyard)\b/i;
 
                     // Step 1: Explicit water types
                     for (const result of results) {
@@ -2577,10 +2584,10 @@
                             // Water in satellite imagery: dark, blue/teal dominant
                             // - Deep water: very dark blue (r<60, g<80, b<100)
                             // - Shallow/murky: dark teal/gray-blue
-                            // - NOT water: bright (concrete, sand), green (vegetation), brown (soil)
+                            // - NOT water: bright (concrete, sand), green (vegetation),
+                            //   brown (soil), dark gray (asphalt, shadows)
                             const isWaterColor = (
-                                (b > r && b > g * 0.8 && brightness < 120) || // blue dominant, dark
-                                (brightness < 50 && b >= r)                    // very dark, not red
+                                (b > r + 15 && b > g * 0.85 && brightness < 120 && brightness > 15) // blue dominant, dark but not black
                             );
                             if (isWaterColor) waterCount++;
                         }
@@ -2596,12 +2603,6 @@
         // Samples 3x3 grid (~50m spacing). Flat + low = water. Variable = land.
         function checkElevationGrid(lat, lng) {
             const delta = 0.0005; // ~50m
-            const points = [];
-            for (let dy = -1; dy <= 1; dy++) {
-                for (let dx = -1; dx <= 1; dx++) {
-                    points.push(`${(lat + dy * delta).toFixed(5)}`);
-                }
-            }
             const lats = [];
             const lngs = [];
             for (let dy = -1; dy <= 1; dy++) {
