@@ -3473,8 +3473,8 @@
             wtScore = Math.max(0, Math.min(100, wtScore));
 
             // --- PADDLING SCORE (conditions for actually paddling) ---
-            // Weighted: wind/weather 40%, water surface 40%, UV 10%, water temp 10%
-            let paddleScore = Math.round(wwScore * 0.40 + wsScore * 0.40 + uvScore * 0.10 + wtScore * 0.10);
+            // Weighted: wind/weather 45%, water surface 45%, water temp 10%
+            let paddleScore = Math.round(wwScore * 0.45 + wsScore * 0.45 + wtScore * 0.10);
             if (wc >= 95) paddleScore = Math.min(paddleScore, 20); // thunderstorms
             paddleScore = Math.max(0, Math.min(100, paddleScore));
 
@@ -3603,7 +3603,7 @@
             // Check water quality separately
             if (wqS <= 15) return `Water Quality is critical — ${cats.water.factors[0]?.l || 'unsafe'}. Do not enter the water.`;
             // Check paddling conditions
-            const paddleCats = {wind: cats.wind, surface: cats.surface, uv: cats.uv, temp: cats.temp};
+            const paddleCats = {wind: cats.wind, surface: cats.surface, temp: cats.temp};
             const worst = Object.values(paddleCats).reduce((a, b) => a.score < b.score ? a : b);
             if (worst.score <= 15) return `${worst.label} is critical — ${worst.factors[0]?.l || 'unsafe'}. Stay on shore.`;
             if (worst.score <= 40) return `${worst.label} is poor — ${worst.factors[0]?.l || 'use caution'}. Not recommended for paddling.`;
@@ -4084,7 +4084,7 @@
                   `</div></div>`;
 
             // Build paddling score explanation for popup
-            const paddleCatKeys = ['wind','surface','uv','temp'];
+            const paddleCatKeys = ['wind','surface','temp'];
             const paddleCats = paddleCatKeys.map(k => categories[k]).map(cat => {
                 const cc = sClr(cat.score);
                 const fTags = cat.factors.length > 0 ? cat.factors.map(f => `<span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;background:rgba(255,255,255,0.06);color:${f.c};margin:2px;">${f.l}</span>`).join('') : '<span style="color:#8b8fa3;font-size:11px;">No issues</span>';
@@ -4092,7 +4092,7 @@
             }).join('');
             const scoreExplain = `<div style="font-size:13px;color:#e2e8f0;line-height:1.6;">` +
                 `<div style="margin-bottom:8px;color:#8b8fa3;">Paddling score reflects on-water conditions:</div>` +
-                `<div style="margin-bottom:6px;color:#8b8fa3;font-size:11px;">Wind &amp; Weather 40% · Water Surface 40% · UV &amp; Sun 10% · Water Temp 10%</div>` +
+                `<div style="margin-bottom:6px;color:#8b8fa3;font-size:11px;">Wind &amp; Weather 45% · Water Surface 45% · Water Temp 10%</div>` +
                 paddleCats +
                 `<div style="margin-top:10px;border-top:1px solid #2d3040;padding-top:8px;color:#8b8fa3;font-size:11px;">` +
                 `Sources: <a href="https://open-meteo.com" target="_blank" style="color:#06b6d4;">Open-Meteo</a>, ` +
