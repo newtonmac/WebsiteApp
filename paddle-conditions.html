@@ -433,7 +433,7 @@
         }
 
         .score-circle {
-            width: 100px; height: 100px;
+            width: 120px; height: 120px;
             border-radius: 50%;
             display: flex;
             flex-direction: column;
@@ -455,9 +455,9 @@
             mask-composite: exclude;
         }
 
-        .score-number { font-size: 30px; font-weight: 800; line-height: 1; }
+        .score-number { font-size: 36px; font-weight: 800; line-height: 1; }
         .score-label { font-size: 11px; color: #8b8fa3; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; line-height: 1.2; }
-        .score-circle.status-circle .score-number { font-size: 18px; }
+        .score-circle.status-circle .score-number { font-size: 15px; }
         .score-circle.status-circle .score-label { font-size: 10px; }
         .score-details { flex: 1; min-width: 200px; }
         .score-place { font-size: 20px; font-weight: 700; color: #06b6d4; margin-bottom: 4px; }
@@ -1217,8 +1217,8 @@
                 max-width: 100%;
             }
             .score-details { min-width: 0; width: 100%; }
-            .score-circle { width: 80px; height: 80px; }
-            .score-number { font-size: 24px; }
+            .score-circle { width: 90px; height: 90px; }
+            .score-number { font-size: 28px; }
             .score-verdict { font-size: 18px; }
             .score-place { font-size: 17px; word-break: break-word; }
             .score-place-sub { font-size: 11px; word-break: break-all; }
@@ -1244,8 +1244,8 @@
             .header h1 { font-size: 15px; }
             .header-logo { width: 50px; height: 50px; }
             .score-hero { padding: 14px; }
-            .score-circle { width: 70px; height: 70px; }
-            .score-number { font-size: 20px; }
+            .score-circle { width: 80px; height: 80px; }
+            .score-number { font-size: 24px; }
             .score-verdict { font-size: 16px; }
             .score-summary { font-size: 13px; }
             .sport-grid { grid-template-columns: 1fr; }
@@ -1529,7 +1529,7 @@
         </div>
 
         <div class="water-toast" id="waterToast">
-            <span id="waterToastText">&#x1F6AB; Please tap near a body of water (ocean, lake, river, bay)</span>
+            <span>&#x1F6AB; Please tap near a body of water (ocean, lake, river, bay)</span>
             <button id="waterToastOverride" style="display:none;margin-left:10px;padding:4px 12px;background:#06b6d4;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;" onclick="overrideWaterCheck()">I'm on water →</button>
         </div>
 
@@ -2324,179 +2324,74 @@
             locateMe();
         }
 
-        // ======== Water Validation — Geocoder-first with pixel fallback ========
-        // Fast: Geocoder resolves most taps instantly. Pixel check only for ambiguous cases.
+        // ======== Water Validation via Google Geocoding API ========
         let geocoder;
-
-        // --- Tap Memory: cache confirmed water/land coordinates ---
-        const tapMemory = new Map();
-        const TAP_MEMORY_RADIUS = 0.001; // ~100m in degrees
-
-        function getTapMemory(lat, lng) {
-            for (const [key, val] of tapMemory) {
-                const [mLat, mLng] = key.split(',').map(Number);
-                if (Math.abs(lat - mLat) < TAP_MEMORY_RADIUS && Math.abs(lng - mLng) < TAP_MEMORY_RADIUS) {
-                    return val;
-                }
-            }
-            return null;
-        }
-
-        function setTapMemory(lat, lng, isWater) {
-            tapMemory.set(`${lat.toFixed(5)},${lng.toFixed(5)}`, isWater);
-            if (tapMemory.size > 200) {
-                const first = tapMemory.keys().next().value;
-                tapMemory.delete(first);
-            }
-        }
-
-        // --- User override: store last rejected tap for override button ---
         let lastRejectedTap = null;
 
-        // Primary: Geocoder check (fast, handles named water bodies + land detection)
-        // Fallback: Static Maps pixel sampling + elevation (catches open water geocoder misses)
         function checkWaterNearby(lat, lng) {
             if (!geocoder) geocoder = new google.maps.Geocoder();
-
-            // Check tap memory first (instant)
-            const remembered = getTapMemory(lat, lng);
-            if (remembered !== null) return Promise.resolve(remembered);
-
             return new Promise((resolve) => {
                 geocoder.geocode({ location: { lat, lng } }, (results, status) => {
                     if (status !== 'OK' || !results || results.length === 0) {
-                        // No results often means open water — verify with pixel check
-                        checkWaterPixel(lat, lng).then(r => { setTapMemory(lat, lng, r); resolve(r); });
+                        // No results often means open water (ocean, large lake)
+                        resolve(true);
                         return;
                     }
 
-                    const waterTypes = ['natural_feature', 'water_body', 'archipelago', 'colloquial_area'];
-
-                    const landTypes = [
-                        'airport', 'transit_station', 'train_station', 'bus_station',
-                        'parking', 'shopping_mall', 'store', 'restaurant', 'food',
-                        'school', 'university', 'hospital', 'church', 'place_of_worship',
-                        'gym', 'stadium', 'museum', 'library', 'city_hall',
-                        'courthouse', 'fire_station', 'police', 'post_office',
-                        'car_dealer', 'car_rental', 'car_repair', 'gas_station',
-                        'lodging', 'real_estate_agency', 'insurance_agency',
-                        'accounting', 'lawyer', 'dentist', 'doctor', 'pharmacy',
-                        'veterinary_care', 'funeral_home', 'cemetery',
-                        'campground', 'amusement_park', 'zoo', 'aquarium',
+                    // Water-related result types from Google
+                    const waterTypes = [
+                        'natural_feature', 'water_body',
+                        'archipelago', 'colloquial_area'
                     ];
 
+                    // Water keywords to match in result names / formatted addresses
                     const waterKeywords = /\b(ocean|sea|lake|river|creek|bay|harbor|harbour|marina|lagoon|reservoir|pond|canal|strait|cove|inlet|estuary|waterway|beach|surf|coast|shore|wharf|dock|pier|port|channel|sound|gulf|cape|rapids|falls|spring|brook|stream|point|peninsula|jetty|breakwater|reef|tide|tidepool|tideland|seawall|bluff|headland|sandbar|atoll|isthmus|narrows|shoal|anchorage|boat\s*ramp|boat\s*launch|landing|waterfront|embarcadero|boardwalk|yacht|slip|mooring|quay)\b/i;
 
+                    // Filter out street names that contain water words (e.g. "Ocean Drive")
                     const streetSuffixes = /\b(ocean|sea|lake|river|creek|bay|harbor|harbour|marina|lagoon|reservoir|pond|canal|cove|inlet|shore|wharf|dock|pier|port|channel|sound|gulf|cape|spring|brook|stream|point|landing|waterfront|embarcadero|boardwalk)\s+(dr|drive|ave|avenue|blvd|boulevard|st|street|rd|road|way|ln|lane|ct|court|pl|place|cir|circle|pkwy|parkway|hwy|highway|ter|terrace|loop|walk|row|path|trail|pass|run|crossing|xing)\b/gi;
 
-                    const landKeywords = /\b(airport|airfield|runway|terminal|hangar|parking\s*(lot|garage|structure)|mall|shopping\s*(center|mall|plaza)|school|university|college|hospital|clinic|church|temple|mosque|synagogue|cemetery|freeway|highway|interstate|plaza|military\s+base|naval\s*(base|station|air\s*station)|air\s*force\s*base|army\s*base|barracks|commissary|navy\s+exchange|fort\s+\w+|camp\s+\w+|industrial\s+park|warehouse|factory|power\s*plant|sewage|wastewater|treatment\s*plant|landfill|junkyard)\b/i;
-
-                    // Pass 1: Explicit water types
+                    // Check for explicit water types
                     for (const result of results) {
                         for (const type of result.types) {
-                            if (waterTypes.includes(type)) { setTapMemory(lat, lng, true); resolve(true); return; }
+                            if (waterTypes.includes(type)) {
+                                resolve(true);
+                                return;
+                            }
                         }
                     }
 
-                    // Pass 2: Land types on the top (most specific) result
-                    const top = results[0];
-                    for (const type of top.types) {
-                        if (landTypes.includes(type)) { setTapMemory(lat, lng, false); resolve(false); return; }
-                    }
-
-                    // Pass 3: Land keywords in top result
-                    const topText = (top.formatted_address || '') + ' ' +
-                        top.address_components.map(c => c.long_name).join(' ');
-                    if (landKeywords.test(topText)) { setTapMemory(lat, lng, false); resolve(false); return; }
-
-                    // Pass 4: Buildings/addresses = definite land
-                    const hasBuilding = results.some(r =>
-                        r.types.includes('street_address') || r.types.includes('premise') ||
-                        r.types.includes('subpremise') || r.types.includes('establishment') ||
-                        r.types.includes('point_of_interest')
-                    );
-                    if (hasBuilding) { setTapMemory(lat, lng, false); resolve(false); return; }
-
-                    // Pass 5: Water keywords (filtered for street names like "Ocean Dr")
+                    // Check all results for water keywords (filtered for street names)
                     for (const result of results) {
                         const text = (result.formatted_address || '') + ' ' +
                             result.address_components.map(c => c.long_name).join(' ');
                         const cleaned = text.replace(streetSuffixes, '');
-                        if (waterKeywords.test(cleaned)) { setTapMemory(lat, lng, true); resolve(true); return; }
+                        if (waterKeywords.test(cleaned)) {
+                            resolve(true);
+                            return;
+                        }
                     }
 
-                    // Pass 6: Plus code with few results = likely open water, verify with pixel
+                    // If the most precise result is just a plus code, likely open water
+                    const top = results[0];
                     if (top.types.includes('plus_code') && results.length <= 2) {
-                        checkWaterPixel(lat, lng).then(r => { setTapMemory(lat, lng, r); resolve(r); });
+                        resolve(true);
                         return;
                     }
 
-                    // Pass 7: No clear signal — use pixel check as tiebreaker
-                    checkWaterPixel(lat, lng).then(r => { setTapMemory(lat, lng, r); resolve(r); });
+                    // If no street-level result exists, likely open water / waterfront
+                    const hasStreet = results.some(r =>
+                        r.types.includes('street_address') || r.types.includes('premise') || r.types.includes('subpremise')
+                    );
+                    if (!hasStreet) {
+                        resolve(true);
+                        return;
+                    }
+
+                    resolve(false);
                 });
             });
         }
 
-        // Secondary: multi-signal pixel + elevation check (only called when geocoder is ambiguous)
-        function checkWaterPixel(lat, lng) {
-            return Promise.all([
-                checkWaterViaStaticMap(lat, lng, 16),
-                checkWaterViaStaticMap(lat, lng, 14),
-                checkElevation(lat, lng),
-            ]).then(([pixel16, pixel14, elevation]) => {
-                if (pixel16 || pixel14) return true;
-                if (elevation !== null && elevation <= 2) return true;
-                return false;
-            });
-        }
-
-        // Static Maps pixel sampling: water=blue, land=black, sample 5x5 center grid
-        function checkWaterViaStaticMap(lat, lng, zoom) {
-            return new Promise((resolve) => {
-                const img = new Image();
-                img.crossOrigin = 'anonymous';
-                const style = [
-                    'style=feature:water|color:0x0000ff',
-                    'style=feature:landscape|color:0x000000',
-                    'style=feature:road|visibility:off',
-                    'style=feature:poi|visibility:off',
-                    'style=feature:transit|visibility:off',
-                    'style=feature:administrative|visibility:off',
-                    'style=element:labels|visibility:off',
-                ].join('&');
-                const size = 21;
-                const url = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=${zoom}&size=${size}x${size}&maptype=roadmap&scale=1&${style}&key=${GOOGLE_API_KEY}`;
-
-                img.onload = () => {
-                    try {
-                        const canvas = document.createElement('canvas');
-                        canvas.width = size; canvas.height = size;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0);
-                        const data = ctx.getImageData(8, 8, 5, 5).data;
-                        let blueCount = 0;
-                        const totalPixels = 25;
-                        for (let i = 0; i < data.length; i += 4) {
-                            const r = data[i], g = data[i+1], b = data[i+2];
-                            if (b > 100 && b - r > 50 && b - g > 50) blueCount++;
-                        }
-                        resolve(blueCount >= totalPixels * 0.3);
-                    } catch (e) { resolve(false); }
-                };
-                img.onerror = () => resolve(false);
-                img.src = url;
-            });
-        }
-
-        // Elevation check via Open-Meteo (free, no key needed)
-        function checkElevation(lat, lng) {
-            return fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`)
-                .then(r => r.ok ? r.json() : null)
-                .then(d => d?.elevation?.[0] ?? null)
-                .catch(() => null);
-        }
-
-        // --- Toast with user override ---
         function showWaterToast(lat, lng) {
             lastRejectedTap = { lat, lng };
             const toast = document.getElementById('waterToast');
@@ -2512,7 +2407,6 @@
         function overrideWaterCheck() {
             if (!lastRejectedTap) return;
             const { lat, lng } = lastRejectedTap;
-            setTapMemory(lat, lng, true);
             setPaddleSpot(lat, lng);
             document.getElementById('waterToast').classList.remove('show');
             lastRejectedTap = null;
@@ -4061,25 +3955,25 @@
                     `<div style="font-size:11px;color:#8b8fa3;margin-bottom:8px;">${paddleAddress || ''}</div>` +
                     // Four circles row
                     (() => {
-                        const cSize = pinStatusLabel.length > 6 ? 52 : pinStatusLabel.length > 4 ? 48 : 46;
-                        const statusFs = pinStatusLabel.length > 6 ? 8 : pinStatusLabel.length > 4 ? 9 : 10;
+                        const cSize = 56;
+                        const statusFs = pinStatusLabel.length > 6 ? 9 : pinStatusLabel.length > 4 ? 10 : 12;
                         const circleStyle = `width:${cSize}px;height:${cSize}px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto;`;
-                        return `<div style="display:flex;gap:8px;justify-content:center;margin-bottom:8px;">` +
+                        return `<div style="display:flex;gap:10px;justify-content:center;margin-bottom:8px;">` +
                         `<div style="text-align:center;">` +
                         `<div style="${circleStyle}border:3px solid ${pinStatusColor};">` +
                         `<span style="font-weight:800;font-size:${statusFs}px;color:${pinStatusColor};line-height:1.1;text-align:center;">${pinStatusLabel}</span></div>` +
                         `<div style="font-size:8px;color:#8b8fa3;margin-top:2px;">Status</div></div>` +
                         `<div style="text-align:center;">` +
                         `<div style="${circleStyle}border:3px solid ${paddleColor};">` +
-                        `<span style="font-weight:800;font-size:15px;color:${paddleColor};">${paddleScore}</span></div>` +
+                        `<span style="font-weight:800;font-size:18px;color:${paddleColor};">${paddleScore}</span></div>` +
                         `<div style="font-size:8px;color:#8b8fa3;margin-top:2px;">Paddling</div></div>` +
                         `<div style="text-align:center;">` +
                         `<div style="${circleStyle}border:3px solid ${wqColor};">` +
-                        `<span style="font-weight:800;font-size:15px;color:${wqColor};">${wqScore}</span></div>` +
+                        `<span style="font-weight:800;font-size:18px;color:${wqColor};">${wqScore}</span></div>` +
                         `<div style="font-size:8px;color:#8b8fa3;margin-top:2px;">Water Quality</div></div>` +
                         `<div style="text-align:center;">` +
                         `<div style="${circleStyle}border:3px solid ${wwColor};">` +
-                        `<span style="font-weight:800;font-size:15px;color:${wwColor};">${wwScore}</span></div>` +
+                        `<span style="font-weight:800;font-size:18px;color:${wwColor};">${wwScore}</span></div>` +
                         `<div style="font-size:8px;color:#8b8fa3;margin-top:2px;">Weather</div></div>`;
                     })() +
                     `</div>` +
