@@ -434,7 +434,7 @@
         }
 
         .score-circle {
-            width: 120px; height: 120px;
+            width: 100px; height: 100px;
             border-radius: 50%;
             display: flex;
             flex-direction: column;
@@ -456,7 +456,7 @@
             mask-composite: exclude;
         }
 
-        .score-number { font-size: 36px; font-weight: 800; line-height: 1; }
+        .score-number { font-size: 30px; font-weight: 800; line-height: 1; }
         .score-label { font-size: 11px; color: #8b8fa3; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; line-height: 1.2; }
         .score-circle.status-circle .score-number { font-size: 18px; }
         .score-circle.status-circle .score-label { font-size: 10px; }
@@ -1218,8 +1218,8 @@
                 max-width: 100%;
             }
             .score-details { min-width: 0; width: 100%; }
-            .score-circle { width: 90px; height: 90px; }
-            .score-number { font-size: 28px; }
+            .score-circle { width: 80px; height: 80px; }
+            .score-number { font-size: 24px; }
             .score-verdict { font-size: 18px; }
             .score-place { font-size: 17px; word-break: break-word; }
             .score-place-sub { font-size: 11px; word-break: break-all; }
@@ -1245,8 +1245,8 @@
             .header h1 { font-size: 15px; }
             .header-logo { width: 50px; height: 50px; }
             .score-hero { padding: 14px; }
-            .score-circle { width: 80px; height: 80px; }
-            .score-number { font-size: 24px; }
+            .score-circle { width: 70px; height: 70px; }
+            .score-number { font-size: 20px; }
             .score-verdict { font-size: 16px; }
             .score-summary { font-size: 13px; }
             .sport-grid { grid-template-columns: 1fr; }
@@ -3472,22 +3472,17 @@
             uvScore = Math.max(0, Math.min(100, uvScore));
             wtScore = Math.max(0, Math.min(100, wtScore));
 
-            // --- OVERALL SCORE ---
-            // Weighted average: water quality 35%, wind/weather 25%, surface 25%, UV 10%, water temp 5%
-            let overall = Math.round(wqScore * 0.35 + wwScore * 0.25 + wsScore * 0.25 + uvScore * 0.10 + wtScore * 0.05);
-
-            // CRITICAL CAP: if water quality is compromised, overall shouldn't say "Good"
-            if (tier.tier === 'closure') overall = Math.min(overall, 15);
-            else if (tier.tier === 'advisory') overall = Math.min(overall, 55); // cap at Fair
-            if (wc >= 95) overall = Math.min(overall, 20); // thunderstorms
-
-            overall = Math.max(0, Math.min(100, overall));
+            // --- PADDLING SCORE (conditions for actually paddling) ---
+            // Weighted: wind/weather 45%, water surface 45%, water temp 10%
+            let paddleScore = Math.round(wwScore * 0.45 + wsScore * 0.45 + wtScore * 0.10);
+            if (wc >= 95) paddleScore = Math.min(paddleScore, 20); // thunderstorms
+            paddleScore = Math.max(0, Math.min(100, paddleScore));
 
             // Collect all factors for the dot display
             const factors = [...wqFactors, ...wwFactors, ...wsFactors, ...uvFactors, ...wtFactors];
 
             return {
-                score: overall, factors, tier,
+                paddleScore, wqScore, factors, tier,
                 categories: {
                     water: { score: wqScore, label: 'Water Quality', icon: '&#x1F4A7;', factors: wqFactors },
                     wind: { score: wwScore, label: 'Wind & Weather', icon: '&#x1F4A8;', factors: wwFactors },
@@ -3603,13 +3598,18 @@
 </svg>`;
         }
 
-        function sSum(s,w,cats){
+        function sSum(pScore,wqS,w,cats){
             if (!cats) return '';
-            const worst = Object.values(cats).reduce((a, b) => a.score < b.score ? a : b);
-            if (worst.score <= 15) return `${worst.label} is critical — ${worst.factors[0]?.l || 'unsafe'}. Do not enter the water.`;
+            // Check water quality separately
+            if (wqS <= 15) return `Water Quality is critical — ${cats.water.factors[0]?.l || 'unsafe'}. Do not enter the water.`;
+            // Check paddling conditions
+            const paddleCats = {wind: cats.wind, surface: cats.surface, temp: cats.temp};
+            const worst = Object.values(paddleCats).reduce((a, b) => a.score < b.score ? a : b);
+            if (worst.score <= 15) return `${worst.label} is critical — ${worst.factors[0]?.l || 'unsafe'}. Stay on shore.`;
             if (worst.score <= 40) return `${worst.label} is poor — ${worst.factors[0]?.l || 'use caution'}. Not recommended for paddling.`;
-            if (s >= 80) return `All conditions favorable. Great day to get on the water!`;
-            if (s >= 60) return `Mostly good conditions. ${worst.label} is the limiting factor — ${worst.factors[0]?.l || 'monitor conditions'}.`;
+            if (wqS <= 40) return `Paddling conditions are ${pScore>=60?'good':'fair'}, but water quality is poor — ${cats.water.factors[0]?.l || 'use caution'}.`;
+            if (pScore >= 80) return `All conditions favorable. Great day to get on the water!`;
+            if (pScore >= 60) return `Mostly good conditions. ${worst.label} is the limiting factor — ${worst.factors[0]?.l || 'monitor conditions'}.`;
             return `${worst.label} is the main concern — ${worst.factors[0]?.l || 'use caution'}. Check conditions carefully.`;
         }
 
@@ -4024,8 +4024,9 @@
 
         function render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell, noaaWaterTemp, usgsWaterTemp) {
             const c = weather.current;
-            const {score,factors,categories,tier} = calcScore(weather, sdBeach, beachAdvisories, marineSwell, riverFlow, noaaWaterTemp, usgsWaterTemp);
-            const color = sClr(score);
+            const {paddleScore,wqScore,factors,categories,tier} = calcScore(weather, sdBeach, beachAdvisories, marineSwell, riverFlow, noaaWaterTemp, usgsWaterTemp);
+            const paddleColor = sClr(paddleScore);
+            const wqColor = sClr(wqScore);
             const wwScore = Math.round(categories.wind.score * 0.6 + categories.uv.score * 0.25 + categories.temp.score * 0.15);
             const wwColor = sClr(wwScore);
             const q = wq(weather, sdBeach, beachAdvisories, marineSwell, riverFlow);
@@ -4082,20 +4083,37 @@
                   `&#x2022; <a href="https://data.ca.gov" target="_blank" style="color:#06b6d4;">CA Open Data</a> — statewide beach advisories &amp; closures` +
                   `</div></div>`;
 
-            // Build score explanation for popup
-            const scoreCats = Object.values(categories).map(cat => {
+            // Build paddling score explanation for popup
+            const paddleCatKeys = ['wind','surface','temp'];
+            const paddleCats = paddleCatKeys.map(k => categories[k]).map(cat => {
                 const cc = sClr(cat.score);
                 const fTags = cat.factors.length > 0 ? cat.factors.map(f => `<span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;background:rgba(255,255,255,0.06);color:${f.c};margin:2px;">${f.l}</span>`).join('') : '<span style="color:#8b8fa3;font-size:11px;">No issues</span>';
                 return `<div style="margin:6px 0;"><div style="display:flex;justify-content:space-between;align-items:center;"><span>${cat.icon} <strong>${cat.label}</strong></span><span style="color:${cc};font-weight:700;">${cat.score}</span></div><div style="height:4px;background:#2d3040;border-radius:2px;margin:4px 0;"><div style="height:100%;width:${cat.score}%;background:${cc};border-radius:2px;"></div></div><div>${fTags}</div></div>`;
             }).join('');
             const scoreExplain = `<div style="font-size:13px;color:#e2e8f0;line-height:1.6;">` +
-                `<div style="margin-bottom:8px;color:#8b8fa3;">Overall score is a weighted average of five categories:</div>` +
-                `<div style="margin-bottom:6px;color:#8b8fa3;font-size:11px;">Water Quality 35% · Wind &amp; Weather 25% · Water Surface 25% · UV &amp; Sun 10% · Water Temp 5%</div>` +
-                scoreCats +
+                `<div style="margin-bottom:8px;color:#8b8fa3;">Paddling score reflects on-water conditions:</div>` +
+                `<div style="margin-bottom:6px;color:#8b8fa3;font-size:11px;">Wind &amp; Weather 45% · Water Surface 45% · Water Temp 10%</div>` +
+                paddleCats +
                 `<div style="margin-top:10px;border-top:1px solid #2d3040;padding-top:8px;color:#8b8fa3;font-size:11px;">` +
                 `Sources: <a href="https://open-meteo.com" target="_blank" style="color:#06b6d4;">Open-Meteo</a>, ` +
-                `<a href="https://www.sdbeachinfo.com" target="_blank" style="color:#06b6d4;">SD County DEH</a>, ` +
                 `<a href="https://tidesandcurrents.noaa.gov" target="_blank" style="color:#06b6d4;">NOAA</a>` +
+                `</div></div>`;
+
+            // Build water quality score explanation for popup
+            const wqCat = categories.water;
+            const wqCc = sClr(wqCat.score);
+            const wqFTags = wqCat.factors.length > 0 ? wqCat.factors.map(f => `<div style="margin:4px 0;display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${f.c};"></span><span>${f.l}</span></div>`).join('') : '<div style="color:#8b8fa3;">No adverse conditions detected</div>';
+            const wqExplain = `<div style="font-size:13px;color:#e2e8f0;line-height:1.6;">` +
+                `<div style="margin-bottom:8px;color:#8b8fa3;">Water quality based on beach monitoring data:</div>` +
+                `<div style="margin:8px 0;">` +
+                `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">` +
+                `<span>${wqCat.icon} <strong>${wqCat.label}</strong></span>` +
+                `<span style="color:${wqCc};font-weight:700;">${wqScore}</span></div>` +
+                `<div style="height:4px;background:#2d3040;border-radius:2px;margin:4px 0;"><div style="height:100%;width:${wqScore}%;background:${wqCc};border-radius:2px;"></div></div>` +
+                wqFTags + `</div>` +
+                `<div style="margin-top:10px;border-top:1px solid #2d3040;padding-top:8px;color:#8b8fa3;font-size:11px;">` +
+                `Sources: <a href="https://www.sdbeachinfo.com" target="_blank" style="color:#06b6d4;">SD County DEH</a>, ` +
+                `<a href="https://data.ca.gov" target="_blank" style="color:#06b6d4;">CA Open Data</a>` +
                 `</div></div>`;
 
             // Build weather score explanation for popup
@@ -4173,28 +4191,32 @@
                 const paddlePopup = `<div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:320px;width:calc(100vw - 80px);min-width:260px;padding:10px;background:#1a1d28;color:#e2e8f0;border-radius:8px;box-sizing:border-box;">` +
                     `<div style="font-weight:700;font-size:15px;margin-bottom:2px;color:#f1f5f9;">${paddleName || 'Paddle Spot'}</div>` +
                     `<div style="font-size:11px;color:#8b8fa3;margin-bottom:8px;">${paddleAddress || ''}</div>` +
-                    // Three circles row
+                    // Four circles row
                     (() => {
-                        const cSize = pinStatusLabel.length > 6 ? 64 : pinStatusLabel.length > 4 ? 58 : 52;
-                        const statusFs = pinStatusLabel.length > 6 ? 9 : pinStatusLabel.length > 4 ? 10 : 12;
+                        const cSize = pinStatusLabel.length > 6 ? 52 : pinStatusLabel.length > 4 ? 48 : 46;
+                        const statusFs = pinStatusLabel.length > 6 ? 8 : pinStatusLabel.length > 4 ? 9 : 10;
                         const circleStyle = `width:${cSize}px;height:${cSize}px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto;`;
-                        return `<div style="display:flex;gap:12px;justify-content:center;margin-bottom:8px;">` +
+                        return `<div style="display:flex;gap:8px;justify-content:center;margin-bottom:8px;">` +
                         `<div style="text-align:center;">` +
                         `<div style="${circleStyle}border:3px solid ${pinStatusColor};">` +
                         `<span style="font-weight:800;font-size:${statusFs}px;color:${pinStatusColor};line-height:1.1;text-align:center;">${pinStatusLabel}</span></div>` +
-                        `<div style="font-size:9px;color:#8b8fa3;margin-top:2px;">Status</div></div>` +
+                        `<div style="font-size:8px;color:#8b8fa3;margin-top:2px;">Status</div></div>` +
                         `<div style="text-align:center;">` +
-                        `<div style="${circleStyle}border:3px solid ${color};">` +
-                        `<span style="font-weight:800;font-size:18px;color:${color};">${score}</span></div>` +
-                        `<div style="font-size:9px;color:#8b8fa3;margin-top:2px;">Score</div></div>` +
+                        `<div style="${circleStyle}border:3px solid ${paddleColor};">` +
+                        `<span style="font-weight:800;font-size:15px;color:${paddleColor};">${paddleScore}</span></div>` +
+                        `<div style="font-size:8px;color:#8b8fa3;margin-top:2px;">Paddling</div></div>` +
+                        `<div style="text-align:center;">` +
+                        `<div style="${circleStyle}border:3px solid ${wqColor};">` +
+                        `<span style="font-weight:800;font-size:15px;color:${wqColor};">${wqScore}</span></div>` +
+                        `<div style="font-size:8px;color:#8b8fa3;margin-top:2px;">Water Quality</div></div>` +
                         `<div style="text-align:center;">` +
                         `<div style="${circleStyle}border:3px solid ${wwColor};">` +
-                        `<span style="font-weight:800;font-size:18px;color:${wwColor};">${wwScore}</span></div>` +
-                        `<div style="font-size:9px;color:#8b8fa3;margin-top:2px;">Weather</div></div>`;
+                        `<span style="font-weight:800;font-size:15px;color:${wwColor};">${wwScore}</span></div>` +
+                        `<div style="font-size:8px;color:#8b8fa3;margin-top:2px;">Weather</div></div>`;
                     })() +
                     `</div>` +
                     // Verdict
-                    `<div style="text-align:center;font-weight:700;font-size:13px;color:${color};margin-bottom:6px;">${sVer(score)}</div>` +
+                    `<div style="text-align:center;font-weight:700;font-size:13px;color:${paddleColor};margin-bottom:6px;">${sVer(paddleScore)}</div>` +
                     // Category bars
                     `<div style="border-top:1px solid #2d3040;padding-top:6px;margin-top:2px;">${catBars}</div>` +
                     // --- Concise summaries: Wind, Weather, Tides, Water Quality ---
@@ -4434,14 +4456,19 @@
                             <span class="score-label" style="font-size:9px;color:#06b6d4;text-decoration:underline;margin-top:4px;">Source</span>
                         </div>
                         ${pinStatusDetail ? `<div style="font-size:11px;color:${pinStatusColor};max-width:140px;text-align:center;line-height:1.3;margin-top:2px;">${pinStatusDetail}</div>` : ''}
-                        <div class="score-circle" style="--score-color:${color};--score-pct:${score};cursor:pointer;" onclick="var p=document.getElementById('scorePopup'),o=document.getElementById('scoreOverlay'),s=p.style.display==='block'?'none':'block';p.style.display=s;o.style.display=s">
-                            <span class="score-number" style="color:${color};">${score}</span>
-                            <span class="score-label">Score</span>
+                        <div class="score-circle" style="--score-color:${paddleColor};--score-pct:${paddleScore};cursor:pointer;" onclick="var p=document.getElementById('scorePopup'),o=document.getElementById('scoreOverlay'),s=p.style.display==='block'?'none':'block';p.style.display=s;o.style.display=s">
+                            <span class="score-number" style="color:${paddleColor};">${paddleScore}</span>
+                            <span class="score-label">Paddling</span>
+                            <span class="score-label" style="font-size:9px;color:#06b6d4;text-decoration:underline;margin-top:4px;">Source</span>
+                        </div>
+                        <div class="score-circle" style="--score-color:${wqColor};--score-pct:${wqScore};cursor:pointer;" onclick="var p=document.getElementById('wqPopup'),o=document.getElementById('wqOverlay'),s=p.style.display==='block'?'none':'block';p.style.display=s;o.style.display=s">
+                            <span class="score-number" style="color:${wqColor};">${wqScore}</span>
+                            <span class="score-label">Water<br>Quality</span>
                             <span class="score-label" style="font-size:9px;color:#06b6d4;text-decoration:underline;margin-top:4px;">Source</span>
                         </div>
                         <div class="score-circle" style="--score-color:${wwColor};--score-pct:${wwScore};cursor:pointer;" onclick="var p=document.getElementById('wwPopup'),o=document.getElementById('wwOverlay'),s=p.style.display==='block'?'none':'block';p.style.display=s;o.style.display=s">
                             <span class="score-number" style="color:${wwColor};">${wwScore}</span>
-                            <span class="score-label">Weather<br>Score</span>
+                            <span class="score-label">Weather</span>
                             <span class="score-label" style="font-size:9px;color:#06b6d4;text-decoration:underline;margin-top:4px;">Source</span>
                         </div>
                     </div>
@@ -4449,8 +4476,8 @@
                         <div class="score-place" id="paddlePlaceName">&#x1F4CD; ${paddleName}</div>
                         <div class="score-place-sub" id="paddlePlaceAddr">${paddleAddress || (paddleLat.toFixed(4)+'°'+(paddleLat>=0?'N':'S')+', '+Math.abs(paddleLon).toFixed(4)+'°'+(paddleLon>=0?'E':'W'))}</div>
                         <div id="placeBadgeArea"></div>
-                        <div class="score-verdict" style="color:${color};">${sVer(score)}</div>
-                        <div class="score-summary">${sSum(score,weather,categories)}</div>
+                        <div class="score-verdict" style="color:${paddleColor};">${sVer(paddleScore)}</div>
+                        <div class="score-summary">${sSum(paddleScore,wqScore,weather,categories)}</div>
                         <div class="score-categories">
                             ${['water','wind','surface'].map(key => { const cat = categories[key]; const cc = sClr(cat.score);
                                 if (key === 'wind') {
@@ -4510,12 +4537,21 @@
 
                 <div id="scorePopup" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a1d28;border:1px solid #2d3040;border-radius:12px;padding:20px;z-index:9999;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.6);max-height:80vh;overflow-y:auto;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                        <span style="font-weight:700;color:${color};font-size:16px;">&#x1F3AF; Paddle Score Breakdown</span>
+                        <span style="font-weight:700;color:${paddleColor};font-size:16px;">&#x1F3C4; Paddling Score Breakdown</span>
                         <span style="cursor:pointer;color:#8b8fa3;font-size:22px;line-height:1;" onclick="document.getElementById('scorePopup').style.display='none';document.getElementById('scoreOverlay').style.display='none'">&times;</span>
                     </div>
                     ${scoreExplain}
                 </div>
                 <div id="scoreOverlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9998;" onclick="document.getElementById('scorePopup').style.display='none';this.style.display='none'"></div>
+
+                <div id="wqPopup" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a1d28;border:1px solid #2d3040;border-radius:12px;padding:20px;z-index:9999;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.6);max-height:80vh;overflow-y:auto;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                        <span style="font-weight:700;color:${wqColor};font-size:16px;">&#x1F4A7; Water Quality Breakdown</span>
+                        <span style="cursor:pointer;color:#8b8fa3;font-size:22px;line-height:1;" onclick="document.getElementById('wqPopup').style.display='none';document.getElementById('wqOverlay').style.display='none'">&times;</span>
+                    </div>
+                    ${wqExplain}
+                </div>
+                <div id="wqOverlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9998;" onclick="document.getElementById('wqPopup').style.display='none';this.style.display='none'"></div>
 
                 <div id="wwPopup" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a1d28;border:1px solid #2d3040;border-radius:12px;padding:20px;z-index:9999;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.6);max-height:80vh;overflow-y:auto;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
