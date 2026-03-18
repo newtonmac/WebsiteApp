@@ -2417,13 +2417,30 @@
             });
         }
 
-        // Secondary validation: fetch a tiny Static Maps image styled to show
-        // ONLY water (blue) vs land (black), then sample the center pixel.
+        // Secondary validation: multi-signal water check
+        // 1. Static Maps pixel sampling (larger area, multi-zoom)
+        // 2. Open-Meteo Elevation API (ocean/bays ≈ 0m)
+        // Runs both in parallel, combines results.
         function checkWaterPixel(lat, lng) {
+            return Promise.all([
+                checkWaterViaStaticMap(lat, lng, 16),  // zoom 16 — catches bays, harbors
+                checkWaterViaStaticMap(lat, lng, 14),  // zoom 14 — catches larger water bodies
+                checkElevation(lat, lng),               // elevation near 0 = likely water
+            ]).then(([pixel16, pixel14, elevation]) => {
+                // Any pixel check says water → water
+                if (pixel16 || pixel14) return true;
+                // Elevation near sea level (≤ 2m) and not blocked by pixel → likely water
+                if (elevation !== null && elevation <= 2) return true;
+                return false;
+            });
+        }
+
+        // Fetch a Static Maps image styled with water=blue, land=black
+        // Sample a 5x5 grid of center pixels for robustness against anti-aliasing
+        function checkWaterViaStaticMap(lat, lng, zoom) {
             return new Promise((resolve) => {
                 const img = new Image();
                 img.crossOrigin = 'anonymous';
-                // Style: water = bright blue (#0000FF), everything else = black (#000000)
                 const style = [
                     'style=feature:water|color:0x0000ff',
                     'style=feature:landscape|color:0x000000',
@@ -2433,26 +2450,43 @@
                     'style=feature:administrative|visibility:off',
                     'style=element:labels|visibility:off',
                 ].join('&');
-                const url = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=16&size=3x3&maptype=roadmap&${style}&key=${GOOGLE_API_KEY}`;
+                const size = 21; // 21x21 pixels
+                const url = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=${zoom}&size=${size}x${size}&maptype=roadmap&scale=1&${style}&key=${GOOGLE_API_KEY}`;
 
                 img.onload = () => {
                     try {
                         const canvas = document.createElement('canvas');
-                        canvas.width = 3; canvas.height = 3;
+                        canvas.width = size; canvas.height = size;
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0);
-                        const pixel = ctx.getImageData(1, 1, 1, 1).data; // center pixel
-                        // Water = blue channel high, red/green low
-                        const isBlue = pixel[2] > 150 && pixel[0] < 80 && pixel[1] < 80;
-                        resolve(isBlue);
+                        // Sample 5x5 center grid (pixels 8-12 in a 21px image)
+                        const data = ctx.getImageData(8, 8, 5, 5).data;
+                        let blueCount = 0;
+                        const totalPixels = 25; // 5x5
+                        for (let i = 0; i < data.length; i += 4) {
+                            const r = data[i], g = data[i+1], b = data[i+2];
+                            // Blue water: high blue, low red/green
+                            // Account for anti-aliasing: blue dominant by at least 50
+                            if (b > 100 && b - r > 50 && b - g > 50) blueCount++;
+                        }
+                        // If 30%+ of center pixels are blue, it's water
+                        resolve(blueCount >= totalPixels * 0.3);
                     } catch (e) {
-                        // Canvas tainted or other error — allow the tap
-                        resolve(true);
+                        resolve(false); // Can't read canvas — don't assume water
                     }
                 };
-                img.onerror = () => resolve(true); // If static maps fails, allow
+                img.onerror = () => resolve(false);
                 img.src = url;
             });
+        }
+
+        // Elevation check via Open-Meteo (free, no key needed)
+        // Ocean = 0m, bays/harbors ≈ 0-1m, lakes = varies
+        function checkElevation(lat, lng) {
+            return fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`)
+                .then(r => r.ok ? r.json() : null)
+                .then(d => d?.elevation?.[0] ?? null)
+                .catch(() => null);
         }
 
         function showWaterToast() {
