@@ -2316,16 +2316,19 @@
             locateMe();
         }
 
-        // ======== Water Validation via Google Geocoding API ========
+        // ======== Water Validation — dual check: Geocoder + Static Map pixel ========
         let geocoder;
 
+        // Primary: Geocoder-based check (fast, good for named water bodies)
+        // Secondary: Static Maps pixel sampling (catches open water the geocoder misses)
         function checkWaterNearby(lat, lng) {
             if (!geocoder) geocoder = new google.maps.Geocoder();
             return new Promise((resolve) => {
                 geocoder.geocode({ location: { lat, lng } }, (results, status) => {
                     if (status !== 'OK' || !results || results.length === 0) {
                         // No results often means open water (ocean, large lake)
-                        resolve(true);
+                        // Verify with pixel check
+                        checkWaterPixel(lat, lng).then(resolve);
                         return;
                     }
 
@@ -2335,19 +2338,46 @@
                         'archipelago', 'colloquial_area'
                     ];
 
-                    // Water keywords to match in result names / formatted addresses
-                    const waterKeywords = /\b(ocean|sea|lake|river|creek|bay|harbor|harbour|marina|lagoon|reservoir|pond|canal|strait|cove|inlet|estuary|waterway|beach|surf|coast|shore|wharf|dock|pier|port|channel|sound|gulf|cape|rapids|falls|spring|brook|stream|point|peninsula|jetty|breakwater|reef|tide|tidepool|tideland|seawall|bluff|headland|sandbar|atoll|isthmus|narrows|shoal)\b/i;
+                    // Known land types — if the FIRST result is one of these, it's land
+                    const landTypes = [
+                        'airport', 'transit_station', 'train_station', 'bus_station',
+                        'parking', 'shopping_mall', 'store', 'restaurant', 'food',
+                        'school', 'university', 'hospital', 'church', 'place_of_worship',
+                        'gym', 'stadium', 'museum', 'library', 'city_hall',
+                        'courthouse', 'fire_station', 'police', 'post_office',
+                        'car_dealer', 'car_rental', 'car_repair', 'gas_station',
+                        'lodging', 'real_estate_agency', 'insurance_agency',
+                        'accounting', 'lawyer', 'dentist', 'doctor', 'pharmacy',
+                        'veterinary_care', 'funeral_home', 'cemetery',
+                    ];
 
+                    // Water keywords to match in result names / formatted addresses
+                    const waterKeywords = /\b(ocean|sea|lake|river|creek|bay|harbor|harbour|marina|lagoon|reservoir|pond|canal|strait|cove|inlet|estuary|waterway|beach|surf|coast|shore|wharf|dock|pier|port|channel|sound|gulf|cape|rapids|falls|spring|brook|stream|point|peninsula|jetty|breakwater|reef|tide|tidepool|tideland|seawall|bluff|headland|sandbar|atoll|isthmus|narrows|shoal|anchorage|boat\s*ramp|boat\s*launch|landing|waterfront|embarcadero|boardwalk|yacht|slip|mooring|quay)\b/i;
+
+                    // Land keywords — strong indicators this is NOT water
+                    const landKeywords = /\b(airport|airfield|runway|terminal|hangar|parking\s*(lot|garage|structure)|mall|shopping|school|university|college|hospital|clinic|church|temple|mosque|synagogue|cemetery|freeway|highway|interstate|boulevard|avenue|plaza)\b/i;
+
+                    // Pass 1: Check for explicit water types
                     for (const result of results) {
-                        // Check if any result type is water-related
                         for (const type of result.types) {
                             if (waterTypes.includes(type)) {
                                 resolve(true);
                                 return;
                             }
                         }
+                    }
 
-                        // Check result name / address for water keywords
+                    // Pass 2: Check the FIRST (most specific) result for land types
+                    const top = results[0];
+                    for (const type of top.types) {
+                        if (landTypes.includes(type)) {
+                            resolve(false);
+                            return;
+                        }
+                    }
+
+                    // Pass 3: Check all results for water keywords
+                    for (const result of results) {
                         const text = (result.formatted_address || '') + ' ' +
                             result.address_components.map(c => c.long_name).join(' ');
                         if (waterKeywords.test(text)) {
@@ -2356,25 +2386,72 @@
                         }
                     }
 
-                    // If the most precise result is just a plus code with no
-                    // street address, it's likely open water
-                    const top = results[0];
+                    // Pass 4: Check for land keywords in the top result
+                    const topText = (top.formatted_address || '') + ' ' +
+                        top.address_components.map(c => c.long_name).join(' ');
+                    if (landKeywords.test(topText)) {
+                        resolve(false);
+                        return;
+                    }
+
+                    // Pass 5: If the most precise result is just a plus code, likely open water
                     if (top.types.includes('plus_code') && results.length <= 2) {
-                        resolve(true);
+                        checkWaterPixel(lat, lng).then(resolve);
                         return;
                     }
 
-                    // If no street-level result exists, likely open water / waterfront
-                    const hasStreet = results.some(r =>
-                        r.types.includes('street_address') || r.types.includes('premise') || r.types.includes('subpremise')
+                    // Pass 6: Check for buildings/addresses — definite land
+                    const hasBuilding = results.some(r =>
+                        r.types.includes('street_address') || r.types.includes('premise') ||
+                        r.types.includes('subpremise') || r.types.includes('establishment') ||
+                        r.types.includes('point_of_interest')
                     );
-                    if (!hasStreet) {
-                        resolve(true);
+                    if (hasBuilding) {
+                        resolve(false);
                         return;
                     }
 
-                    resolve(false);
+                    // Pass 7: No clear signal from geocoder — use pixel check as tiebreaker
+                    checkWaterPixel(lat, lng).then(resolve);
                 });
+            });
+        }
+
+        // Secondary validation: fetch a tiny Static Maps image styled to show
+        // ONLY water (blue) vs land (black), then sample the center pixel.
+        function checkWaterPixel(lat, lng) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                // Style: water = bright blue (#0000FF), everything else = black (#000000)
+                const style = [
+                    'style=feature:water|color:0x0000ff',
+                    'style=feature:landscape|color:0x000000',
+                    'style=feature:road|visibility:off',
+                    'style=feature:poi|visibility:off',
+                    'style=feature:transit|visibility:off',
+                    'style=feature:administrative|visibility:off',
+                    'style=element:labels|visibility:off',
+                ].join('&');
+                const url = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=16&size=3x3&maptype=roadmap&${style}&key=${GOOGLE_API_KEY}`;
+
+                img.onload = () => {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = 3; canvas.height = 3;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+                        const pixel = ctx.getImageData(1, 1, 1, 1).data; // center pixel
+                        // Water = blue channel high, red/green low
+                        const isBlue = pixel[2] > 150 && pixel[0] < 80 && pixel[1] < 80;
+                        resolve(isBlue);
+                    } catch (e) {
+                        // Canvas tainted or other error — allow the tap
+                        resolve(true);
+                    }
+                };
+                img.onerror = () => resolve(true); // If static maps fails, allow
+                img.src = url;
             });
         }
 
