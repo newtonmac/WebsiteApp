@@ -415,13 +415,28 @@
             }
         }
 
-        function dismissSuggestion(sugId) {
-            if (!confirm('Dismiss this suggestion? It will still be stored but hidden from this view.')) return;
+        async function dismissSuggestion(sugId) {
+            if (!confirm('Dismiss this suggestion? It will be permanently deleted.')) return;
             const card = document.getElementById(`sug-${sugId}`);
-            card.style.opacity = '0.3';
-            card.innerHTML = `<div style="text-align:center;padding:10px;color:#6b7080;font-style:italic;">
-                Dismissed
-            </div>`;
+
+            try {
+                const res = await fetch(`${SUGGEST_API}/admin/suggestions/${sugId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${adminKey}` },
+                });
+                if (res.status === 401) { alert('Invalid admin key.'); return; }
+                if (!res.ok) throw new Error('Failed');
+
+                card.style.opacity = '0.3';
+                card.innerHTML = `<div style="text-align:center;padding:10px;color:#6b7080;font-style:italic;">
+                    Dismissed
+                </div>`;
+                // Update count
+                const count = document.getElementById('suggestCount');
+                count.textContent = Math.max(0, parseInt(count.textContent) - 1);
+            } catch {
+                alert('Could not dismiss suggestion. Check your admin key.');
+            }
         }
 
         // --- Updates ---

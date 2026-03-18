@@ -36,6 +36,19 @@ export default {
         return handleCors(request, await getSuggestions(env));
       }
 
+      // Admin: delete (dismiss) a suggestion
+      const deleteMatch = url.pathname.match(/^\/admin\/suggestions\/(.+)$/);
+      if (request.method === 'DELETE' && deleteMatch) {
+        const authHeader = request.headers.get('Authorization') || '';
+        const token = authHeader.replace('Bearer ', '');
+        if (!env.ADMIN_KEY || token !== env.ADMIN_KEY) {
+          return handleCors(request, new Response(JSON.stringify({ error: 'Unauthorized' }), {
+            status: 401, headers: { 'Content-Type': 'application/json' },
+          }));
+        }
+        return handleCors(request, await deleteSuggestion(deleteMatch[1], env));
+      }
+
       return handleCors(request, new Response('Not found', { status: 404 }));
     } catch (err) {
       const resp = new Response(JSON.stringify({ error: err.message }), {
@@ -135,6 +148,20 @@ async function sendEmailNotification(suggestion, env) {
   });
 }
 
+async function deleteSuggestion(id, env) {
+  // Remove from KV
+  await env.SUGGESTIONS.delete(`suggestion:${id}`);
+
+  // Remove from index
+  const index = JSON.parse(await env.SUGGESTIONS.get('index') || '[]');
+  const newIndex = index.filter(i => i !== id);
+  await env.SUGGESTIONS.put('index', JSON.stringify(newIndex));
+
+  return new Response(JSON.stringify({ success: true }), {
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
 async function getSuggestions(env) {
   const index = JSON.parse(await env.SUGGESTIONS.get('index') || '[]');
   const suggestions = [];
@@ -157,8 +184,8 @@ function handleCors(request, response) {
 
   const headers = new Headers(response.headers);
   headers.set('Access-Control-Allow-Origin', allowedOrigin);
-  headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  headers.set('Access-Control-Allow-Headers', 'Content-Type');
+  headers.set('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+  headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   headers.set('Access-Control-Max-Age', '86400');
 
   return new Response(response.body, {
