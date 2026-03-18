@@ -14,7 +14,6 @@
     <link rel="dns-prefetch" href="https://data.ca.gov">
     <link rel="dns-prefetch" href="https://gis.ncdc.noaa.gov">
     <link rel="dns-prefetch" href="https://sd-beach-proxy.newtonmac.workers.dev">
-    <link rel="dns-prefetch" href="https://overpass-api.de">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -2325,15 +2324,8 @@
             locateMe();
         }
 
-        // ======== Water Validation — 6-signal system with tap memory ========
-        // Signals ranked by reliability (least false positives first):
-        //   1. OpenStreetMap (Overpass API) — definitive water polygons
-        //   2. Google Static Maps pixel sampling — actual map water rendering
-        //   3. Google Geocoder — named water bodies + land type detection
-        //   4. Satellite tile color analysis — real imagery color
-        //   5. Multi-point elevation grid — flat + low = water
-        //   6. Open-Meteo single-point elevation — coastal signal
-        // All run in parallel. Scoring system combines results.
+        // ======== Water Validation — Geocoder-first with pixel fallback ========
+        // Fast: Geocoder resolves most taps instantly. Pixel check only for ambiguous cases.
         let geocoder;
 
         // --- Tap Memory: cache confirmed water/land coordinates ---
@@ -2352,7 +2344,7 @@
 
         function setTapMemory(lat, lng, isWater) {
             tapMemory.set(`${lat.toFixed(5)},${lng.toFixed(5)}`, isWater);
-            if (tapMemory.size > 200) { // Evict oldest entries
+            if (tapMemory.size > 200) {
                 const first = tapMemory.keys().next().value;
                 tapMemory.delete(first);
             }
@@ -2361,6 +2353,8 @@
         // --- User override: store last rejected tap for override button ---
         let lastRejectedTap = null;
 
+        // Primary: Geocoder check (fast, handles named water bodies + land detection)
+        // Fallback: Static Maps pixel sampling + elevation (catches open water geocoder misses)
         function checkWaterNearby(lat, lng) {
             if (!geocoder) geocoder = new google.maps.Geocoder();
 
@@ -2368,133 +2362,11 @@
             const remembered = getTapMemory(lat, lng);
             if (remembered !== null) return Promise.resolve(remembered);
 
-            // Run ALL 6 signals in parallel
-            return Promise.all([
-                checkWaterViaOSM(lat, lng),              // 1. OpenStreetMap water polygons
-                checkWaterViaStaticMap(lat, lng, 16),     // 2a. Pixel sampling zoom 16
-                checkWaterViaStaticMap(lat, lng, 14),     // 2b. Pixel sampling zoom 14
-                checkWaterViaGeocoder(lat, lng),           // 3. Google Geocoder
-                checkWaterViaSatelliteTile(lat, lng),     // 4. Satellite imagery color
-                checkElevationGrid(lat, lng),              // 5. Multi-point elevation grid
-            ]).then(([osm, pixel16, pixel14, geoResult, satColor, elevGrid]) => {
-                // osm: true/false/null (null = API failed)
-                // pixel16/pixel14: true/false
-                // geoResult: 'water'|'land'|'no_address'|'unknown'
-                // satColor: true/false/null
-                // elevGrid: { isFlat, avgElev } | null
-
-                // --- TIER 1: Definitive signals (hard override) ---
-                // OSM says it's inside a water polygon → water (most reliable)
-                if (osm === true) { setTapMemory(lat, lng, true); return true; }
-                // OSM says it's NOT water → trust it, but allow override
-                if (osm === false && geoResult === 'land') { setTapMemory(lat, lng, false); return false; }
-                // Geocoder found definite land type
-                if (geoResult === 'land') { setTapMemory(lat, lng, false); return false; }
-                // Geocoder found explicit water type
-                if (geoResult === 'water') { setTapMemory(lat, lng, true); return true; }
-
-                // --- TIER 2: Weighted voting for ambiguous cases ---
-                // (OSM true/false + geocoder water/land already handled in TIER 1)
-                let score = 0;
-
-                // OSM returned data but wasn't definitive enough for TIER 1
-                // (e.g., osm=false but geocoder wasn't 'land')
-                if (osm === false) score -= 3;
-                // osm === null means API failed, no vote
-
-                // Static Maps pixel checks (reliable — uses Google's own water classification)
-                if (pixel16) score += 3;
-                else score -= 2;
-                if (pixel14) score += 2;
-                else score -= 1;
-
-                // Satellite tile color (good but can be confused by shadows, docks)
-                if (satColor === true) score += 2;
-                else if (satColor === false) score -= 1;
-
-                // Multi-point elevation grid
-                if (elevGrid) {
-                    if (elevGrid.isFlat && elevGrid.avgElev <= 1) score += 2;  // flat at sea level
-                    else if (elevGrid.avgElev <= 0) score += 1;
-                    else if (elevGrid.avgElev > 30) score -= 2;
-                }
-
-                // Geocoder ambiguous signals
-                if (geoResult === 'no_address') score += 1;
-
-                const isWater = score >= 2;
-                setTapMemory(lat, lng, isWater);
-                return isWater;
-            });
-        }
-
-        // --- Signal 1: OpenStreetMap Overpass API ---
-        // Query: is this point inside a water polygon? (ocean, lake, river, bay, reservoir)
-        // Most reliable single signal — OSM has precise water body boundaries worldwide.
-        function checkWaterViaOSM(lat, lng) {
-            // Use `out count` for minimal response size — returns a single element with total count
-            const query = `[out:json][timeout:5];(way["natural"="water"](around:20,${lat},${lng});way["waterway"](around:20,${lat},${lng});relation["natural"="water"](around:20,${lat},${lng});way["landuse"="reservoir"](around:20,${lat},${lng});way["leisure"="marina"](around:20,${lat},${lng}););out count;`;
-            return fetch('https://overpass-api.de/api/interpreter', {
-                method: 'POST',
-                body: `data=${encodeURIComponent(query)}`,
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            })
-                .then(r => r.ok ? r.json() : null)
-                .then(d => {
-                    if (!d) return null;
-                    // `out count` returns elements array with one count object
-                    // whose tags.total is the number of matching features
-                    const count = d.elements?.[0]?.tags?.total;
-                    if (count !== undefined) return parseInt(count) > 0;
-                    // Fallback: if elements exist beyond the count object
-                    return (d.elements?.length || 0) > 0;
-                })
-                .catch(() => null); // API down — return null (no vote)
-        }
-
-        // --- Signal 2: Google Static Maps pixel sampling ---
-        function checkWaterViaStaticMap(lat, lng, zoom) {
-            return new Promise((resolve) => {
-                const img = new Image();
-                img.crossOrigin = 'anonymous';
-                const style = [
-                    'style=feature:water|color:0x0000ff',
-                    'style=feature:landscape|color:0x000000',
-                    'style=feature:road|visibility:off',
-                    'style=feature:poi|visibility:off',
-                    'style=feature:transit|visibility:off',
-                    'style=feature:administrative|visibility:off',
-                    'style=element:labels|visibility:off',
-                ].join('&');
-                const size = 21;
-                const url = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=${zoom}&size=${size}x${size}&maptype=roadmap&scale=1&${style}&key=${GOOGLE_API_KEY}`;
-
-                img.onload = () => {
-                    try {
-                        const canvas = document.createElement('canvas');
-                        canvas.width = size; canvas.height = size;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0);
-                        const data = ctx.getImageData(8, 8, 5, 5).data;
-                        let blueCount = 0;
-                        for (let i = 0; i < data.length; i += 4) {
-                            const r = data[i], g = data[i+1], b = data[i+2];
-                            if (b > 80 && b - r > 40 && b - g > 40) blueCount++;
-                        }
-                        resolve(blueCount >= 25 * 0.3);
-                    } catch (e) { resolve(false); }
-                };
-                img.onerror = () => resolve(false);
-                img.src = url;
-            });
-        }
-
-        // --- Signal 3: Google Geocoder ---
-        function checkWaterViaGeocoder(lat, lng) {
             return new Promise((resolve) => {
                 geocoder.geocode({ location: { lat, lng } }, (results, status) => {
                     if (status !== 'OK' || !results || results.length === 0) {
-                        resolve('unknown');
+                        // No results often means open water — verify with pixel check
+                        checkWaterPixel(lat, lng).then(r => { setTapMemory(lat, lng, r); resolve(r); });
                         return;
                     }
 
@@ -2519,56 +2391,81 @@
 
                     const landKeywords = /\b(airport|airfield|runway|terminal|hangar|parking\s*(lot|garage|structure)|mall|shopping\s*(center|mall|plaza)|school|university|college|hospital|clinic|church|temple|mosque|synagogue|cemetery|freeway|highway|interstate|plaza|military\s+base|naval\s*(base|station|air\s*station)|air\s*force\s*base|army\s*base|barracks|commissary|navy\s+exchange|fort\s+\w+|camp\s+\w+|industrial\s+park|warehouse|factory|power\s*plant|sewage|wastewater|treatment\s*plant|landfill|junkyard)\b/i;
 
-                    // Step 1: Explicit water types
+                    // Pass 1: Explicit water types
                     for (const result of results) {
                         for (const type of result.types) {
-                            if (waterTypes.includes(type)) { resolve('water'); return; }
+                            if (waterTypes.includes(type)) { setTapMemory(lat, lng, true); resolve(true); return; }
                         }
                     }
 
-                    // Step 2: Land signals (check BEFORE water keywords)
+                    // Pass 2: Land types on the top (most specific) result
                     const top = results[0];
                     for (const type of top.types) {
-                        if (landTypes.includes(type)) { resolve('land'); return; }
+                        if (landTypes.includes(type)) { setTapMemory(lat, lng, false); resolve(false); return; }
                     }
 
+                    // Pass 3: Land keywords in top result
+                    const topText = (top.formatted_address || '') + ' ' +
+                        top.address_components.map(c => c.long_name).join(' ');
+                    if (landKeywords.test(topText)) { setTapMemory(lat, lng, false); resolve(false); return; }
+
+                    // Pass 4: Buildings/addresses = definite land
                     const hasBuilding = results.some(r =>
                         r.types.includes('street_address') || r.types.includes('premise') ||
                         r.types.includes('subpremise') || r.types.includes('establishment') ||
                         r.types.includes('point_of_interest')
                     );
+                    if (hasBuilding) { setTapMemory(lat, lng, false); resolve(false); return; }
 
-                    const topText = (top.formatted_address || '') + ' ' +
-                        top.address_components.map(c => c.long_name).join(' ');
-                    if (landKeywords.test(topText)) { resolve('land'); return; }
-                    if (hasBuilding) { resolve('land'); return; }
-
-                    // Step 3: Water keywords (filtered for street names)
+                    // Pass 5: Water keywords (filtered for street names like "Ocean Dr")
                     for (const result of results) {
                         const text = (result.formatted_address || '') + ' ' +
                             result.address_components.map(c => c.long_name).join(' ');
                         const cleaned = text.replace(streetSuffixes, '');
-                        if (waterKeywords.test(cleaned)) { resolve('water'); return; }
+                        if (waterKeywords.test(cleaned)) { setTapMemory(lat, lng, true); resolve(true); return; }
                     }
 
-                    // Step 4: Routes = likely land
-                    const hasStreet = results.some(r =>
-                        r.types.includes('street_address') || r.types.includes('route')
-                    );
-                    resolve(hasStreet ? 'unknown' : 'no_address');
+                    // Pass 6: Plus code with few results = likely open water, verify with pixel
+                    if (top.types.includes('plus_code') && results.length <= 2) {
+                        checkWaterPixel(lat, lng).then(r => { setTapMemory(lat, lng, r); resolve(r); });
+                        return;
+                    }
+
+                    // Pass 7: No clear signal — use pixel check as tiebreaker
+                    checkWaterPixel(lat, lng).then(r => { setTapMemory(lat, lng, r); resolve(r); });
                 });
             });
         }
 
-        // --- Signal 4: Satellite tile color analysis ---
-        // Fetches actual satellite imagery and checks if center pixels are water-colored
-        // (dark blue/teal). Different from Static Maps — this uses real imagery.
-        function checkWaterViaSatelliteTile(lat, lng) {
+        // Secondary: multi-signal pixel + elevation check (only called when geocoder is ambiguous)
+        function checkWaterPixel(lat, lng) {
+            return Promise.all([
+                checkWaterViaStaticMap(lat, lng, 16),
+                checkWaterViaStaticMap(lat, lng, 14),
+                checkElevation(lat, lng),
+            ]).then(([pixel16, pixel14, elevation]) => {
+                if (pixel16 || pixel14) return true;
+                if (elevation !== null && elevation <= 2) return true;
+                return false;
+            });
+        }
+
+        // Static Maps pixel sampling: water=blue, land=black, sample 5x5 center grid
+        function checkWaterViaStaticMap(lat, lng, zoom) {
             return new Promise((resolve) => {
                 const img = new Image();
                 img.crossOrigin = 'anonymous';
+                const style = [
+                    'style=feature:water|color:0x0000ff',
+                    'style=feature:landscape|color:0x000000',
+                    'style=feature:road|visibility:off',
+                    'style=feature:poi|visibility:off',
+                    'style=feature:transit|visibility:off',
+                    'style=feature:administrative|visibility:off',
+                    'style=element:labels|visibility:off',
+                ].join('&');
                 const size = 21;
-                const url = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=17&size=${size}x${size}&maptype=satellite&scale=1&key=${GOOGLE_API_KEY}`;
+                const url = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=${zoom}&size=${size}x${size}&maptype=roadmap&scale=1&${style}&key=${GOOGLE_API_KEY}`;
 
                 img.onload = () => {
                     try {
@@ -2577,54 +2474,25 @@
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0);
                         const data = ctx.getImageData(8, 8, 5, 5).data;
-                        let waterCount = 0;
+                        let blueCount = 0;
+                        const totalPixels = 25;
                         for (let i = 0; i < data.length; i += 4) {
                             const r = data[i], g = data[i+1], b = data[i+2];
-                            const brightness = (r + g + b) / 3;
-                            // Water in satellite imagery: dark, blue/teal dominant
-                            // - Deep water: very dark blue (r<60, g<80, b<100)
-                            // - Shallow/murky: dark teal/gray-blue
-                            // - NOT water: bright (concrete, sand), green (vegetation),
-                            //   brown (soil), dark gray (asphalt, shadows)
-                            const isWaterColor = (
-                                (b > r + 15 && b > g * 0.85 && brightness < 120 && brightness > 15) // blue dominant, dark but not black
-                            );
-                            if (isWaterColor) waterCount++;
+                            if (b > 100 && b - r > 50 && b - g > 50) blueCount++;
                         }
-                        resolve(waterCount >= 25 * 0.4); // 40% threshold for satellite
-                    } catch (e) { resolve(null); }
+                        resolve(blueCount >= totalPixels * 0.3);
+                    } catch (e) { resolve(false); }
                 };
-                img.onerror = () => resolve(null);
+                img.onerror = () => resolve(false);
                 img.src = url;
             });
         }
 
-        // --- Signal 5: Multi-point elevation grid ---
-        // Samples 3x3 grid (~50m spacing). Flat + low = water. Variable = land.
-        function checkElevationGrid(lat, lng) {
-            const delta = 0.0005; // ~50m
-            const lats = [];
-            const lngs = [];
-            for (let dy = -1; dy <= 1; dy++) {
-                for (let dx = -1; dx <= 1; dx++) {
-                    lats.push((lat + dy * delta).toFixed(5));
-                    lngs.push((lng + dx * delta).toFixed(5));
-                }
-            }
-            const url = `https://api.open-meteo.com/v1/elevation?latitude=${lats.join(',')}&longitude=${lngs.join(',')}`;
-            return fetch(url)
+        // Elevation check via Open-Meteo (free, no key needed)
+        function checkElevation(lat, lng) {
+            return fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`)
                 .then(r => r.ok ? r.json() : null)
-                .then(d => {
-                    if (!d?.elevation || d.elevation.length < 9) return null;
-                    const elevs = d.elevation;
-                    const avg = elevs.reduce((a, b) => a + b, 0) / elevs.length;
-                    const max = Math.max(...elevs);
-                    const min = Math.min(...elevs);
-                    const range = max - min;
-                    // Flat (range < 2m) + low elevation = likely open water
-                    // Variable elevation = land terrain
-                    return { isFlat: range < 2, avgElev: avg };
-                })
+                .then(d => d?.elevation?.[0] ?? null)
                 .catch(() => null);
         }
 
@@ -2638,13 +2506,13 @@
             setTimeout(() => {
                 toast.classList.remove('show');
                 setTimeout(() => { overrideBtn.style.display = 'none'; }, 400);
-            }, 5000); // 5 seconds to give user time to click override
+            }, 5000);
         }
 
         function overrideWaterCheck() {
             if (!lastRejectedTap) return;
             const { lat, lng } = lastRejectedTap;
-            setTapMemory(lat, lng, true); // Remember this as water
+            setTapMemory(lat, lng, true);
             setPaddleSpot(lat, lng);
             document.getElementById('waterToast').classList.remove('show');
             lastRejectedTap = null;
