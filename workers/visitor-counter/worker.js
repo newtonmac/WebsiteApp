@@ -60,7 +60,7 @@ async function recordVisit(request, env) {
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
   const visitorHash = await hashIP(ip);
 
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }); // YYYY-MM-DD in Pacific time
 
   // --- Update daily data ---
   const dayKey = `day:${today}`;
