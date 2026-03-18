@@ -2316,29 +2316,75 @@
             locateMe();
         }
 
-        // ======== Water Validation — dual check: Geocoder + Static Map pixel ========
+        // ======== Water Validation — Triple-signal voting system ========
+        // All three sources run in PARALLEL, then a scoring system decides.
+        // 1. Google Geocoder — named water bodies, land type detection
+        // 2. Google Static Maps — pixel sampling at two zoom levels
+        // 3. Open-Meteo Elevation — ocean/bays ≈ 0m
         let geocoder;
 
-        // Primary: Geocoder-based check (fast, good for named water bodies)
-        // Secondary: Static Maps pixel sampling (catches open water the geocoder misses)
         function checkWaterNearby(lat, lng) {
             if (!geocoder) geocoder = new google.maps.Geocoder();
+
+            // Run all three checks in parallel
+            return Promise.all([
+                checkWaterViaGeocoder(lat, lng),
+                checkWaterViaStaticMap(lat, lng, 16),  // zoom 16 — harbors, bays, rivers
+                checkWaterViaStaticMap(lat, lng, 14),  // zoom 14 — larger water bodies
+                checkElevation(lat, lng),
+            ]).then(([geoResult, pixel16, pixel14, elevation]) => {
+                // geoResult: 'water' | 'land' | 'unknown'
+                // pixel16/pixel14: true (water) | false (land)
+                // elevation: number (meters) | null
+
+                // --- Hard overrides (high confidence signals) ---
+                // Geocoder found explicit water type (natural_feature, etc.)
+                if (geoResult === 'water') return true;
+                // Geocoder found definite land (airport, store, hospital, etc.)
+                if (geoResult === 'land') return false;
+
+                // --- Scoring system for ambiguous cases ---
+                // Each signal votes: +points for water, -points for land
+                let score = 0;
+
+                // Pixel checks (most reliable for actual water surface)
+                if (pixel16) score += 3;
+                else score -= 2;
+
+                if (pixel14) score += 2;
+                else score -= 1;
+
+                // Elevation (strong for coastal, less useful for inland lakes)
+                if (elevation !== null) {
+                    if (elevation <= 0) score += 3;       // below/at sea level — very likely water
+                    else if (elevation <= 2) score += 2;  // just above sea level — likely waterfront
+                    else if (elevation <= 5) score += 1;  // near sea level — possible
+                    else if (elevation > 20) score -= 2;  // well above sea level — likely land
+                }
+
+                // Geocoder said 'unknown' — it had no water or land signals
+                // Give a small nudge toward water if no street address was found
+                if (geoResult === 'no_address') score += 1;
+
+                // Water if score ≥ 2 (need at least two signals agreeing)
+                return score >= 2;
+            });
+        }
+
+        // Google Geocoder check — returns 'water', 'land', 'no_address', or 'unknown'
+        function checkWaterViaGeocoder(lat, lng) {
             return new Promise((resolve) => {
                 geocoder.geocode({ location: { lat, lng } }, (results, status) => {
                     if (status !== 'OK' || !results || results.length === 0) {
-                        // No results often means open water (ocean, large lake)
-                        // Verify with pixel check
-                        checkWaterPixel(lat, lng).then(resolve);
+                        resolve('unknown');
                         return;
                     }
 
-                    // Water-related result types from Google
                     const waterTypes = [
                         'natural_feature', 'water_body',
                         'archipelago', 'colloquial_area'
                     ];
 
-                    // Known land types — if the FIRST result is one of these, it's land
                     const landTypes = [
                         'airport', 'transit_station', 'train_station', 'bus_station',
                         'parking', 'shopping_mall', 'store', 'restaurant', 'food',
@@ -2351,92 +2397,54 @@
                         'veterinary_care', 'funeral_home', 'cemetery',
                     ];
 
-                    // Water keywords to match in result names / formatted addresses
                     const waterKeywords = /\b(ocean|sea|lake|river|creek|bay|harbor|harbour|marina|lagoon|reservoir|pond|canal|strait|cove|inlet|estuary|waterway|beach|surf|coast|shore|wharf|dock|pier|port|channel|sound|gulf|cape|rapids|falls|spring|brook|stream|point|peninsula|jetty|breakwater|reef|tide|tidepool|tideland|seawall|bluff|headland|sandbar|atoll|isthmus|narrows|shoal|anchorage|boat\s*ramp|boat\s*launch|landing|waterfront|embarcadero|boardwalk|yacht|slip|mooring|quay)\b/i;
 
-                    // Land keywords — strong indicators this is NOT water
                     const landKeywords = /\b(airport|airfield|runway|terminal|hangar|parking\s*(lot|garage|structure)|mall|shopping|school|university|college|hospital|clinic|church|temple|mosque|synagogue|cemetery|freeway|highway|interstate|boulevard|avenue|plaza)\b/i;
 
-                    // Pass 1: Check for explicit water types
+                    // Check for explicit water types
                     for (const result of results) {
                         for (const type of result.types) {
-                            if (waterTypes.includes(type)) {
-                                resolve(true);
-                                return;
-                            }
+                            if (waterTypes.includes(type)) { resolve('water'); return; }
                         }
                     }
 
-                    // Pass 2: Check the FIRST (most specific) result for land types
+                    // Check the first result for land types
                     const top = results[0];
                     for (const type of top.types) {
-                        if (landTypes.includes(type)) {
-                            resolve(false);
-                            return;
-                        }
+                        if (landTypes.includes(type)) { resolve('land'); return; }
                     }
 
-                    // Pass 3: Check all results for water keywords
+                    // Check all results for water keywords
                     for (const result of results) {
                         const text = (result.formatted_address || '') + ' ' +
                             result.address_components.map(c => c.long_name).join(' ');
-                        if (waterKeywords.test(text)) {
-                            resolve(true);
-                            return;
-                        }
+                        if (waterKeywords.test(text)) { resolve('water'); return; }
                     }
 
-                    // Pass 4: Check for land keywords in the top result
+                    // Check for land keywords
                     const topText = (top.formatted_address || '') + ' ' +
                         top.address_components.map(c => c.long_name).join(' ');
-                    if (landKeywords.test(topText)) {
-                        resolve(false);
-                        return;
-                    }
+                    if (landKeywords.test(topText)) { resolve('land'); return; }
 
-                    // Pass 5: If the most precise result is just a plus code, likely open water
-                    if (top.types.includes('plus_code') && results.length <= 2) {
-                        checkWaterPixel(lat, lng).then(resolve);
-                        return;
-                    }
-
-                    // Pass 6: Check for buildings/addresses — definite land
+                    // Check for buildings/addresses/POIs
                     const hasBuilding = results.some(r =>
                         r.types.includes('street_address') || r.types.includes('premise') ||
                         r.types.includes('subpremise') || r.types.includes('establishment') ||
                         r.types.includes('point_of_interest')
                     );
-                    if (hasBuilding) {
-                        resolve(false);
-                        return;
-                    }
+                    if (hasBuilding) { resolve('land'); return; }
 
-                    // Pass 7: No clear signal from geocoder — use pixel check as tiebreaker
-                    checkWaterPixel(lat, lng).then(resolve);
+                    // No street address at all — slight water signal
+                    const hasStreet = results.some(r =>
+                        r.types.includes('street_address') || r.types.includes('route')
+                    );
+                    resolve(hasStreet ? 'unknown' : 'no_address');
                 });
             });
         }
 
-        // Secondary validation: multi-signal water check
-        // 1. Static Maps pixel sampling (larger area, multi-zoom)
-        // 2. Open-Meteo Elevation API (ocean/bays ≈ 0m)
-        // Runs both in parallel, combines results.
-        function checkWaterPixel(lat, lng) {
-            return Promise.all([
-                checkWaterViaStaticMap(lat, lng, 16),  // zoom 16 — catches bays, harbors
-                checkWaterViaStaticMap(lat, lng, 14),  // zoom 14 — catches larger water bodies
-                checkElevation(lat, lng),               // elevation near 0 = likely water
-            ]).then(([pixel16, pixel14, elevation]) => {
-                // Any pixel check says water → water
-                if (pixel16 || pixel14) return true;
-                // Elevation near sea level (≤ 2m) and not blocked by pixel → likely water
-                if (elevation !== null && elevation <= 2) return true;
-                return false;
-            });
-        }
-
-        // Fetch a Static Maps image styled with water=blue, land=black
-        // Sample a 5x5 grid of center pixels for robustness against anti-aliasing
+        // Google Static Maps pixel sampling — styled water=blue, land=black
+        // Samples 5x5 center grid from 21x21 image for anti-aliasing robustness
         function checkWaterViaStaticMap(lat, lng, zoom) {
             return new Promise((resolve) => {
                 const img = new Image();
@@ -2450,7 +2458,7 @@
                     'style=feature:administrative|visibility:off',
                     'style=element:labels|visibility:off',
                 ].join('&');
-                const size = 21; // 21x21 pixels
+                const size = 21;
                 const url = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=${zoom}&size=${size}x${size}&maptype=roadmap&scale=1&${style}&key=${GOOGLE_API_KEY}`;
 
                 img.onload = () => {
@@ -2459,20 +2467,19 @@
                         canvas.width = size; canvas.height = size;
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0);
-                        // Sample 5x5 center grid (pixels 8-12 in a 21px image)
+                        // Sample 5x5 center grid (pixels 8-12)
                         const data = ctx.getImageData(8, 8, 5, 5).data;
                         let blueCount = 0;
-                        const totalPixels = 25; // 5x5
+                        const totalPixels = 25;
                         for (let i = 0; i < data.length; i += 4) {
                             const r = data[i], g = data[i+1], b = data[i+2];
-                            // Blue water: high blue, low red/green
-                            // Account for anti-aliasing: blue dominant by at least 50
-                            if (b > 100 && b - r > 50 && b - g > 50) blueCount++;
+                            // Blue dominant: catches pure blue + anti-aliased edges
+                            if (b > 80 && b - r > 40 && b - g > 40) blueCount++;
                         }
-                        // If 30%+ of center pixels are blue, it's water
+                        // 30%+ blue pixels = water
                         resolve(blueCount >= totalPixels * 0.3);
                     } catch (e) {
-                        resolve(false); // Can't read canvas — don't assume water
+                        resolve(false);
                     }
                 };
                 img.onerror = () => resolve(false);
@@ -2480,8 +2487,8 @@
             });
         }
 
-        // Elevation check via Open-Meteo (free, no key needed)
-        // Ocean = 0m, bays/harbors ≈ 0-1m, lakes = varies
+        // Open-Meteo Elevation API (free, no key)
+        // Ocean = 0m, bays ≈ 0-1m, coastal = 2-5m, inland = higher
         function checkElevation(lat, lng) {
             return fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`)
                 .then(r => r.ok ? r.json() : null)
