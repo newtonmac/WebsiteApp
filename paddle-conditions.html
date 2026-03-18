@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title>PaddlePoint</title>
+    <link rel="preconnect" href="https://api.open-meteo.com" crossorigin>
+    <link rel="preconnect" href="https://marine-api.open-meteo.com" crossorigin>
+    <link rel="preconnect" href="https://weather.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://api.tidesandcurrents.noaa.gov" crossorigin>
+    <link rel="preconnect" href="https://api.weather.gov" crossorigin>
+    <link rel="preconnect" href="https://maps.googleapis.com" crossorigin>
+    <link rel="dns-prefetch" href="https://waterservices.usgs.gov">
+    <link rel="dns-prefetch" href="https://data.ca.gov">
+    <link rel="dns-prefetch" href="https://gis.ncdc.noaa.gov">
+    <link rel="dns-prefetch" href="https://sd-beach-proxy.newtonmac.workers.dev">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -1416,7 +1426,6 @@
 
         .stats-loading { display: flex; align-items: center; justify-content: center; padding: 40px; color: #6b7280; font-size: 13px; gap: 10px; }
         .stats-spinner { width: 18px; height: 18px; border: 2px solid #2d3040; border-top-color: #60a5fa; border-radius: 50%; animation: spin 0.8s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
 
         /* Visitor world map */
         .stats-map-section { margin-top: 20px; }
@@ -2203,6 +2212,47 @@
         let placesService, nearbyPlace = null;
         let stationMarkers = [], stormDrainMarkers = [], stationInfoWindow = null, paddleInfoWindow = null;
         let allDEHStations = []; // All DEH stations (unfiltered) for map pins
+        let currentAbortController = null; // AbortController for cancelling stale API requests
+        let lastTideHourlyData = null; // Cached tide data for resize redraws
+
+        // --- API Response Cache (2-minute TTL, ~0.01° proximity) ---
+        const apiCache = new Map();
+        const API_CACHE_TTL = 120000; // 2 minutes
+        const API_CACHE_PRECISION = 2; // decimal places for lat/lon rounding (~1km)
+
+        function getCacheKey(prefix, lat, lon) {
+            return `${prefix}:${lat.toFixed(API_CACHE_PRECISION)},${lon.toFixed(API_CACHE_PRECISION)}`;
+        }
+
+        function cacheGet(key) {
+            const entry = apiCache.get(key);
+            if (!entry) return null;
+            if (Date.now() - entry.ts > API_CACHE_TTL) { apiCache.delete(key); return null; }
+            return entry.data;
+        }
+
+        function cacheSet(key, data) {
+            apiCache.set(key, { data, ts: Date.now() });
+            // Evict old entries if cache grows too large
+            if (apiCache.size > 50) {
+                const now = Date.now();
+                for (const [k, v] of apiCache) { if (now - v.ts > API_CACHE_TTL) apiCache.delete(k); }
+            }
+        }
+
+        // --- SVG Pin Cache ---
+        const svgPinCache = new Map();
+
+        function getCachedPinSvg(color, type) {
+            const key = `${type}:${color}`;
+            let cached = svgPinCache.get(key);
+            if (!cached) {
+                const svg = type === 'fill' ? makePaddlePinSvgFill(color) : makePaddlePinSvg(color);
+                cached = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
+                svgPinCache.set(key, cached);
+            }
+            return cached;
+        }
 
         const NOAA_TIDE_API = 'https://api.tidesandcurrents.noaa.gov/api/prod/datagetter';
         const TIDE_STATIONS = [
@@ -2625,31 +2675,64 @@
 
         // ======== Load conditions ========
         async function loadConditions() {
+            // Cancel any in-flight requests from previous taps
+            if (currentAbortController) currentAbortController.abort();
+            currentAbortController = new AbortController();
+            const signal = currentAbortController.signal;
+
             document.getElementById('conditionsArea').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
             document.getElementById('alertArea').innerHTML = '';
 
             const station = nearestStation(paddleLat, paddleLon);
+            const lat = paddleLat, lon = paddleLon;
+
+            // Helper: cached fetch with abort support
+            function cachedFetch(prefix, fetchFn) {
+                const key = getCacheKey(prefix, lat, lon);
+                const cached = cacheGet(key);
+                if (cached) return Promise.resolve(cached);
+                return fetchFn(signal).then(data => { cacheSet(key, data); return data; });
+            }
 
             try {
-                const [weather, tides, tideH, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell, noaaWaterTemp, usgsWaterTemp] = await Promise.all([
-                    fetchWeather(paddleLat, paddleLon),
-                    fetchTides(station.id).catch(() => null),
-                    fetchTideHourly(station.id).catch(() => null),
-                    fetchGoogleWeather(paddleLat, paddleLon).catch(() => null),
-                    fetchGoogleHourly(paddleLat, paddleLon).catch(() => null),
-                    fetchBeachAdvisories(paddleLat, paddleLon).catch(() => []),
-                    fetchNWSAlerts(paddleLat, paddleLon).catch(() => []),
-                    fetchHABData(paddleLat, paddleLon).catch(() => []),
-                    fetchCAHAB(paddleLat, paddleLon).catch(() => null),
-                    fetchRiverFlow(paddleLat, paddleLon).catch(() => null),
-                    fetchSDBeachStatus(paddleLat, paddleLon).catch(() => null),
-                    fetchCoastalAccess(paddleLat, paddleLon).catch(() => []),
-                    fetchMarineSwell(paddleLat, paddleLon).catch(() => null),
-                    fetchNOAAWaterTemp(station.id).catch(() => null),
-                    fetchUSGSWaterTemp(paddleLat, paddleLon).catch(() => null),
+                // Critical path: weather + tides + Google weather (needed for score)
+                // Secondary: beach advisories, NWS, HAB, river flow, etc.
+                // Deferred: coastal access (non-critical, large payload)
+                const [weather, tides, tideH, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, marineSwell, noaaWaterTemp, usgsWaterTemp] = await Promise.all([
+                    cachedFetch('weather', (s) => fetchWeather(lat, lon, s)),
+                    cachedFetch('tides-' + station.id, (s) => fetchTides(station.id, s)).catch(() => null),
+                    cachedFetch('tideH-' + station.id, (s) => fetchTideHourly(station.id, s)).catch(() => null),
+                    cachedFetch('gWeather', (s) => fetchGoogleWeather(lat, lon, s)).catch(() => null),
+                    cachedFetch('gHourly', (s) => fetchGoogleHourly(lat, lon, s)).catch(() => null),
+                    cachedFetch('beachAdv', (s) => fetchBeachAdvisories(lat, lon, s)).catch(() => []),
+                    cachedFetch('nwsAlerts', (s) => fetchNWSAlerts(lat, lon, s)).catch(() => []),
+                    cachedFetch('habData', (s) => fetchHABData(lat, lon, s)).catch(() => []),
+                    cachedFetch('caHab', (s) => fetchCAHAB(lat, lon, s)).catch(() => null),
+                    cachedFetch('riverFlow', (s) => fetchRiverFlow(lat, lon, s)).catch(() => null),
+                    cachedFetch('sdBeach', (s) => fetchSDBeachStatus(lat, lon, s)).catch(() => null),
+                    cachedFetch('marineSwell', (s) => fetchMarineSwell(lat, lon, s)).catch(() => null),
+                    cachedFetch('noaaWT-' + station.id, (s) => fetchNOAAWaterTemp(station.id, s)).catch(() => null),
+                    cachedFetch('usgsWT', (s) => fetchUSGSWaterTemp(lat, lon, s)).catch(() => null),
                 ]);
-                render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell, noaaWaterTemp, usgsWaterTemp);
+
+                // Check if this request was aborted while awaiting
+                if (signal.aborted) return;
+
+                // Cache tide hourly data for resize redraws
+                lastTideHourlyData = tideH;
+
+                // Fetch coastal access in background (non-blocking)
+                const coastalAccessPromise = cachedFetch('coastal', (s) => fetchCoastalAccess(lat, lon, s)).catch(() => []);
+
+                render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, [], marineSwell, noaaWaterTemp, usgsWaterTemp);
+
+                // When coastal access arrives, update the resources section if needed
+                coastalAccessPromise.then(coastalAccess => {
+                    if (signal.aborted || !coastalAccess || coastalAccess.length === 0) return;
+                    // Coastal access data is informational — stored for potential future use
+                });
             } catch (e) {
+                if (signal.aborted) return; // User tapped again, ignore stale error
                 document.getElementById('conditionsArea').innerHTML = `<div style="text-align:center;padding:48px;color:#f87171;">
                     <div style="font-size:36px;margin-bottom:12px;">&#x26A0;</div>
                     <div style="font-size:15px;font-weight:600;">Failed to load: ${e.message}</div>
@@ -2661,28 +2744,27 @@
         // ======== APIs ========
         const GOOGLE_API_KEY = 'AIzaSyAR81pUTUz5ON7ZBuoouTh2RTHyECr6yvg';
 
-        async function fetchWeather(lat, lon) {
-            const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index,visibility,pressure_msl&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,precipitation_probability,weather_code,uv_index,visibility&daily=sunrise,sunset,uv_index_max,wind_speed_10m_max,wind_gusts_10m_max,precipitation_sum,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=3`);
+        async function fetchWeather(lat, lon, signal) {
+            const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index,visibility,pressure_msl&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,precipitation_probability,weather_code,uv_index,visibility&daily=sunrise,sunset,uv_index_max,wind_speed_10m_max,wind_gusts_10m_max,precipitation_sum,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=3`, { signal });
             if (!r.ok) throw new Error(`Weather: ${r.status}`);
             return r.json();
         }
 
-        async function fetchGoogleWeather(lat, lon) {
-            const r = await fetch(`https://weather.googleapis.com/v1/currentConditions:lookup?key=${GOOGLE_API_KEY}&location.latitude=${lat}&location.longitude=${lon}`);
+        async function fetchGoogleWeather(lat, lon, signal) {
+            const r = await fetch(`https://weather.googleapis.com/v1/currentConditions:lookup?key=${GOOGLE_API_KEY}&location.latitude=${lat}&location.longitude=${lon}`, { signal });
             if (!r.ok) throw new Error(`Google Weather: ${r.status}`);
             return r.json();
         }
 
-        async function fetchGoogleHourly(lat, lon) {
-            const r = await fetch(`https://weather.googleapis.com/v1/forecast/hours:lookup?key=${GOOGLE_API_KEY}&location.latitude=${lat}&location.longitude=${lon}&hours=12`);
+        async function fetchGoogleHourly(lat, lon, signal) {
+            const r = await fetch(`https://weather.googleapis.com/v1/forecast/hours:lookup?key=${GOOGLE_API_KEY}&location.latitude=${lat}&location.longitude=${lon}&hours=12`, { signal });
             if (!r.ok) throw new Error(`Google Hourly: ${r.status}`);
             return r.json();
         }
 
         // Open-Meteo Marine API — swell direction and wave data
-        // Used to detect south swell (transboundary flow) per SD County DEH tiered system
-        async function fetchMarineSwell(lat, lon) {
-            const r = await fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&current=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature&timezone=auto`);
+        async function fetchMarineSwell(lat, lon, signal) {
+            const r = await fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&current=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature&timezone=auto`, { signal });
             if (!r.ok) throw new Error(`Marine: ${r.status}`);
             return r.json();
         }
@@ -2693,7 +2775,7 @@
         // Fallback: direct fetch (works if same-origin or CORS policy changes).
         const SD_BEACH_PROXY = 'https://sd-beach-proxy.newtonmac.workers.dev';
 
-        async function fetchSDBeachStatus(lat, lon) {
+        async function fetchSDBeachStatus(lat, lon, signal) {
             // Skip if outside San Diego County area
             if (lat > 33.25 || lon > -116.9 || lon < -117.7) return null;
 
@@ -2701,23 +2783,23 @@
 
             // Try proxy first (CORS-enabled, fetches all 3 regions in one call)
             try {
-                const r = await fetch(SD_BEACH_PROXY);
+                const r = await fetch(SD_BEACH_PROXY, { signal });
                 if (r.ok) {
                     const data = await r.json();
                     if (Array.isArray(data)) results = data;
                 }
-            } catch(e) {}
+            } catch(e) { if (e.name === 'AbortError') throw e; }
 
             // Fallback: direct fetch per region (works if CORS policy changes)
             if (results.length === 0) {
                 for (const regionId of [1, 2, 3]) {
                     try {
-                        const r = await fetch(`https://sdbeachinfo.com/Home/GetTargetCityByID?id=${regionId}`);
+                        const r = await fetch(`https://sdbeachinfo.com/Home/GetTargetCityByID?id=${regionId}`, { signal });
                         if (r.ok) {
                             const data = await r.json();
                             if (Array.isArray(data)) results.push(...data);
                         }
-                    } catch(e) {}
+                    } catch(e) { if (e.name === 'AbortError') throw e; }
                 }
             }
 
@@ -2745,7 +2827,7 @@
         const CA_BEACH_API = 'https://data.ca.gov/api/3/action/datastore_search';
         const CA_BEACH_RESOURCE = 'd5cd6a23-829c-426d-a63e-689a55a3db9c';
 
-        async function fetchBeachAdvisories(lat, lon) {
+        async function fetchBeachAdvisories(lat, lon, signal) {
             // Fetch recent advisories from CA State Water Board
             // NOTE: This dataset has NO "closure lifted" field, so old closures linger.
             // We cross-reference with sdBeach (real-time DEH stations) downstream to
@@ -2753,14 +2835,11 @@
             const results = [];
             const seen = new Set();
 
-            // Fetch 1: Recent advisories/postings
+            // Single fetch: all active advisories (closures are included in this result)
             const url1 = `${CA_BEACH_API}?resource_id=${CA_BEACH_RESOURCE}&limit=100&sort=_id desc&filters={"Beach_Status":"Active"}`;
-            // Fetch 2: Closures specifically
-            const url2 = `${CA_BEACH_API}?resource_id=${CA_BEACH_RESOURCE}&limit=100&sort=_id desc&filters={"Beach_Status":"Active","AdvisoryType":"Closure"}`;
 
             const responses = await Promise.all([
-                fetch(url1).then(r => r.ok ? r.json() : null).catch(() => null),
-                fetch(url2).then(r => r.ok ? r.json() : null).catch(() => null)
+                fetch(url1, { signal }).then(r => r.ok ? r.json() : null).catch(e => { if (e.name === 'AbortError') throw e; return null; }),
             ]);
 
             for (const data of responses) {
@@ -2794,9 +2873,10 @@
         }
 
         // NWS Weather Alerts (beach hazards, storm warnings, etc.)
-        async function fetchNWSAlerts(lat, lon) {
+        async function fetchNWSAlerts(lat, lon, signal) {
             const r = await fetch(`https://api.weather.gov/alerts/active?point=${lat.toFixed(4)},${lon.toFixed(4)}`, {
-                headers: { 'User-Agent': 'PaddlePoint/1.0 (nwtjml@gmail.com)' }
+                headers: { 'User-Agent': 'PaddlePoint/1.0 (nwtjml@gmail.com)' },
+                signal
             });
             if (!r.ok) throw new Error(`NWS: ${r.status}`);
             const data = await r.json();
@@ -2804,7 +2884,7 @@
         }
 
         // NOAA HABSOS - Harmful Algal Blooms (ArcGIS)
-        async function fetchHABData(lat, lon) {
+        async function fetchHABData(lat, lon, signal) {
             // Query HABSOS cell counts within ~50 miles, last 30 days
             const buf = 0.75; // ~50mi in degrees
             const thirtyDaysAgo = Date.now() - 30 * 86400000;
@@ -2823,14 +2903,14 @@
                 resultRecordCount: 20,
                 f: 'json'
             });
-            const r = await fetch(`https://gis.ncdc.noaa.gov/arcgis/rest/services/ms/HABSOS_CellCounts/MapServer/0/query?${params}`);
+            const r = await fetch(`https://gis.ncdc.noaa.gov/arcgis/rest/services/ms/HABSOS_CellCounts/MapServer/0/query?${params}`, { signal });
             if (!r.ok) throw new Error(`HAB: ${r.status}`);
             const data = await r.json();
             return (data.features || []).map(f => f.attributes);
         }
 
         // CA FHAB satellite HAB detection (pixel value at lat/lon)
-        async function fetchCAHAB(lat, lon) {
+        async function fetchCAHAB(lat, lon, signal) {
             const d = new Date();
             const dateStr = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
             // Try today, fallback to yesterday
@@ -2839,7 +2919,7 @@
                 dd.setDate(dd.getDate() - offset);
                 const ds = dd.getFullYear() + String(dd.getMonth() + 1).padStart(2, '0') + String(dd.getDate()).padStart(2, '0');
                 try {
-                    const r = await fetch(`https://fhab-api.sfei.org/cyano/1daymax/${ds}/lon/${lon.toFixed(4)}/lat/${lat.toFixed(4)}/json`);
+                    const r = await fetch(`https://fhab-api.sfei.org/cyano/1daymax/${ds}/lon/${lon.toFixed(4)}/lat/${lat.toFixed(4)}/json`, { signal });
                     if (r.ok) {
                         const data = await r.json();
                         if (data && data.value !== null && data.value !== undefined) return data;
@@ -2849,36 +2929,11 @@
             return null;
         }
 
-        // AirNow AQI (EPA) - current air quality index by lat/lon
-        async function fetchAQI(lat, lon) {
-            const r = await fetch(`https://www.airnow.gov/aqi/current/?lat=${lat.toFixed(4)}&lng=${lon.toFixed(4)}`);
-            if (!r.ok) throw new Error(`AQI: ${r.status}`);
-            const text = await r.text();
-            // Parse AQI from the response - try JSON first
-            try {
-                const data = JSON.parse(text);
-                return data;
-            } catch(e) {}
-            return null;
-        }
-
-        // AirNow API - observation by lat/lon (no key needed for current)
-        async function fetchAirQuality(lat, lon) {
-            // Use the AirNow AQI observation endpoint
-            const r = await fetch(`https://www.airnow.gov/aqi-data/api/v2/observation/latLong/current/?format=application/json&latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&distance=50`);
-            if (r.ok) {
-                const data = await r.json();
-                if (data && data.length > 0) return data;
-            }
-            // Fallback: scrape the widget
-            return null;
-        }
-
         // USGS Water Services - Tijuana River and nearby stream gauges
-        async function fetchRiverFlow(lat, lon) {
+        async function fetchRiverFlow(lat, lon, signal) {
             // Search for USGS stream gauges within ~25 miles
             const bbox = `${(lon-0.4).toFixed(4)},${(lat-0.4).toFixed(4)},${(lon+0.4).toFixed(4)},${(lat+0.4).toFixed(4)}`;
-            const r = await fetch(`https://waterservices.usgs.gov/nwis/iv/?format=json&bBox=${bbox}&parameterCd=00060&siteType=ST&siteStatus=active`);
+            const r = await fetch(`https://waterservices.usgs.gov/nwis/iv/?format=json&bBox=${bbox}&parameterCd=00060&siteType=ST&siteStatus=active`, { signal });
             if (!r.ok) throw new Error(`USGS: ${r.status}`);
             const data = await r.json();
             const series = data?.value?.timeSeries || [];
@@ -2900,16 +2955,16 @@
             }).filter(g => g.flow !== null && g.flow >= 0);
         }
 
-        async function fetchTides(sid) {
+        async function fetchTides(sid, signal) {
             const d0 = new Date(), d1 = new Date(d0); d1.setDate(d1.getDate()+2);
-            const r = await fetch(`${NOAA_TIDE_API}?begin_date=${fd(d0)}&end_date=${fd(d1)}&station=${sid}&product=predictions&datum=MLLW&time_zone=lst_ldt&units=english&interval=hilo&format=json`);
+            const r = await fetch(`${NOAA_TIDE_API}?begin_date=${fd(d0)}&end_date=${fd(d1)}&station=${sid}&product=predictions&datum=MLLW&time_zone=lst_ldt&units=english&interval=hilo&format=json`, { signal });
             if (!r.ok) throw new Error(`Tide: ${r.status}`);
             return r.json();
         }
 
-        async function fetchTideHourly(sid) {
+        async function fetchTideHourly(sid, signal) {
             const d0 = new Date(), d1 = new Date(d0); d1.setDate(d1.getDate()+1);
-            const r = await fetch(`${NOAA_TIDE_API}?begin_date=${fd(d0)}&end_date=${fd(d1)}&station=${sid}&product=predictions&datum=MLLW&time_zone=lst_ldt&units=english&interval=6&format=json`);
+            const r = await fetch(`${NOAA_TIDE_API}?begin_date=${fd(d0)}&end_date=${fd(d1)}&station=${sid}&product=predictions&datum=MLLW&time_zone=lst_ldt&units=english&interval=6&format=json`, { signal });
             if (!r.ok) throw new Error(`TideH: ${r.status}`);
             return r.json();
         }
@@ -2918,11 +2973,11 @@
 
         // USGS water temperature — for inland lakes/rivers (parameter code 00010)
         // Searches a bounding box around the location for active USGS stations with water temp
-        async function fetchUSGSWaterTemp(lat, lon) {
+        async function fetchUSGSWaterTemp(lat, lon, signal) {
             const delta = 0.3; // ~20 mile search radius
             const bbox = `${(lon-delta).toFixed(4)},${(lat-delta).toFixed(4)},${(lon+delta).toFixed(4)},${(lat+delta).toFixed(4)}`;
             const url = `https://waterservices.usgs.gov/nwis/iv/?format=json&bBox=${bbox}&parameterCd=00010&siteStatus=active`;
-            const r = await fetch(url);
+            const r = await fetch(url, { signal });
             if (!r.ok) throw new Error(`USGS: ${r.status}`);
             const d = await r.json();
             const ts = d?.value?.timeSeries;
@@ -2948,10 +3003,10 @@
         }
 
         // NOAA water temperature (fallback for when Open-Meteo SST is unavailable)
-        async function fetchNOAAWaterTemp(sid) {
+        async function fetchNOAAWaterTemp(sid, signal) {
             const d0 = new Date(), d1 = new Date(d0);
             d0.setHours(d0.getHours() - 6); // last 6 hours
-            const r = await fetch(`${NOAA_TIDE_API}?begin_date=${fd(d0)}&end_date=${fd(d1)}&station=${sid}&product=water_temperature&units=english&time_zone=lst_ldt&format=json`);
+            const r = await fetch(`${NOAA_TIDE_API}?begin_date=${fd(d0)}&end_date=${fd(d1)}&station=${sid}&product=water_temperature&units=english&time_zone=lst_ldt&format=json`, { signal });
             if (!r.ok) throw new Error(`WaterTemp: ${r.status}`);
             const d = await r.json();
             if (d.data && d.data.length > 0) return parseFloat(d.data[d.data.length - 1].v);
@@ -3477,10 +3532,10 @@
 
         // ======== CA Coastal Access — validate beach access points ========
         let coastalAccessCache = null;
-        async function fetchCoastalAccess(lat, lon) {
+        async function fetchCoastalAccess(lat, lon, signal) {
             // Fetch all CA coastal access points (cached after first call)
             if (!coastalAccessCache) {
-                const r = await fetch('https://api.coastal.ca.gov/access/v1/locations');
+                const r = await fetch('https://api.coastal.ca.gov/access/v1/locations', { signal });
                 if (!r.ok) throw new Error(`Coastal: ${r.status}`);
                 coastalAccessCache = await r.json();
             }
@@ -3560,34 +3615,70 @@
             return '#22c55e';
         }
 
+        // Cache for station marker icons by color to avoid regenerating SVGs
+        const stationIconCache = new Map();
+        let cachedDrainIcon = null;
+
+        function getCachedStationIcon(rgbColor) {
+            const key = (rgbColor || '').toLowerCase();
+            let icon = stationIconCache.get(key);
+            if (!icon) { icon = makeStationIcon(rgbColor); stationIconCache.set(key, icon); }
+            return icon;
+        }
+
+        function getCachedDrainIcon() {
+            if (!cachedDrainIcon) cachedDrainIcon = makeStormDrainIcon();
+            return cachedDrainIcon;
+        }
+
+        // Track existing markers by station ID for reuse
+        const stationMarkerMap = new Map();
+        const drainMarkerMap = new Map();
+
         function addStationMarkers(sdBeach) {
-            // Clear previous markers
-            stationMarkers.forEach(m => m.setMap(null));
-            stormDrainMarkers.forEach(m => m.setMap(null));
+            if (!map) return;
+            if (!stationInfoWindow) stationInfoWindow = new google.maps.InfoWindow();
+
             stationMarkers = [];
             stormDrainMarkers = [];
-            if (!map || !sdBeach || sdBeach.length === 0) return;
+            const activeIds = new Set();
 
-            if (!stationInfoWindow) {
-                stationInfoWindow = new google.maps.InfoWindow();
+            if (!sdBeach || sdBeach.length === 0) {
+                // Remove all existing markers
+                stationMarkerMap.forEach(m => m.setMap(null));
+                drainMarkerMap.forEach(m => m.setMap(null));
+                stationMarkerMap.clear();
+                drainMarkerMap.clear();
+                stationMarkers = [];
+                stormDrainMarkers = [];
+                return;
             }
-
-            const drainIcon = makeStormDrainIcon();
 
             sdBeach.forEach(s => {
                 if (!s.Latitude || !s.Longitude) return;
                 const pos = { lat: s.Latitude, lng: s.Longitude };
                 const isDrain = isStormDrain(s);
                 const status = stationStatusText(s);
-                const statusClr = stationStatusColor(s);
+                const markerKey = s.SiteID || `${s.Latitude},${s.Longitude}`;
+                activeIds.add(markerKey);
+                const markerMap = isDrain ? drainMarkerMap : stationMarkerMap;
 
-                const marker = new google.maps.Marker({
-                    position: pos,
-                    map,
-                    title: `${s.Name || 'Station'} (${s.DehID || ''})`,
-                    icon: isDrain ? drainIcon : makeStationIcon(s.RBGColor),
-                    zIndex: isDrain ? 1 : (status === 'OPEN' ? 2 : 10),
-                });
+                // Reuse existing marker if position hasn't changed
+                let marker = markerMap.get(markerKey);
+                if (marker) {
+                    // Update icon in case status changed
+                    marker.setIcon(isDrain ? getCachedDrainIcon() : getCachedStationIcon(s.RBGColor));
+                    marker.setZIndex(isDrain ? 1 : (status === 'OPEN' ? 2 : 10));
+                } else {
+                    marker = new google.maps.Marker({
+                        position: pos,
+                        map,
+                        title: `${s.Name || 'Station'} (${s.DehID || ''})`,
+                        icon: isDrain ? getCachedDrainIcon() : getCachedStationIcon(s.RBGColor),
+                        zIndex: isDrain ? 1 : (status === 'OPEN' ? 2 : 10),
+                    });
+                    markerMap.set(markerKey, marker);
+                }
 
                 // Extract advisory details from HTML
                 const advHtml = s.Advisory || s.Closure || '';
@@ -3656,6 +3747,13 @@
                 else stationMarkers.push(marker);
             });
 
+            // Remove markers for stations no longer in the set
+            for (const [key, m] of stationMarkerMap) {
+                if (!activeIds.has(key)) { m.setMap(null); stationMarkerMap.delete(key); }
+            }
+            for (const [key, m] of drainMarkerMap) {
+                if (!activeIds.has(key)) { m.setMap(null); drainMarkerMap.delete(key); }
+            }
         }
 
         function render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell, noaaWaterTemp, usgsWaterTemp) {
@@ -3762,18 +3860,16 @@
 
             // Update paddle pin with water-fill animation, then settle to final color
             if (paddleMarker) {
-                const fillSvg = makePaddlePinSvgFill(pinStatusColor);
                 paddleMarker.setIcon({
-                    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(fillSvg),
+                    url: getCachedPinSvg(pinStatusColor, 'fill'),
                     scaledSize: new google.maps.Size(44, 56),
                     anchor: new google.maps.Point(22, 56),
                 });
                 // After fill animation completes (1.2s), swap to static pin for performance
                 setTimeout(() => {
                     if (paddleMarker) {
-                        const pinSvg = makePaddlePinSvg(pinStatusColor);
                         paddleMarker.setIcon({
-                            url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(pinSvg),
+                            url: getCachedPinSvg(pinStatusColor, 'static'),
                             scaledSize: new google.maps.Size(44, 56),
                             anchor: new google.maps.Point(22, 56),
                         });
@@ -4490,15 +4586,12 @@
             if(nearbyPlace) renderPlaceBadge();
         }
 
-        // Resize
+        // Resize — redraw tide canvas from cached data (no API call)
         let rTO;
         window.addEventListener('resize',()=>{
             clearTimeout(rTO);
             rTO=setTimeout(()=>{
-                if(paddleLat!=null){
-                    const st=nearestStation(paddleLat,paddleLon);
-                    fetchTideHourly(st.id).then(h=>{if(h?.predictions)drawTide('tideCanvas',h.predictions);}).catch(()=>{});
-                }
+                if(lastTideHourlyData?.predictions) drawTide('tideCanvas', lastTideHourlyData.predictions);
             },250);
         });
     </script>
@@ -4529,10 +4622,14 @@
             document.body.style.overflow = '';
         }
 
+        // Unified Escape key handler for all modals
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                const modal = document.getElementById('statsModal');
-                if (modal.classList.contains('open')) closeStatsModal();
+                if (document.getElementById('statsModal').classList.contains('open')) closeStatsModal();
+                if (document.getElementById('suggestModal').classList.contains('open')) closeSuggestModal();
+                if (document.getElementById('updatesModal').classList.contains('open')) closeUpdatesModal();
+                if (document.getElementById('placeModal').classList.contains('open')) closePlaceModal();
+                if (document.getElementById('footerModal').classList.contains('open')) closeFooterModal();
             }
         });
 
@@ -4797,12 +4894,7 @@
             document.getElementById('updatesModal').classList.remove('open');
         }
 
-        document.addEventListener('keydown', e => {
-            if (e.key === 'Escape') {
-                closeSuggestModal();
-                closeUpdatesModal();
-            }
-        });
+        // Escape key handling consolidated in the unified handler above
 
         async function submitSuggestion(e) {
             e.preventDefault();
