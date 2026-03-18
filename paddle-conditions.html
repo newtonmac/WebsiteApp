@@ -4407,7 +4407,7 @@
 
             let alertH='';
             if(c.weather_code>=95) alertH+=`<div class="alert-banner" style="border-color:#ef444460;background:#ef444415;color:#f87171;"><span class="alert-icon">&#x26A1;</span><span>Thunderstorm activity. Do NOT go on the water.</span></div>`;
-            else if(score<40) alertH+=`<div class="alert-banner"><span class="alert-icon">&#x26A0;</span><span>Conditions unfavorable for most paddle sports.</span></div>`;
+            else if(paddleScore<40) alertH+=`<div class="alert-banner"><span class="alert-icon">&#x26A0;</span><span>Conditions unfavorable for most paddle sports.</span></div>`;
 
             document.getElementById('alertArea').innerHTML=alertH;
 
