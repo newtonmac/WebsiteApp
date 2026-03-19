@@ -515,10 +515,7 @@
                 marker._clubData = club;
 
                 marker.addListener('click', () => {
-                    // Highlight selected marker
-                    markers.forEach(m => m.setIcon(icon));
-                    marker.setIcon(iconLarge);
-                    showClubPanel(club);
+                    onMarkerClick(club, marker);
                 });
 
                 markers.push(marker);
@@ -620,11 +617,19 @@
             markers.forEach(m => m.setIcon(icon));
         }
 
-        // Close panel when clicking map background
+        // Close panel when clicking map background (not markers)
+        let justClickedMarker = false;
+        function onMarkerClick(club, marker) {
+            justClickedMarker = true;
+            const icon = makeMarkerIcon();
+            markers.forEach(m => m.setIcon(icon));
+            marker.setIcon(makeMarkerIconLarge());
+            showClubPanel(club);
+            setTimeout(() => { justClickedMarker = false; }, 300);
+        }
         document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('map').addEventListener('click', (e) => {
-                if (e.target.closest('.club-panel')) return;
-                closePanel();
+            document.getElementById('map').addEventListener('click', () => {
+                if (!justClickedMarker) closePanel();
             });
         });
     </script>
