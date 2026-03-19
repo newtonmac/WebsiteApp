@@ -371,8 +371,95 @@
             .header h1 { font-size: 22px; }
             .header { padding: 10px 12px; }
         }
+
+        /* Footer */
+        .site-footer {
+            text-align: center;
+            padding: 20px 16px 28px;
+            border-top: 1px solid #2d3040;
+            margin-top: 8px;
+        }
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 6px 16px;
+            margin-bottom: 10px;
+        }
+        .footer-links a {
+            color: #8b8fa3;
+            text-decoration: none;
+            font-size: 12px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .footer-links a:hover { color: #06b6d4; }
+        .footer-copy { color: #4b5063; font-size: 10px; }
+
+        /* Footer modal */
+        .footer-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; right: 0; bottom: 0; left: 0;
+            background: rgba(0,0,0,0.67);
+            z-index: 9999;
+            align-items: flex-end;
+            justify-content: center;
+            padding: 0;
+            -webkit-overflow-scrolling: touch;
+        }
+        @media (min-width: 701px) {
+            .footer-modal-overlay { align-items: center; padding: 20px; }
+        }
+        .footer-modal-overlay.open { display: flex; }
+        .footer-modal {
+            background: #1a1d28;
+            border: 1px solid #2d3040;
+            border-radius: 20px 20px 0 0;
+            max-width: 560px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            scrollbar-color: #2d3040 transparent;
+        }
+        @media (min-width: 701px) {
+            .footer-modal { border-radius: 20px; max-height: 85vh; }
+        }
+        .fm-header {
+            padding: 20px 24px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .fm-title { font-size: 20px; font-weight: 700; color: #e1e4e8; }
+        .fm-close {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            background: #252836;
+            border: 1px solid #2d3040;
+            color: #8b8fa3;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        .fm-close:hover { background: #2d3040; color: #e1e4e8; }
+        .fm-body {
+            padding: 16px 24px 24px;
+            color: #c0c4d0;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+        .fm-body h3 { color: #e1e4e8; font-size: 15px; margin: 18px 0 8px 0; }
+        .fm-body h3:first-child { margin-top: 4px; }
+        .fm-body ul { padding-left: 18px; margin: 6px 0; }
+        .fm-body li { margin-bottom: 4px; }
     </style>
-</head>
 <body>
     <div class="header">
         <div class="header-left">
@@ -781,9 +868,258 @@
         </div>
     </div>
 
+    <footer class="site-footer">
+        <div class="footer-links">
+            <a onclick="openFooterModal('about')">About</a>
+            <a onclick="openFooterModal('safety')">Safety Disclaimer</a>
+            <a onclick="openFooterModal('privacy')">Privacy Policy</a>
+            <a onclick="openFooterModal('cookies')">Cookie Policy</a>
+            <a onclick="openFooterModal('terms')">Terms of Service</a>
+            <a onclick="openFooterModal('faq')">FAQ</a>
+            <a onclick="openFooterModal('accessibility')">Accessibility</a>
+            <a onclick="openFooterModal('contact')">Contact</a>
+        </div>
+        <div class="footer-copy">&copy; 2026 PaddlePoint. All rights reserved.</div>
+    </footer>
+
+    <!-- Footer Modals -->
+    <div class="footer-modal-overlay" id="footerModal" onclick="if(event.target===this)closeFooterModal()">
+        <div class="footer-modal">
+            <div class="fm-header">
+                <div class="fm-title" id="fmTitle"></div>
+                <button class="fm-close" onclick="closeFooterModal()">&times;</button>
+            </div>
+            <div class="fm-body" id="fmBody"></div>
+        </div>
+    </div>
+
     <script>
         function openDevModal() { document.getElementById('devOverlay').classList.add('open'); }
         function closeDevModal() { document.getElementById('devOverlay').classList.remove('open'); }
+
+        const footerContent = {
+            about: {
+                title: 'About PaddlePoint',
+                body: `
+                    <h3>What is PaddlePoint?</h3>
+                    <p>PaddlePoint is a free, real-time conditions checker built for paddlers &mdash; kayakers, stand-up paddleboarders, canoers, and anyone who loves being on the water. Just tap a spot on the map and instantly get a detailed breakdown of conditions at that location.</p>
+
+                    <h3>What We Show You</h3>
+                    <ul>
+                        <li><strong>Paddle Score</strong> &mdash; An overall 0&ndash;100 rating of how good conditions are right now</li>
+                        <li><strong>Wind</strong> &mdash; Speed, gusts, and direction with a live compass</li>
+                        <li><strong>Waves &amp; Swell</strong> &mdash; Wave height, period, and direction for coastal spots</li>
+                        <li><strong>Tides</strong> &mdash; Current tide level and upcoming high/low times from NOAA stations</li>
+                        <li><strong>Weather</strong> &mdash; Temperature, UV index, visibility, and precipitation</li>
+                        <li><strong>Water Quality</strong> &mdash; Estimated quality based on recent rainfall and conditions</li>
+                        <li><strong>Hourly Forecast</strong> &mdash; See how conditions change throughout the day</li>
+                    </ul>
+
+                    <h3>How It Works</h3>
+                    <p><strong>PaddlePoint does not generate, create, or verify any weather or conditions data.</strong> It is a data aggregator that merely collects and displays publicly available information from established, reliable third-party sources.</p>
+
+                    <h3>Technology</h3>
+                    <p>The app runs entirely in your browser &mdash; no accounts, no downloads, no server-side processing, and no backend servers. Everything happens on your device.</p>
+                `
+            },
+            privacy: {
+                title: 'Privacy Policy',
+                body: `
+                    <p><em>Last updated: March 2026</em></p>
+
+                    <h3>No Data Collection</h3>
+                    <p>PaddlePoint does not collect, store, or transmit any personal data. We do not have user accounts, databases, or analytics tracking.</p>
+
+                    <h3>Location Data</h3>
+                    <p>When you use the "Locate Me" feature, your device's location is used solely within your browser to center the map. Your coordinates are sent directly to weather APIs (Open-Meteo, NOAA) to fetch conditions data. We never see, store, or log your location.</p>
+
+                    <h3>Cookies &amp; Local Storage</h3>
+                    <p>PaddlePoint does not use cookies or local storage to track you. Google Maps, which powers our map, may use its own cookies as described in <a href="https://policies.google.com/privacy" target="_blank" style="color:#06b6d4">Google's Privacy Policy</a>.</p>
+
+                    <h3>Third-Party Services</h3>
+                    <p>We use the following third-party services that have their own privacy policies:</p>
+                    <ul>
+                        <li><strong>Google Maps / Places API</strong> &mdash; Map display and location search</li>
+                        <li><strong>Open-Meteo API</strong> &mdash; Weather and marine data</li>
+                        <li><strong>NOAA Tides API</strong> &mdash; Tide data</li>
+                    </ul>
+                    <p>These services receive your requested coordinates to return data. We recommend reviewing their respective privacy policies.</p>
+
+                    <h3>Children's Privacy</h3>
+                    <p>PaddlePoint is not directed at children under 13 and does not knowingly collect information from children.</p>
+
+                    <h3>Changes</h3>
+                    <p>We may update this policy from time to time. Any changes will be reflected on this page with an updated date.</p>
+
+                    <h3>Contact</h3>
+                    <p>If you have questions about this privacy policy, contact us at <a href="mailto:nwtjml@gmail.com" style="color:#06b6d4">nwtjml@gmail.com</a>.</p>
+                `
+            },
+            terms: {
+                title: 'Terms of Service',
+                body: `
+                    <p><em>Last updated: March 2026</em></p>
+
+                    <h3>Acceptance of Terms</h3>
+                    <p>By accessing or using PaddlePoint, you agree to be bound by these Terms of Service, our Safety Disclaimer, and our Privacy Policy. If you do not agree to all of these terms, you must immediately stop using PaddlePoint.</p>
+
+                    <h3>Service Description</h3>
+                    <p>PaddlePoint provides informational weather and water conditions data for recreational paddling. The service is provided free of charge, as-is. PaddlePoint is <strong>not</strong> a professional weather service, safety advisory, or emergency notification system.</p>
+
+                    <h3>Disclaimer of Accuracy</h3>
+                    <p><strong>PaddlePoint is for general informational purposes only and must not be relied upon as the sole basis for any decision to enter the water.</strong></p>
+                    <ul>
+                        <li>All conditions data, including the paddle score, wind, waves, tides, weather, and water quality, is sourced from third-party APIs and is provided without verification</li>
+                        <li>Data may be inaccurate, delayed, incomplete, interpolated, or entirely unavailable at any time</li>
+                        <li><strong>Conditions can and do change rapidly and without warning</strong> &mdash; information displayed may already be outdated at the time you view it</li>
+                    </ul>
+
+                    <h3>Assumption of Risk</h3>
+                    <p>You acknowledge and agree that water activities including paddling, kayaking, stand-up paddleboarding, canoeing, and related activities are <strong>inherently dangerous</strong> and involve risk of serious injury, death, and property damage. By using PaddlePoint and choosing to participate in any water activity, you <strong>voluntarily assume all risks</strong>.</p>
+
+                    <h3>No Warranties</h3>
+                    <p>PaddlePoint is provided <strong>"as is"</strong> and <strong>"as available"</strong> without warranties of any kind, either express or implied.</p>
+
+                    <h3>Limitation of Liability</h3>
+                    <p>To the <strong>maximum extent permitted by applicable law</strong>, PaddlePoint, its creators, operators, affiliates, licensors, and data providers shall not be liable for any direct, indirect, incidental, special, consequential, punitive, or exemplary damages whatsoever.</p>
+
+                    <h3>Governing Law</h3>
+                    <p>These Terms shall be governed by and construed in accordance with the laws of the United States, without regard to conflict of law principles.</p>
+
+                    <h3>Contact</h3>
+                    <p>Questions about these Terms? Contact us at <a href="mailto:nwtjml@gmail.com" style="color:#06b6d4">nwtjml@gmail.com</a>.</p>
+                `
+            },
+            safety: {
+                title: 'Safety Disclaimer',
+                body: `
+                    <p><em>Please read this carefully before using PaddlePoint.</em></p>
+
+                    <h3>For Informational Purposes Only</h3>
+                    <p><strong>PaddlePoint is not a substitute for professional judgment, local knowledge, or official safety advisories.</strong> PaddlePoint is merely a data aggregator &mdash; it collects and displays publicly available data from third-party sources. PaddlePoint does not independently verify, validate, or guarantee this data.</p>
+
+                    <h3>Conditions Can Change Rapidly and Without Warning</h3>
+                    <p><strong>Weather, water, wind, and tide conditions are inherently unpredictable and can change suddenly.</strong> Conditions that appear favorable at the time you check may deteriorate rapidly. A favorable paddle score or conditions reading is not a guarantee that conditions will remain favorable.</p>
+
+                    <h3>Assumption of Risk</h3>
+                    <p><strong>By using PaddlePoint and choosing to enter any body of water, you voluntarily assume all risks associated with water activities.</strong> You acknowledge that water sports are inherently dangerous and that no amount of data, forecasting, or technology can eliminate the risks involved.</p>
+
+                    <h3>Before You Go Out</h3>
+                    <ul>
+                        <li><strong>Always wear a personal flotation device (PFD / life jacket)</strong></li>
+                        <li>Check <strong>official</strong> weather and marine forecasts from <a href="https://weather.gov" target="_blank" style="color:#06b6d4">weather.gov</a> and <a href="https://tidesandcurrents.noaa.gov" target="_blank" style="color:#06b6d4">NOAA</a></li>
+                        <li>Tell someone where you're going and when you expect to return</li>
+                        <li>Know the local hazards, regulations, and no-go zones</li>
+                        <li>Never paddle alone, especially in unfamiliar waters</li>
+                        <li>Know your skill level and don't exceed it</li>
+                    </ul>
+
+                    <h3>Emergency Information</h3>
+                    <ul>
+                        <li><strong>Emergency:</strong> Call <strong>911</strong> immediately</li>
+                        <li><strong>US Coast Guard:</strong> VHF Channel 16</li>
+                    </ul>
+
+                    <p style="margin-top:18px;padding:14px;background:#f59e0b15;border:1px solid #f59e0b40;border-radius:10px;color:#fbbf24;font-size:13px;"><strong>By using PaddlePoint, you acknowledge that you have read and understood this safety disclaimer and that you are solely responsible for your own safety.</strong></p>
+                `
+            },
+            cookies: {
+                title: 'Cookie Policy',
+                body: `
+                    <p><em>Last updated: March 2026</em></p>
+
+                    <h3>Our Use of Cookies</h3>
+                    <p>PaddlePoint itself does <strong>not</strong> set any cookies, use local storage for tracking, or employ any analytics or advertising trackers.</p>
+
+                    <h3>Third-Party Cookies</h3>
+                    <p>Our site uses Google Maps to display the interactive map. Google may set cookies on your device as part of its mapping service. These cookies are governed by <a href="https://policies.google.com/technologies/cookies" target="_blank" style="color:#06b6d4">Google's Cookie Policy</a>.</p>
+
+                    <h3>How to Manage Cookies</h3>
+                    <p>You can control and delete cookies through your browser settings. Please note that blocking all cookies may affect the Google Maps functionality on this site.</p>
+
+                    <h3>Do Not Track</h3>
+                    <p>PaddlePoint honors Do Not Track (DNT) browser signals. Since we do not track users in any way, no changes are needed when DNT is enabled.</p>
+
+                    <h3>Contact</h3>
+                    <p>If you have questions about cookies on this site, contact us at <a href="mailto:nwtjml@gmail.com" style="color:#06b6d4">nwtjml@gmail.com</a>.</p>
+                `
+            },
+            faq: {
+                title: 'FAQ & How to Use',
+                body: `
+                    <h3>How do I use PaddlePoint?</h3>
+                    <p>Tap anywhere on the map near a body of water and PaddlePoint will instantly fetch and display current conditions for that spot. You can also use the search bar to find a location by name.</p>
+
+                    <h3>What is the Paddle Score?</h3>
+                    <p>The paddle score is a number from 0 to 100 that estimates how favorable conditions are for paddling at that moment. It's calculated algorithmically by combining wind, waves, weather, and other factors.</p>
+                    <ul>
+                        <li><strong>80&ndash;100</strong> &mdash; Excellent Conditions</li>
+                        <li><strong>60&ndash;79</strong> &mdash; Good Conditions</li>
+                        <li><strong>40&ndash;59</strong> &mdash; Fair Conditions</li>
+                        <li><strong>20&ndash;39</strong> &mdash; Poor Conditions</li>
+                        <li><strong>0&ndash;19</strong> &mdash; Stay On Shore</li>
+                    </ul>
+
+                    <h3>Does PaddlePoint work everywhere?</h3>
+                    <p>Weather data is available globally via Open-Meteo. Tide data is available for US coastal locations via NOAA. Inland lakes and rivers will show wind and weather but may not have wave or tide data.</p>
+
+                    <h3>Is PaddlePoint free?</h3>
+                    <p>Yes, PaddlePoint is completely free to use. No accounts, no subscriptions, no ads.</p>
+
+                    <h3>Does PaddlePoint track me or collect data?</h3>
+                    <p>No. See our <a onclick="openFooterModal('privacy')" style="color:#06b6d4;cursor:pointer">Privacy Policy</a> for details.</p>
+                `
+            },
+            accessibility: {
+                title: 'Accessibility Statement',
+                body: `
+                    <p><em>Last updated: March 2026</em></p>
+
+                    <h3>Our Commitment</h3>
+                    <p>PaddlePoint is committed to making our website accessible to all users, including people with disabilities. We strive to conform to the <a href="https://www.w3.org/WAI/WCAG21/quickref/" target="_blank" style="color:#06b6d4">Web Content Accessibility Guidelines (WCAG) 2.1</a> Level AA standards.</p>
+
+                    <h3>Accessibility Features</h3>
+                    <ul>
+                        <li>Semantic HTML structure for screen readers</li>
+                        <li>High contrast color scheme for readability</li>
+                        <li>Responsive design that works across devices and screen sizes</li>
+                        <li>Keyboard-navigable interface</li>
+                    </ul>
+
+                    <h3>Feedback</h3>
+                    <p>We welcome your feedback on the accessibility of PaddlePoint. If you encounter any barriers or have suggestions for improvement, please contact us at <a href="mailto:nwtjml@gmail.com" style="color:#06b6d4">nwtjml@gmail.com</a>.</p>
+                `
+            },
+            contact: {
+                title: 'Contact Us',
+                body: `
+                    <h3>Get in Touch</h3>
+                    <p>Have questions, feedback, or found a bug? We'd love to hear from you.</p>
+
+                    <h3>Report an Issue</h3>
+                    <p>If something isn't working correctly, email us at <a href="mailto:nwtjml@gmail.com" style="color:#06b6d4">nwtjml@gmail.com</a> with details about the location, what seemed wrong, and your device/browser.</p>
+
+                    <h3>Feature Requests</h3>
+                    <p>Have an idea for PaddlePoint? We're always looking to improve the experience for paddlers. Suggestions are welcome.</p>
+
+                    <h3>General Inquiries</h3>
+                    <p>For all other questions, email us at <a href="mailto:nwtjml@gmail.com" style="color:#06b6d4">nwtjml@gmail.com</a> and we'll get back to you as soon as we can.</p>
+                `
+            }
+        };
+
+        function openFooterModal(key) {
+            const c = footerContent[key];
+            if (!c) return;
+            document.getElementById('fmTitle').textContent = c.title;
+            document.getElementById('fmBody').innerHTML = c.body;
+            document.getElementById('footerModal').classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeFooterModal() {
+            document.getElementById('footerModal').classList.remove('open');
+            document.body.style.overflow = '';
+        }
     </script>
 
     <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAR81pUTUz5ON7ZBuoouTh2RTHyECr6yvg&libraries=places&callback=initMap"></script>
