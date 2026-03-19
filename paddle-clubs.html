@@ -1264,9 +1264,9 @@
         const COUNTER_API = 'https://visitor-counter.newtonmac.workers.dev';
 
         if ('requestIdleCallback' in window) {
-            requestIdleCallback(() => fetch(`${COUNTER_API}/visit`, { method: 'POST' }).catch(() => {}));
+            requestIdleCallback(() => fetch(`${COUNTER_API}/visit?page=clubs`, { method: 'POST' }).catch(() => {}));
         } else {
-            setTimeout(() => fetch(`${COUNTER_API}/visit`, { method: 'POST' }).catch(() => {}), 3000);
+            setTimeout(() => fetch(`${COUNTER_API}/visit?page=clubs`, { method: 'POST' }).catch(() => {}), 3000);
         }
 
         let statsLoaded = false;
@@ -1304,7 +1304,7 @@
 
         async function loadStats() {
             try {
-                const res = await fetch(`${COUNTER_API}/stats`);
+                const res = await fetch(`${COUNTER_API}/stats?page=clubs`);
                 const data = await res.json();
                 statsLoaded = true;
 

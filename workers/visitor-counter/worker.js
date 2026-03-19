@@ -20,13 +20,15 @@ export default {
 
     const url = new URL(request.url);
 
+    const page = url.searchParams.get('page') || '';
+
     try {
       if (request.method === 'POST' && url.pathname === '/visit') {
-        return handleCors(request, await recordVisit(request, env));
+        return handleCors(request, await recordVisit(request, env, page));
       }
 
       if (request.method === 'GET' && url.pathname === '/stats') {
-        return handleCors(request, await getStats(env));
+        return handleCors(request, await getStats(env, page));
       }
 
       return handleCors(request, new Response('Not found', { status: 404 }));
@@ -50,7 +52,7 @@ async function hashIP(ip) {
     .join('');
 }
 
-async function recordVisit(request, env) {
+async function recordVisit(request, env, page) {
   const cf = request.cf || {};
   const city = cf.city || 'Unknown';
   const country = cf.country || 'Unknown';
@@ -60,10 +62,11 @@ async function recordVisit(request, env) {
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
   const visitorHash = await hashIP(ip);
 
+  const prefix = page ? `${page}:` : '';
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }); // YYYY-MM-DD in Pacific time
 
   // --- Update daily data ---
-  const dayKey = `day:${today}`;
+  const dayKey = `${prefix}day:${today}`;
   const dayData = JSON.parse(await env.VISITORS.get(dayKey) || '{}');
 
   if (!dayData.visitors) dayData.visitors = [];
@@ -85,23 +88,25 @@ async function recordVisit(request, env) {
     }
 
     // Increment total only for unique visitors
-    const totalStr = await env.VISITORS.get('total');
+    const totalKey = `${prefix}total`;
+    const totalStr = await env.VISITORS.get(totalKey);
     const total = (parseInt(totalStr) || 0) + 1;
-    await env.VISITORS.put('total', total.toString());
+    await env.VISITORS.put(totalKey, total.toString());
   }
 
   await env.VISITORS.put(dayKey, JSON.stringify(dayData));
 
   // --- Maintain date index (last 30 days) ---
-  const indexData = JSON.parse(await env.VISITORS.get('date_index') || '[]');
+  const indexKey = `${prefix}date_index`;
+  const indexData = JSON.parse(await env.VISITORS.get(indexKey) || '[]');
   if (!indexData.includes(today)) {
     indexData.push(today);
     // Keep only last 30 days in index
     while (indexData.length > 30) indexData.shift();
-    await env.VISITORS.put('date_index', JSON.stringify(indexData));
+    await env.VISITORS.put(indexKey, JSON.stringify(indexData));
   }
 
-  const total = parseInt(await env.VISITORS.get('total') || '0');
+  const total = parseInt(await env.VISITORS.get(`${prefix}total`) || '0');
 
   return new Response(JSON.stringify({
     total,
@@ -112,16 +117,17 @@ async function recordVisit(request, env) {
   });
 }
 
-async function getStats(env) {
-  const total = parseInt(await env.VISITORS.get('total') || '0');
-  const dateIndex = JSON.parse(await env.VISITORS.get('date_index') || '[]');
+async function getStats(env, page) {
+  const prefix = page ? `${page}:` : '';
+  const total = parseInt(await env.VISITORS.get(`${prefix}total`) || '0');
+  const dateIndex = JSON.parse(await env.VISITORS.get(`${prefix}date_index`) || '[]');
 
   // Fetch last 7 days of data
   const recentDates = dateIndex.slice(-7);
   const days = [];
 
   for (const date of recentDates) {
-    const dayData = JSON.parse(await env.VISITORS.get(`day:${date}`) || '{}');
+    const dayData = JSON.parse(await env.VISITORS.get(`${prefix}day:${date}`) || '{}');
     days.push({
       date,
       uniqueVisitors: (dayData.visitors || []).length,
