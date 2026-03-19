@@ -70,6 +70,92 @@
             background: rgba(96, 165, 250, 0.18);
             border-color: rgba(96, 165, 250, 0.4);
         }
+        .dev-btn {
+            cursor: pointer;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            transition: all 0.2s ease;
+            user-select: none;
+            border: 1px solid;
+            white-space: nowrap;
+            background: rgba(251, 191, 36, 0.1);
+            border-color: rgba(251, 191, 36, 0.25);
+            color: #fbbf24;
+            text-decoration: none;
+        }
+        .dev-btn:hover {
+            background: rgba(251, 191, 36, 0.2);
+            border-color: rgba(251, 191, 36, 0.45);
+        }
+        .dev-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+        .dev-overlay.open { display: flex; }
+        .dev-modal {
+            background: #1a1d28;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 14px;
+            padding: 28px 32px;
+            max-width: 480px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            color: #e1e4e8;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        .dev-modal h2 {
+            margin: 0 0 6px 0;
+            font-size: 18px;
+            color: #fbbf24;
+        }
+        .dev-modal .dev-subtitle {
+            font-size: 12px;
+            color: #8b949e;
+            margin-bottom: 18px;
+        }
+        .dev-modal ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .dev-modal li {
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .dev-modal li:last-child { border-bottom: none; }
+        .dev-status {
+            display: inline-block;
+            font-size: 10px;
+            padding: 1px 7px;
+            border-radius: 8px;
+            margin-right: 6px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .dev-status.planned { background: rgba(139,148,158,0.2); color: #8b949e; }
+        .dev-status.in-progress { background: rgba(96,165,250,0.2); color: #60a5fa; }
+        .dev-status.next { background: rgba(251,191,36,0.2); color: #fbbf24; }
+        .dev-modal-close {
+            float: right;
+            background: none;
+            border: none;
+            color: #8b949e;
+            font-size: 22px;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }
+        .dev-modal-close:hover { color: #e1e4e8; }
 
         /* Controls bar */
         .controls {
@@ -276,6 +362,7 @@
             </div>
         </div>
         <div class="header-right">
+            <a href="#" class="dev-btn" onclick="openDevModal(); return false;">Development</a>
             <a href="paddle-conditions.html" class="back-btn">Back to Conditions</a>
         </div>
     </div>
@@ -632,6 +719,52 @@
                 if (!justClickedMarker) closePanel();
             });
         });
+    </script>
+
+    <!-- Development Roadmap Modal -->
+    <div class="dev-overlay" id="devOverlay" onclick="if(event.target===this)closeDevModal()">
+        <div class="dev-modal">
+            <button class="dev-modal-close" onclick="closeDevModal()">&times;</button>
+            <h2>Development Roadmap</h2>
+            <div class="dev-subtitle">What we're working on to improve Paddle Clubs</div>
+            <ul>
+                <li>
+                    <span class="dev-status in-progress">In Progress</span>
+                    <strong>Address-level club locations</strong><br>
+                    Moving from city-level coordinates to actual club addresses so each dot represents a real location you can navigate to.
+                </li>
+                <li>
+                    <span class="dev-status in-progress">In Progress</span>
+                    <strong>Individual club profiles</strong><br>
+                    Each organization will have its own marker and detail panel instead of being grouped by area.
+                </li>
+                <li>
+                    <span class="dev-status next">Next</span>
+                    <strong>Club detail pages</strong><br>
+                    Dedicated pages for each club with photos, schedules, contact info, and member reviews.
+                </li>
+                <li>
+                    <span class="dev-status next">Next</span>
+                    <strong>Improved search &amp; filters</strong><br>
+                    Filter by discipline, skill level, adaptive programs, and distance from your location.
+                </li>
+                <li>
+                    <span class="dev-status planned">Planned</span>
+                    <strong>Club owner dashboard</strong><br>
+                    Allow club owners to claim and update their listings with current info, events, and photos.
+                </li>
+                <li>
+                    <span class="dev-status planned">Planned</span>
+                    <strong>Events calendar integration</strong><br>
+                    See upcoming races, clinics, and social paddles at clubs near you.
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function openDevModal() { document.getElementById('devOverlay').classList.add('open'); }
+        function closeDevModal() { document.getElementById('devOverlay').classList.remove('open'); }
     </script>
 
     <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAR81pUTUz5ON7ZBuoouTh2RTHyECr6yvg&libraries=places&callback=initMap"></script>
