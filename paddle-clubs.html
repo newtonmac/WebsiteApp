@@ -103,48 +103,69 @@
             border: 1px solid rgba(255,255,255,0.1);
             border-radius: 14px;
             padding: 28px 32px;
-            max-width: 480px;
-            width: 90%;
-            max-height: 80vh;
+            max-width: 560px;
+            width: 92%;
+            max-height: 85vh;
             overflow-y: auto;
             color: #e1e4e8;
             box-shadow: 0 20px 60px rgba(0,0,0,0.5);
         }
         .dev-modal h2 {
-            margin: 0 0 6px 0;
-            font-size: 18px;
+            margin: 0 0 4px 0;
+            font-size: 20px;
             color: #fbbf24;
         }
         .dev-modal .dev-subtitle {
-            font-size: 12px;
-            color: #8b949e;
-            margin-bottom: 18px;
-        }
-        .dev-modal ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-        .dev-modal li {
-            padding: 10px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.06);
             font-size: 13px;
+            color: #c9d1d9;
+            margin-bottom: 16px;
+            line-height: 1.6;
+        }
+        .dev-modal .dev-section {
+            margin-bottom: 16px;
+        }
+        .dev-modal .dev-section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #60a5fa;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .dev-modal .dev-section p {
+            font-size: 13px;
+            color: #8b949e;
+            margin: 0;
+            line-height: 1.6;
+        }
+        .dev-modal .dev-crafts {
+            font-size: 12px;
+            color: #c9d1d9;
+            line-height: 1.7;
+        }
+        .dev-modal .dev-crafts span {
+            color: #8b949e;
+            margin: 0 4px;
+        }
+        .dev-modal .dev-update {
+            background: rgba(251,191,36,0.08);
+            border: 1px solid rgba(251,191,36,0.2);
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-top: 6px;
+        }
+        .dev-modal .dev-update-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #fbbf24;
+            margin-bottom: 6px;
+        }
+        .dev-modal .dev-update p {
+            font-size: 12px;
+            color: #c9d1d9;
+            margin: 0;
             line-height: 1.5;
         }
-        .dev-modal li:last-child { border-bottom: none; }
-        .dev-status {
-            display: inline-block;
-            font-size: 10px;
-            padding: 1px 7px;
-            border-radius: 8px;
-            margin-right: 6px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-        }
-        .dev-status.planned { background: rgba(139,148,158,0.2); color: #8b949e; }
-        .dev-status.in-progress { background: rgba(96,165,250,0.2); color: #60a5fa; }
-        .dev-status.next { background: rgba(251,191,36,0.2); color: #fbbf24; }
         .dev-modal-close {
             float: right;
             background: none;
@@ -725,40 +746,38 @@
     <div class="dev-overlay" id="devOverlay" onclick="if(event.target===this)closeDevModal()">
         <div class="dev-modal">
             <button class="dev-modal-close" onclick="closeDevModal()">&times;</button>
-            <h2>Development Roadmap</h2>
-            <div class="dev-subtitle">What we're working on to improve Paddle Clubs</div>
-            <ul>
-                <li>
-                    <span class="dev-status in-progress">In Progress</span>
-                    <strong>Address-level club locations</strong><br>
-                    Moving from city-level coordinates to actual club addresses so each dot represents a real location you can navigate to.
-                </li>
-                <li>
-                    <span class="dev-status in-progress">In Progress</span>
-                    <strong>Individual club profiles</strong><br>
-                    Each organization will have its own marker and detail panel instead of being grouped by area.
-                </li>
-                <li>
-                    <span class="dev-status next">Next</span>
-                    <strong>Club detail pages</strong><br>
-                    Dedicated pages for each club with photos, schedules, contact info, and member reviews.
-                </li>
-                <li>
-                    <span class="dev-status next">Next</span>
-                    <strong>Improved search &amp; filters</strong><br>
-                    Filter by discipline, skill level, adaptive programs, and distance from your location.
-                </li>
-                <li>
-                    <span class="dev-status planned">Planned</span>
-                    <strong>Club owner dashboard</strong><br>
-                    Allow club owners to claim and update their listings with current info, events, and photos.
-                </li>
-                <li>
-                    <span class="dev-status planned">Planned</span>
-                    <strong>Events calendar integration</strong><br>
-                    See upcoming races, clinics, and social paddles at clubs near you.
-                </li>
-            </ul>
+            <h2>&#127758; The World's Largest Paddling Club Directory</h2>
+            <div class="dev-subtitle">
+                Find your next club, your next crew, your next adventure. We're building the most comprehensive paddling database on the planet &mdash; <strong style="color:#fbbf24;">9,000+ clubs</strong> across <strong style="color:#fbbf24;">50+ countries</strong> and growing.
+            </div>
+
+            <div class="dev-section">
+                <div class="dev-section-title">Search &amp; Discover</div>
+                <p>Search by city, state, zip code, country, or craft type to find clubs near you with all the info you need &mdash; address, phone, website, programs, Google reviews, and more.</p>
+            </div>
+
+            <div class="dev-section">
+                <div class="dev-section-title">Sports Covered</div>
+                <div class="dev-crafts">
+                    Kayak (K1, K2, sea, whitewater) <span>&bull;</span>
+                    Canoe (sprint, marathon, slalom) <span>&bull;</span>
+                    Rowing &amp; Sculling <span>&bull;</span>
+                    Dragon Boat <span>&bull;</span>
+                    Surfski &amp; Ocean Racing <span>&bull;</span>
+                    Stand Up Paddle (SUP) <span>&bull;</span>
+                    Outrigger &amp; Va'a
+                </div>
+            </div>
+
+            <div class="dev-section">
+                <div class="dev-section-title">Find Out</div>
+                <p>What crafts they paddle &bull; Youth &amp; kids programs &bull; Adult &amp; masters programs &bull; Lessons for beginners &bull; Competition teams &bull; Practice schedules &bull; Membership info &bull; Club ratings &amp; reviews</p>
+            </div>
+
+            <div class="dev-update">
+                <div class="dev-update-title">&#128260; Database Update In Progress &mdash; March 2026</div>
+                <p>We're actively enriching every club with detailed program info, contact details, photos, and reviews. New clubs added weekly. Don't see your club? Help us grow &mdash; submit it!</p>
+            </div>
         </div>
     </div>
 
