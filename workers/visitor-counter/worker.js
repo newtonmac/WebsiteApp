@@ -31,6 +31,16 @@ export default {
         return handleCors(request, await getStats(env, page));
       }
 
+      if (request.method === 'GET' && url.pathname === '/stats/referrers') {
+        const key = url.searchParams.get('key') || '';
+        if (!env.STATS_KEY || key !== env.STATS_KEY) {
+          return handleCors(request, new Response(JSON.stringify({ error: 'Unauthorized' }), {
+            status: 401, headers: { 'Content-Type': 'application/json' },
+          }));
+        }
+        return handleCors(request, await getReferrerStats(env, page));
+      }
+
       return handleCors(request, new Response('Not found', { status: 404 }));
     } catch (err) {
       const resp = new Response(JSON.stringify({ error: err.message }), {
@@ -62,6 +72,24 @@ async function recordVisit(request, env, page) {
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
   const visitorHash = await hashIP(ip);
 
+  // Parse referrer from request body
+  let referrer = '';
+  try {
+    const body = await request.json();
+    referrer = body.referrer || '';
+  } catch { /* no body or invalid JSON */ }
+
+  // Normalize referrer to just the domain
+  let referrerLabel = 'Direct';
+  if (referrer) {
+    try {
+      const refUrl = new URL(referrer);
+      referrerLabel = refUrl.hostname.replace(/^www\./, '');
+    } catch {
+      referrerLabel = referrer;
+    }
+  }
+
   const prefix = page ? `${page}:` : '';
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }); // YYYY-MM-DD in Pacific time
 
@@ -72,6 +100,7 @@ async function recordVisit(request, env, page) {
   if (!dayData.visitors) dayData.visitors = [];
   if (!dayData.cities) dayData.cities = {};
   if (!dayData.coords) dayData.coords = {};
+  if (!dayData.referrers) dayData.referrers = {};
 
   // Only count unique visitors
   const isNew = !dayData.visitors.includes(visitorHash);
@@ -81,6 +110,9 @@ async function recordVisit(request, env, page) {
     // Track city only for unique visitors
     const cityLabel = city !== 'Unknown' ? `${city}, ${region ? region + ', ' : ''}${country}` : 'Unknown';
     dayData.cities[cityLabel] = (dayData.cities[cityLabel] || 0) + 1;
+
+    // Track referrer for unique visitors
+    dayData.referrers[referrerLabel] = (dayData.referrers[referrerLabel] || 0) + 1;
 
     // Store coordinates for map visualization
     if (lat && lng) {
@@ -138,6 +170,28 @@ async function getStats(env, page) {
   }
 
   return new Response(JSON.stringify({ total, days }), {
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+async function getReferrerStats(env, page) {
+  const prefix = page ? `${page}:` : '';
+  const dateIndex = JSON.parse(await env.VISITORS.get(`${prefix}date_index`) || '[]');
+  const recentDates = dateIndex.slice(-7);
+
+  const days = [];
+  const totals = {};
+
+  for (const date of recentDates) {
+    const dayData = JSON.parse(await env.VISITORS.get(`${prefix}day:${date}`) || '{}');
+    const referrers = dayData.referrers || {};
+    days.push({ date, referrers });
+    for (const [ref, count] of Object.entries(referrers)) {
+      totals[ref] = (totals[ref] || 0) + count;
+    }
+  }
+
+  return new Response(JSON.stringify({ totals, days }), {
     headers: { 'Content-Type': 'application/json' },
   });
 }

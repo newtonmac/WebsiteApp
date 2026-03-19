@@ -377,7 +377,7 @@
         let visitData = null;
         (async () => {
             try {
-                const res = await fetch(`${COUNTER_API}/visit`, { method: 'POST' });
+                const res = await fetch(`${COUNTER_API}/visit`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ referrer: document.referrer }) });
                 visitData = await res.json();
             } catch { /* silent */ }
         })();
