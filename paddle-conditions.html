@@ -81,7 +81,7 @@
 
         .header-right { display: flex; align-items: center; gap: 8px; }
 
-        .suggest-btn, .updates-btn {
+        .clubs-btn, .suggest-btn, .updates-btn {
             cursor: pointer;
             padding: 2px 8px;
             border-radius: 10px;
@@ -90,6 +90,17 @@
             user-select: none;
             border: 1px solid;
             white-space: nowrap;
+        }
+
+        .clubs-btn {
+            background: rgba(6, 182, 212, 0.1);
+            border-color: rgba(6, 182, 212, 0.25);
+            color: #22d3ee;
+            text-decoration: none;
+        }
+        .clubs-btn:hover {
+            background: rgba(6, 182, 212, 0.2);
+            border-color: rgba(6, 182, 212, 0.4);
         }
 
         .suggest-btn {
@@ -1175,7 +1186,7 @@
             .header-logo { width: 60px; height: 60px; }
             .header .subtitle { display: none; }
             .header-right { gap: 6px; }
-            .suggest-btn, .updates-btn { font-size: 11px; padding: 2px 7px; }
+            .clubs-btn, .suggest-btn, .updates-btn { font-size: 11px; padding: 2px 7px; }
             .container {
                 padding: 0 10px 10px;
                 overflow-x: hidden;
@@ -1451,6 +1462,7 @@
             </div>
         </div>
         <div class="header-right">
+            <a href="paddle-clubs.html" class="clubs-btn">Paddle Clubs</a>
             <span class="suggest-btn" onclick="openSuggestModal()">Suggest</span>
             <span class="updates-btn" onclick="openUpdatesModal()">Updates</span>
         </div>
