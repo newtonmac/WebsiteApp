@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title>PaddlePoint - Paddle Clubs</title>
+    <link rel="preconnect" href="https://maps.googleapis.com" crossorigin>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f1117;
+            color: #e1e4e8;
+            min-height: 100vh;
+            -webkit-text-size-adjust: 100%;
+            overflow-x: hidden;
+        }
+
+        html { overflow-x: hidden; width: 100%; max-width: 100vw; }
+        .pac-container { max-width: 100vw !important; }
+
+        .header {
+            background: linear-gradient(135deg, #1a1d28, #252836);
+            padding: 14px 16px;
+            border-bottom: 1px solid #2d3040;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .header-left { display: flex; align-items: center; gap: 10px; }
+
+        .header-logo {
+            width: 90px;
+            height: 90px;
+            border-radius: 10px;
+            object-fit: contain;
+        }
+
+        .header h1 {
+            font-size: 40px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #06b6d4, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header .subtitle { color: #8b8fa3; font-size: 12px; margin-top: 2px; }
+
+        .header-right { display: flex; align-items: center; gap: 8px; }
+
+        .back-btn {
+            cursor: pointer;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            transition: all 0.2s ease;
+            user-select: none;
+            border: 1px solid;
+            white-space: nowrap;
+            background: rgba(96, 165, 250, 0.1);
+            border-color: rgba(96, 165, 250, 0.2);
+            color: #60a5fa;
+            text-decoration: none;
+        }
+        .back-btn:hover {
+            background: rgba(96, 165, 250, 0.18);
+            border-color: rgba(96, 165, 250, 0.4);
+        }
+
+        /* Controls bar */
+        .controls {
+            position: absolute;
+            top: 130px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            width: 94%;
+            max-width: 600px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .search-wrap {
+            flex: 1;
+            position: relative;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 12px 16px 12px 38px;
+            background: #1a1d28;
+            border: 1px solid #2d3040;
+            border-radius: 12px;
+            color: #e1e4e8;
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.2s;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+        .search-box:focus { border-color: #06b6d4; }
+        .search-box::placeholder { color: #555; }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #8b8fa3;
+            font-size: 15px;
+            pointer-events: none;
+        }
+
+        .craft-select {
+            padding: 10px 12px;
+            background: #1a1d28;
+            border: 1px solid #2d3040;
+            border-radius: 12px;
+            color: #e1e4e8;
+            font-size: 13px;
+            outline: none;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            min-width: 120px;
+        }
+        .craft-select:focus { border-color: #06b6d4; }
+
+        #map {
+            width: 100%;
+            height: calc(100vh - 120px);
+        }
+
+        .map-wrap { position: relative; }
+
+        /* Club detail panel */
+        .club-panel {
+            display: none;
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            background: #1a1d28;
+            border: 1px solid #2d3040;
+            border-radius: 16px;
+            padding: 16px 20px;
+            width: 90%;
+            max-width: 420px;
+            max-height: 50vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+        }
+        .club-panel.open { display: block; }
+        .club-panel-close {
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            background: none;
+            border: none;
+            color: #8b8fa3;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        .club-panel h3 {
+            font-size: 16px;
+            color: #22d3ee;
+            margin-bottom: 6px;
+            padding-right: 20px;
+        }
+        .club-panel .club-meta {
+            font-size: 12px;
+            color: #8b8fa3;
+            margin-bottom: 8px;
+        }
+        .club-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+        .club-tag {
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 11px;
+            background: rgba(6, 182, 212, 0.15);
+            color: #22d3ee;
+            border: 1px solid rgba(6, 182, 212, 0.25);
+        }
+        .club-tag.green {
+            background: rgba(34, 197, 94, 0.15);
+            color: #22c55e;
+            border-color: rgba(34, 197, 94, 0.25);
+        }
+        .club-tag.amber {
+            background: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+            border-color: rgba(245, 158, 11, 0.25);
+        }
+        .club-orgs {
+            font-size: 13px;
+            color: #c9cdd5;
+            line-height: 1.4;
+        }
+        .club-orgs strong { color: #e1e4e8; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .club-links { margin-top: 8px; }
+        .club-links a {
+            color: #60a5fa;
+            font-size: 12px;
+            text-decoration: none;
+            display: block;
+            margin-bottom: 2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .club-links a:hover { text-decoration: underline; }
+        .club-score {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #2d3040;
+            flex-wrap: wrap;
+        }
+        .club-score-item { text-align: center; }
+        .club-score-item .val {
+            font-size: 18px;
+            font-weight: 700;
+            color: #22d3ee;
+        }
+        .club-score-item .lbl {
+            font-size: 10px;
+            color: #8b8fa3;
+            text-transform: uppercase;
+        }
+
+        .results-count {
+            position: absolute;
+            top: 180px;
+            right: 16px;
+            z-index: 10;
+            background: #1a1d28;
+            border: 1px solid #2d3040;
+            border-radius: 10px;
+            padding: 6px 12px;
+            font-size: 12px;
+            color: #8b8fa3;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+        .results-count strong { color: #22d3ee; }
+
+        @media (max-width: 700px) {
+            .header-logo { width: 60px; height: 60px; }
+            .header h1 { font-size: 28px; }
+            .controls { top: 115px; flex-direction: column; max-width: 92%; }
+            .craft-select { min-width: unset; }
+            .results-count { top: 210px; right: 8px; font-size: 11px; }
+        }
+        @media (max-width: 480px) {
+            .header-logo { width: 50px; height: 50px; }
+            .header h1 { font-size: 22px; }
+            .header { padding: 10px 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <img src="paddle-pin.svg" alt="PaddlePoint" class="header-logo">
+            <div>
+                <h1>Paddle Clubs</h1>
+                <div class="subtitle">Find paddle clubs and launch points near you</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <a href="paddle-conditions.html" class="back-btn">Back to Conditions</a>
+        </div>
+    </div>
+
+    <div class="map-wrap">
+        <div class="controls">
+            <div class="search-wrap">
+                <span class="search-icon">&#128269;</span>
+                <input type="text" id="clubSearch" class="search-box" placeholder="Search by city, state, zip, or country...">
+            </div>
+            <select id="craftFilter" class="craft-select" onchange="applyFilters()">
+                <option value="">All Craft Types</option>
+            </select>
+        </div>
+        <div class="results-count" id="resultsCount" style="display:none;">
+            <strong id="countNum">0</strong> clubs shown
+        </div>
+        <div id="map"></div>
+
+        <!-- Club detail panel -->
+        <div class="club-panel" id="clubPanel">
+            <button class="club-panel-close" onclick="closePanel()">&times;</button>
+            <h3 id="panelTitle"></h3>
+            <div class="club-meta" id="panelMeta"></div>
+            <div class="club-tags" id="panelTags"></div>
+            <div class="club-orgs" id="panelOrgs"></div>
+            <div class="club-links" id="panelLinks"></div>
+            <div class="club-score" id="panelScores"></div>
+        </div>
+    </div>
+
+    <script>
+        const CLUBS_API = 'https://paddle-clubs-api-455381395334.us-west1.run.app';
+        let map, markers = [], allClubs = [], filteredClubs = [];
+        let currentCraftFilter = '';
+
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: { lat: 37.5, lng: -98.0 },
+                zoom: 4,
+                mapTypeId: 'hybrid',
+                styles: [
+                    { elementType: 'geometry', stylers: [{ color: '#1a1d28' }] },
+                    { elementType: 'labels.text.stroke', stylers: [{ color: '#1a1d28' }] },
+                    { elementType: 'labels.text.fill', stylers: [{ color: '#8b8fa3' }] },
+                    { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0c4a6e' }] },
+                    { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#2d3040' }] },
+                ],
+                disableDefaultUI: true,
+                zoomControl: true,
+                clickableIcons: false,
+            });
+
+            // Update count when user pans/zooms
+            map.addListener('idle', () => {
+                updateVisibleCount();
+            });
+
+            initSearchBox();
+            loadClubs();
+        }
+
+        function initSearchBox() {
+            const input = document.getElementById('clubSearch');
+            const autocomplete = new google.maps.places.Autocomplete(input, {
+                types: ['(regions)'],
+                fields: ['geometry', 'name', 'formatted_address', 'address_components']
+            });
+
+            autocomplete.addListener('place_changed', () => {
+                const place = autocomplete.getPlace();
+                if (!place.geometry || !place.geometry.location) return;
+
+                // Determine what was searched (country, state, city)
+                let searchCountry = '', searchState = '', searchCity = '';
+                if (place.address_components) {
+                    for (const comp of place.address_components) {
+                        if (comp.types.includes('country')) searchCountry = comp.short_name;
+                        if (comp.types.includes('administrative_area_level_1')) searchState = comp.long_name;
+                        if (comp.types.includes('locality')) searchCity = comp.long_name;
+                        if (comp.types.includes('postal_code')) searchCity = comp.long_name;
+                    }
+                }
+
+                // Filter clubs by the searched location
+                filterByLocation(searchCountry, searchState, searchCity);
+
+                // Move map to show results
+                if (filteredClubs.length > 0) {
+                    const bounds = new google.maps.LatLngBounds();
+                    filteredClubs.forEach(c => {
+                        if (c.latitude && c.longitude) {
+                            bounds.extend({ lat: parseFloat(c.latitude), lng: parseFloat(c.longitude) });
+                        }
+                    });
+                    map.fitBounds(bounds);
+                    if (filteredClubs.length === 1) map.setZoom(12);
+                } else if (place.geometry.viewport) {
+                    map.fitBounds(place.geometry.viewport);
+                } else {
+                    map.setCenter(place.geometry.location);
+                    map.setZoom(10);
+                }
+            });
+        }
+
+        function filterByLocation(country, state, city) {
+            filteredClubs = allClubs.filter(club => {
+                // Apply craft filter first
+                if (currentCraftFilter && club.craft_display_name !== currentCraftFilter) return false;
+
+                // If city search, match city
+                if (city) {
+                    return (club.city && club.city.toLowerCase() === city.toLowerCase()) ||
+                           (club.area_name && club.area_name.toLowerCase().includes(city.toLowerCase()));
+                }
+                // If state search, match region
+                if (state && !city) {
+                    return club.region_name && club.region_name.toLowerCase() === state.toLowerCase();
+                }
+                // If country search, match country code
+                if (country && !state && !city) {
+                    return club.country_code && club.country_code.toUpperCase() === country.toUpperCase();
+                }
+                return true;
+            });
+
+            plotMarkers(filteredClubs);
+        }
+
+        function applyFilters() {
+            currentCraftFilter = document.getElementById('craftFilter').value;
+            // Re-apply: if there's a search active, re-filter; otherwise show all matching craft
+            const input = document.getElementById('clubSearch');
+            if (input.value.trim()) {
+                // Trigger the autocomplete place_changed won't work, so we filter from current state
+                filteredClubs = allClubs.filter(club => {
+                    if (currentCraftFilter && club.craft_display_name !== currentCraftFilter) return false;
+                    return true;
+                });
+            } else {
+                filteredClubs = currentCraftFilter
+                    ? allClubs.filter(c => c.craft_display_name === currentCraftFilter)
+                    : [...allClubs];
+            }
+            plotMarkers(filteredClubs);
+
+            // Fit bounds to visible clubs
+            if (filteredClubs.length > 0) {
+                const bounds = new google.maps.LatLngBounds();
+                let hasCoords = false;
+                filteredClubs.forEach(c => {
+                    if (c.latitude && c.longitude) {
+                        bounds.extend({ lat: parseFloat(c.latitude), lng: parseFloat(c.longitude) });
+                        hasCoords = true;
+                    }
+                });
+                if (hasCoords) map.fitBounds(bounds);
+            }
+        }
+
+        async function loadClubs() {
+            try {
+                const res = await fetch(CLUBS_API + '/clubs');
+                allClubs = await res.json();
+            } catch (e) {
+                console.warn('Clubs API not available yet:', e.message);
+                allClubs = [];
+            }
+
+            filteredClubs = [...allClubs];
+            plotMarkers(filteredClubs);
+            buildCraftFilter();
+
+            // Auto-locate user
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(pos => {
+                    map.setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                    map.setZoom(7);
+                }, () => {});
+            }
+        }
+
+        function buildCraftFilter() {
+            const crafts = new Set();
+            allClubs.forEach(c => { if (c.craft_display_name) crafts.add(c.craft_display_name); });
+            const select = document.getElementById('craftFilter');
+            [...crafts].sort().forEach(craft => {
+                const opt = document.createElement('option');
+                opt.value = craft;
+                opt.textContent = craft;
+                select.appendChild(opt);
+            });
+        }
+
+        function makeMarkerIcon() {
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12">
+                <circle cx="6" cy="6" r="5" fill="#3b82f6" stroke="#1a1d28" stroke-width="1.5" opacity="0.9"/>
+            </svg>`;
+            return {
+                url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+                scaledSize: new google.maps.Size(12, 12),
+                anchor: new google.maps.Point(6, 6),
+            };
+        }
+
+        function makeMarkerIconLarge() {
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
+                <circle cx="10" cy="10" r="8" fill="#3b82f6" stroke="#e1e4e8" stroke-width="2" opacity="0.95"/>
+                <text x="10" y="14" text-anchor="middle" fill="white" font-size="9" font-weight="bold">P</text>
+            </svg>`;
+            return {
+                url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+                scaledSize: new google.maps.Size(20, 20),
+                anchor: new google.maps.Point(10, 10),
+            };
+        }
+
+        function plotMarkers(clubs) {
+            markers.forEach(m => m.setMap(null));
+            markers = [];
+
+            const icon = makeMarkerIcon();
+            const iconLarge = makeMarkerIconLarge();
+
+            clubs.forEach(club => {
+                if (!club.latitude || !club.longitude) return;
+
+                const marker = new google.maps.Marker({
+                    position: { lat: parseFloat(club.latitude), lng: parseFloat(club.longitude) },
+                    map: map,
+                    icon: icon,
+                    title: club.area_name || club.city,
+                    optimized: true,
+                });
+
+                marker._clubData = club;
+
+                marker.addListener('click', () => {
+                    // Highlight selected marker
+                    markers.forEach(m => m.setIcon(icon));
+                    marker.setIcon(iconLarge);
+                    showClubPanel(club);
+                });
+
+                markers.push(marker);
+            });
+
+            updateVisibleCount();
+        }
+
+        function updateVisibleCount() {
+            const bounds = map.getBounds();
+            let count = 0;
+            if (bounds) {
+                markers.forEach(m => {
+                    if (bounds.contains(m.getPosition())) count++;
+                });
+            } else {
+                count = markers.length;
+            }
+            document.getElementById('countNum').textContent = count;
+            document.getElementById('resultsCount').style.display = 'block';
+        }
+
+        function showClubPanel(club) {
+            const panel = document.getElementById('clubPanel');
+            document.getElementById('panelTitle').textContent = club.area_name || club.city || 'Unknown Area';
+
+            const parts = [club.city, club.region_name, club.country_code].filter(Boolean);
+            document.getElementById('panelMeta').textContent = parts.join(', ');
+
+            // Tags
+            const tagsEl = document.getElementById('panelTags');
+            tagsEl.innerHTML = '';
+            if (club.craft_display_name) addTag(tagsEl, club.craft_display_name, '');
+            if (club.primary_discipline_name) addTag(tagsEl, club.primary_discipline_name, 'green');
+            if (club.water_type) addTag(tagsEl, club.water_type, 'amber');
+            if (club.exposure) addTag(tagsEl, club.exposure, '');
+            if (club.best_for_tags) {
+                club.best_for_tags.split(';').forEach(t => addTag(tagsEl, t.trim(), 'green'));
+            }
+
+            // Organizations
+            const orgsEl = document.getElementById('panelOrgs');
+            if (club.top_organization_names) {
+                const orgs = club.top_organization_names.split(';').map(o => o.trim()).filter(Boolean);
+                orgsEl.innerHTML = '<strong>Organizations</strong><br>' + orgs.join('<br>');
+            } else {
+                orgsEl.innerHTML = '';
+            }
+
+            // Links
+            const linksEl = document.getElementById('panelLinks');
+            linksEl.innerHTML = '';
+            if (club.top_public_urls) {
+                const urls = club.top_public_urls.split(';').map(u => u.trim()).filter(Boolean);
+                if (urls.length) {
+                    linksEl.innerHTML = '<strong style="color:#e1e4e8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">Links</strong><br>';
+                    urls.forEach(url => {
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.target = '_blank';
+                        a.rel = 'noopener';
+                        a.textContent = url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '');
+                        linksEl.appendChild(a);
+                    });
+                }
+            }
+
+            // Scores
+            const scoresEl = document.getElementById('panelScores');
+            scoresEl.innerHTML = '';
+            [
+                { val: club.fit_score, lbl: 'Fit' },
+                { val: club.beginner_fit, lbl: 'Beginner' },
+                { val: club.touring_fit, lbl: 'Touring' },
+                { val: club.training_fit, lbl: 'Training' },
+                { val: club.downwind_fit, lbl: 'Downwind' },
+                { val: club.evidence_score, lbl: 'Evidence' },
+            ].forEach(s => {
+                if (s.val === null || s.val === undefined || s.val === '') return;
+                const div = document.createElement('div');
+                div.className = 'club-score-item';
+                div.innerHTML = `<div class="val">${parseFloat(s.val).toFixed(1)}</div><div class="lbl">${s.lbl}</div>`;
+                scoresEl.appendChild(div);
+            });
+
+            panel.classList.add('open');
+        }
+
+        function addTag(container, text, cls) {
+            const tag = document.createElement('span');
+            tag.className = 'club-tag' + (cls ? ' ' + cls : '');
+            tag.textContent = text;
+            container.appendChild(tag);
+        }
+
+        function closePanel() {
+            document.getElementById('clubPanel').classList.remove('open');
+            const icon = makeMarkerIcon();
+            markers.forEach(m => m.setIcon(icon));
+        }
+
+        // Close panel when clicking map background
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('map').addEventListener('click', (e) => {
+                if (e.target.closest('.club-panel')) return;
+                closePanel();
+            });
+        });
+    </script>
+
+    <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAR81pUTUz5ON7ZBuoouTh2RTHyECr6yvg&libraries=places&callback=initMap"></script>
+</body>
+</html>

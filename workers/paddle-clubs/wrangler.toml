@@ -1,0 +1,14 @@
+name = "paddle-clubs"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+[[kv_namespaces]]
+binding = "CLUBS"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+# Create the KV namespace:
+#   npx wrangler kv namespace create CLUBS
+# Then replace the id above with the one returned.
+#
+# To populate with data from Cloud SQL, export the table as JSON and upload:
+#   npx wrangler kv put --binding=CLUBS "all_clubs" --path=clubs_data.json

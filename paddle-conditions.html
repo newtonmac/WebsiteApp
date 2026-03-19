@@ -81,7 +81,7 @@
 
         .header-right { display: flex; align-items: center; gap: 8px; }
 
-        .suggest-btn, .updates-btn {
+        .clubs-btn, .suggest-btn, .updates-btn {
             cursor: pointer;
             padding: 2px 8px;
             border-radius: 10px;
@@ -90,6 +90,17 @@
             user-select: none;
             border: 1px solid;
             white-space: nowrap;
+        }
+
+        .clubs-btn {
+            background: rgba(6, 182, 212, 0.1);
+            border-color: rgba(6, 182, 212, 0.25);
+            color: #22d3ee;
+            text-decoration: none;
+        }
+        .clubs-btn:hover {
+            background: rgba(6, 182, 212, 0.2);
+            border-color: rgba(6, 182, 212, 0.4);
         }
 
         .suggest-btn {
@@ -1175,7 +1186,7 @@
             .header-logo { width: 60px; height: 60px; }
             .header .subtitle { display: none; }
             .header-right { gap: 6px; }
-            .suggest-btn, .updates-btn { font-size: 11px; padding: 2px 7px; }
+            .clubs-btn, .suggest-btn, .updates-btn { font-size: 11px; padding: 2px 7px; }
             .container {
                 padding: 0 10px 10px;
                 overflow-x: hidden;
@@ -1451,6 +1462,7 @@
             </div>
         </div>
         <div class="header-right">
+            <a href="paddle-clubs.html" class="clubs-btn">Paddle Clubs</a>
             <span class="suggest-btn" onclick="openSuggestModal()">Suggest</span>
             <span class="updates-btn" onclick="openUpdatesModal()">Updates</span>
         </div>
@@ -3939,7 +3951,7 @@
                       ).join('<br>')
                     : '<span style="color:#6b7280;">No nearby stations</span>';
 
-                const nearbyDrains = sortedDEH.filter(s => isStormDrain(s)).slice(0, 5);
+                const nearbyDrains = sortedDEH.filter(s => isStormDrain(s) && s._dist <= dehRadius).slice(0, 5);
                 const drainsLabel = nearbyDrains.length > 0
                     ? nearbyDrains.map(s =>
                         `<span style="display:inline-flex;align-items:center;gap:3px;"><span style="color:#38bdf8;font-size:10px;">&#x1F4A7;</span>${s.Name || 'Storm Drain'} (${s._dist.toFixed(1)}mi ${s._dir ? s._dir.a + s._dir.l : ''})</span>`
@@ -4145,12 +4157,12 @@
 
                         return html;
                     })() +
-                    // Nearest DEH monitors
-                    `<div style="border-top:1px solid #2d3040;padding-top:6px;margin-top:6px;font-size:10px;color:#c0c4d0;">` +
-                    `<div style="font-weight:600;margin-bottom:3px;color:#8b8fa3;">Nearest DEH Monitors:</div>${nearestLabel}</div>` +
-                    // Storm drains / outfalls
-                    `<div style="border-top:1px solid #2d3040;padding-top:6px;margin-top:6px;font-size:10px;color:#c0c4d0;">` +
-                    `<div style="font-weight:600;margin-bottom:3px;color:#8b8fa3;">Storm Drains / Outfalls:</div>${drainsLabel}</div>` +
+                    // Nearest DEH monitors (only if nearby)
+                    (nearbyStations.length > 0 ? `<div style="border-top:1px solid #2d3040;padding-top:6px;margin-top:6px;font-size:10px;color:#c0c4d0;">` +
+                    `<div style="font-weight:600;margin-bottom:3px;color:#8b8fa3;">Nearest DEH Monitors:</div>${nearestLabel}</div>` : '') +
+                    // Storm drains / outfalls (only if nearby)
+                    (nearbyDrains.length > 0 ? `<div style="border-top:1px solid #2d3040;padding-top:6px;margin-top:6px;font-size:10px;color:#c0c4d0;">` +
+                    `<div style="font-weight:600;margin-bottom:3px;color:#8b8fa3;">Storm Drains / Outfalls:</div>${drainsLabel}</div>` : '') +
                     `</div>`;
 
                 if (!paddleInfoWindow) paddleInfoWindow = new google.maps.InfoWindow();
