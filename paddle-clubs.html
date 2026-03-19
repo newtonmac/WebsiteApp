@@ -178,7 +178,7 @@
         }
         .dev-modal-close:hover { color: #e1e4e8; }
 
-        /* Controls bar */
+        /* Controls bar - floating & draggable */
         .controls {
             position: absolute;
             top: 130px;
@@ -189,7 +189,65 @@
             max-width: 600px;
             display: flex;
             gap: 8px;
+            transition: opacity 0.3s, transform 0.3s, width 0.3s;
         }
+        .controls.dragging { transition: none; opacity: 0.9; }
+        .controls.collapsed {
+            width: auto !important;
+            max-width: none;
+            transform: none;
+            opacity: 1;
+        }
+        .controls.collapsed .search-wrap,
+        .controls.collapsed .craft-select { display: none; }
+
+        .controls-drag-handle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            min-width: 28px;
+            cursor: grab;
+            color: #555;
+            font-size: 14px;
+            border-radius: 10px;
+            background: #1a1d28;
+            border: 1px solid #2d3040;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            transition: color 0.2s, background 0.2s;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+        .controls-drag-handle:hover { color: #8b8fa3; background: #252836; }
+        .controls-drag-handle:active { cursor: grabbing; }
+
+        .controls-collapse-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            min-width: 28px;
+            cursor: pointer;
+            color: #555;
+            font-size: 16px;
+            border-radius: 10px;
+            background: #1a1d28;
+            border: 1px solid #2d3040;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            transition: color 0.2s, background 0.2s;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .controls-collapse-btn:hover { color: #8b8fa3; background: #252836; }
+        .controls.collapsed .controls-collapse-btn {
+            width: 40px;
+            height: 40px;
+            min-width: 40px;
+            font-size: 18px;
+            border-radius: 12px;
+        }
+        .controls.collapsed .controls-drag-handle { display: none; }
 
         .search-wrap {
             flex: 1;
@@ -363,6 +421,7 @@
             .header-logo { width: 60px; height: 60px; }
             .header h1 { font-size: 28px; }
             .controls { top: 115px; flex-direction: column; max-width: 92%; }
+            .controls.collapsed { flex-direction: row; }
             .craft-select { min-width: unset; }
             .results-count { top: 210px; right: 8px; font-size: 11px; }
         }
@@ -600,7 +659,8 @@
     </div>
 
     <div class="map-wrap">
-        <div class="controls">
+        <div class="controls" id="controlsBar">
+            <div class="controls-drag-handle" id="dragHandle" title="Drag to move">&#x2630;</div>
             <div class="search-wrap">
                 <span class="search-icon">&#128269;</span>
                 <input type="text" id="clubSearch" class="search-box" placeholder="Search by city, state, zip, or country...">
@@ -608,6 +668,7 @@
             <select id="craftFilter" class="craft-select" onchange="applyFilters()">
                 <option value="">All Craft Types</option>
             </select>
+            <div class="controls-collapse-btn" id="collapseBtn" onclick="toggleSearchCollapse()" title="Collapse search">&#x2715;</div>
         </div>
         <div class="results-count" id="resultsCount" style="display:none;">
             <strong id="countNum">0</strong> clubs shown
@@ -951,6 +1012,96 @@
                 if (!justClickedMarker) closePanel();
             });
         });
+    </script>
+
+    <script>
+        // --- Draggable & Collapsible Search Controls ---
+        (function() {
+            const controls = document.getElementById('controlsBar');
+            const handle = document.getElementById('dragHandle');
+            const mapWrap = controls.parentElement;
+            let isDragging = false, startX, startY, origLeft, origTop, hasMoved = false;
+
+            // Remove the CSS centering transform once we set explicit position
+            function setExplicitPosition() {
+                if (controls.dataset.positioned) return;
+                const rect = controls.getBoundingClientRect();
+                const parentRect = mapWrap.getBoundingClientRect();
+                controls.style.left = (rect.left - parentRect.left) + 'px';
+                controls.style.top = (rect.top - parentRect.top) + 'px';
+                controls.style.transform = 'none';
+                controls.dataset.positioned = '1';
+            }
+
+            function onPointerDown(e) {
+                if (e.target.closest('.search-wrap') || e.target.closest('.craft-select') || e.target.closest('.controls-collapse-btn')) return;
+                e.preventDefault();
+                setExplicitPosition();
+                isDragging = true;
+                hasMoved = false;
+                controls.classList.add('dragging');
+                const touch = e.touches ? e.touches[0] : e;
+                startX = touch.clientX;
+                startY = touch.clientY;
+                origLeft = parseInt(controls.style.left) || 0;
+                origTop = parseInt(controls.style.top) || 0;
+            }
+
+            function onPointerMove(e) {
+                if (!isDragging) return;
+                e.preventDefault();
+                const touch = e.touches ? e.touches[0] : e;
+                const dx = touch.clientX - startX;
+                const dy = touch.clientY - startY;
+                if (Math.abs(dx) > 3 || Math.abs(dy) > 3) hasMoved = true;
+                const parentRect = mapWrap.getBoundingClientRect();
+                const ctrlRect = controls.getBoundingClientRect();
+                let newLeft = origLeft + dx;
+                let newTop = origTop + dy;
+                // Keep within bounds
+                newLeft = Math.max(0, Math.min(newLeft, parentRect.width - ctrlRect.width));
+                newTop = Math.max(0, Math.min(newTop, parentRect.height - ctrlRect.height));
+                controls.style.left = newLeft + 'px';
+                controls.style.top = newTop + 'px';
+            }
+
+            function onPointerUp() {
+                if (!isDragging) return;
+                isDragging = false;
+                controls.classList.remove('dragging');
+            }
+
+            handle.addEventListener('mousedown', onPointerDown);
+            handle.addEventListener('touchstart', onPointerDown, { passive: false });
+            document.addEventListener('mousemove', onPointerMove);
+            document.addEventListener('touchmove', onPointerMove, { passive: false });
+            document.addEventListener('mouseup', onPointerUp);
+            document.addEventListener('touchend', onPointerUp);
+        })();
+
+        function toggleSearchCollapse() {
+            const controls = document.getElementById('controlsBar');
+            const btn = document.getElementById('collapseBtn');
+            const isCollapsed = controls.classList.toggle('collapsed');
+            btn.innerHTML = isCollapsed ? '&#128269;' : '&#x2715;';
+            btn.title = isCollapsed ? 'Expand search' : 'Collapse search';
+            // Snap to nearest side when collapsing
+            if (isCollapsed) {
+                const mapWrap = controls.parentElement;
+                const parentRect = mapWrap.getBoundingClientRect();
+                const rect = controls.getBoundingClientRect();
+                const centerX = rect.left - parentRect.left + rect.width / 2;
+                if (!controls.dataset.positioned) {
+                    controls.style.transform = 'none';
+                    controls.dataset.positioned = '1';
+                }
+                if (centerX < parentRect.width / 2) {
+                    controls.style.left = '12px';
+                } else {
+                    controls.style.left = (parentRect.width - 52) + 'px';
+                }
+            }
+        }
     </script>
 
     <!-- Development Roadmap Modal -->
