@@ -32,12 +32,6 @@ export default {
       }
 
       if (request.method === 'GET' && url.pathname === '/stats/referrers') {
-        const key = url.searchParams.get('key') || '';
-        if (!env.STATS_KEY || key !== env.STATS_KEY) {
-          return handleCors(request, new Response(JSON.stringify({ error: 'Unauthorized' }), {
-            status: 401, headers: { 'Content-Type': 'application/json' },
-          }));
-        }
         return handleCors(request, await getReferrerStats(env, page));
       }
 
