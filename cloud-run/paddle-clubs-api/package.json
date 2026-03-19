@@ -1,0 +1,13 @@
+{
+  "name": "paddle-clubs-api",
+  "version": "1.0.0",
+  "description": "Cloud Run API for PaddlePoint paddle clubs data",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "mysql2": "^3.9.0"
+  }
+}
