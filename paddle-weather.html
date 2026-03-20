@@ -11,22 +11,26 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #0f1117;
-            color: #e1e4e8;
+            background: #ffffff;
+            color: #1a1a2e;
             min-height: 100vh;
             -webkit-text-size-adjust: 100%;
             overflow-x: hidden;
         }
 
         .header {
-            background: linear-gradient(135deg, #1a1d28, #252836);
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(12px);
             padding: 14px 16px;
-            border-bottom: 1px solid #2d3040;
+            border-bottom: 1px solid #e5e7eb;
             display: flex;
             align-items: center;
             justify-content: space-between;
             flex-wrap: wrap;
             gap: 10px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
 
         .header-left { display: flex; align-items: center; gap: 10px; }
@@ -46,27 +50,30 @@
             -webkit-text-fill-color: transparent;
         }
 
-        .header .subtitle { color: #8b8fa3; font-size: 12px; margin-top: 2px; }
+        .header .subtitle { color: #6b7280; font-size: 12px; margin-top: 2px; }
 
         .header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
         .back-btn {
             cursor: pointer;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 12px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
             transition: all 0.2s ease;
             user-select: none;
-            border: 1px solid;
+            border: none;
             white-space: nowrap;
-            background: rgba(96, 165, 250, 0.1);
-            border-color: rgba(96, 165, 250, 0.2);
-            color: #60a5fa;
+            background: transparent;
+            color: #4b5563;
             text-decoration: none;
         }
         .back-btn:hover {
-            background: rgba(96, 165, 250, 0.18);
-            border-color: rgba(96, 165, 250, 0.4);
+            background: #f3f4f6;
+        }
+        .back-btn.accent {
+            background: #0e7a6b;
+            color: #ffffff;
         }
 
         .main-content {
@@ -79,8 +86,8 @@
         }
 
         .card {
-            background: #1a1d28;
-            border: 1px solid #2d3040;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
             border-radius: 16px;
             padding: 24px;
         }
@@ -89,7 +96,7 @@
             font-size: 16px;
             font-weight: 600;
             margin-bottom: 16px;
-            color: #e1e4e8;
+            color: #1a1a2e;
         }
 
         .card-header-icon {
@@ -104,16 +111,16 @@
         .search-input {
             width: 100%;
             padding: 14px 16px 14px 44px;
-            background: #0f1117;
-            border: 1px solid #2d3040;
+            background: #f7f8fa;
+            border: 1px solid #e5e7eb;
             border-radius: 12px;
-            color: #e1e4e8;
+            color: #1a1a2e;
             font-size: 15px;
             font-family: inherit;
             outline: none;
             transition: border-color 0.2s ease;
         }
-        .search-input::placeholder { color: #555b6e; }
+        .search-input::placeholder { color: #9ca3af; }
         .search-input:focus { border-color: #3b82f6; }
 
         .search-icon {
@@ -121,7 +128,7 @@
             left: 14px;
             top: 50%;
             transform: translateY(-50%);
-            color: #555b6e;
+            color: #9ca3af;
             font-size: 18px;
             pointer-events: none;
         }
@@ -134,7 +141,7 @@
         }
 
         .condition-item {
-            background: #0f1117;
+            background: #f7f8fa;
             border-radius: 12px;
             padding: 16px;
             text-align: center;
@@ -142,7 +149,7 @@
 
         .condition-label {
             font-size: 12px;
-            color: #8b8fa3;
+            color: #6b7280;
             margin-bottom: 6px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -151,24 +158,24 @@
         .condition-value {
             font-size: 24px;
             font-weight: 700;
-            color: #e1e4e8;
+            color: #1a1a2e;
         }
 
         .condition-unit {
             font-size: 13px;
-            color: #8b8fa3;
+            color: #6b7280;
             font-weight: 400;
         }
 
         /* Tide Chart Placeholder */
         .tide-chart-area {
             height: 250px;
-            background: #0f1117;
+            background: #f7f8fa;
             border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #555b6e;
+            color: #9ca3af;
             font-size: 14px;
         }
 
@@ -182,11 +189,11 @@
         }
         .hourly-scroll::-webkit-scrollbar { height: 6px; }
         .hourly-scroll::-webkit-scrollbar-track { background: transparent; }
-        .hourly-scroll::-webkit-scrollbar-thumb { background: #2d3040; border-radius: 3px; }
+        .hourly-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
 
         .hour-block {
             flex: 0 0 80px;
-            background: #0f1117;
+            background: #f7f8fa;
             border-radius: 12px;
             padding: 14px 8px;
             text-align: center;
@@ -198,7 +205,7 @@
 
         .hour-time {
             font-size: 12px;
-            color: #8b8fa3;
+            color: #6b7280;
             font-weight: 500;
         }
 
@@ -209,11 +216,12 @@
         .hour-temp {
             font-size: 16px;
             font-weight: 600;
+            color: #1a1a2e;
         }
 
         .hour-wind {
             font-size: 11px;
-            color: #8b8fa3;
+            color: #6b7280;
         }
 
         /* Multi-Day Forecast */
@@ -227,7 +235,7 @@
             display: grid;
             grid-template-columns: 1.2fr 1fr 1fr 1fr 1fr;
             align-items: center;
-            background: #0f1117;
+            background: #f7f8fa;
             border-radius: 12px;
             padding: 14px 16px;
             gap: 8px;
@@ -236,6 +244,7 @@
         .forecast-day {
             font-weight: 600;
             font-size: 14px;
+            color: #1a1a2e;
         }
 
         .forecast-cell {
@@ -245,7 +254,7 @@
 
         .forecast-cell-label {
             font-size: 10px;
-            color: #8b8fa3;
+            color: #6b7280;
             text-transform: uppercase;
             letter-spacing: 0.3px;
             margin-bottom: 2px;
@@ -265,7 +274,7 @@
         .forecast-header span {
             text-align: center;
             font-size: 11px;
-            color: #555b6e;
+            color: #9ca3af;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
@@ -292,7 +301,7 @@
 
         .water-temp-label {
             font-size: 12px;
-            color: #8b8fa3;
+            color: #6b7280;
             margin-top: 4px;
         }
 
@@ -308,12 +317,12 @@
             justify-content: space-between;
             align-items: center;
             padding: 8px 12px;
-            background: #0f1117;
+            background: #f7f8fa;
             border-radius: 8px;
             font-size: 13px;
         }
 
-        .trend-label { color: #8b8fa3; }
+        .trend-label { color: #6b7280; }
         .trend-value { font-weight: 500; }
 
         /* Responsive */
@@ -352,7 +361,7 @@
         </div>
     </div>
     <div class="header-right">
-        <a href="paddlepoint.html" class="back-btn">Home</a>
+        <a href="paddlepoint.html" class="back-btn accent">Home</a>
         <a href="paddle-conditions.html" class="back-btn">Water Conditions</a>
         <a href="paddle-clubs.html" class="back-btn">Clubs</a>
         <a href="paddle-events.html" class="back-btn">Events</a>
@@ -382,7 +391,7 @@
             <div class="condition-item">
                 <div class="condition-label">Wind</div>
                 <div class="condition-value">-- <span class="condition-unit">mph</span></div>
-                <div style="color:#8b8fa3; font-size:12px; margin-top:4px;">Dir: --</div>
+                <div style="color:#6b7280; font-size:12px; margin-top:4px;">Dir: --</div>
             </div>
             <div class="condition-item">
                 <div class="condition-label">Humidity</div>
