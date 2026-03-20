@@ -256,6 +256,126 @@
             opacity: 1;
         }
 
+        .footer-stats {
+            background: linear-gradient(135deg, #1a1d28, #252836);
+            border-top: 1px solid #2d3040;
+            padding: 32px 24px;
+            margin-top: 16px;
+        }
+
+        .footer-stats-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .footer-stats-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #6b7080;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .footer-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .footer-stat-card {
+            background: #0f1117;
+            border: 1px solid #2d3040;
+            border-radius: 14px;
+            padding: 20px;
+            text-align: center;
+            transition: border-color 0.2s ease;
+        }
+
+        .footer-stat-card:hover {
+            border-color: #3d4060;
+        }
+
+        .footer-stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            line-height: 1.2;
+        }
+
+        .footer-stat-label {
+            font-size: 12px;
+            color: #6b7080;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .footer-sources {
+            background: #0f1117;
+            border: 1px solid #2d3040;
+            border-radius: 14px;
+            padding: 20px;
+        }
+
+        .footer-sources-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #a0a4b8;
+            margin-bottom: 14px;
+        }
+
+        .footer-source-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .footer-source-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .footer-source-label {
+            font-size: 13px;
+            color: #e1e4e8;
+            min-width: 120px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .footer-source-bar {
+            flex: 1;
+            height: 8px;
+            background: #252836;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .footer-source-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.6s ease;
+        }
+
+        .footer-source-count {
+            font-size: 12px;
+            color: #a0a4b8;
+            min-width: 30px;
+            text-align: right;
+        }
+
+        .footer-bottom {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid #2d3040;
+            font-size: 12px;
+            color: #4b5060;
+        }
+
         @media (max-width: 600px) {
             .mosaic {
                 grid-template-columns: repeat(2, 1fr);
@@ -270,6 +390,12 @@
             .tile-name { font-size: 15px; }
             .tile-desc { font-size: 12px; }
             .header h1 { font-size: 26px; }
+            .footer-stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+            .footer-stat-value { font-size: 22px; }
+            .footer-source-label { min-width: 90px; }
         }
     </style>
 </head>
@@ -407,6 +533,37 @@
         </a>
     </div>
 
+    <div class="footer-stats">
+        <div class="footer-stats-inner">
+            <div class="footer-stats-title">Site Stats</div>
+            <div class="footer-stats-grid">
+                <div class="footer-stat-card">
+                    <div class="footer-stat-value" style="color:#60a5fa;" id="footerTotal">--</div>
+                    <div class="footer-stat-label">Total Visitors</div>
+                </div>
+                <div class="footer-stat-card">
+                    <div class="footer-stat-value" style="color:#a78bfa;" id="footerToday">--</div>
+                    <div class="footer-stat-label">Today</div>
+                </div>
+                <div class="footer-stat-card">
+                    <div class="footer-stat-value" style="color:#34d399;" id="footerApps">17</div>
+                    <div class="footer-stat-label">Apps</div>
+                </div>
+                <div class="footer-stat-card">
+                    <div class="footer-stat-value" style="color:#f472b6;" id="footerSources">--</div>
+                    <div class="footer-stat-label">Traffic Sources</div>
+                </div>
+            </div>
+            <div class="footer-sources" id="footerSourcesPanel">
+                <div class="footer-sources-title">Top Traffic Sources</div>
+                <div id="footerSourcesList"><span style="color:#6b7080;font-size:13px;">Loading...</span></div>
+            </div>
+            <div class="footer-bottom">
+                JMLSD Apps &middot; <span id="footerYear"></span>
+            </div>
+        </div>
+    </div>
+
     <script>
         // --- Visitor Counter ---
         const COUNTER_API = 'https://visitor-counter.newtonmac.workers.dev';
@@ -522,6 +679,53 @@
                     '<p style="color:#ef4444;font-size:13px;">Could not load stats.</p>';
             }
         }
+        // --- Footer Stats ---
+        document.getElementById('footerYear').textContent = new Date().getFullYear();
+
+        async function loadFooterStats() {
+            try {
+                const [res, refRes] = await Promise.all([
+                    fetch(`${COUNTER_API}/stats`),
+                    fetch(`${COUNTER_API}/stats/referrers`),
+                ]);
+                const data = await res.json();
+                const refData = await refRes.json();
+
+                document.getElementById('footerTotal').textContent = data.total.toLocaleString();
+
+                const today = new Date().toISOString().slice(0, 10);
+                const todayData = data.days.find(d => d.date === today);
+                document.getElementById('footerToday').textContent = todayData
+                    ? todayData.uniqueVisitors.toLocaleString() : '0';
+
+                const entries = Object.entries(refData.totals || {}).sort((a, b) => b[1] - a[1]);
+                document.getElementById('footerSources').textContent = entries.length;
+
+                const list = document.getElementById('footerSourcesList');
+                if (entries.length === 0) {
+                    list.innerHTML = '<span style="color:#6b7080;font-size:13px;">No data yet.</span>';
+                } else {
+                    const maxCount = entries[0][1];
+                    list.innerHTML = entries.slice(0, 6).map(([name, count]) => {
+                        const pct = Math.round((count / maxCount) * 100);
+                        const color = getReferrerColor(name);
+                        const displayName = getReferrerDisplayName(name);
+                        return `<div class="footer-source-row">
+                            <span class="footer-source-label" title="${name}">${displayName}</span>
+                            <div class="footer-source-bar">
+                                <div class="footer-source-bar-fill" style="width:${pct}%;background:${color};"></div>
+                            </div>
+                            <span class="footer-source-count">${count}</span>
+                        </div>`;
+                    }).join('');
+                }
+            } catch {
+                document.getElementById('footerSourcesList').innerHTML =
+                    '<span style="color:#ef4444;font-size:13px;">Could not load stats.</span>';
+            }
+        }
+
+        loadFooterStats();
     </script>
 </body>
 </html>
