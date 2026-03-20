@@ -117,6 +117,7 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
+            object-position: center bottom;
             display: block;
         }
 
@@ -439,6 +440,18 @@
 
             .footer-inner { grid-template-columns: 1fr; }
         }
+
+        .pp-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); z-index:9999; align-items:center; justify-content:center; }
+        .pp-modal-overlay.open { display:flex; }
+        .pp-modal { background:#1a1d28; border:1px solid #2d3040; border-radius:20px; padding:28px; width:90%; max-width:520px; max-height:80vh; overflow-y:auto; position:relative; color:#c0c4d0; font-size:13px; line-height:1.7; }
+        .pp-modal h2 { font-size:20px; font-weight:700; color:#e1e4e8; margin-bottom:12px; }
+        .pp-modal h3 { font-size:15px; font-weight:600; color:#e1e4e8; margin:18px 0 8px; }
+        .pp-modal p { margin-bottom:10px; }
+        .pp-modal ul { padding-left:18px; margin:6px 0; }
+        .pp-modal li { margin-bottom:4px; }
+        .pp-modal a { color:#06b6d4; }
+        .pp-modal-close { position:absolute; top:14px; right:14px; background:none; border:none; color:#6b7080; font-size:20px; cursor:pointer; padding:4px 8px; border-radius:8px; }
+        .pp-modal-close:hover { background:#252836; color:#e1e4e8; }
     </style>
 </head>
 <body>
@@ -490,66 +503,6 @@
         </div>
     </section>
 
-    <!-- SECTIONS -->
-    <div class="sections">
-        <div class="sections-heading">
-            <h2>Explore PaddlePoint</h2>
-            <p>Everything you need for a great day on the water</p>
-        </div>
-        <div class="sections-grid">
-            <a class="section-card" href="paddle-conditions.html" style="--card-accent: #0891b2;">
-                <div class="section-card-img">
-                    <span class="section-card-icon">&#x1F6F6;</span>
-                </div>
-                <div class="section-card-body">
-                    <h3>Water Conditions</h3>
-                    <p>Live wind speed, water quality advisories, swell data, and contamination alerts for paddle locations across Southern California.</p>
-                    <span class="section-card-tag" style="color: #0891b2; background: rgba(8,145,178,0.08);">Live Data</span>
-                </div>
-            </a>
-            <a class="section-card" href="paddle-weather.html" style="--card-accent: #2563eb;">
-                <div class="section-card-img">
-                    <span class="section-card-icon">&#x1F30A;</span>
-                </div>
-                <div class="section-card-body">
-                    <h3>Weather & Tides</h3>
-                    <p>Detailed tide charts, multi-day marine forecasts, water temperature trends, and hourly wind predictions for your paddle spot.</p>
-                    <span class="section-card-tag" style="color: #2563eb; background: rgba(37,99,235,0.08);">Forecasts</span>
-                </div>
-            </a>
-            <a class="section-card" href="paddle-clubs.html" style="--card-accent: #7c3aed;">
-                <div class="section-card-img">
-                    <span class="section-card-icon">&#x1F3C4;</span>
-                </div>
-                <div class="section-card-body">
-                    <h3>Paddle Clubs</h3>
-                    <p>Discover outrigger, SUP, kayak, and dragon boat clubs near you. Browse by location, craft type, and connect with your paddling community.</p>
-                    <span class="section-card-tag" style="color: #7c3aed; background: rgba(124,58,237,0.08);">Directory</span>
-                </div>
-            </a>
-            <a class="section-card" href="paddle-events.html" style="--card-accent: #ea580c;">
-                <div class="section-card-img">
-                    <span class="section-card-icon">&#x1F3C6;</span>
-                </div>
-                <div class="section-card-body">
-                    <h3>Paddling Events</h3>
-                    <p>Races, regattas, clinics, and paddle festivals across the US and Canada. Filter by discipline, region, and date.</p>
-                    <span class="section-card-tag" style="color: #ea580c; background: rgba(234,88,12,0.08);">Calendar</span>
-                </div>
-            </a>
-            <a class="section-card" href="paddle-gear.html" style="--card-accent: #059669;">
-                <div class="section-card-img">
-                    <span class="section-card-icon">&#x1F6A3;</span>
-                </div>
-                <div class="section-card-body">
-                    <h3>Gear</h3>
-                    <p>Paddle, boat, and PFD recommendations by discipline. Buyer's guides, gear comparisons, and reviews from experienced paddlers.</p>
-                    <span class="section-card-tag" style="color: #059669; background: rgba(5,150,105,0.08);">Reviews</span>
-                </div>
-            </a>
-        </div>
-    </div>
-
     <!-- FOOTER -->
     <footer class="footer">
         <div class="footer-inner">
@@ -573,32 +526,43 @@
             <div>
                 <h4>Disciplines</h4>
                 <ul class="footer-links">
-                    <li><a href="paddle-conditions.html">SUP</a></li>
-                    <li><a href="paddle-conditions.html">Kayak</a></li>
-                    <li><a href="paddle-conditions.html">Outrigger</a></li>
-                    <li><a href="paddle-conditions.html">Dragon Boat</a></li>
-                    <li><a href="paddle-conditions.html">Canoe</a></li>
+                    <li><a href="discipline-sup.html">SUP</a></li>
+                    <li><a href="discipline-kayak.html">Kayak</a></li>
+                    <li><a href="discipline-outrigger.html">Outrigger</a></li>
+                    <li><a href="discipline-dragon-boat.html">Dragon Boat</a></li>
+                    <li><a href="discipline-canoe.html">Canoe</a></li>
+                    <li><a href="discipline-surfski.html">Surfski</a></li>
+                    <li><a href="discipline-k1.html">Sprint Kayak (K1)</a></li>
+                    <li><a href="discipline-c1.html">Sprint Canoe (C1)</a></li>
                 </ul>
             </div>
             <div>
                 <h4>Company</h4>
                 <ul class="footer-links">
-                    <li><a href="#about">About</a></li>
-                    <li><a href="#contact">Contact</a></li>
-                    <li><a href="#privacy">Privacy Policy</a></li>
-                    <li><a href="#terms">Terms of Service</a></li>
+                    <li><a href="javascript:void(0)" onclick="openModal('about')">About</a></li>
+                    <li><a href="javascript:void(0)" onclick="openModal('contact')">Contact</a></li>
+                    <li><a href="javascript:void(0)" onclick="openModal('privacy')">Privacy Policy</a></li>
+                    <li><a href="javascript:void(0)" onclick="openModal('terms')">Terms of Service</a></li>
                 </ul>
             </div>
         </div>
         <div class="footer-bottom">
             <span>&copy; 2026 PaddlePoint. All rights reserved.</span>
             <div class="footer-bottom-links">
-                <a href="#terms">Terms of Service</a>
-                <a href="#privacy">Privacy Policy</a>
-                <a href="#cookies">Cookie Policy</a>
+                <a href="javascript:void(0)" onclick="openModal('terms')">Terms of Service</a>
+                <a href="javascript:void(0)" onclick="openModal('privacy')">Privacy Policy</a>
+                <a href="javascript:void(0)" onclick="openModal('cookies')">Cookie Policy</a>
             </div>
         </div>
     </footer>
+
+    <!-- MODAL -->
+    <div class="pp-modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+        <div class="pp-modal">
+            <button class="pp-modal-close" onclick="closeModal()">&times;</button>
+            <div id="modalContent"></div>
+        </div>
+    </div>
 
     <script>
         function toggleMobileMenu() {
@@ -609,6 +573,90 @@
                 document.getElementById('mobileMenu').classList.remove('open');
             }
         }
+
+        const modalData = {
+            about: {
+                html: `<h2>About PaddlePoint</h2>
+                <h3>What is PaddlePoint?</h3>
+                <p>PaddlePoint is a free, real-time resource built for paddlers — kayakers, stand-up paddleboarders, outrigger canoeists, dragon boaters, and anyone who loves being on the water.</p>
+                <h3>What We Offer</h3>
+                <ul>
+                    <li><strong>Water Conditions</strong> — Live wind, waves, tides, water quality, and a paddle score for any location</li>
+                    <li><strong>Weather & Tides</strong> — Detailed marine forecasts and tide predictions</li>
+                    <li><strong>Paddle Clubs</strong> — The world's largest paddling club directory with 9,000+ clubs across 50+ countries</li>
+                    <li><strong>Events</strong> — Races, regattas, and clinics across the US and Canada</li>
+                    <li><strong>Gear</strong> — Equipment recommendations and a brand directory by discipline</li>
+                </ul>
+                <h3>How It Works</h3>
+                <p>PaddlePoint aggregates publicly available data from established sources including NOAA, Open-Meteo, Google Weather, NWS, and more. The app runs entirely in your browser — no accounts, no downloads required.</p>`
+            },
+            contact: {
+                html: `<h2>Contact Us</h2>
+                <h3>Get in Touch</h3>
+                <p>Have questions, feedback, or found a bug? We'd love to hear from you.</p>
+                <h3>Email</h3>
+                <p><a href="mailto:nwtjml@gmail.com">nwtjml@gmail.com</a></p>
+                <h3>Feature Requests</h3>
+                <p>Have an idea for PaddlePoint? We're always looking to improve the experience for paddlers. Use the "Suggest" feature on the Water Conditions page, or email us directly.</p>
+                <h3>Report an Issue</h3>
+                <p>If something isn't working correctly, email us with details about the location, what seemed wrong, and your device/browser.</p>`
+            },
+            privacy: {
+                html: `<h2>Privacy Policy</h2>
+                <p><em>Last updated: March 2026</em></p>
+                <h3>No Data Collection</h3>
+                <p>PaddlePoint does not collect, store, or transmit any personal data. We do not have user accounts, databases, or analytics tracking.</p>
+                <h3>Location Data</h3>
+                <p>When you use the "Locate Me" feature, your device's location is used solely within your browser to center the map. Your coordinates are sent directly to weather APIs (Open-Meteo, NOAA) to fetch conditions data. We never see, store, or log your location.</p>
+                <h3>Cookies & Local Storage</h3>
+                <p>PaddlePoint does not use cookies or local storage to track you. Google Maps may use its own cookies as described in <a href="https://policies.google.com/privacy" target="_blank">Google's Privacy Policy</a>.</p>
+                <h3>Third-Party Services</h3>
+                <p>We use Google Maps/Places API, Open-Meteo API, and NOAA Tides API. These services receive your requested coordinates to return data.</p>
+                <h3>Contact</h3>
+                <p>Questions? Email <a href="mailto:nwtjml@gmail.com">nwtjml@gmail.com</a>.</p>`
+            },
+            terms: {
+                html: `<h2>Terms of Service</h2>
+                <p><em>Last updated: March 2026</em></p>
+                <h3>Acceptance of Terms</h3>
+                <p>By accessing PaddlePoint, you agree to these Terms of Service, our Privacy Policy, and our Safety Disclaimer.</p>
+                <h3>Service Description</h3>
+                <p>PaddlePoint provides informational weather and water conditions data for recreational paddling. The service is provided free of charge, as-is. PaddlePoint is not a professional weather service or safety advisory system.</p>
+                <h3>Disclaimer of Accuracy</h3>
+                <p><strong>PaddlePoint is for general informational purposes only.</strong> All conditions data is sourced from third-party APIs and provided without verification. Data may be inaccurate, delayed, or unavailable. Conditions can change rapidly without warning.</p>
+                <h3>Assumption of Risk</h3>
+                <p>Water activities are inherently dangerous. By using PaddlePoint and choosing to enter any body of water, you voluntarily assume all risks associated with water activities.</p>
+                <h3>No Warranties</h3>
+                <p>PaddlePoint is provided "as is" and "as available" without warranties of any kind.</p>
+                <h3>Contact</h3>
+                <p>Questions? Email <a href="mailto:nwtjml@gmail.com">nwtjml@gmail.com</a>.</p>`
+            },
+            cookies: {
+                html: `<h2>Cookie Policy</h2>
+                <p><em>Last updated: March 2026</em></p>
+                <h3>Our Use of Cookies</h3>
+                <p>PaddlePoint itself does not set any cookies or use local storage for tracking.</p>
+                <h3>Third-Party Cookies</h3>
+                <p>Google Maps may set cookies as part of its mapping service, governed by <a href="https://policies.google.com/technologies/cookies" target="_blank">Google's Cookie Policy</a>.</p>
+                <h3>How to Manage Cookies</h3>
+                <p>You can control cookies through your browser settings. Blocking all cookies may affect Google Maps functionality.</p>
+                <h3>Do Not Track</h3>
+                <p>PaddlePoint honors DNT browser signals. Since we do not track users, no changes are needed.</p>`
+            }
+        };
+
+        function openModal(key) {
+            const data = modalData[key];
+            if (!data) return;
+            document.getElementById('modalContent').innerHTML = data.html;
+            document.getElementById('modalOverlay').classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.remove('open');
+            document.body.style.overflow = '';
+        }
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
     </script>
 </body>
 </html>

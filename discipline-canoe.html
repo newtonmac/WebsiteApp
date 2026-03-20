@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canoeing - PaddlePoint</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #ffffff;
+            color: #1a1a2e;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        /* Sticky Header */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 24px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .header-left img {
+            width: 90px;
+            height: 90px;
+        }
+
+        .header-left .brand h1 {
+            font-size: 22px;
+            font-weight: 800;
+            background: linear-gradient(90deg, #06b6d4, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.2;
+        }
+
+        .header-left .brand .subtitle {
+            font-size: 13px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .header-right nav {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .header-right nav a {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            border: none;
+            background: transparent;
+            color: #4b5563;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+
+        .header-right nav a:hover {
+            background: #f3f4f6;
+        }
+
+        .header-right nav a.active {
+            background: #0e7a6b;
+            color: #ffffff;
+        }
+
+        /* Main Content */
+        main {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        /* Hero */
+        .hero {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .hero .hero-emoji {
+            font-size: 80px;
+            line-height: 1.2;
+            margin-bottom: 12px;
+        }
+
+        .hero h1 {
+            font-size: 40px;
+            font-weight: 800;
+            color: #1a1a2e;
+        }
+
+        /* Section Headings */
+        h2 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 12px;
+        }
+
+        p {
+            font-size: 15px;
+            line-height: 1.7;
+            color: #4b5563;
+        }
+
+        section {
+            margin-bottom: 36px;
+        }
+
+        section p {
+            margin-bottom: 10px;
+        }
+
+        /* Cards */
+        .card {
+            background: #f7f8fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 12px;
+        }
+
+        .card h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 6px;
+        }
+
+        .card p {
+            margin-bottom: 0;
+        }
+
+        /* Gear List */
+        .gear-list .card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .gear-list .card .gear-info h3 {
+            margin-bottom: 2px;
+        }
+
+        .gear-list .card .gear-price {
+            font-size: 14px;
+            font-weight: 600;
+            color: #06b6d4;
+            white-space: nowrap;
+        }
+
+        /* Tips list */
+        .tips-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .tips-list li {
+            background: #f7f8fa;
+            border-radius: 12px;
+            padding: 14px 20px;
+            margin-bottom: 10px;
+            font-size: 15px;
+            line-height: 1.7;
+            color: #4b5563;
+        }
+
+        /* Links section */
+        .links-section {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .links-section a {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #f7f8fa;
+            border-radius: 12px;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 600;
+            color: #1a1a2e;
+            transition: background 0.2s;
+        }
+
+        .links-section a:hover {
+            background: #e5e7eb;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            border-top: 1px solid #e5e7eb;
+            padding: 32px 24px;
+            margin-top: 48px;
+        }
+
+        footer nav {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 16px;
+        }
+
+        footer nav a {
+            font-size: 14px;
+            color: #4b5563;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        footer nav a:hover {
+            color: #1a1a2e;
+        }
+
+        footer .copyright {
+            font-size: 13px;
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="header-left">
+            <img src="paddle-pin.svg" alt="PaddlePoint logo" />
+            <div class="brand">
+                <h1>PaddlePoint</h1>
+                <span class="subtitle">Canoe Guide</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <nav>
+                <a href="index.html" class="active">Home</a>
+                <a href="water-conditions.html">Water Conditions</a>
+                <a href="weather.html">Weather</a>
+                <a href="paddle-clubs.html">Clubs</a>
+                <a href="paddle-events.html">Events</a>
+                <a href="paddle-gear.html">Gear</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main>
+
+        <!-- Hero -->
+        <div class="hero">
+            <div class="hero-emoji">&#x1F6F6;</div>
+            <h1>Canoeing</h1>
+        </div>
+
+        <!-- What is Canoeing -->
+        <section>
+            <h2>What is Canoeing?</h2>
+            <p>Canoeing is paddling an open-top boat with a single-bladed paddle, either kneeling or sitting. It is one of the oldest forms of watercraft, with roots stretching back thousands of years. Canoes are used for recreation, racing, wilderness tripping, and fishing.</p>
+            <p>Canoeing has a deep North American tradition. Indigenous peoples developed the canoe as a vital means of travel and trade. It played a central role in the fur trade era and has since evolved into a beloved modern sport enjoyed by millions on lakes, rivers, and waterways around the world.</p>
+        </section>
+
+        <!-- Types of Canoes -->
+        <section>
+            <h2>Types of Canoes</h2>
+
+            <div class="card">
+                <h3>Recreational Canoe</h3>
+                <p>15' to 17' in length. Wide, stable, and family-friendly. Ideal for calm lakes, slow rivers, and casual day trips. A great starting point for beginners.</p>
+            </div>
+
+            <div class="card">
+                <h3>Solo Canoe</h3>
+                <p>12' to 16' in length. Lighter and easier to handle for a single paddler. Perfect for those who want to explore at their own pace.</p>
+            </div>
+
+            <div class="card">
+                <h3>Tandem / Tripping Canoe</h3>
+                <p>16' to 18'6" in length. High carrying capacity designed for multi-day wilderness trips. Built to handle portaging with gear for extended adventures.</p>
+            </div>
+
+            <div class="card">
+                <h3>Racing Canoe (C1 / C2)</h3>
+                <p>Narrow and lightweight, built for speed. Used in sprint and marathon racing disciplines. Requires strong technique and balance.</p>
+            </div>
+
+            <div class="card">
+                <h3>Whitewater Canoe</h3>
+                <p>Shorter hull with extra rocker for manoeuvrability. Designed for river running and navigating rapids. Often outfitted with airbags and thigh straps.</p>
+            </div>
+        </section>
+
+        <!-- Essential Gear -->
+        <section>
+            <h2>Essential Gear</h2>
+            <div class="gear-list">
+                <div class="card">
+                    <div class="gear-info">
+                        <h3>Canoe</h3>
+                        <p>Your primary vessel. Material options include aluminum, polyethylene, fiberglass, Kevlar, and cedar-canvas.</p>
+                    </div>
+                    <span class="gear-price">$500 - $3,000+</span>
+                </div>
+                <div class="card">
+                    <div class="gear-info">
+                        <h3>Single-Blade Paddle</h3>
+                        <p>The defining tool of canoeing. Choose based on your height, canoe width, and paddling style.</p>
+                    </div>
+                    <span class="gear-price">$40 - $300</span>
+                </div>
+                <div class="card">
+                    <div class="gear-info">
+                        <h3>PFD / Life Vest</h3>
+                        <p>A properly fitted personal flotation device is essential for safety on every outing.</p>
+                    </div>
+                    <span class="gear-price">$50 - $150</span>
+                </div>
+                <div class="card">
+                    <div class="gear-info">
+                        <h3>Portage Yoke</h3>
+                        <p>Built-in or add-on yoke for carrying the canoe over land between waterways.</p>
+                    </div>
+                    <span class="gear-price">Built-in or add-on</span>
+                </div>
+                <div class="card">
+                    <div class="gear-info">
+                        <h3>Dry Bags</h3>
+                        <p>Waterproof bags to protect clothing, food, and gear from splashes and rain.</p>
+                    </div>
+                    <span class="gear-price">$20 - $60</span>
+                </div>
+                <div class="card">
+                    <div class="gear-info">
+                        <h3>Throw Bag / Rope</h3>
+                        <p>A rescue essential for river paddling. Keep it accessible at all times on moving water.</p>
+                    </div>
+                    <span class="gear-price">$20 - $40</span>
+                </div>
+                <div class="card">
+                    <div class="gear-info">
+                        <h3>Kneeling Pad</h3>
+                        <p>Cushions your knees for comfort during longer paddles or when paddling in a kneeling position.</p>
+                    </div>
+                    <span class="gear-price">$15 - $30</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Getting Started -->
+        <section>
+            <h2>Getting Started</h2>
+            <ul class="tips-list">
+                <li>Learn the J-stroke early. It lets you paddle straight on one side without constantly switching, and it is the hallmark of good canoeing technique.</li>
+                <li>Practice getting in and out of the canoe on calm, shallow water. Step into the centre line and keep your weight low.</li>
+                <li>Always keep your centre of gravity low. Kneel or sit on the seat with a wide, stable stance.</li>
+                <li>Start with a recreational canoe on a calm lake before progressing to rivers or longer trips.</li>
+                <li>Consider joining a guided canoe trip. Experienced guides will teach you strokes, safety, and camp craft in a supportive setting.</li>
+            </ul>
+        </section>
+
+        <!-- Who Is It For -->
+        <section>
+            <h2>Who Is It For?</h2>
+            <p>Canoeing is for wilderness enthusiasts, families, anglers, marathon racers, and anyone who loves spending time on lakes and rivers. Whether you are looking for a peaceful morning paddle, a multi-day backcountry trip, or the thrill of competitive racing, there is a style of canoeing that fits.</p>
+            <p>Canoe camping and wilderness tripping remain among the best outdoor experiences you can have. Load your gear, push off from shore, and let the waterway lead the way.</p>
+        </section>
+
+        <!-- Explore More -->
+        <section>
+            <h2>Explore More</h2>
+            <div class="links-section">
+                <a href="paddle-gear.html">Paddle Gear</a>
+                <a href="paddle-clubs.html">Paddle Clubs</a>
+                <a href="paddle-events.html">Paddle Events</a>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <nav>
+            <a href="index.html">Home</a>
+            <a href="water-conditions.html">Water Conditions</a>
+            <a href="weather.html">Weather</a>
+            <a href="paddle-clubs.html">Clubs</a>
+            <a href="paddle-events.html">Events</a>
+            <a href="paddle-gear.html">Gear</a>
+        </nav>
+        <p class="copyright">&copy; 2026 PaddlePoint. All rights reserved.</p>
+    </footer>
+
+</body>
+</html>

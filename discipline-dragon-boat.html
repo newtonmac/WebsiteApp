@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dragon Boat Racing — PaddlePoint</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #ffffff;
+            color: #1a1a2e;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 24px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-left img {
+            width: 90px;
+            height: 90px;
+        }
+
+        .header-left h1 {
+            font-size: 28px;
+            font-weight: 800;
+            background: linear-gradient(90deg, #06b6d4, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.2;
+        }
+
+        .header-left .subtitle {
+            font-size: 13px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .header-right a {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            border: none;
+            background: transparent;
+            color: #4b5563;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+
+        .header-right a:hover {
+            background: #f3f4f6;
+        }
+
+        .header-right a.home-btn {
+            background: #0e7a6b;
+            color: #ffffff;
+        }
+
+        .header-right a.home-btn:hover {
+            background: #0b6358;
+        }
+
+        main {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        .hero {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .hero .icon {
+            font-size: 80px;
+            line-height: 1;
+            margin-bottom: 16px;
+        }
+
+        .hero h1 {
+            font-size: 36px;
+            font-weight: 800;
+            color: #1a1a2e;
+        }
+
+        h2 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 12px;
+        }
+
+        p, li {
+            font-size: 15px;
+            line-height: 1.7;
+            color: #4b5563;
+        }
+
+        .section {
+            margin-bottom: 36px;
+        }
+
+        .card {
+            background: #f7f8fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 12px;
+        }
+
+        .card h3 {
+            font-size: 17px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 4px;
+        }
+
+        .card .meta {
+            font-size: 13px;
+            color: #6b7280;
+            margin-bottom: 6px;
+        }
+
+        .card p {
+            margin: 0;
+        }
+
+        .gear-price {
+            display: inline-block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #0e7a6b;
+            background: #ecfdf5;
+            padding: 2px 10px;
+            border-radius: 6px;
+            margin-top: 4px;
+        }
+
+        ul {
+            padding-left: 20px;
+            margin-top: 8px;
+            margin-bottom: 8px;
+        }
+
+        ul li {
+            margin-bottom: 6px;
+        }
+
+        .links-section {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+
+        .links-section a {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #f7f8fa;
+            border-radius: 10px;
+            color: #1a1a2e;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .links-section a:hover {
+            background: #e5e7eb;
+        }
+
+        footer {
+            text-align: center;
+            border-top: 1px solid #e5e7eb;
+            padding: 32px 24px;
+            margin-top: 40px;
+        }
+
+        footer nav {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        footer nav a {
+            font-size: 14px;
+            color: #4b5563;
+            text-decoration: none;
+        }
+
+        footer nav a:hover {
+            color: #1a1a2e;
+        }
+
+        footer .copyright {
+            font-size: 13px;
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-left">
+        <img src="paddle-pin.svg" alt="PaddlePoint logo">
+        <div>
+            <h1>PaddlePoint</h1>
+            <span class="subtitle">Dragon Boat Guide</span>
+        </div>
+    </div>
+    <nav class="header-right">
+        <a href="index.html" class="home-btn">Home</a>
+        <a href="water-conditions.html">Water Conditions</a>
+        <a href="weather.html">Weather</a>
+        <a href="paddle-clubs.html">Clubs</a>
+        <a href="paddle-events.html">Events</a>
+        <a href="paddle-gear.html">Gear</a>
+    </nav>
+</header>
+
+<main>
+    <div class="hero">
+        <div class="icon">🐉</div>
+        <h1>Dragon Boat Racing</h1>
+    </div>
+
+    <div class="section">
+        <h2>What is Dragon Boat Racing?</h2>
+        <p>Dragon boat racing is a team paddling sport using long, ornate boats decorated with a dragon head and tail. The sport originated in China over 2,000 years ago and has grown into a global phenomenon. Each crew consists of <strong>20 paddlers</strong>, <strong>1 drummer</strong> who sets the pace, and <strong>1 steersperson</strong> who guides the boat. Races are sprint-format — 200m, 500m, and 2000m — on flat water, making it one of the most exciting and accessible paddle sports in the world.</p>
+    </div>
+
+    <div class="section">
+        <h2>Types of Dragon Boats</h2>
+
+        <div class="card">
+            <h3>Standard (20-Paddler)</h3>
+            <p class="meta">IDBF Spec — Length: 12.5m</p>
+            <p>The standard competition dragon boat, built to International Dragon Boat Federation (IDBF) specifications. Used in sanctioned races worldwide, from local regattas to world championships.</p>
+        </div>
+
+        <div class="card">
+            <h3>Small Boat (10-Paddler)</h3>
+            <p>A smaller dragon boat popular for corporate events, community races, and teams with fewer members. Same excitement, half the crew — a great entry point for new teams and organizations.</p>
+        </div>
+
+        <div class="card">
+            <h3>Festival Boats</h3>
+            <p>Heavier, more durable boats designed for recreational and festival events. Built to handle high-volume use by beginners and casual paddlers at community celebrations and charity races.</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Essential Gear</h2>
+        <p style="margin-bottom: 12px; font-style: italic; color: #6b7280;">Boats are provided by clubs and teams — you do not need to own one.</p>
+
+        <div class="card">
+            <h3>Personal Paddle (IDBF Spec)</h3>
+            <p>A dragon boat paddle built to IDBF specifications. Many competitive paddlers invest in their own carbon or fiberglass paddle for a customized fit and feel.</p>
+            <span class="gear-price">$80 – $300</span>
+        </div>
+
+        <div class="card">
+            <h3>PFD (Personal Flotation Device)</h3>
+            <p>A low-profile life vest required at most practices and all races. Choose one that allows free arm movement for paddling.</p>
+            <span class="gear-price">$50 – $100</span>
+        </div>
+
+        <div class="card">
+            <h3>Seat Pad</h3>
+            <p>A cushioned pad for the bench seat. Dragon boat benches are hard — a good seat pad makes a big difference during long practices and race days.</p>
+            <span class="gear-price">$15 – $30</span>
+        </div>
+
+        <div class="card">
+            <h3>Team Uniform / Jersey</h3>
+            <p>Most teams have matching jerseys for race day. Your team will typically organize a group order once you join.</p>
+        </div>
+
+        <div class="card">
+            <h3>Water Bottle</h3>
+            <p>Stay hydrated between races and during practice. Bring a bottle that seals securely — it will be on the boat with you.</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Getting Started</h2>
+        <ul>
+            <li><strong>Join a local dragon boat team</strong> — no experience needed. Most teams actively recruit new paddlers and welcome all backgrounds.</li>
+            <li><strong>All fitness levels are welcome.</strong> Dragon boat teams range from casual recreational crews to elite competitive squads. There is a place for everyone.</li>
+            <li><strong>Practices are on the water 2–3 times per week.</strong> Expect a mix of technique drills, race pieces, and endurance work.</li>
+            <li><strong>Learn to paddle in sync with the drumbeat.</strong> The drummer sets the rhythm — your job is to match it. Timing as a crew is everything in dragon boat racing.</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>Who Is It For?</h2>
+        <p>Dragon boat racing is for team-oriented people, corporate groups, and anyone who loves the energy of a big crew sport. It has a particularly strong community among <strong>cancer survivor teams</strong> — breast cancer dragon boat paddling is a global movement with hundreds of teams worldwide. Whether you are looking for fitness, camaraderie, or competition, dragon boat racing delivers all three.</p>
+    </div>
+
+    <div class="section">
+        <h2>Explore More</h2>
+        <div class="links-section">
+            <a href="paddle-gear.html">Browse Gear</a>
+            <a href="paddle-clubs.html">Find Clubs</a>
+            <a href="paddle-events.html">Upcoming Events</a>
+        </div>
+    </div>
+</main>
+
+<footer>
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="paddle-gear.html">Gear</a>
+        <a href="paddle-clubs.html">Clubs</a>
+        <a href="paddle-events.html">Events</a>
+        <a href="water-conditions.html">Water Conditions</a>
+        <a href="weather.html">Weather</a>
+    </nav>
+    <p class="copyright">&copy; 2026 PaddlePoint. All rights reserved.</p>
+</footer>
+
+</body>
+</html>
