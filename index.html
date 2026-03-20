@@ -143,6 +143,48 @@
             margin-left: 4px;
         }
 
+        .stats-referrers {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .stats-referrer-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+        }
+
+        .stats-referrer-label {
+            color: #e1e4e8;
+            min-width: 100px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .stats-referrer-bar {
+            flex: 1;
+            height: 8px;
+            background: #252836;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .stats-referrer-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.4s ease;
+        }
+
+        .stats-referrer-count {
+            color: #a0a4b8;
+            font-size: 12px;
+            min-width: 24px;
+            text-align: right;
+        }
+
         .mosaic {
             max-width: 1200px;
             margin: 0 auto;
@@ -254,6 +296,8 @@
                     <span id="statsToday" style="font-size:22px;font-weight:700;color:#a78bfa;">--</span>
                 </div>
             </div>
+            <h3 style="margin-bottom:10px;">Traffic Sources</h3>
+            <div id="statsReferrers" style="margin-bottom:18px;"><span style="color:#6b7080;font-size:13px;">Loading...</span></div>
             <h3 style="margin-bottom:10px;">Last 7 Days</h3>
             <div id="statsContent">Loading...</div>
         </div>
@@ -332,6 +376,12 @@
             <div class="tile-desc">3D quote visualizations</div>
         </a>
 
+        <a class="tile" href="analytics.html" style="--accent: #60a5fa;">
+            <div class="tile-icon">&#128202;</div>
+            <div class="tile-name">Site Analytics</div>
+            <div class="tile-desc">Visitor stats &amp; traffic sources</div>
+        </a>
+
         <a class="tile" href="tech-stocks-tracker.html" style="--accent: #3b82f6;">
             <div class="tile-icon">&#128187;</div>
             <div class="tile-name">Tech Stocks</div>
@@ -390,10 +440,34 @@
             if (isOpen && !statsLoaded) loadStats();
         }
 
+        const REFERRER_COLORS = {
+            'google.com': '#34a853', 'google.co.uk': '#34a853', 'google.ca': '#34a853',
+            'facebook.com': '#1877f2', 'instagram.com': '#e4405f',
+            'twitter.com': '#1da1f2', 'x.com': '#1da1f2',
+            'linkedin.com': '#0a66c2', 'reddit.com': '#ff4500',
+            'youtube.com': '#ff0000', 'tiktok.com': '#010101',
+            'bing.com': '#008373', 'duckduckgo.com': '#de5833',
+            'Direct': '#a78bfa',
+        };
+
+        function getReferrerColor(name) {
+            return REFERRER_COLORS[name] || '#60a5fa';
+        }
+
+        function getReferrerDisplayName(name) {
+            if (name === 'Direct') return 'Direct / Bookmark';
+            if (name.startsWith('google.')) return 'Google';
+            return name;
+        }
+
         async function loadStats() {
             try {
-                const res = await fetch(`${COUNTER_API}/stats`);
+                const [res, refRes] = await Promise.all([
+                    fetch(`${COUNTER_API}/stats`),
+                    fetch(`${COUNTER_API}/stats/referrers`),
+                ]);
                 const data = await res.json();
+                const refData = await refRes.json();
                 statsLoaded = true;
 
                 document.getElementById('statsTotal').textContent = data.total.toLocaleString();
@@ -404,6 +478,28 @@
                 document.getElementById('statsToday').textContent = todayData
                     ? todayData.uniqueVisitors.toLocaleString() : '0';
 
+                // Render referrer chart
+                const refContainer = document.getElementById('statsReferrers');
+                const entries = Object.entries(refData.totals || {}).sort((a, b) => b[1] - a[1]);
+                if (entries.length === 0) {
+                    refContainer.innerHTML = '<span style="color:#6b7080;font-size:13px;">No referrer data yet.</span>';
+                } else {
+                    const maxCount = entries[0][1];
+                    refContainer.innerHTML = '<div class="stats-referrers">' + entries.map(([name, count]) => {
+                        const pct = Math.round((count / maxCount) * 100);
+                        const color = getReferrerColor(name);
+                        const displayName = getReferrerDisplayName(name);
+                        return `<div class="stats-referrer-row">
+                            <span class="stats-referrer-label" title="${name}">${displayName}</span>
+                            <div class="stats-referrer-bar">
+                                <div class="stats-referrer-bar-fill" style="width:${pct}%;background:${color};"></div>
+                            </div>
+                            <span class="stats-referrer-count">${count}</span>
+                        </div>`;
+                    }).join('') + '</div>';
+                }
+
+                // Render daily breakdown
                 const container = document.getElementById('statsContent');
                 if (!data.days || data.days.length === 0) {
                     container.innerHTML = '<p style="color:#6b7080;font-size:13px;">No data yet.</p>';
