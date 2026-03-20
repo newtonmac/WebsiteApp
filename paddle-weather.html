@@ -1030,27 +1030,65 @@
     }
 
     // ======== NOAA Tide Chart ========
+    // Hardcoded known NOAA tide prediction stations (same as paddle-conditions)
+    const TIDE_STATIONS = [
+        { id:'9410170', name:'San Diego', lat:32.7142, lon:-117.1736 },
+        { id:'9410196', name:'Del Mar', lat:32.9567, lon:-117.2717 },
+        { id:'9410230', name:'La Jolla', lat:32.8669, lon:-117.2571 },
+        { id:'9410580', name:'Newport Beach', lat:33.6031, lon:-117.8833 },
+        { id:'9410660', name:'Los Angeles', lat:33.7200, lon:-118.2720 },
+        { id:'9410840', name:'Santa Monica', lat:34.0083, lon:-118.5000 },
+        { id:'9411340', name:'Santa Barbara', lat:34.4083, lon:-119.6850 },
+        { id:'9412110', name:'Port San Luis', lat:35.1694, lon:-120.7556 },
+        { id:'9413450', name:'Monterey', lat:36.6050, lon:-121.8880 },
+        { id:'9414290', name:'San Francisco', lat:37.8063, lon:-122.4659 },
+        { id:'9414750', name:'Alameda', lat:37.7717, lon:-122.3000 },
+        { id:'9415020', name:'Point Reyes', lat:37.9961, lon:-122.9767 },
+        { id:'1612340', name:'Honolulu', lat:21.3069, lon:-157.8583 },
+        { id:'1612480', name:'Mokuoloe', lat:21.4331, lon:-157.7900 },
+        { id:'8443970', name:'Boston', lat:42.3539, lon:-71.0503 },
+        { id:'8518750', name:'The Battery NY', lat:40.7006, lon:-74.0142 },
+        { id:'8534720', name:'Atlantic City', lat:39.3550, lon:-74.4183 },
+        { id:'8574680', name:'Baltimore', lat:39.2667, lon:-76.5783 },
+        { id:'8658120', name:'Wilmington NC', lat:34.2275, lon:-77.9536 },
+        { id:'8665530', name:'Charleston SC', lat:32.7817, lon:-79.9250 },
+        { id:'8670870', name:'Fort Pulaski GA', lat:32.0333, lon:-80.9017 },
+        { id:'8720218', name:'Mayport FL', lat:30.3967, lon:-81.4300 },
+        { id:'8723214', name:'Virginia Key FL', lat:25.7317, lon:-80.1617 },
+        { id:'8724580', name:'Key West', lat:24.5508, lon:-81.8083 },
+        { id:'8726520', name:'St Petersburg', lat:27.7606, lon:-82.6269 },
+        { id:'8729108', name:'Panama City FL', lat:30.1522, lon:-85.6669 },
+        { id:'8735180', name:'Dauphin Island AL', lat:30.2500, lon:-88.0750 },
+        { id:'8761724', name:'Grand Isle LA', lat:29.2633, lon:-89.9567 },
+        { id:'8770570', name:'Sabine Pass TX', lat:29.7283, lon:-93.8700 },
+        { id:'8771450', name:'Galveston TX', lat:29.3100, lon:-94.7933 },
+        { id:'8775870', name:'Corpus Christi TX', lat:27.5800, lon:-97.2167 },
+        { id:'9447130', name:'Seattle', lat:47.6026, lon:-122.3393 },
+        { id:'9449424', name:'Cherry Point WA', lat:48.8633, lon:-122.7583 },
+        { id:'9440910', name:'Toke Point WA', lat:46.7075, lon:-123.9669 },
+        { id:'9432780', name:'Charleston OR', lat:43.3450, lon:-124.3220 },
+        { id:'9435380', name:'South Beach OR', lat:44.6254, lon:-124.0431 },
+        { id:'9451600', name:'Sitka AK', lat:57.0517, lon:-135.3417 },
+        { id:'9455920', name:'Anchorage AK', lat:61.2381, lon:-149.8900 },
+    ];
+
+    function nearestTideStation(lat, lon) {
+        let best = TIDE_STATIONS[0], bestDist = Infinity;
+        for (const s of TIDE_STATIONS) {
+            const d = haversine(lat, lon, s.lat, s.lon);
+            if (d < bestDist) { bestDist = d; best = s; }
+        }
+        return { station: best, dist: bestDist };
+    }
+
     async function loadTideChart(lat, lon) {
         const chartArea = document.querySelector('.tide-chart-area');
         chartArea.innerHTML = '<div style="color:#9ca3af;font-size:13px;">Loading tide data...</div>';
 
         try {
-            const stationsRes = await fetch('https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations.json?type=tidepredictions');
-            const stationsData = await stationsRes.json();
+            const { station, dist } = nearestTideStation(lat, lon);
 
-            if (!stationsData.stations || !stationsData.stations.length) {
-                chartArea.innerHTML = '<div style="color:#9ca3af;font-size:13px;">No tide stations found nearby</div>';
-                return;
-            }
-
-            let closest = null;
-            let minDist = Infinity;
-            for (const s of stationsData.stations) {
-                const d = Math.pow(s.lat - lat, 2) + Math.pow(s.lng - lon, 2);
-                if (d < minDist) { minDist = d; closest = s; }
-            }
-
-            if (!closest || minDist > 25) {
+            if (dist > 100) {
                 chartArea.innerHTML = '<div style="color:#9ca3af;font-size:13px;">No tide station found near this location</div>';
                 return;
             }
@@ -1060,7 +1098,7 @@
             const endDate = new Date(today.getTime() + 48 * 3600000).toISOString().slice(0, 10).replace(/-/g, '');
 
             const tideRes = await fetch(
-                `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${beginDate}&end_date=${endDate}&station=${closest.id}&product=predictions&datum=MLLW&time_zone=lst_ldt&interval=h&units=english&format=json`
+                `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${beginDate}&end_date=${endDate}&station=${station.id}&product=predictions&datum=MLLW&time_zone=lst_ldt&interval=h&units=english&format=json`
             );
             const tideData = await tideRes.json();
 
@@ -1069,7 +1107,7 @@
                 return;
             }
 
-            drawTideChart(chartArea, tideData.predictions, closest.name);
+            drawTideChart(chartArea, tideData.predictions, `${station.name} (${dist.toFixed(0)} mi away)`);
 
         } catch (err) {
             console.error('Tide error:', err);
