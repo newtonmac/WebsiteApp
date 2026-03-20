@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title>PaddlePoint — Paddle Conditions, Clubs & Events</title>
     <meta name="description" content="Real-time paddle conditions, weather, clubs, events, and gear for SUP, kayak, outrigger, and canoe paddlers.">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -605,6 +606,18 @@
         .stats-spinner { width: 18px; height: 18px; border: 2px solid #2d3040; border-top-color: #60a5fa; border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
+        /* Visitor map */
+        .stats-map-section { margin-top: 20px; }
+        .stats-map-wrap {
+            width: 100%;
+            height: 220px;
+            border-radius: 14px;
+            overflow: hidden;
+            border: 1px solid #2d3040;
+            margin-top: 10px;
+        }
+        @media (min-width: 701px) { .stats-map-wrap { height: 260px; } }
+
         .pp-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); z-index:9999; align-items:center; justify-content:center; }
         .pp-modal-overlay.open { display:flex; }
         .pp-modal { background:#1a1d28; border:1px solid #2d3040; border-radius:20px; padding:28px; width:90%; max-width:520px; max-height:80vh; overflow-y:auto; position:relative; color:#c0c4d0; font-size:13px; line-height:1.7; }
@@ -974,6 +987,27 @@
                             <div class="stats-cities">${cityTags || '<span style="color:#6b7080;font-size:12px;">No city data</span>'}</div>
                         </div>`;
                     }).join('');
+
+                    // Visitor world map — aggregate coords across last 7 days
+                    const allCoords = {};
+                    days.forEach(day => {
+                        if (day.coords) {
+                            Object.entries(day.coords).forEach(([city, pos]) => {
+                                if (!allCoords[city]) {
+                                    allCoords[city] = { lat: pos.lat, lng: pos.lng, count: 0 };
+                                }
+                                allCoords[city].count += (day.cities && day.cities[city]) || 1;
+                            });
+                        }
+                    });
+
+                    if (Object.keys(allCoords).length > 0) {
+                        html += `<div class="stats-map-section">
+                            <div class="stats-chart-title">Visitor Locations — Last 7 Days</div>
+                            <div class="stats-map-wrap" id="statsMapContainer"></div>
+                        </div>`;
+                        window._statsMapCoords = allCoords;
+                    }
                 } else {
                     html += '<p style="color:#6b7080;font-size:13px;text-align:center;">No data yet.</p>';
                 }
@@ -997,11 +1031,65 @@
                     });
                 }, 100);
 
+                // Initialize visitor map
+                if (window._statsMapCoords) {
+                    setTimeout(() => initStatsMap(window._statsMapCoords), 200);
+                }
+
             } catch {
                 document.getElementById('statsContent').innerHTML =
                     '<p style="color:#ef4444;font-size:13px;text-align:center;padding:30px;">Could not load stats.</p>';
             }
         }
+
+        let statsMap = null;
+        function initStatsMap(coords) {
+            const container = document.getElementById('statsMapContainer');
+            if (!container || !window.L) return;
+
+            const entries = Object.entries(coords);
+            if (entries.length === 0) return;
+
+            statsMap = L.map(container, {
+                zoomControl: true,
+                scrollWheelZoom: false,
+                attributionControl: false,
+            }).setView([30, -10], 2);
+
+            // Dark tile layer
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                maxZoom: 18,
+            }).addTo(statsMap);
+
+            // Add circle markers for each city
+            const maxCount = Math.max(...entries.map(([, c]) => c.count), 1);
+            const bounds = L.latLngBounds();
+
+            entries.forEach(([city, c]) => {
+                const radius = 5 + (c.count / maxCount) * 12;
+                const marker = L.circleMarker([c.lat, c.lng], {
+                    radius: radius,
+                    fillColor: '#60a5fa',
+                    fillOpacity: 0.7,
+                    color: '#93c5fd',
+                    weight: 1.5,
+                }).addTo(statsMap);
+
+                marker.bindPopup(
+                    `<div style="font-family:system-ui;font-size:12px;color:#1a1a2e;padding:2px 4px;">
+                        <strong>${city}</strong><br>${c.count} visitor${c.count !== 1 ? 's' : ''}
+                    </div>`,
+                    { closeButton: false }
+                );
+                marker.on('mouseover', function() { this.openPopup(); });
+                marker.on('mouseout', function() { this.closePopup(); });
+
+                bounds.extend([c.lat, c.lng]);
+            });
+
+            statsMap.fitBounds(bounds, { padding: [30, 30], maxZoom: 10 });
+        }
     </script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </body>
 </html>
