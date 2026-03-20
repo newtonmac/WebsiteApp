@@ -292,6 +292,85 @@
         }
         .forecast-header span:first-child { text-align: left; }
 
+        /* Source tags for dual-source comparison */
+        .source-tag {
+            display: inline-block;
+            font-size: 9px;
+            font-weight: 600;
+            padding: 1px 5px;
+            border-radius: 3px;
+            letter-spacing: 0.3px;
+            vertical-align: middle;
+            margin-left: 4px;
+        }
+        .source-om { background: #dbeafe; color: #2563eb; }
+        .source-gw { background: #fef3c7; color: #d97706; }
+
+        /* Condition sub-value (e.g. gusts, feels like) */
+        .condition-sub {
+            font-size: 11px;
+            color: #6b7280;
+            margin-top: 3px;
+        }
+
+        /* UV color coding */
+        .uv-low { color: #10b981; }
+        .uv-moderate { color: #f59e0b; }
+        .uv-high { color: #ef4444; }
+        .uv-extreme { color: #7c3aed; }
+
+        /* Sun Times Card */
+        .sun-times {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .sun-time-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #f7f8fa;
+            border-radius: 12px;
+            padding: 14px 20px;
+            flex: 1;
+            min-width: 140px;
+            justify-content: center;
+        }
+        .sun-time-icon { font-size: 28px; }
+        .sun-time-info { text-align: left; }
+        .sun-time-label { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
+        .sun-time-value { font-size: 18px; font-weight: 600; color: #1a1a2e; }
+
+        /* Rain probability badge in hourly */
+        .hour-rain {
+            font-size: 10px;
+            color: #3b82f6;
+            font-weight: 500;
+        }
+
+        /* Map */
+        .weather-map {
+            height: 300px;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        /* South swell warning */
+        .swell-warning {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #92400e;
+            margin-top: 10px;
+        }
+
         /* Water Temperature */
         .water-temp-content {
             display: flex;
@@ -323,6 +402,17 @@
             flex-direction: column;
             gap: 8px;
         }
+
+        /* River flow card */
+        .river-flow-list { display: flex; flex-direction: column; gap: 8px; }
+        .river-flow-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 16px; background: #f7f8fa; border-radius: 12px; font-size: 13px;
+        }
+        .river-flow-icon { font-size: 20px; }
+        .river-flow-name { font-weight: 500; color: #1a1a2e; }
+        .river-flow-value { font-size: 12px; color: #6b7280; margin-top: 2px; }
+        .river-flow-dist { font-size: 11px; color: #9ca3af; flex: 0 0 auto; text-align: right; }
 
         .trend-row {
             display: flex;
@@ -445,6 +535,11 @@
             .water-temp-content { flex-direction: column; gap: 16px; }
             .water-temp-value { font-size: 36px; }
 
+            .sun-times { flex-direction: column; }
+            .sun-time-item { min-width: unset; }
+
+            .weather-map { height: 220px; }
+
             .alert-item { font-size: 12px; }
             .wq-item { flex-wrap: wrap; }
             .access-item { flex-wrap: wrap; }
@@ -486,27 +581,82 @@
     <div class="card">
         <div class="card-header"><span class="card-header-icon">&#x26C5;</span>Current Conditions</div>
         <div class="conditions-grid">
-            <div class="condition-item">
+            <div class="condition-item" id="condTemp">
                 <div class="condition-label">Temperature</div>
                 <div class="condition-value">-- <span class="condition-unit">&deg;F</span></div>
+                <div class="condition-sub" id="feelsLike">Feels like --</div>
             </div>
-            <div class="condition-item">
+            <div class="condition-item" id="condWind">
                 <div class="condition-label">Wind</div>
                 <div class="condition-value">-- <span class="condition-unit">mph</span></div>
-                <div style="color:#6b7280; font-size:12px; margin-top:4px;">Dir: --</div>
+                <div class="condition-sub" id="windDir">Dir: --</div>
+                <div class="condition-sub" id="windGusts">Gusts: --</div>
             </div>
-            <div class="condition-item">
+            <div class="condition-item" id="condHumidity">
                 <div class="condition-label">Humidity</div>
                 <div class="condition-value">-- <span class="condition-unit">%</span></div>
             </div>
-            <div class="condition-item">
+            <div class="condition-item" id="condUV">
                 <div class="condition-label">UV Index</div>
                 <div class="condition-value">--</div>
             </div>
-            <div class="condition-item">
+            <div class="condition-item" id="condVis">
                 <div class="condition-label">Visibility</div>
                 <div class="condition-value">-- <span class="condition-unit">mi</span></div>
             </div>
+            <div class="condition-item" id="condPressure">
+                <div class="condition-label">Pressure</div>
+                <div class="condition-value">-- <span class="condition-unit">hPa</span></div>
+            </div>
+            <div class="condition-item" id="condRain">
+                <div class="condition-label">Rain Chance</div>
+                <div class="condition-value">-- <span class="condition-unit">%</span></div>
+                <div class="condition-sub" id="thunderChance">Thunder: --</div>
+            </div>
+            <div class="condition-item" id="condDewpoint">
+                <div class="condition-label">Dew Point</div>
+                <div class="condition-value">-- <span class="condition-unit">&deg;F</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sunrise / Sunset -->
+    <div class="card" id="sunCard">
+        <div class="card-header"><span class="card-header-icon">&#x1F305;</span>Sun &amp; Daylight</div>
+        <div class="sun-times" id="sunTimes">
+            <div class="sun-time-item">
+                <div class="sun-time-icon">&#x1F305;</div>
+                <div class="sun-time-info">
+                    <div class="sun-time-label">Sunrise</div>
+                    <div class="sun-time-value" id="sunriseTime">--</div>
+                </div>
+            </div>
+            <div class="sun-time-item">
+                <div class="sun-time-icon">&#x1F307;</div>
+                <div class="sun-time-info">
+                    <div class="sun-time-label">Sunset</div>
+                    <div class="sun-time-value" id="sunsetTime">--</div>
+                </div>
+            </div>
+            <div class="sun-time-item">
+                <div class="sun-time-icon">&#x2600;&#xFE0F;</div>
+                <div class="sun-time-info">
+                    <div class="sun-time-label">Daylight</div>
+                    <div class="sun-time-value" id="daylightHours">--</div>
+                </div>
+            </div>
+        </div>
+        <div class="data-sources">
+            <span class="data-source-tag">Open-Meteo</span>
+        </div>
+    </div>
+
+    <!-- Location Map -->
+    <div class="card" id="mapCard" style="display:none;">
+        <div class="card-header"><span class="card-header-icon">&#x1F5FA;&#xFE0F;</span>Location</div>
+        <div id="weatherMap" class="weather-map"></div>
+        <div class="data-sources">
+            <span class="data-source-tag">Google Maps</span>
         </div>
     </div>
 
@@ -672,6 +822,31 @@
         </div>
     </div>
 
+    <!-- Water Temperature -->
+    <div class="card" id="waterTempCard">
+        <div class="card-header"><span class="card-header-icon">&#x1F321;&#xFE0F;</span>Water Temperature</div>
+        <div class="water-temp-content">
+            <div class="water-temp-main">
+                <div class="water-temp-value" id="waterTempValue">--</div>
+                <div class="water-temp-label" id="waterTempLabel">Water Temp (&deg;F)</div>
+            </div>
+            <div class="water-temp-trend" id="waterTempTrend">
+                <div class="trend-row">
+                    <span class="trend-label">Source</span>
+                    <span class="trend-value" id="waterTempSource">--</span>
+                </div>
+                <div class="trend-row">
+                    <span class="trend-label">Station</span>
+                    <span class="trend-value" id="waterTempStation">--</span>
+                </div>
+            </div>
+        </div>
+        <div class="data-sources">
+            <span class="data-source-tag">NOAA CO-OPS</span>
+            <span class="data-source-tag">Open-Meteo Marine</span>
+        </div>
+    </div>
+
     <!-- Marine Conditions -->
     <div class="card" id="marineCard">
         <div class="card-header"><span class="card-header-icon">&#x1F30A;</span>Marine Conditions</div>
@@ -690,6 +865,14 @@
                     <span class="trend-value">--</span>
                 </div>
                 <div class="trend-row">
+                    <span class="trend-label">Swell Height</span>
+                    <span class="trend-value" id="swellHeight">--</span>
+                </div>
+                <div class="trend-row">
+                    <span class="trend-label">Swell Direction</span>
+                    <span class="trend-value" id="swellDir">--</span>
+                </div>
+                <div class="trend-row">
                     <span class="trend-label">Current Velocity</span>
                     <span class="trend-value">--</span>
                 </div>
@@ -699,8 +882,23 @@
                 </div>
             </div>
         </div>
+        <div id="swellWarning" class="swell-warning" style="display:none;">
+            <span>&#x26A0;&#xFE0F;</span>
+            <span><strong>South Swell Detected</strong> — Southerly swell can push contaminated transboundary water northward along the coast. Use extra caution near border areas.</span>
+        </div>
         <div class="data-sources">
             <span class="data-source-tag">Open-Meteo Marine</span>
+        </div>
+    </div>
+
+    <!-- River Flow / Stream Gauge -->
+    <div class="card" id="riverFlowCard" style="display:none;">
+        <div class="card-header"><span class="card-header-icon">&#x1F4A7;</span>Nearby River &amp; Stream Flow</div>
+        <div class="river-flow-list" id="riverFlowList">
+            <div class="alert-empty">Search a location to check river flow data</div>
+        </div>
+        <div class="data-sources">
+            <span class="data-source-tag">USGS Water Services</span>
         </div>
     </div>
 
@@ -859,48 +1057,139 @@
                     .then(r => r.ok ? r.json() : null).catch(() => null),
                 fetch(`https://weather.googleapis.com/v1/forecast/hours:lookup?key=${GOOGLE_API_KEY}&location.latitude=${lat}&location.longitude=${lon}&hours=12`)
                     .then(r => r.ok ? r.json() : null).catch(() => null),
-                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,uv_index,visibility,weather_code,is_day&hourly=temperature_2m,wind_speed_10m,weather_code,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=7`)
+                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index,visibility,weather_code,is_day,surface_pressure,dew_point_2m,precipitation&hourly=temperature_2m,wind_speed_10m,wind_gusts_10m,precipitation_probability,weather_code,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_gusts_10m_max,precipitation_probability_max,sunrise,sunset&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=7`)
                     .then(r => r.json()),
-                fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&current=wave_height,wave_period,wave_direction,ocean_current_velocity,ocean_current_direction&daily=wave_height_max,wave_period_max&timezone=auto&forecast_days=7`)
+                fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&current=wave_height,wave_period,wave_direction,ocean_current_velocity,ocean_current_direction,swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature&daily=wave_height_max,wave_period_max&timezone=auto&forecast_days=7`)
                     .then(r => r.ok ? r.json() : null).catch(() => null)
             ]);
 
-            // ======== Current Conditions (prefer Google, fallback Open-Meteo) ========
-            const items = document.querySelectorAll('.condition-item');
+            // ======== Current Conditions (dual-source: Google + Open-Meteo) ========
+            const cur = openMeteo.current;
+            const gc = googleCurrent;
 
-            if (googleCurrent) {
-                const gc = googleCurrent;
-                const tempF = gc.temperature ? Math.round(gc.temperature.degrees * 9/5 + 32) : null;
-                // Google Weather returns Celsius by default
-                if (gc.temperature) {
-                    const unit = gc.temperature.unit === 'FAHRENHEIT' ? gc.temperature.degrees : tempF;
-                    items[0].querySelector('.condition-value').innerHTML = `${Math.round(unit)} <span class="condition-unit">&deg;F</span>`;
+            // Helper: get Google temp in F
+            function gTempF(t) {
+                if (!t) return null;
+                return t.unit === 'FAHRENHEIT' ? Math.round(t.degrees) : Math.round(t.degrees * 9/5 + 32);
+            }
+
+            // Helper: UV color class
+            function uvClass(uv) {
+                if (uv >= 11) return 'uv-extreme';
+                if (uv >= 8) return 'uv-high';
+                if (uv >= 3) return 'uv-moderate';
+                return 'uv-low';
+            }
+
+            // Temperature (with feels like)
+            {
+                const el = document.getElementById('condTemp');
+                const omTemp = Math.round(cur.temperature_2m);
+                const gTemp = gc ? gTempF(gc.temperature) : null;
+                if (gTemp != null && omTemp != null) {
+                    el.querySelector('.condition-value').innerHTML = `${gTemp} <span class="condition-unit">&deg;F</span> <span class="source-tag source-gw">G</span>`;
+                    el.querySelector('.condition-sub').innerHTML = `Feels ${Math.round(cur.apparent_temperature)}&deg; &bull; <span class="source-tag source-om">OM</span> ${omTemp}&deg;`;
+                } else {
+                    el.querySelector('.condition-value').innerHTML = `${omTemp} <span class="condition-unit">&deg;F</span>`;
+                    el.querySelector('.condition-sub').textContent = `Feels like ${Math.round(cur.apparent_temperature)}\u00B0`;
                 }
-                if (gc.wind) {
-                    const windMph = gc.wind.speed ? Math.round(gc.wind.speed.value * 0.621371) : '--';
-                    items[1].querySelector('.condition-value').innerHTML = `${windMph} <span class="condition-unit">mph</span>`;
-                    const dir = gc.wind.direction ? windDirection(gc.wind.direction.degrees) : '--';
-                    items[1].querySelector('div[style]').textContent = `Dir: ${dir}`;
+            }
+
+            // Wind (with gusts and dual source)
+            {
+                const el = document.getElementById('condWind');
+                const omWind = Math.round(cur.wind_speed_10m);
+                const omGusts = cur.wind_gusts_10m != null ? Math.round(cur.wind_gusts_10m) : null;
+                const gWind = gc && gc.wind && gc.wind.speed ? Math.round(gc.wind.speed.value * 0.621371) : null;
+                const gDir = gc && gc.wind && gc.wind.direction ? windDirection(gc.wind.direction.degrees) : null;
+                const gGust = gc && gc.wind && gc.wind.gust ? Math.round(gc.wind.gust.value * 0.621371) : null;
+                const dir = gDir || windDirection(cur.wind_direction_10m);
+
+                if (gWind != null) {
+                    el.querySelector('.condition-value').innerHTML = `${gWind} <span class="condition-unit">mph</span> <span class="source-tag source-gw">G</span>`;
+                    document.getElementById('windDir').innerHTML = `${dir} &bull; <span class="source-tag source-om">OM</span> ${omWind} mph`;
+                } else {
+                    el.querySelector('.condition-value').innerHTML = `${omWind} <span class="condition-unit">mph</span>`;
+                    document.getElementById('windDir').textContent = `Dir: ${dir}`;
                 }
-                if (gc.relativeHumidity != null) {
-                    items[2].querySelector('.condition-value').innerHTML = `${gc.relativeHumidity} <span class="condition-unit">%</span>`;
+                const gustVal = gGust || omGusts;
+                document.getElementById('windGusts').textContent = gustVal != null ? `Gusts: ${gustVal} mph` : '';
+            }
+
+            // Humidity
+            {
+                const el = document.getElementById('condHumidity');
+                const omHum = cur.relative_humidity_2m;
+                const gHum = gc ? gc.relativeHumidity : null;
+                if (gHum != null) {
+                    el.querySelector('.condition-value').innerHTML = `${gHum} <span class="condition-unit">%</span> <span class="source-tag source-gw">G</span>`;
+                } else {
+                    el.querySelector('.condition-value').innerHTML = `${omHum} <span class="condition-unit">%</span>`;
                 }
-                if (gc.uvIndex != null) {
-                    items[3].querySelector('.condition-value').textContent = gc.uvIndex;
+            }
+
+            // UV Index (with color coding)
+            {
+                const el = document.getElementById('condUV');
+                const omUV = cur.uv_index != null ? cur.uv_index : null;
+                const gUV = gc ? gc.uvIndex : null;
+                const uv = gUV != null ? gUV : (omUV != null ? omUV.toFixed(1) : '--');
+                const uvNum = parseFloat(uv);
+                const cls = !isNaN(uvNum) ? uvClass(uvNum) : '';
+                const tag = gUV != null ? '<span class="source-tag source-gw">G</span>' : '';
+                el.querySelector('.condition-value').innerHTML = `<span class="${cls}">${uv}</span> ${tag}`;
+            }
+
+            // Visibility
+            {
+                const el = document.getElementById('condVis');
+                if (gc && gc.visibility) {
+                    const visMi = (gc.visibility.value * 0.000621371).toFixed(1);
+                    el.querySelector('.condition-value').innerHTML = `${visMi} <span class="condition-unit">mi</span> <span class="source-tag source-gw">G</span>`;
+                } else {
+                    el.querySelector('.condition-value').innerHTML = `${(cur.visibility / 1609.34).toFixed(1)} <span class="condition-unit">mi</span>`;
                 }
-                if (gc.visibility) {
-                    const visMi = gc.visibility.value ? (gc.visibility.value * 0.000621371).toFixed(1) : '--';
-                    items[4].querySelector('.condition-value').innerHTML = `${visMi} <span class="condition-unit">mi</span>`;
+            }
+
+            // Pressure
+            {
+                const el = document.getElementById('condPressure');
+                const pressure = gc && gc.airPressure ? gc.airPressure.meanSeaLevelMillibars : (cur.surface_pressure || null);
+                if (pressure != null) {
+                    el.querySelector('.condition-value').innerHTML = `${Math.round(pressure)} <span class="condition-unit">hPa</span>`;
                 }
-            } else {
-                // Fallback: Open-Meteo
-                const cur = openMeteo.current;
-                items[0].querySelector('.condition-value').innerHTML = `${Math.round(cur.temperature_2m)} <span class="condition-unit">&deg;F</span>`;
-                items[1].querySelector('.condition-value').innerHTML = `${Math.round(cur.wind_speed_10m)} <span class="condition-unit">mph</span>`;
-                items[1].querySelector('div[style]').textContent = `Dir: ${windDirection(cur.wind_direction_10m)}`;
-                items[2].querySelector('.condition-value').innerHTML = `${cur.relative_humidity_2m} <span class="condition-unit">%</span>`;
-                items[3].querySelector('.condition-value').textContent = cur.uv_index != null ? cur.uv_index.toFixed(1) : '--';
-                items[4].querySelector('.condition-value').innerHTML = `${(cur.visibility / 1609.34).toFixed(1)} <span class="condition-unit">mi</span>`;
+            }
+
+            // Rain / Thunder probability
+            {
+                const el = document.getElementById('condRain');
+                let rainPct = null, thunderPct = null;
+                if (gc && gc.currentConditionsHistory && gc.currentConditionsHistory.length > 0) {
+                    // Google may have precip info
+                }
+                // Use Google hourly first hour for rain probability
+                if (googleHourly && googleHourly.forecastHours && googleHourly.forecastHours.length > 0) {
+                    const h0 = googleHourly.forecastHours[0];
+                    if (h0.precipitation && h0.precipitation.probability != null) rainPct = h0.precipitation.probability.percent;
+                    if (h0.thunderstormProbability != null) thunderPct = h0.thunderstormProbability;
+                }
+                // Fallback: Open-Meteo hourly precipitation_probability
+                if (rainPct == null && openMeteo.hourly && openMeteo.hourly.precipitation_probability) {
+                    const nowISO = new Date().toISOString().slice(0, 13);
+                    const idx = openMeteo.hourly.time.findIndex(t => t.startsWith(nowISO));
+                    if (idx >= 0) rainPct = openMeteo.hourly.precipitation_probability[idx];
+                }
+                el.querySelector('.condition-value').innerHTML = rainPct != null ? `${rainPct} <span class="condition-unit">%</span>` : `-- <span class="condition-unit">%</span>`;
+                document.getElementById('thunderChance').textContent = thunderPct != null ? `Thunder: ${thunderPct}%` : '';
+            }
+
+            // Dew Point
+            {
+                const el = document.getElementById('condDewpoint');
+                const dp = cur.dew_point_2m;
+                if (dp != null) {
+                    el.querySelector('.condition-value').innerHTML = `${Math.round(dp)} <span class="condition-unit">&deg;F</span>`;
+                }
             }
 
             // ======== Hourly Forecast (prefer Google, fallback Open-Meteo) ========
@@ -914,13 +1203,18 @@
                     const tempF = h.temperature ? Math.round(h.temperature.degrees * 9/5 + 32) : '--';
                     const temp = h.temperature?.unit === 'FAHRENHEIT' ? Math.round(h.temperature.degrees) : tempF;
                     const windMph = h.wind?.speed ? Math.round(h.wind.speed.value * 0.621371) : '--';
+                    const gustMph = h.wind?.gust ? Math.round(h.wind.gust.value * 0.621371) : null;
                     const isDark = h.isDaytime === false;
                     const icon = h.weatherCondition ? getGoogleWeatherIcon(h.weatherCondition.type, isDark) : '\u{26C5}';
+                    const rainPct = h.precipitation && h.precipitation.probability ? h.precipitation.probability.percent : null;
+                    const rainLine = rainPct != null && rainPct > 0 ? `<div class="hour-rain">\u{1F4A7} ${rainPct}%</div>` : '';
+                    const gustLine = gustMph != null ? `<div class="hour-rain">G ${gustMph}</div>` : '';
                     hourlyHTML += `<div class="hour-block">
                         <div class="hour-time">${label}</div>
                         <div class="hour-icon">${icon}</div>
                         <div class="hour-temp">${temp}&deg;</div>
                         <div class="hour-wind">${windMph} mph</div>
+                        ${gustLine}${rainLine}
                     </div>`;
                 });
                 hourlyContainer.innerHTML = hourlyHTML;
@@ -937,20 +1231,37 @@
                     const label = i === startIdx ? 'Now' : dt.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
                     const temp = Math.round(openMeteo.hourly.temperature_2m[i]);
                     const wind = Math.round(openMeteo.hourly.wind_speed_10m[i]);
+                    const gust = openMeteo.hourly.wind_gusts_10m ? Math.round(openMeteo.hourly.wind_gusts_10m[i]) : null;
+                    const rainPct = openMeteo.hourly.precipitation_probability ? openMeteo.hourly.precipitation_probability[i] : null;
                     const code = openMeteo.hourly.weather_code[i];
                     const isNight = !openMeteo.hourly.is_day[i];
+                    const rainLine = rainPct != null && rainPct > 0 ? `<div class="hour-rain">\u{1F4A7} ${rainPct}%</div>` : '';
+                    const gustLine = gust != null && gust > wind ? `<div class="hour-rain">G ${gust}</div>` : '';
                     hourlyHTML += `<div class="hour-block">
                         <div class="hour-time">${label}</div>
                         <div class="hour-icon">${weatherIcon(code, isNight)}</div>
                         <div class="hour-temp">${temp}&deg;</div>
                         <div class="hour-wind">${wind} mph</div>
+                        ${gustLine}${rainLine}
                     </div>`;
                 }
                 hourlyContainer.innerHTML = hourlyHTML;
             }
 
-            // ======== 5-Day Forecast (Open-Meteo daily + marine swell) ========
+            // ======== Sunrise / Sunset ========
             const daily = openMeteo.daily;
+            if (daily.sunrise && daily.sunset) {
+                const sunrise = new Date(daily.sunrise[0]);
+                const sunset = new Date(daily.sunset[0]);
+                document.getElementById('sunriseTime').textContent = sunrise.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                document.getElementById('sunsetTime').textContent = sunset.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                const daylightMs = sunset - sunrise;
+                const daylightH = Math.floor(daylightMs / 3600000);
+                const daylightM = Math.round((daylightMs % 3600000) / 60000);
+                document.getElementById('daylightHours').textContent = `${daylightH}h ${daylightM}m`;
+            }
+
+            // ======== 5-Day Forecast (Open-Meteo daily + marine swell) ========
             const forecastGrid = document.querySelector('.forecast-grid');
             let forecastHTML = '';
             for (let i = 0; i < Math.min(5, daily.time.length); i++) {
@@ -959,18 +1270,66 @@
                 const hi = Math.round(daily.temperature_2m_max[i]);
                 const lo = Math.round(daily.temperature_2m_min[i]);
                 const wind = Math.round(daily.wind_speed_10m_max[i]);
+                const gust = daily.wind_gusts_10m_max ? Math.round(daily.wind_gusts_10m_max[i]) : null;
+                const windTxt = gust && gust > wind ? `${wind} (G${gust})` : `${wind}`;
+                const rainPct = daily.precipitation_probability_max ? daily.precipitation_probability_max[i] : null;
                 const swell = marine && marine.daily && marine.daily.wave_height_max ? marine.daily.wave_height_max[i] : null;
                 const swellTxt = swell != null ? `${(swell * 3.281).toFixed(1)} ft` : '-- ft';
                 const desc = weatherDesc(daily.weather_code[i]);
+                const rainBadge = rainPct != null && rainPct > 0 ? ` <span style="color:#3b82f6;font-size:11px;">\u{1F4A7}${rainPct}%</span>` : '';
                 forecastHTML += `<div class="forecast-row">
                     <div class="forecast-day">${dayName}</div>
                     <div class="forecast-cell"><div class="forecast-cell-value">${hi}&deg; / ${lo}&deg;</div></div>
-                    <div class="forecast-cell"><div class="forecast-cell-value">${wind} mph</div></div>
+                    <div class="forecast-cell"><div class="forecast-cell-value">${windTxt} mph</div></div>
                     <div class="forecast-cell"><div class="forecast-cell-value">${swellTxt}</div></div>
-                    <div class="forecast-cell"><div class="forecast-cell-value">${desc}</div></div>
+                    <div class="forecast-cell"><div class="forecast-cell-value">${desc}${rainBadge}</div></div>
                 </div>`;
             }
             forecastGrid.innerHTML = forecastHTML;
+
+            // ======== Water Temperature card ========
+            {
+                const wtCard = document.getElementById('waterTempCard');
+                const wtValue = document.getElementById('waterTempValue');
+                const wtSource = document.getElementById('waterTempSource');
+                const wtStation = document.getElementById('waterTempStation');
+                let waterTemp = null;
+                let wtSourceText = '--';
+                let wtStationText = '--';
+
+                // Try NOAA water temperature from nearest tide station
+                const { station: tideStation, dist: tideDist } = nearestTideStation(lat, lon);
+                if (tideDist <= 100) {
+                    try {
+                        const d0 = new Date(), d1 = new Date(d0);
+                        d0.setHours(d0.getHours() - 6);
+                        const fd = d => `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+                        const wtRes = await fetch(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${fd(d0)}&end_date=${fd(d1)}&station=${tideStation.id}&product=water_temperature&units=english&time_zone=lst_ldt&format=json`);
+                        const wtData = await wtRes.json();
+                        if (wtData.data && wtData.data.length > 0) {
+                            waterTemp = parseFloat(wtData.data[wtData.data.length - 1].v);
+                            wtSourceText = 'NOAA CO-OPS';
+                            wtStationText = `${tideStation.name} (${tideDist.toFixed(0)} mi)`;
+                        }
+                    } catch (e) { console.log('NOAA water temp unavailable:', e); }
+                }
+
+                // Fallback: Open-Meteo SST from marine API
+                if (waterTemp == null && marine && marine.current && marine.current.sea_surface_temperature != null) {
+                    waterTemp = Math.round(marine.current.sea_surface_temperature * 9/5 + 32);
+                    wtSourceText = 'Open-Meteo Marine (SST)';
+                    wtStationText = 'Satellite estimate';
+                }
+
+                if (waterTemp != null) {
+                    wtValue.textContent = Math.round(waterTemp);
+                    wtSource.textContent = wtSourceText;
+                    wtStation.textContent = wtStationText;
+                } else {
+                    wtValue.textContent = '--';
+                    document.getElementById('waterTempLabel').textContent = 'No water temp data available';
+                }
+            }
 
             // ======== Marine Conditions card ========
             const mc = document.getElementById('marineCard');
@@ -985,21 +1344,38 @@
                 trendRows[0].textContent = wavePeriod != null ? `${wavePeriod.toFixed(1)}s` : '--';
                 trendRows[1].textContent = waveDir != null ? windDirection(waveDir) : '--';
 
+                // Swell data
+                const swellH = marine.current.swell_wave_height;
+                const swellD = marine.current.swell_wave_direction;
+                document.getElementById('swellHeight').textContent = swellH != null ? `${(swellH * 3.281).toFixed(1)} ft` : '--';
+                document.getElementById('swellDir').textContent = swellD != null ? `${windDirection(swellD)} (${Math.round(swellD)}\u00B0)` : '--';
+
+                // South swell warning (135°-225°)
+                if (swellD != null && swellD >= 135 && swellD <= 225 && swellH != null && swellH > 0.3) {
+                    document.getElementById('swellWarning').style.display = 'flex';
+                } else {
+                    document.getElementById('swellWarning').style.display = 'none';
+                }
+
                 const currentVel = marine.current.ocean_current_velocity;
-                trendRows[2].textContent = currentVel != null ? `${currentVel.toFixed(2)} m/s` : '--';
+                trendRows[4].textContent = currentVel != null ? `${currentVel.toFixed(2)} m/s` : '--';
 
                 const currentDir = marine.current.ocean_current_direction;
-                trendRows[3].textContent = currentDir != null ? windDirection(currentDir) : '--';
+                trendRows[5].textContent = currentDir != null ? windDirection(currentDir) : '--';
             }
 
             // ======== Tide Chart (NOAA) ========
             loadTideChart(lat, lon);
 
-            // ======== NWS Alerts, Water Quality, HABs, Coastal Access — fire in parallel ========
+            // ======== Map ========
+            initLocationMap(lat, lon, locationName);
+
+            // ======== NWS Alerts, Water Quality, HABs, Coastal Access, River Flow — fire in parallel ========
             loadNWSAlerts(lat, lon);
             loadWaterQuality(lat, lon);
             loadHABData(lat, lon);
             loadCoastalAccess(lat, lon);
+            loadRiverFlow(lat, lon);
 
             searchInput.style.borderColor = '#10b981';
             showStatus(`Showing data for ${locationName}`, '#10b981');
@@ -1521,6 +1897,140 @@
         }
     }
 
+    // ======== Location Map ========
+    let weatherMap = null;
+    let weatherMapMarker = null;
+    let tideStationMarker = null;
+
+    function initLocationMap(lat, lon, locationName) {
+        const mapCard = document.getElementById('mapCard');
+        mapCard.style.display = '';
+        const mapEl = document.getElementById('weatherMap');
+
+        if (!weatherMap) {
+            weatherMap = new google.maps.Map(mapEl, {
+                center: { lat, lng: lon },
+                zoom: 12,
+                mapTypeId: 'terrain',
+                disableDefaultUI: true,
+                zoomControl: true,
+                mapTypeControl: true,
+                mapTypeControlOptions: { position: google.maps.ControlPosition.TOP_RIGHT },
+            });
+        } else {
+            weatherMap.setCenter({ lat, lng: lon });
+        }
+
+        if (weatherMapMarker) weatherMapMarker.setMap(null);
+        weatherMapMarker = new google.maps.Marker({
+            position: { lat, lng: lon },
+            map: weatherMap,
+            title: locationName,
+            icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 10,
+                fillColor: '#3b82f6',
+                fillOpacity: 1,
+                strokeColor: '#fff',
+                strokeWeight: 3,
+            }
+        });
+
+        // Show nearest tide station
+        const { station, dist } = nearestTideStation(lat, lon);
+        if (dist <= 100) {
+            if (tideStationMarker) tideStationMarker.setMap(null);
+            tideStationMarker = new google.maps.Marker({
+                position: { lat: station.lat, lng: station.lon },
+                map: weatherMap,
+                title: `NOAA Tide Station: ${station.name}`,
+                icon: {
+                    path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
+                    scale: 6,
+                    fillColor: '#06b6d4',
+                    fillOpacity: 1,
+                    strokeColor: '#fff',
+                    strokeWeight: 2,
+                }
+            });
+
+            const infoWindow = new google.maps.InfoWindow({
+                content: `<div style="font-size:12px;"><strong>NOAA Tide Station</strong><br>${station.name} (${station.id})<br>${dist.toFixed(1)} mi away</div>`
+            });
+            tideStationMarker.addListener('click', () => infoWindow.open(weatherMap, tideStationMarker));
+        }
+    }
+
+    // ======== USGS River Flow ========
+    async function loadRiverFlow(lat, lon) {
+        const card = document.getElementById('riverFlowCard');
+        const container = document.getElementById('riverFlowList');
+
+        try {
+            // USGS NWIS instantaneous values: parameter 00060 = discharge (cubic feet/sec)
+            const bbox = `${(lon - 0.5).toFixed(4)},${(lat - 0.5).toFixed(4)},${(lon + 0.5).toFixed(4)},${(lat + 0.5).toFixed(4)}`;
+            const res = await fetch(`https://waterservices.usgs.gov/nwis/iv/?format=json&bBox=${bbox}&parameterCd=00060&siteStatus=active`);
+            const data = await res.json();
+
+            if (!data.value || !data.value.timeSeries || data.value.timeSeries.length === 0) {
+                card.style.display = 'none';
+                return;
+            }
+
+            // Parse and sort by distance
+            const gauges = data.value.timeSeries.map(ts => {
+                const info = ts.sourceInfo;
+                const gLat = info.geoLocation.geogLocation.latitude;
+                const gLon = info.geoLocation.geogLocation.longitude;
+                const dist = haversine(lat, lon, gLat, gLon);
+                const vals = ts.values[0].value;
+                const latest = vals.length > 0 ? vals[vals.length - 1] : null;
+                return {
+                    name: info.siteName,
+                    lat: gLat,
+                    lon: gLon,
+                    dist,
+                    flow: latest ? parseFloat(latest.value) : null,
+                    time: latest ? new Date(latest.dateTime) : null,
+                };
+            }).filter(g => g.flow != null && g.flow >= 0)
+              .sort((a, b) => a.dist - b.dist)
+              .slice(0, 5);
+
+            if (gauges.length === 0) {
+                card.style.display = 'none';
+                return;
+            }
+
+            card.style.display = '';
+            let html = '';
+            gauges.forEach(g => {
+                const flowLevel = g.flow > 1000 ? 'High' : g.flow > 100 ? 'Moderate' : 'Low';
+                const flowColor = g.flow > 1000 ? '#ef4444' : g.flow > 100 ? '#f59e0b' : '#10b981';
+                const timeAgo = g.time ? timeSince(g.time) : '';
+                html += `<div class="river-flow-item">
+                    <div class="river-flow-icon">\u{1F4A7}</div>
+                    <div style="flex:1">
+                        <div class="river-flow-name">${g.name}</div>
+                        <div class="river-flow-value">${g.flow.toFixed(0)} cfs &bull; <span style="color:${flowColor};font-weight:600;">${flowLevel}</span> &bull; ${timeAgo}</div>
+                    </div>
+                    <div class="river-flow-dist">${g.dist.toFixed(1)} mi</div>
+                </div>`;
+            });
+            container.innerHTML = html;
+        } catch (err) {
+            console.error('River flow error:', err);
+            card.style.display = 'none';
+        }
+    }
+
+    function timeSince(date) {
+        const mins = Math.round((Date.now() - date) / 60000);
+        if (mins < 60) return `${mins}m ago`;
+        if (mins < 1440) return `${Math.round(mins/60)}h ago`;
+        return `${Math.round(mins/1440)}d ago`;
+    }
+
     // ======== Haversine distance (miles) ========
     function haversine(lat1, lon1, lat2, lon2) {
         const R = 3958.8;
@@ -1547,6 +2057,7 @@
         <a href="https://tidesandcurrents.noaa.gov" target="_blank" style="color:#9ca3af;text-decoration:none;font-size:10px;">NOAA</a>
         <a href="https://www.weather.gov" target="_blank" style="color:#9ca3af;text-decoration:none;font-size:10px;">NWS</a>
         <a href="https://habsos.noaa.gov" target="_blank" style="color:#9ca3af;text-decoration:none;font-size:10px;">HABSOS</a>
+        <a href="https://waterservices.usgs.gov" target="_blank" style="color:#9ca3af;text-decoration:none;font-size:10px;">USGS Water</a>
         <a href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank" style="color:#9ca3af;text-decoration:none;font-size:10px;">CA WQ</a>
         <a href="https://www.coastal.ca.gov/YourCoast/" target="_blank" style="color:#9ca3af;text-decoration:none;font-size:10px;">CA Coastal</a>
         <a href="https://www.theswimguide.org" target="_blank" style="color:#9ca3af;text-decoration:none;font-size:10px;">Swim Guide</a>
