@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Outrigger Canoeing — PaddlePoint</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #ffffff;
+            color: #1a1a2e;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 24px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-left img {
+            width: 90px;
+            height: 90px;
+        }
+
+        .header-left h1 {
+            font-size: 28px;
+            font-weight: 800;
+            background: linear-gradient(90deg, #06b6d4, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.2;
+        }
+
+        .header-left .subtitle {
+            font-size: 13px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .header-right a {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            border: none;
+            background: transparent;
+            color: #4b5563;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+
+        .header-right a:hover {
+            background: #f3f4f6;
+        }
+
+        .header-right a.home-btn {
+            background: #0e7a6b;
+            color: #ffffff;
+        }
+
+        .header-right a.home-btn:hover {
+            background: #0b6358;
+        }
+
+        main {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        .hero {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .hero .icon {
+            font-size: 80px;
+            line-height: 1;
+            margin-bottom: 16px;
+        }
+
+        .hero h1 {
+            font-size: 36px;
+            font-weight: 800;
+            color: #1a1a2e;
+        }
+
+        h2 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 12px;
+        }
+
+        p, li {
+            font-size: 15px;
+            line-height: 1.7;
+            color: #4b5563;
+        }
+
+        .section {
+            margin-bottom: 36px;
+        }
+
+        .card {
+            background: #f7f8fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 12px;
+        }
+
+        .card h3 {
+            font-size: 17px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 4px;
+        }
+
+        .card .meta {
+            font-size: 13px;
+            color: #6b7280;
+            margin-bottom: 6px;
+        }
+
+        .card p {
+            margin: 0;
+        }
+
+        .gear-price {
+            display: inline-block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #0e7a6b;
+            background: #ecfdf5;
+            padding: 2px 10px;
+            border-radius: 6px;
+            margin-top: 4px;
+        }
+
+        ul {
+            padding-left: 20px;
+            margin-top: 8px;
+            margin-bottom: 8px;
+        }
+
+        ul li {
+            margin-bottom: 6px;
+        }
+
+        .links-section {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+
+        .links-section a {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #f7f8fa;
+            border-radius: 10px;
+            color: #1a1a2e;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .links-section a:hover {
+            background: #e5e7eb;
+        }
+
+        footer {
+            text-align: center;
+            border-top: 1px solid #e5e7eb;
+            padding: 32px 24px;
+            margin-top: 40px;
+        }
+
+        footer nav {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        footer nav a {
+            font-size: 14px;
+            color: #4b5563;
+            text-decoration: none;
+        }
+
+        footer nav a:hover {
+            color: #1a1a2e;
+        }
+
+        footer .copyright {
+            font-size: 13px;
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-left">
+        <img src="paddle-pin.svg" alt="PaddlePoint logo">
+        <div>
+            <h1>PaddlePoint</h1>
+            <span class="subtitle">Outrigger Guide</span>
+        </div>
+    </div>
+    <nav class="header-right">
+        <a href="index.html" class="home-btn">Home</a>
+        <a href="water-conditions.html">Water Conditions</a>
+        <a href="weather.html">Weather</a>
+        <a href="paddle-clubs.html">Clubs</a>
+        <a href="paddle-events.html">Events</a>
+        <a href="paddle-gear.html">Gear</a>
+    </nav>
+</header>
+
+<main>
+    <div class="hero">
+        <div class="icon">🛶</div>
+        <h1>Outrigger Canoeing</h1>
+    </div>
+
+    <div class="section">
+        <h2>What is Outrigger Canoeing?</h2>
+        <p>An outrigger canoe is a canoe with a lateral float — called an <strong>ama</strong> — connected by booms known as <strong>iakos</strong>, providing exceptional stability on open water. The sport has deep Polynesian roots and is central to Hawaiian, Tahitian, and Pacific Island culture. Outrigger canoes are paddled solo (OC-1), double (OC-2), or as a six-person crew (OC-6), making it one of the most versatile and culturally rich paddle sports in the world.</p>
+    </div>
+
+    <div class="section">
+        <h2>Types of Outrigger Canoes</h2>
+
+        <div class="card">
+            <h3>OC-1 (Solo)</h3>
+            <p class="meta">Length: 19'–23'</p>
+            <p>The solo outrigger canoe, built for racing and fitness paddling. Lightweight and fast, the OC-1 is the choice for competitive solo athletes who want to challenge themselves on the open ocean.</p>
+        </div>
+
+        <div class="card">
+            <h3>OC-2 (Two-Person)</h3>
+            <p>A two-person outrigger canoe used for training and recreational paddling. Great for building technique and coordination with a partner before stepping into larger crew boats.</p>
+        </div>
+
+        <div class="card">
+            <h3>OC-6 (Six-Person Crew Boat)</h3>
+            <p class="meta">Length: 40'+</p>
+            <p>The heart of the sport. The OC-6 is a six-person crew boat used in team racing. Paddling an OC-6 is a deeply communal experience — timing, rhythm, and trust between crew members are everything.</p>
+        </div>
+
+        <div class="card">
+            <h3>Surfski / OC Hybrid</h3>
+            <p>A crossover design built for downwind runs, combining the stability of an outrigger with the speed of a surfski. Popular among experienced paddlers chasing open-ocean swells.</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Essential Gear</h2>
+
+        <div class="card">
+            <h3>OC-1 Canoe</h3>
+            <p>Your primary craft for solo outrigger paddling. Available in fiberglass and carbon layups.</p>
+            <span class="gear-price">$2,000 – $5,000</span>
+        </div>
+
+        <div class="card">
+            <h3>OC Paddle (Single-Blade, Carbon)</h3>
+            <p>A lightweight single-blade paddle, typically carbon fiber, designed for efficient outrigger strokes.</p>
+            <span class="gear-price">$150 – $500</span>
+        </div>
+
+        <div class="card">
+            <h3>PFD (Personal Flotation Device)</h3>
+            <p>A low-profile life vest that allows full range of paddling motion. Required for most races and recommended at all times.</p>
+            <span class="gear-price">$50 – $150</span>
+        </div>
+
+        <div class="card">
+            <h3>Hydration Pack</h3>
+            <p>Stay hydrated during long paddles and races. A small deck-mounted or wearable hydration system is essential for open-water sessions.</p>
+            <span class="gear-price">$20 – $40</span>
+        </div>
+
+        <div class="card">
+            <h3>Ama Cord / Lashing</h3>
+            <p>Used to secure the ama to the iakos. Proper lashing technique is a fundamental skill every outrigger paddler should learn.</p>
+        </div>
+
+        <div class="card">
+            <h3>Bailer</h3>
+            <p>A simple scoop for removing water from the hull. Essential for open-ocean paddling where waves regularly wash over the canoe.</p>
+        </div>
+
+        <div class="card">
+            <h3>Leash</h3>
+            <p>Keeps you tethered to the canoe in case of a huli (capsize). Critical for solo OC-1 paddling in open water.</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Getting Started</h2>
+        <ul>
+            <li><strong>Join a club</strong> — OC-6 is the best way to start. You will learn technique, ocean awareness, and the culture of the sport from experienced paddlers.</li>
+            <li><strong>Learn the six paddling positions.</strong> Each seat in an OC-6 has a specific role, from the stroker in seat 1 to the steersperson in seat 6.</li>
+            <li><strong>Focus on timing with your crew.</strong> Outrigger is about synchronization — matching your stroke to the paddler in front of you is more important than raw power.</li>
+            <li><strong>Most clubs provide boats and gear for beginners.</strong> You do not need to buy anything to get started. Just show up ready to paddle.</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>Who Is It For?</h2>
+        <p>Outrigger canoeing is for team sport lovers, ocean paddlers, and anyone drawn to Polynesian culture and community. OC-6 paddling is highly social — you will train, race, and travel with your crew. For those who prefer solo competition, OC-1 racing offers an intense, rewarding challenge on the open ocean.</p>
+    </div>
+
+    <div class="section">
+        <h2>Explore More</h2>
+        <div class="links-section">
+            <a href="paddle-gear.html">Browse Gear</a>
+            <a href="paddle-clubs.html">Find Clubs</a>
+            <a href="paddle-events.html">Upcoming Events</a>
+        </div>
+    </div>
+</main>
+
+<footer>
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="paddle-gear.html">Gear</a>
+        <a href="paddle-clubs.html">Clubs</a>
+        <a href="paddle-events.html">Events</a>
+        <a href="water-conditions.html">Water Conditions</a>
+        <a href="weather.html">Weather</a>
+    </nav>
+    <p class="copyright">&copy; 2026 PaddlePoint. All rights reserved.</p>
+</footer>
+
+</body>
+</html>

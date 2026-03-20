@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kayaking - PaddlePoint</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #ffffff;
+            color: #1a1a2e;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 24px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-left img {
+            width: 90px;
+            height: 90px;
+        }
+
+        .header-left .brand h1 {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #06b6d4, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-left .brand .subtitle {
+            font-size: 13px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .header-right nav {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .header-right nav a {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            border: none;
+            background: transparent;
+            color: #4b5563;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+
+        .header-right nav a:hover {
+            background: #f3f4f6;
+        }
+
+        .header-right nav a.home-btn {
+            background: #0e7a6b;
+            color: #ffffff;
+        }
+
+        .header-right nav a.home-btn:hover {
+            background: #0b6558;
+        }
+
+        main {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        .hero {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .hero .icon {
+            font-size: 80px;
+            margin-bottom: 16px;
+        }
+
+        .hero h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+
+        h2 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 12px;
+        }
+
+        p {
+            font-size: 15px;
+            line-height: 1.7;
+            color: #4b5563;
+        }
+
+        section {
+            margin-bottom: 36px;
+        }
+
+        .card {
+            background: #f7f8fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 12px;
+        }
+
+        .card h3 {
+            font-size: 17px;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 6px;
+        }
+
+        .card p {
+            margin: 0;
+        }
+
+        .gear-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .gear-item:last-child {
+            border-bottom: none;
+        }
+
+        .gear-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1a1a2e;
+        }
+
+        .gear-desc {
+            font-size: 14px;
+            color: #6b7280;
+            flex: 1;
+            margin: 0 16px;
+        }
+
+        .gear-price {
+            font-size: 14px;
+            font-weight: 600;
+            color: #0e7a6b;
+            white-space: nowrap;
+        }
+
+        ul {
+            padding-left: 20px;
+            margin-top: 8px;
+        }
+
+        ul li {
+            font-size: 15px;
+            line-height: 1.7;
+            color: #4b5563;
+            margin-bottom: 6px;
+        }
+
+        .links-section {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        .links-section a {
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 8px;
+            background: #f7f8fa;
+            color: #1a1a2e;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .links-section a:hover {
+            background: #e5e7eb;
+        }
+
+        footer {
+            text-align: center;
+            border-top: 1px solid #e5e7eb;
+            padding: 24px;
+            margin-top: 40px;
+        }
+
+        footer nav {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        footer nav a {
+            font-size: 14px;
+            color: #4b5563;
+            text-decoration: none;
+        }
+
+        footer nav a:hover {
+            color: #1a1a2e;
+        }
+
+        footer .copyright {
+            font-size: 13px;
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-left">
+            <img src="paddle-pin.svg" alt="PaddlePoint logo">
+            <div class="brand">
+                <h1>PaddlePoint</h1>
+                <span class="subtitle">Kayak Guide</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <nav>
+                <a href="index.html" class="home-btn">Home</a>
+                <a href="water-conditions.html">Water Conditions</a>
+                <a href="weather.html">Weather</a>
+                <a href="paddle-clubs.html">Clubs</a>
+                <a href="paddle-events.html">Events</a>
+                <a href="paddle-gear.html">Gear</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="hero">
+            <div class="icon">🛶</div>
+            <h1>Kayaking</h1>
+        </div>
+
+        <section>
+            <h2>What is Kayaking?</h2>
+            <p>Kayaking involves sitting in a closed or open cockpit and propelling yourself through the water using a double-bladed paddle. The craft has thousands of years of history, originating with the Inuit peoples who built kayaks from animal skins and driftwood for hunting and transportation. Today, kayaking is incredibly versatile — encompassing sea kayaking, whitewater paddling, sprint racing, recreational touring, and even fishing. It remains one of the most rewarding ways to explore waterways around the world.</p>
+        </section>
+
+        <section>
+            <h2>Types of Kayaks</h2>
+            <div class="card">
+                <h3>Recreational</h3>
+                <p>Wide, stable, and easy to get in and out of. Typically 9' to 12' in length, recreational kayaks are perfect for calm lakes and slow rivers. They are the most accessible option for newcomers.</p>
+            </div>
+            <div class="card">
+                <h3>Sea / Touring Kayak</h3>
+                <p>Ranging from 14' to 18', these kayaks feature sealed hatches for storage, and often a rudder or skeg for tracking. Built for open water and multi-day trips along coastlines and large lakes.</p>
+            </div>
+            <div class="card">
+                <h3>Sprint Kayak (K1/K2)</h3>
+                <p>Extremely narrow and purpose-built for speed. Sprint kayaks are 17' or longer and are used in Olympic-level flatwater racing. They demand excellent balance and technique.</p>
+            </div>
+            <div class="card">
+                <h3>Sit-on-Top</h3>
+                <p>Open deck design that is self-draining and easy to mount. Ideal for warm water, beginners, and casual paddling. Popular for fishing and snorkeling excursions.</p>
+            </div>
+            <div class="card">
+                <h3>Whitewater</h3>
+                <p>Short and highly maneuverable, whitewater kayaks are designed for navigating rivers and rapids. They are built to handle turbulent water and allow quick turns and rolls.</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>Essential Gear</h2>
+            <div class="gear-item">
+                <span class="gear-name">Kayak</span>
+                <span class="gear-desc">Your primary craft — sit-in or sit-on-top</span>
+                <span class="gear-price">$500 – $3,000+</span>
+            </div>
+            <div class="gear-item">
+                <span class="gear-name">Double-Bladed Paddle</span>
+                <span class="gear-desc">Two-blade paddle sized to your height and boat width</span>
+                <span class="gear-price">$60 – $400</span>
+            </div>
+            <div class="gear-item">
+                <span class="gear-name">PFD / Life Vest</span>
+                <span class="gear-desc">Essential safety gear, required on the water</span>
+                <span class="gear-price">$60 – $150</span>
+            </div>
+            <div class="gear-item">
+                <span class="gear-name">Spray Skirt</span>
+                <span class="gear-desc">Keeps water out of sit-in kayak cockpits</span>
+                <span class="gear-price">$40 – $120</span>
+            </div>
+            <div class="gear-item">
+                <span class="gear-name">Dry Bags</span>
+                <span class="gear-desc">Waterproof storage for gear and personal items</span>
+                <span class="gear-price">$20 – $60</span>
+            </div>
+            <div class="gear-item">
+                <span class="gear-name">Bilge Pump</span>
+                <span class="gear-desc">Hand pump to remove water from the cockpit</span>
+                <span class="gear-price">$15 – $30</span>
+            </div>
+        </section>
+
+        <section>
+            <h2>Getting Started</h2>
+            <ul>
+                <li>Take a lesson to learn proper paddle stroke technique — it makes a big difference.</li>
+                <li>Practice the wet exit and re-entry so you are prepared if you capsize.</li>
+                <li>Start on sheltered, calm water before progressing to open water or currents.</li>
+                <li>Always tell someone your float plan — where you are going and when you expect to return.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Who Is It For?</h2>
+            <p>Kayaking is perfect for nature lovers who want to explore coastlines, rivers, and lakes up close. It appeals to fitness seekers looking for an effective upper-body and core workout, anglers who want stealthy access to prime fishing spots, and adventure paddlers craving the thrill of whitewater rapids. With so many styles of kayaking available, there is a path for virtually every interest and skill level.</p>
+        </section>
+
+        <section>
+            <h2>Explore More</h2>
+            <div class="links-section">
+                <a href="paddle-gear.html">Browse Gear</a>
+                <a href="paddle-clubs.html">Find a Club</a>
+                <a href="paddle-events.html">Upcoming Events</a>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <nav>
+            <a href="index.html">Home</a>
+            <a href="water-conditions.html">Water Conditions</a>
+            <a href="weather.html">Weather</a>
+            <a href="paddle-clubs.html">Clubs</a>
+            <a href="paddle-events.html">Events</a>
+            <a href="paddle-gear.html">Gear</a>
+        </nav>
+        <p class="copyright">&copy; 2026 PaddlePoint. All rights reserved.</p>
+    </footer>
+</body>
+</html>
