@@ -10,8 +10,8 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #0f1117;
-            color: #e1e4e8;
+            background: #ffffff;
+            color: #1a1a2e;
             min-height: 100vh;
             -webkit-text-size-adjust: 100%;
             overflow-x: hidden;
@@ -21,9 +21,14 @@
         .pac-container { max-width: 100vw !important; }
 
         .header {
-            background: linear-gradient(135deg, #1a1d28, #252836);
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             padding: 14px 16px;
-            border-bottom: 1px solid #2d3040;
+            border-bottom: 1px solid #e5e7eb;
+            position: sticky;
+            top: 0;
+            z-index: 100;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -48,45 +53,43 @@
             -webkit-text-fill-color: transparent;
         }
 
-        .header .subtitle { color: #8b8fa3; font-size: 12px; margin-top: 2px; }
+        .header .subtitle { color: #6b7280; font-size: 12px; margin-top: 2px; }
 
         .header-right { display: flex; align-items: center; gap: 8px; }
 
         .back-btn {
             cursor: pointer;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 12px;
+            background: transparent;
+            border: none;
+            color: #4b5563;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
             transition: all 0.2s ease;
             user-select: none;
-            border: 1px solid;
             white-space: nowrap;
-            background: rgba(96, 165, 250, 0.1);
-            border-color: rgba(96, 165, 250, 0.2);
-            color: #60a5fa;
             text-decoration: none;
         }
         .back-btn:hover {
-            background: rgba(96, 165, 250, 0.18);
-            border-color: rgba(96, 165, 250, 0.4);
+            background: #f3f4f6;
         }
         .dev-btn {
             cursor: pointer;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 12px;
+            background: transparent;
+            border: none;
+            color: #4b5563;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
             transition: all 0.2s ease;
             user-select: none;
-            border: 1px solid;
             white-space: nowrap;
-            background: rgba(251, 191, 36, 0.1);
-            border-color: rgba(251, 191, 36, 0.25);
-            color: #fbbf24;
             text-decoration: none;
         }
         .dev-btn:hover {
-            background: rgba(251, 191, 36, 0.2);
-            border-color: rgba(251, 191, 36, 0.45);
+            background: #f3f4f6;
         }
         .dev-overlay {
             display: none;
@@ -435,7 +438,7 @@
         .site-footer {
             text-align: center;
             padding: 14px 16px 18px;
-            border-top: 1px solid #2d3040;
+            border-top: 1px solid #e5e7eb;
         }
         .footer-links {
             display: flex;
@@ -445,14 +448,14 @@
             margin-bottom: 10px;
         }
         .footer-links a {
-            color: #8b8fa3;
+            color: #6b7280;
             text-decoration: none;
             font-size: 12px;
             cursor: pointer;
             transition: color 0.2s;
         }
         .footer-links a:hover { color: #06b6d4; }
-        .footer-copy { color: #4b5063; font-size: 10px; }
+        .footer-copy { color: #9ca3af; font-size: 10px; }
 
         /* Footer modal */
         .footer-modal-overlay {
@@ -523,9 +526,9 @@
             cursor: pointer;
             padding: 2px 8px;
             border-radius: 10px;
-            background: rgba(96, 165, 250, 0.1);
-            border: 1px solid rgba(96, 165, 250, 0.2);
-            color: #60a5fa;
+            background: rgba(14,122,107,0.08);
+            border: 1px solid rgba(14,122,107,0.2);
+            color: #0e7a6b;
             font-size: 12px;
             transition: all 0.2s ease;
             user-select: none;
@@ -648,13 +651,17 @@
         <div class="header-left">
             <img src="paddle-pin.svg" alt="PaddlePoint" class="header-logo">
             <div>
-                <h1>Paddle Clubs</h1>
-                <div class="subtitle">Find paddle clubs and launch points near you</div>
+                <h1>PaddlePoint</h1>
+                <div class="subtitle">Paddle Clubs</div>
             </div>
         </div>
         <div class="header-right">
-            <a href="#" class="dev-btn" onclick="openDevModal(); return false;">Development</a>
-            <a href="paddle-conditions.html" class="back-btn">Back to Conditions</a>
+            <a href="paddlepoint.html" class="back-btn" style="background:#0e7a6b;color:#fff;">Home</a>
+            <a href="paddle-conditions.html" class="back-btn">Water Conditions</a>
+            <a href="paddle-weather.html" class="back-btn">Weather</a>
+            <a href="paddle-events.html" class="back-btn">Events</a>
+            <a href="paddle-gear.html" class="back-btn">Gear</a>
+            <a href="#" class="back-btn" onclick="openDevModal(); return false;">Development</a>
         </div>
     </div>
 
