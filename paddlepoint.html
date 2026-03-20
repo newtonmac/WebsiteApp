@@ -441,6 +441,170 @@
             .footer-inner { grid-template-columns: 1fr; }
         }
 
+        /* Stats badge */
+        .visitor-badge {
+            cursor: pointer;
+            padding: 3px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            background: rgba(96, 165, 250, 0.08);
+            border: 1px solid rgba(96, 165, 250, 0.25);
+            color: #60a5fa;
+            transition: all 0.2s ease;
+            user-select: none;
+            margin-left: 6px;
+        }
+        .visitor-badge:hover {
+            background: rgba(96, 165, 250, 0.18);
+            border-color: rgba(96, 165, 250, 0.4);
+        }
+
+        /* Stats Modal Overlay */
+        .stats-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; right: 0; bottom: 0; left: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            z-index: 9999;
+            align-items: flex-end;
+            justify-content: center;
+            padding: 0;
+            -webkit-overflow-scrolling: touch;
+        }
+        @media (min-width: 701px) {
+            .stats-modal-overlay { align-items: center; padding: 20px; }
+        }
+        .stats-modal-overlay.open { display: flex; }
+        .stats-modal {
+            background: #1a1d28;
+            border: 1px solid #2d3040;
+            border-radius: 20px 20px 0 0;
+            max-width: 480px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            scrollbar-color: #2d3040 transparent;
+            animation: statsSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @media (min-width: 701px) {
+            .stats-modal { border-radius: 20px; max-height: 85vh; animation: statsScaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        }
+        @keyframes statsSlideUp {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes statsScaleIn {
+            from { transform: scale(0.92); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .stats-modal-header {
+            padding: 20px 24px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .stats-modal-title { font-size: 20px; font-weight: 700; color: #e1e4e8; display: flex; align-items: center; gap: 8px; }
+        .stats-modal-close {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            background: #252836;
+            border: 1px solid #2d3040;
+            color: #8b8fa3;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        .stats-modal-close:hover { background: #2d3040; color: #e1e4e8; }
+        .stats-modal-body { padding: 16px 24px 24px; }
+
+        /* Big number cards */
+        .stats-hero {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .stats-hero-card {
+            flex: 1;
+            background: #252836;
+            border: 1px solid #2d3040;
+            border-radius: 14px;
+            padding: 16px;
+            text-align: center;
+        }
+        .stats-hero-label { font-size: 11px; color: #8b8fa3; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .stats-hero-value { font-size: 28px; font-weight: 800; }
+        .stats-hero-value.blue { color: #60a5fa; }
+        .stats-hero-value.purple { color: #a78bfa; }
+        .stats-hero-value.cyan { color: #22d3ee; }
+
+        /* Bar chart */
+        .stats-chart-section { margin-bottom: 20px; }
+        .stats-chart-title { font-size: 13px; font-weight: 600; color: #a0a4b8; margin-bottom: 12px; }
+        .stats-bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 100px; padding: 0 2px; }
+        .stats-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
+        .stats-bar {
+            width: 100%;
+            border-radius: 6px 6px 2px 2px;
+            background: linear-gradient(180deg, #60a5fa, #3b82f6);
+            min-height: 3px;
+            transition: height 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+        }
+        .stats-bar:hover { filter: brightness(1.2); }
+        .stats-bar-label { font-size: 9px; color: #6b7280; white-space: nowrap; }
+        .stats-bar-value {
+            font-size: 10px;
+            font-weight: 600;
+            color: #60a5fa;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .stats-bar-col:hover .stats-bar-value { opacity: 1; }
+
+        /* City breakdown */
+        .stats-cities-section { margin-bottom: 16px; }
+        .stats-city-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #2d304030;
+        }
+        .stats-city-row:last-child { border-bottom: none; }
+        .stats-city-rank { font-size: 11px; color: #6b7280; font-weight: 600; width: 18px; text-align: center; }
+        .stats-city-name { font-size: 13px; color: #c0c4d0; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .stats-city-bar-wrap { flex: 1; height: 6px; background: #252836; border-radius: 3px; overflow: hidden; }
+        .stats-city-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            background: linear-gradient(90deg, #60a5fa, #a78bfa);
+            transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .stats-city-count { font-size: 12px; font-weight: 600; color: #60a5fa; min-width: 28px; text-align: right; }
+
+        /* Day breakdown */
+        .stats-day { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #2d304040; }
+        .stats-day:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+        .stats-day-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .stats-day-date { font-size: 13px; font-weight: 600; color: #a0a4b8; }
+        .stats-day-count { font-size: 12px; color: #60a5fa; background: rgba(96, 165, 250, 0.1); padding: 2px 8px; border-radius: 8px; }
+        .stats-cities { display: flex; flex-wrap: wrap; gap: 5px; }
+        .stats-city { font-size: 11px; color: #8b8fa3; background: #252836; padding: 2px 7px; border-radius: 6px; }
+        .stats-city span { color: #60a5fa; font-weight: 600; margin-left: 3px; }
+
+        .stats-loading { display: flex; align-items: center; justify-content: center; padding: 40px; color: #6b7280; font-size: 13px; gap: 10px; }
+        .stats-spinner { width: 18px; height: 18px; border: 2px solid #2d3040; border-top-color: #60a5fa; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
         .pp-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); z-index:9999; align-items:center; justify-content:center; }
         .pp-modal-overlay.open { display:flex; }
         .pp-modal { background:#1a1d28; border:1px solid #2d3040; border-radius:20px; padding:28px; width:90%; max-width:520px; max-height:80vh; overflow-y:auto; position:relative; color:#c0c4d0; font-size:13px; line-height:1.7; }
@@ -547,7 +711,7 @@
             </div>
         </div>
         <div class="footer-bottom">
-            <span>&copy; 2026 PaddlePoint. All rights reserved.</span>
+            <span>&copy; 2026 PaddlePoint. All rights reserved. &bull; <span class="visitor-badge" onclick="toggleStats()">Stats</span></span>
             <div class="footer-bottom-links">
                 <a href="javascript:void(0)" onclick="openModal('terms')">Terms of Service</a>
                 <a href="javascript:void(0)" onclick="openModal('privacy')">Privacy Policy</a>
@@ -555,6 +719,19 @@
             </div>
         </div>
     </footer>
+
+    <!-- Stats Modal -->
+    <div class="stats-modal-overlay" id="statsModal" onclick="if(event.target===this)closeStatsModal()">
+        <div class="stats-modal">
+            <div class="stats-modal-header">
+                <div class="stats-modal-title">Visitor Stats</div>
+                <button class="stats-modal-close" onclick="closeStatsModal()" aria-label="Close">&times;</button>
+            </div>
+            <div class="stats-modal-body">
+                <div id="statsContent"><div class="stats-loading"><div class="stats-spinner"></div> Loading stats...</div></div>
+            </div>
+        </div>
+    </div>
 
     <!-- MODAL -->
     <div class="pp-modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
@@ -656,7 +833,175 @@
             document.getElementById('modalOverlay').classList.remove('open');
             document.body.style.overflow = '';
         }
-        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') {
+                closeModal();
+                closeStatsModal();
+            }
+        });
+
+        // --- Visitor Counter & Stats ---
+        const COUNTER_API = 'https://visitor-counter.newtonmac.workers.dev';
+
+        // Record visit silently
+        (async () => {
+            try {
+                await fetch(`${COUNTER_API}/visit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ page: 'paddlepoint', referrer: document.referrer })
+                });
+            } catch { /* silent */ }
+        })();
+
+        let statsLoaded = false;
+
+        function toggleStats() {
+            const modal = document.getElementById('statsModal');
+            modal.classList.add('open');
+            document.body.style.overflow = 'hidden';
+            if (!statsLoaded) loadStats();
+        }
+
+        function closeStatsModal() {
+            const modal = document.getElementById('statsModal');
+            modal.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        function animateCount(el, target, duration) {
+            const start = performance.now();
+            const update = (now) => {
+                const progress = Math.min((now - start) / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                el.textContent = Math.round(eased * target).toLocaleString();
+                if (progress < 1) requestAnimationFrame(update);
+            };
+            requestAnimationFrame(update);
+        }
+
+        async function loadStats() {
+            try {
+                const res = await fetch(`${COUNTER_API}/stats?page=paddlepoint`);
+                const data = await res.json();
+                statsLoaded = true;
+
+                const today = new Date().toISOString().slice(0, 10);
+                const todayData = data.days.find(d => d.date === today);
+                const todayCount = todayData ? todayData.uniqueVisitors : 0;
+                const weekTotal = data.days.reduce((s, d) => s + d.uniqueVisitors, 0);
+
+                const container = document.getElementById('statsContent');
+
+                // Build hero cards
+                let html = `<div class="stats-hero">
+                    <div class="stats-hero-card">
+                        <div class="stats-hero-label">All Time</div>
+                        <div class="stats-hero-value blue" id="heroTotal">0</div>
+                    </div>
+                    <div class="stats-hero-card">
+                        <div class="stats-hero-label">This Week</div>
+                        <div class="stats-hero-value cyan" id="heroWeek">0</div>
+                    </div>
+                    <div class="stats-hero-card">
+                        <div class="stats-hero-label">Today</div>
+                        <div class="stats-hero-value purple" id="heroToday">0</div>
+                    </div>
+                </div>`;
+
+                if (data.days && data.days.length > 0) {
+                    const days = data.days.slice().reverse();
+                    const maxVisitors = Math.max(...days.map(d => d.uniqueVisitors), 1);
+
+                    // Bar chart
+                    html += `<div class="stats-chart-section">
+                        <div class="stats-chart-title">Daily Visitors</div>
+                        <div class="stats-bar-chart">
+                            ${days.map(day => {
+                                const pct = (day.uniqueVisitors / maxVisitors) * 100;
+                                const label = new Date(day.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' });
+                                return `<div class="stats-bar-col">
+                                    <div class="stats-bar-value">${day.uniqueVisitors}</div>
+                                    <div class="stats-bar" style="height: 0%" data-height="${pct}%"></div>
+                                    <div class="stats-bar-label">${label}</div>
+                                </div>`;
+                            }).join('')}
+                        </div>
+                    </div>`;
+
+                    // Aggregate cities across all days
+                    const cityTotals = {};
+                    days.forEach(day => {
+                        if (day.cities) {
+                            Object.entries(day.cities).forEach(([city, count]) => {
+                                cityTotals[city] = (cityTotals[city] || 0) + count;
+                            });
+                        }
+                    });
+                    const topCities = Object.entries(cityTotals).sort((a, b) => b[1] - a[1]).slice(0, 8);
+                    const maxCity = topCities.length > 0 ? topCities[0][1] : 1;
+
+                    if (topCities.length > 0) {
+                        html += `<div class="stats-cities-section">
+                            <div class="stats-chart-title">Top Locations</div>
+                            ${topCities.map(([city, count], i) => {
+                                const pct = (count / maxCity) * 100;
+                                return `<div class="stats-city-row">
+                                    <div class="stats-city-rank">${i + 1}</div>
+                                    <div class="stats-city-name">${city}</div>
+                                    <div class="stats-city-bar-wrap"><div class="stats-city-bar-fill" style="width: 0%" data-width="${pct}%"></div></div>
+                                    <div class="stats-city-count">${count}</div>
+                                </div>`;
+                            }).join('')}
+                        </div>`;
+                    }
+
+                    // Daily breakdown
+                    html += `<div class="stats-chart-title" style="margin-top:8px;">Daily Breakdown</div>`;
+                    html += days.map(day => {
+                        const dateLabel = new Date(day.date + 'T12:00:00').toLocaleDateString('en-US', {
+                            weekday: 'short', month: 'short', day: 'numeric'
+                        });
+                        const cityTags = day.cities ? Object.entries(day.cities)
+                            .sort((a, b) => b[1] - a[1])
+                            .map(([city, count]) => `<span class="stats-city">${city}<span>${count}</span></span>`)
+                            .join('') : '';
+                        return `<div class="stats-day">
+                            <div class="stats-day-header">
+                                <span class="stats-day-date">${dateLabel}</span>
+                                <span class="stats-day-count">${day.uniqueVisitors} unique &middot; ${day.totalHits} hits</span>
+                            </div>
+                            <div class="stats-cities">${cityTags || '<span style="color:#6b7080;font-size:12px;">No city data</span>'}</div>
+                        </div>`;
+                    }).join('');
+                } else {
+                    html += '<p style="color:#6b7080;font-size:13px;text-align:center;">No data yet.</p>';
+                }
+
+                container.innerHTML = html;
+
+                // Animate hero numbers
+                setTimeout(() => {
+                    animateCount(document.getElementById('heroTotal'), data.total, 1200);
+                    animateCount(document.getElementById('heroWeek'), weekTotal, 1000);
+                    animateCount(document.getElementById('heroToday'), todayCount, 800);
+                }, 50);
+
+                // Animate bars with stagger
+                setTimeout(() => {
+                    document.querySelectorAll('.stats-bar[data-height]').forEach((bar, i) => {
+                        setTimeout(() => { bar.style.height = bar.dataset.height; }, i * 80);
+                    });
+                    document.querySelectorAll('.stats-city-bar-fill[data-width]').forEach((fill, i) => {
+                        setTimeout(() => { fill.style.width = fill.dataset.width; }, i * 60);
+                    });
+                }, 100);
+
+            } catch {
+                document.getElementById('statsContent').innerHTML =
+                    '<p style="color:#ef4444;font-size:13px;text-align:center;padding:30px;">Could not load stats.</p>';
+            }
+        }
     </script>
 </body>
 </html>
