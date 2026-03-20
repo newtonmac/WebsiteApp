@@ -607,7 +607,7 @@
         .wq-poor { background: #ef444415; border: 1px solid #ef444430; }
         .wq-icon { font-size: 28px; }
         .wq-text h4 { font-size: 15px; font-weight: 700; }
-        .wq-text p { font-size: 12px; color: #8b8fa3; margin-top: 2px; }
+        .wq-text p { font-size: 12px; color: #6b7280; margin-top: 2px; }
 
         /* Hourly */
         .hourly-scroll { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 8px; scrollbar-width: thin; scrollbar-color: #d1d5db transparent; max-width: 100%; }
@@ -812,7 +812,7 @@
         .beach-station-info { flex: 1; min-width: 0; }
         .beach-station-name { font-size: 12px; font-weight: 600; color: #1a1a2e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .beach-station-code { font-size: 10px; color: #06b6d4; font-weight: 600; font-family: monospace; }
-        .beach-station-dist { font-size: 10px; color: #8b8fa3; }
+        .beach-station-dist { font-size: 10px; color: #6b7280; }
         .beach-station-status {
             font-size: 10px;
             font-weight: 600;
@@ -833,7 +833,7 @@
             margin-top: 6px;
         }
         .river-gauge-name { font-size: 12px; font-weight: 600; color: #1a1a2e; margin-bottom: 2px; }
-        .river-gauge-detail { font-size: 11px; color: #8b8fa3; }
+        .river-gauge-detail { font-size: 11px; color: #6b7280; }
         .river-gauge-flow { font-size: 14px; font-weight: 700; color: #06b6d4; }
         .river-gauge.high-flow { border-left: 3px solid #f87171; }
         .river-gauge.moderate-flow { border-left: 3px solid #fbbf24; }
@@ -897,14 +897,14 @@
         }
         .beach-advisory-title {
             font-weight: 600;
-            color: #e1e4e8;
+            color: #1a1a2e;
             margin-bottom: 2px;
             display: flex;
             align-items: center;
             gap: 6px;
         }
         .beach-advisory-detail {
-            color: #8b8fa3;
+            color: #6b7280;
             font-size: 11px;
         }
         .beach-advisory-bacteria {
@@ -917,8 +917,8 @@
             font-size: 10px;
             padding: 2px 6px;
             border-radius: 4px;
-            background: #252836;
-            color: #c0c4d0;
+            background: #f3f4f6;
+            color: #4b5563;
         }
         .bacteria-chip.elevated { background: #f8717130; color: #f87171; }
         .wq-source-credit {
@@ -926,7 +926,7 @@
             color: #6b7280;
             margin-top: 8px;
             padding-top: 8px;
-            border-top: 1px solid #2d304040;
+            border-top: 1px solid #e5e7eb;
         }
         .wq-source-credit a { color: #06b6d4; text-decoration: none; }
         .nws-alert {
@@ -959,11 +959,11 @@
         .nws-alert-event .sev-moderate { color: #fbbf24; }
         .nws-alert-event .sev-minor { color: #60a5fa; }
         .nws-alert-detail {
-            color: #8b8fa3;
+            color: #6b7280;
             font-size: 11px;
         }
         .nws-alert-headline {
-            color: #c0c4d0;
+            color: #4b5563;
             font-size: 11px;
             margin-top: 4px;
         }
@@ -977,8 +977,8 @@
         .hab-low { background: #3b82f615; border: 1px solid #3b82f640; }
         .hab-moderate { background: #f59e0b15; border: 1px solid #f59e0b40; }
         .hab-high { background: #ef444415; border: 1px solid #ef444440; }
-        .hab-title { font-weight: 600; color: #e1e4e8; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
-        .hab-detail { color: #8b8fa3; font-size: 11px; }
+        .hab-title { font-weight: 600; color: #1a1a2e; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
+        .hab-detail { color: #6b7280; font-size: 11px; }
 
         /* Google Place badge in score hero */
         .place-badge {
@@ -987,17 +987,17 @@
             gap: 8px;
             margin-top: 8px;
             padding: 6px 12px;
-            background: #252836;
-            border: 1px solid #2d3040;
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
             border-radius: 8px;
             cursor: pointer;
             transition: all 0.2s;
             font-size: 12px;
         }
-        .place-badge:hover { border-color: #06b6d4; background: #1e2535; }
+        .place-badge:hover { border-color: #06b6d4; background: #f3f4f6; }
         .place-stars { color: #fbbf24; letter-spacing: 1px; }
         .place-rating-num { color: #fbbf24; font-weight: 700; }
-        .place-review-count { color: #8b8fa3; }
+        .place-review-count { color: #6b7280; }
         .place-badge-arrow { color: #06b6d4; }
 
         /* Place modal */
@@ -1463,12 +1463,16 @@
             <img src="paddle-pin.svg" alt="PaddlePoint" class="header-logo">
             <div>
                 <h1>PaddlePoint</h1>
-                <div class="subtitle">Tap the map where you'll paddle</div>
+                <div class="subtitle">Water Conditions</div>
             </div>
         </div>
         <div class="header-right">
-            <a href="paddle-clubs.html" class="clubs-btn">Paddle Clubs</a>
-            <span class="suggest-btn" onclick="openSuggestModal()">Suggest</span>
+            <a href="paddlepoint.html" class="clubs-btn">Home</a>
+            <a href="paddle-weather.html" class="suggest-btn">Weather</a>
+            <a href="paddle-clubs.html" class="suggest-btn">Clubs</a>
+            <a href="paddle-events.html" class="suggest-btn">Events</a>
+            <a href="paddle-gear.html" class="suggest-btn">Gear</a>
+            <span class="updates-btn" onclick="openSuggestModal()">Suggest</span>
             <span class="updates-btn" onclick="openUpdatesModal()">Updates</span>
         </div>
     </div>
@@ -1574,6 +1578,18 @@
         </div>
 
         <footer class="site-footer">
+            <div class="data-source">
+                Data: <a href="https://open-meteo.com" target="_blank">Open-Meteo</a> &middot;
+                <a href="https://weather.google.com" target="_blank">Google Weather</a> &middot;
+                <a href="https://tidesandcurrents.noaa.gov" target="_blank">NOAA</a> &middot;
+                <a href="https://weather.gov" target="_blank">NWS</a> &middot;
+                <a href="https://habsos.noaa.gov" target="_blank">HABSOS</a> &middot;
+                <a href="https://data.ca.gov" target="_blank">CA WQ</a> &middot;
+                <a href="https://www.coastal.ca.gov" target="_blank">CA Coastal</a> &middot;
+                <a href="https://www.sdbeachinfo.com" target="_blank">Swim Guide</a>
+                &middot; Updated <span id="lastUpdated">--</span> &middot;
+                <span class="visitor-badge" onclick="toggleStats()">Stats</span>
+            </div>
             <div class="footer-links">
                 <a onclick="openFooterModal('about')">About</a>
                 <a onclick="openFooterModal('safety')">Safety Disclaimer</a>
