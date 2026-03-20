@@ -321,12 +321,83 @@
             color: #0b6358;
         }
 
+        /* Brand Directory */
+        .directory-section {
+            margin-top: 48px;
+        }
+
+        .directory-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+        }
+
+        .directory-card {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .directory-card h3 {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 4px;
+        }
+
+        .directory-card .dir-subtitle {
+            font-size: 12px;
+            color: #9ca3af;
+            margin-bottom: 14px;
+        }
+
+        .directory-card ul {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .directory-card li a {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: #f7f8fa;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #1a1a2e;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .directory-card li a:hover {
+            background: #eef2ff;
+            color: #0e7a6b;
+        }
+
+        .directory-card li a .dir-arrow {
+            color: #9ca3af;
+            font-size: 12px;
+            transition: transform 0.2s;
+        }
+
+        .directory-card li a:hover .dir-arrow {
+            transform: translateX(3px);
+            color: #0e7a6b;
+        }
+
         /* Responsive */
         @media (max-width: 900px) {
             .gear-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
             .guides-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .directory-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
         }
@@ -343,6 +414,9 @@
                 grid-template-columns: 1fr;
             }
             .guides-grid {
+                grid-template-columns: 1fr;
+            }
+            .directory-grid {
                 grid-template-columns: 1fr;
             }
             .discipline-tabs {
@@ -530,6 +604,120 @@
             </div>
 
         </div>
+
+        <!-- Brand Directory -->
+        <div class="directory-section">
+            <h2 class="section-title">Brand Directory</h2>
+            <p class="page-desc">Browse paddling gear brands by category. Links go directly to manufacturer websites.</p>
+
+            <div class="directory-grid">
+
+                <div class="directory-card">
+                    <h3>Surfskis</h3>
+                    <div class="dir-subtitle">Ocean racing & fitness surfskis</div>
+                    <ul>
+                        <li><a href="https://www.epicsurfski.com" target="_blank" rel="noopener">Epic Kayaks <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.thinkkayak.com" target="_blank" rel="noopener">Think Kayak <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.faboratory.com" target="_blank" rel="noopener">Fenn / Faboratory <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.stellarkayaks.com" target="_blank" rel="noopener">Stellar Kayaks <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.nfraysurfski.com" target="_blank" rel="noopener">Nelo / NFRAY <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.vajdasport.com" target="_blank" rel="noopener">Vajda Sport <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.cimamarinedesign.com" target="_blank" rel="noopener">Cima Marine Design <span class="dir-arrow">&rarr;</span></a></li>
+                    </ul>
+                </div>
+
+                <div class="directory-card">
+                    <h3>Outrigger Canoes</h3>
+                    <div class="dir-subtitle">OC-1, OC-2 & OC-6 manufacturers</div>
+                    <ul>
+                        <li><a href="https://www.puakeadesigns.com" target="_blank" rel="noopener">Puakea Designs <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.hurricanepaddles.com" target="_blank" rel="noopener">Hurricane <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.kahelepaddleboards.com" target="_blank" rel="noopener">Kahele <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.tigerpaddles.com" target="_blank" rel="noopener">Tiger Paddles <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.ozonepaddlesports.com" target="_blank" rel="noopener">Ozone <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.kai-wa-a.com" target="_blank" rel="noopener">Kai Wa'a <span class="dir-arrow">&rarr;</span></a></li>
+                    </ul>
+                </div>
+
+                <div class="directory-card">
+                    <h3>SUP Boards</h3>
+                    <div class="dir-subtitle">Stand-up paddleboard brands</div>
+                    <ul>
+                        <li><a href="https://www.starboardsup.com" target="_blank" rel="noopener">Starboard <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.sicmaui.com" target="_blank" rel="noopener">SIC Maui <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.naishsurfing.com" target="_blank" rel="noopener">Naish <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.nsp.com" target="_blank" rel="noopener">NSP <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.boardworkssurfsup.com" target="_blank" rel="noopener">Boardworks <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.404sup.com" target="_blank" rel="noopener">404 <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.sunova.com" target="_blank" rel="noopener">Sunova <span class="dir-arrow">&rarr;</span></a></li>
+                    </ul>
+                </div>
+
+                <div class="directory-card">
+                    <h3>Paddles</h3>
+                    <div class="dir-subtitle">SUP, outrigger & kayak paddles</div>
+                    <ul>
+                        <li><a href="https://www.kialoa.com" target="_blank" rel="noopener">Kialoa <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.quickbladepaddles.com" target="_blank" rel="noopener">Quickblade <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.wernerpaddles.com" target="_blank" rel="noopener">Werner Paddles <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.zaborskipaddles.com" target="_blank" rel="noopener">ZRE (Zaveral) <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.blackprojectfins.com" target="_blank" rel="noopener">Black Project <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.onapaddles.com" target="_blank" rel="noopener">ONA Paddles <span class="dir-arrow">&rarr;</span></a></li>
+                    </ul>
+                </div>
+
+                <div class="directory-card">
+                    <h3>Kayaks</h3>
+                    <div class="dir-subtitle">Sea kayaks, sprint & touring</div>
+                    <ul>
+                        <li><a href="https://www.epickayaks.com" target="_blank" rel="noopener">Epic Kayaks <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.currentdesigns.com" target="_blank" rel="noopener">Current Designs <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.kokatat.com" target="_blank" rel="noopener">Kokatat <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.valleyseakayaks.com" target="_blank" rel="noopener">Valley Sea Kayaks <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.nfraysurfski.com" target="_blank" rel="noopener">Nelo <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.stellarkayaks.com" target="_blank" rel="noopener">Stellar <span class="dir-arrow">&rarr;</span></a></li>
+                    </ul>
+                </div>
+
+                <div class="directory-card">
+                    <h3>PFDs & Safety</h3>
+                    <div class="dir-subtitle">Life vests, leashes & safety gear</div>
+                    <ul>
+                        <li><a href="https://www.nrs.com" target="_blank" rel="noopener">NRS <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.astraldesigns.com" target="_blank" rel="noopener">Astral <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.kokatat.com" target="_blank" rel="noopener">Kokatat <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.mustangsurvival.com" target="_blank" rel="noopener">Mustang Survival <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.stohlquist.com" target="_blank" rel="noopener">Stohlquist <span class="dir-arrow">&rarr;</span></a></li>
+                    </ul>
+                </div>
+
+                <div class="directory-card">
+                    <h3>Accessories & Electronics</h3>
+                    <div class="dir-subtitle">Watches, drybags, racks & more</div>
+                    <ul>
+                        <li><a href="https://www.garmin.com" target="_blank" rel="noopener">Garmin <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.suunto.com" target="_blank" rel="noopener">Suunto <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.seallinegear.com" target="_blank" rel="noopener">SealLine <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.yakima.com" target="_blank" rel="noopener">Yakima <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.thule.com" target="_blank" rel="noopener">Thule <span class="dir-arrow">&rarr;</span></a></li>
+                    </ul>
+                </div>
+
+                <div class="directory-card">
+                    <h3>Apparel & Wetsuits</h3>
+                    <div class="dir-subtitle">Paddle-specific clothing & protection</div>
+                    <ul>
+                        <li><a href="https://www.oneil.com" target="_blank" rel="noopener">O'Neill <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.patagonia.com" target="_blank" rel="noopener">Patagonia <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.kokatat.com" target="_blank" rel="noopener">Kokatat <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.nrs.com" target="_blank" rel="noopener">NRS <span class="dir-arrow">&rarr;</span></a></li>
+                        <li><a href="https://www.levelsixtechnology.com" target="_blank" rel="noopener">Level Six <span class="dir-arrow">&rarr;</span></a></li>
+                    </ul>
+                </div>
+
+            </div>
+        </div>
+
     </div>
 
     <script>
