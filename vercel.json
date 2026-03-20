@@ -15,13 +15,13 @@
     {
       "source": "/",
       "has": [{ "type": "host", "value": "paddlepoint.org" }],
-      "destination": "/paddle-conditions.html",
+      "destination": "/paddlepoint.html",
       "permanent": false
     },
     {
       "source": "/",
       "has": [{ "type": "host", "value": "www.paddlepoint.org" }],
-      "destination": "/paddle-conditions.html",
+      "destination": "/paddlepoint.html",
       "permanent": false
     }
   ]

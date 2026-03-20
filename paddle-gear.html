@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PaddlePoint - Gear & Reviews</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0f1117;
+            color: #e1e4e8;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #1a1d28, #252836);
+            padding: 20px 24px;
+            border-bottom: 1px solid #2d3040;
+        }
+
+        .header-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-brand img {
+            width: 36px;
+            height: 36px;
+        }
+
+        .header-title {
+            font-size: 22px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-subtitle {
+            font-size: 14px;
+            color: #8b949e;
+            margin-left: 4px;
+        }
+
+        .header-nav {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .header-nav a {
+            background: rgba(96, 165, 250, 0.1);
+            border: 1px solid rgba(96, 165, 250, 0.2);
+            color: #60a5fa;
+            border-radius: 10px;
+            font-size: 12px;
+            padding: 6px 14px;
+            text-decoration: none;
+            transition: background 0.2s, border-color 0.2s;
+            white-space: nowrap;
+        }
+
+        .header-nav a:hover {
+            background: rgba(96, 165, 250, 0.2);
+            border-color: rgba(96, 165, 250, 0.4);
+        }
+
+        /* Main Content */
+        .main {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 28px 20px 60px;
+        }
+
+        .page-title {
+            font-size: 26px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .page-desc {
+            font-size: 14px;
+            color: #8b949e;
+            margin-bottom: 24px;
+        }
+
+        /* Category Filter Pills */
+        .filter-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .filter-pill {
+            padding: 7px 18px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            border: 1px solid #2d3040;
+            background: #1a1d28;
+            color: #8b949e;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-pill:hover {
+            border-color: #06b6d4;
+            color: #e1e4e8;
+        }
+
+        .filter-pill.active {
+            background: #06b6d4;
+            color: #fff;
+            border-color: #06b6d4;
+        }
+
+        /* Discipline Tabs */
+        .discipline-tabs {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 28px;
+            border-bottom: 1px solid #2d3040;
+            padding-bottom: 0;
+        }
+
+        .discipline-tab {
+            padding: 8px 20px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #8b949e;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            margin-bottom: -1px;
+        }
+
+        .discipline-tab:hover {
+            color: #e1e4e8;
+        }
+
+        .discipline-tab.active {
+            color: #06b6d4;
+            border-bottom-color: #06b6d4;
+        }
+
+        /* Gear Cards Grid */
+        .gear-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+            margin-bottom: 48px;
+        }
+
+        .gear-card {
+            background: #1a1d28;
+            border: 1px solid #2d3040;
+            border-radius: 16px;
+            padding: 20px;
+            transition: border-color 0.2s, transform 0.2s;
+        }
+
+        .gear-card:hover {
+            border-color: rgba(6, 182, 212, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .gear-icon {
+            width: 80px;
+            height: 80px;
+            background: #252836;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            margin: 0 auto 16px;
+        }
+
+        .gear-name {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .gear-category-tag {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 500;
+            background: rgba(96, 165, 250, 0.1);
+            color: #60a5fa;
+            border: 1px solid rgba(96, 165, 250, 0.15);
+            margin-bottom: 8px;
+        }
+
+        .gear-center {
+            text-align: center;
+        }
+
+        .gear-rating {
+            color: #f59e0b;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .gear-price {
+            font-size: 15px;
+            font-weight: 600;
+            color: #06b6d4;
+            margin-bottom: 8px;
+        }
+
+        .gear-desc {
+            font-size: 13px;
+            color: #8b949e;
+            line-height: 1.5;
+            margin-bottom: 12px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .gear-link {
+            font-size: 13px;
+            color: #06b6d4;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .gear-link:hover {
+            color: #3b82f6;
+        }
+
+        /* Buyer's Guide */
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .guides-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+        }
+
+        .guide-card {
+            background: #1a1d28;
+            border: 1px solid #2d3040;
+            border-radius: 16px;
+            padding: 20px;
+            transition: border-color 0.2s, transform 0.2s;
+        }
+
+        .guide-card:hover {
+            border-color: rgba(6, 182, 212, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .guide-icon {
+            font-size: 28px;
+            margin-bottom: 12px;
+        }
+
+        .guide-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .guide-desc {
+            font-size: 13px;
+            color: #8b949e;
+            line-height: 1.5;
+            margin-bottom: 14px;
+        }
+
+        .guide-link {
+            font-size: 13px;
+            color: #06b6d4;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .guide-link:hover {
+            color: #3b82f6;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .gear-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .guides-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 600px) {
+            .header-inner {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .header-nav {
+                width: 100%;
+            }
+            .gear-grid {
+                grid-template-columns: 1fr;
+            }
+            .guides-grid {
+                grid-template-columns: 1fr;
+            }
+            .discipline-tabs {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="header-inner">
+            <div class="header-brand">
+                <img src="paddle-pin.svg" alt="PaddlePoint Logo">
+                <span class="header-title">PaddlePoint</span>
+                <span class="header-subtitle">Gear</span>
+            </div>
+            <nav class="header-nav">
+                <a href="paddlepoint.html">Home</a>
+                <a href="paddle-conditions.html">Water Conditions</a>
+                <a href="paddle-weather.html">Weather</a>
+                <a href="paddle-clubs.html">Clubs</a>
+                <a href="paddle-events.html">Events</a>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main">
+        <h1 class="page-title">Gear & Reviews</h1>
+        <p class="page-desc">Curated recommendations and honest reviews from the paddling community.</p>
+
+        <!-- Category Filter -->
+        <div class="filter-row">
+            <span class="filter-pill active" onclick="filterCategory(this, 'all')">All</span>
+            <span class="filter-pill" onclick="filterCategory(this, 'paddles')">Paddles</span>
+            <span class="filter-pill" onclick="filterCategory(this, 'boats')">Boats & Boards</span>
+            <span class="filter-pill" onclick="filterCategory(this, 'safety')">PFDs & Safety</span>
+            <span class="filter-pill" onclick="filterCategory(this, 'accessories')">Accessories</span>
+        </div>
+
+        <!-- Discipline Tabs -->
+        <div class="discipline-tabs">
+            <span class="discipline-tab active" onclick="filterDiscipline(this, 'all')">All</span>
+            <span class="discipline-tab" onclick="filterDiscipline(this, 'sup')">SUP</span>
+            <span class="discipline-tab" onclick="filterDiscipline(this, 'kayak')">Kayak</span>
+            <span class="discipline-tab" onclick="filterDiscipline(this, 'outrigger')">Outrigger</span>
+            <span class="discipline-tab" onclick="filterDiscipline(this, 'canoe')">Canoe</span>
+        </div>
+
+        <!-- Gear Cards Grid -->
+        <div class="gear-grid" id="gearGrid">
+
+            <!-- Kialoa Outrigger Paddle -->
+            <div class="gear-card" data-category="paddles" data-discipline="outrigger">
+                <div class="gear-icon">🏓</div>
+                <div class="gear-name">Kialoa Outrigger Paddle</div>
+                <div class="gear-center">
+                    <span class="gear-category-tag">Paddles</span>
+                </div>
+                <div class="gear-center gear-rating">★★★★★</div>
+                <div class="gear-center gear-price">$350 - $500</div>
+                <p class="gear-desc">Lightweight carbon fiber paddle with a smooth catch and clean exit. Ideal for long-distance outrigger racing and training sessions.</p>
+                <div class="gear-center"><a href="#" class="gear-link">View Details</a></div>
+            </div>
+
+            <!-- SIC Maui RS -->
+            <div class="gear-card" data-category="boats" data-discipline="sup">
+                <div class="gear-icon">🏄</div>
+                <div class="gear-name">SIC Maui RS</div>
+                <div class="gear-center">
+                    <span class="gear-category-tag">Boards</span>
+                </div>
+                <div class="gear-center gear-rating">★★★★☆</div>
+                <div class="gear-center gear-price">$1,800 - $2,200</div>
+                <p class="gear-desc">High-performance racing SUP with excellent glide and stability. A top choice for competitive flat-water and downwind paddling.</p>
+                <div class="gear-center"><a href="#" class="gear-link">View Details</a></div>
+            </div>
+
+            <!-- Puakea Designs OC-1 -->
+            <div class="gear-card" data-category="boats" data-discipline="outrigger">
+                <div class="gear-icon">🛶</div>
+                <div class="gear-name">Puakea Designs OC-1</div>
+                <div class="gear-center">
+                    <span class="gear-category-tag">Boats</span>
+                </div>
+                <div class="gear-center gear-rating">★★★★★</div>
+                <div class="gear-center gear-price">$2,500 - $3,500</div>
+                <p class="gear-desc">Premium single-person outrigger canoe built for speed and ocean conditions. Trusted by elite paddlers across the Pacific.</p>
+                <div class="gear-center"><a href="#" class="gear-link">View Details</a></div>
+            </div>
+
+            <!-- NRS Ninja PFD -->
+            <div class="gear-card" data-category="safety" data-discipline="kayak">
+                <div class="gear-icon">🦺</div>
+                <div class="gear-name">NRS Ninja PFD</div>
+                <div class="gear-center">
+                    <span class="gear-category-tag">Safety</span>
+                </div>
+                <div class="gear-center gear-rating">★★★★☆</div>
+                <div class="gear-center gear-price">$90 - $120</div>
+                <p class="gear-desc">Low-profile life vest designed for kayakers. Thin-back design fits comfortably in high-back seats with excellent mobility.</p>
+                <div class="gear-center"><a href="#" class="gear-link">View Details</a></div>
+            </div>
+
+            <!-- Garmin Instinct 2 Solar -->
+            <div class="gear-card" data-category="accessories" data-discipline="all">
+                <div class="gear-icon">⌚</div>
+                <div class="gear-name">Garmin Instinct 2 Solar</div>
+                <div class="gear-center">
+                    <span class="gear-category-tag">Accessories</span>
+                </div>
+                <div class="gear-center gear-rating">★★★★★</div>
+                <div class="gear-center gear-price">$350 - $450</div>
+                <p class="gear-desc">Rugged GPS watch with solar charging and water sport profiles. Tracks paddle strokes, distance, and tide data on the go.</p>
+                <div class="gear-center"><a href="#" class="gear-link">View Details</a></div>
+            </div>
+
+            <!-- Quickblade V-Drive -->
+            <div class="gear-card" data-category="paddles" data-discipline="sup">
+                <div class="gear-icon">🏓</div>
+                <div class="gear-name">Quickblade V-Drive</div>
+                <div class="gear-center">
+                    <span class="gear-category-tag">Paddles</span>
+                </div>
+                <div class="gear-center gear-rating">★★★★☆</div>
+                <div class="gear-center gear-price">$280 - $400</div>
+                <p class="gear-desc">Full carbon SUP paddle with a V-shaped dihedral blade for flutter-free strokes. Great for racing and fitness paddling.</p>
+                <div class="gear-center"><a href="#" class="gear-link">View Details</a></div>
+            </div>
+
+            <!-- Starboard All Star -->
+            <div class="gear-card" data-category="boats" data-discipline="sup">
+                <div class="gear-icon">🏄</div>
+                <div class="gear-name">Starboard All Star</div>
+                <div class="gear-center">
+                    <span class="gear-category-tag">Boards</span>
+                </div>
+                <div class="gear-center gear-rating">★★★★★</div>
+                <div class="gear-center gear-price">$2,000 - $2,800</div>
+                <p class="gear-desc">Versatile race board excelling in both flat water and open ocean. Carbon construction offers unmatched speed-to-weight ratio.</p>
+                <div class="gear-center"><a href="#" class="gear-link">View Details</a></div>
+            </div>
+
+            <!-- Astral YTV PFD -->
+            <div class="gear-card" data-category="safety" data-discipline="canoe">
+                <div class="gear-icon">🦺</div>
+                <div class="gear-name">Astral YTV PFD</div>
+                <div class="gear-center">
+                    <span class="gear-category-tag">Safety</span>
+                </div>
+                <div class="gear-center gear-rating">★★★★☆</div>
+                <div class="gear-center gear-price">$100 - $130</div>
+                <p class="gear-desc">Thin, breathable PFD with foam-free Airlock technology. Ideal for warm-weather canoe trips and all-day comfort on the water.</p>
+                <div class="gear-center"><a href="#" class="gear-link">View Details</a></div>
+            </div>
+
+        </div>
+
+        <!-- Buyer's Guide Section -->
+        <h2 class="section-title">Buyer's Guides</h2>
+        <div class="guides-grid">
+
+            <div class="guide-card">
+                <div class="guide-icon">📏</div>
+                <div class="guide-title">How to Choose a SUP Paddle</div>
+                <p class="guide-desc">Learn how blade size, shaft material, and paddle length affect your stroke efficiency and comfort on the water.</p>
+                <a href="#" class="guide-link">Read Guide &rarr;</a>
+            </div>
+
+            <div class="guide-card">
+                <div class="guide-icon">🛶</div>
+                <div class="guide-title">Outrigger Canoe Buyer's Guide</div>
+                <p class="guide-desc">From OC-1 to OC-6, understand hull shapes, materials, and rigging options to find the right canoe for your goals.</p>
+                <a href="#" class="guide-link">Read Guide &rarr;</a>
+            </div>
+
+            <div class="guide-card">
+                <div class="guide-icon">🔒</div>
+                <div class="guide-title">Essential Safety Gear</div>
+                <p class="guide-desc">A checklist of must-have safety equipment for open-water paddling, including PFDs, leashes, lights, and communication devices.</p>
+                <a href="#" class="guide-link">Read Guide &rarr;</a>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        function filterCategory(el, category) {
+            document.querySelectorAll('.filter-pill').forEach(function(p) {
+                p.classList.remove('active');
+            });
+            el.classList.add('active');
+            applyFilters();
+        }
+
+        function filterDiscipline(el, discipline) {
+            document.querySelectorAll('.discipline-tab').forEach(function(t) {
+                t.classList.remove('active');
+            });
+            el.classList.add('active');
+            applyFilters();
+        }
+
+        function applyFilters() {
+            var activePill = document.querySelector('.filter-pill.active');
+            var activeTab = document.querySelector('.discipline-tab.active');
+            var category = activePill ? activePill.textContent.trim().toLowerCase() : 'all';
+            var discipline = activeTab ? activeTab.textContent.trim().toLowerCase() : 'all';
+
+            var categoryMap = {
+                'all': 'all',
+                'paddles': 'paddles',
+                'boats & boards': 'boats',
+                'pfds & safety': 'safety',
+                'accessories': 'accessories'
+            };
+            var catFilter = categoryMap[category] || 'all';
+
+            document.querySelectorAll('.gear-card').forEach(function(card) {
+                var cardCat = card.getAttribute('data-category');
+                var cardDisc = card.getAttribute('data-discipline');
+                var showCat = (catFilter === 'all' || cardCat === catFilter);
+                var showDisc = (discipline === 'all' || cardDisc === discipline || cardDisc === 'all');
+                card.style.display = (showCat && showDisc) ? '' : 'none';
+            });
+        }
+    </script>
+
+</body>
+</html>

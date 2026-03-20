@@ -35,6 +35,14 @@ export default {
         return handleCors(request, await getReferrerStats(env, page));
       }
 
+      if (request.method === 'POST' && url.pathname === '/duration') {
+        return handleCors(request, await recordDuration(request, env, page));
+      }
+
+      if (request.method === 'GET' && url.pathname === '/stats/engagement') {
+        return handleCors(request, await getEngagementStats(env, page));
+      }
+
       return handleCors(request, new Response('Not found', { status: 404 }));
     } catch (err) {
       const resp = new Response(JSON.stringify({ error: err.message }), {
@@ -95,6 +103,8 @@ async function recordVisit(request, env, page) {
   if (!dayData.cities) dayData.cities = {};
   if (!dayData.coords) dayData.coords = {};
   if (!dayData.referrers) dayData.referrers = {};
+  if (!dayData.hours) dayData.hours = {};
+  if (!dayData.durations) dayData.durations = [];
 
   // Only count unique visitors
   const isNew = !dayData.visitors.includes(visitorHash);
@@ -112,6 +122,11 @@ async function recordVisit(request, env, page) {
     if (lat && lng) {
       dayData.coords[cityLabel] = { lat, lng };
     }
+
+    // Track hour of visit (Pacific time)
+    const hour = new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hour12: false });
+    const h = parseInt(hour);
+    dayData.hours[h] = (dayData.hours[h] || 0) + 1;
 
     // Increment total only for unique visitors
     const totalKey = `${prefix}total`;
@@ -160,6 +175,7 @@ async function getStats(env, page) {
       totalHits: dayData.totalHits || 0,
       cities: dayData.cities || {},
       coords: dayData.coords || {},
+      hours: dayData.hours || {},
     });
   }
 
@@ -188,6 +204,78 @@ async function getReferrerStats(env, page) {
   return new Response(JSON.stringify({ totals, days }), {
     headers: { 'Content-Type': 'application/json' },
   });
+}
+
+async function recordDuration(request, env, page) {
+  let seconds = 0;
+  try {
+    const body = await request.json();
+    seconds = Math.min(Math.max(Math.round(body.seconds || 0), 0), 3600); // clamp 0-3600
+  } catch { return new Response('Bad request', { status: 400 }); }
+
+  if (seconds < 3) {
+    return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json' } });
+  }
+
+  const prefix = page ? `${page}:` : '';
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+  const dayKey = `${prefix}day:${today}`;
+  const dayData = JSON.parse(await env.VISITORS.get(dayKey) || '{}');
+
+  if (!dayData.durations) dayData.durations = [];
+  dayData.durations.push(seconds);
+
+  await env.VISITORS.put(dayKey, JSON.stringify(dayData));
+
+  return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json' } });
+}
+
+async function getEngagementStats(env, page) {
+  const prefix = page ? `${page}:` : '';
+  const dateIndex = JSON.parse(await env.VISITORS.get(`${prefix}date_index`) || '[]');
+  const recentDates = dateIndex.slice(-7);
+
+  const hourTotals = {}; // hour -> total visits
+  const dayOfWeekHours = {}; // "dow:hour" -> count
+  let totalDuration = 0;
+  let durationCount = 0;
+  const dailyAvgDurations = [];
+
+  for (const date of recentDates) {
+    const dayData = JSON.parse(await env.VISITORS.get(`${prefix}day:${date}`) || '{}');
+    const hours = dayData.hours || {};
+    const durations = dayData.durations || [];
+
+    // Aggregate hours
+    for (const [h, count] of Object.entries(hours)) {
+      hourTotals[h] = (hourTotals[h] || 0) + count;
+    }
+
+    // Day-of-week + hour for heatmap
+    const dow = new Date(date + 'T12:00:00').getDay(); // 0=Sun
+    for (const [h, count] of Object.entries(hours)) {
+      const key = `${dow}:${h}`;
+      dayOfWeekHours[key] = (dayOfWeekHours[key] || 0) + count;
+    }
+
+    // Durations
+    const dayTotal = durations.reduce((s, d) => s + d, 0);
+    totalDuration += dayTotal;
+    durationCount += durations.length;
+    dailyAvgDurations.push({
+      date,
+      avg: durations.length > 0 ? Math.round(dayTotal / durations.length) : 0,
+      count: durations.length,
+    });
+  }
+
+  return new Response(JSON.stringify({
+    avgDuration: durationCount > 0 ? Math.round(totalDuration / durationCount) : 0,
+    durationCount,
+    hourTotals,
+    dayOfWeekHours,
+    dailyAvgDurations,
+  }), { headers: { 'Content-Type': 'application/json' } });
 }
 
 function handleCors(request, response) {
