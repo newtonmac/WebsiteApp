@@ -4674,9 +4674,9 @@
 
         // Defer visitor counter until after page is interactive
         if ('requestIdleCallback' in window) {
-            requestIdleCallback(() => fetch(`${COUNTER_API}/visit`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ referrer: document.referrer }) }).catch(() => {}));
+            requestIdleCallback(() => fetch(`${COUNTER_API}/visit?page=conditions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ referrer: document.referrer }) }).catch(() => {}));
         } else {
-            setTimeout(() => fetch(`${COUNTER_API}/visit`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ referrer: document.referrer }) }).catch(() => {}), 3000);
+            setTimeout(() => fetch(`${COUNTER_API}/visit?page=conditions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ referrer: document.referrer }) }).catch(() => {}), 3000);
         }
 
         let statsLoaded = false;
@@ -4718,7 +4718,7 @@
 
         async function loadStats() {
             try {
-                const res = await fetch(`${COUNTER_API}/stats`);
+                const res = await fetch(`${COUNTER_API}/stats?page=conditions`);
                 const data = await res.json();
                 statsLoaded = true;
 

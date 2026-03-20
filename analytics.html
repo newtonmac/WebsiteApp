@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Site Analytics — JMLSD</title>
+    <title>Analytics — PaddlePoint</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -294,14 +294,14 @@
 </head>
 <body>
     <div class="header" style="position: relative;">
-        <a class="back-link" href="index.html">&larr; Home</a>
-        <h1>Site Analytics</h1>
-        <p>Visitor activity across JMLSD apps</p>
+        <a class="back-link" href="paddle-conditions.html">&larr; PaddlePoint</a>
+        <h1>PaddlePoint Analytics</h1>
+        <p>Visitor traffic for paddlepoint.org</p>
     </div>
 
     <div class="container">
         <div class="page-tabs">
-            <div class="page-tab active" data-page="">JMLSD Home</div>
+            <div class="page-tab active" data-page="conditions">Conditions</div>
             <div class="page-tab" data-page="clubs">Paddle Clubs</div>
         </div>
 
@@ -312,7 +312,7 @@
 
     <script>
         const COUNTER_API = 'https://visitor-counter.newtonmac.workers.dev';
-        let currentPage = '';
+        let currentPage = 'conditions';
 
         const REFERRER_COLORS = {
             'google.com': '#34a853', 'google.co.uk': '#34a853', 'google.ca': '#34a853',
