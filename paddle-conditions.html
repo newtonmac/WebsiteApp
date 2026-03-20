@@ -84,48 +84,43 @@
         }
         .refresh-btn:hover { background: #06b6d430; }
 
-        .header-right { display: flex; align-items: center; gap: 8px; }
+        .header-right { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
         .clubs-btn, .suggest-btn, .updates-btn {
             cursor: pointer;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 12px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
             transition: all 0.2s ease;
             user-select: none;
-            border: 1px solid;
+            border: none;
             white-space: nowrap;
+            text-decoration: none;
         }
 
         .clubs-btn {
             background: #0e7a6b;
-            border-color: #0e7a6b;
             color: #ffffff;
-            text-decoration: none;
         }
         .clubs-btn:hover {
             background: #0b6358;
-            border-color: #0b6358;
         }
 
         .suggest-btn {
             background: transparent;
-            border: 1px solid #e5e7eb;
             color: #4b5563;
         }
         .suggest-btn:hover {
             background: #f3f4f6;
-            border-color: #e5e7eb;
         }
 
         .updates-btn {
             background: transparent;
-            border: 1px solid #e5e7eb;
             color: #4b5563;
         }
         .updates-btn:hover {
             background: #f3f4f6;
-            border-color: #e5e7eb;
         }
 
         /* Modals */
@@ -1578,18 +1573,6 @@
         </div>
 
         <footer class="site-footer">
-            <div class="data-source">
-                Data: <a href="https://open-meteo.com" target="_blank">Open-Meteo</a> &middot;
-                <a href="https://weather.google.com" target="_blank">Google Weather</a> &middot;
-                <a href="https://tidesandcurrents.noaa.gov" target="_blank">NOAA</a> &middot;
-                <a href="https://weather.gov" target="_blank">NWS</a> &middot;
-                <a href="https://habsos.noaa.gov" target="_blank">HABSOS</a> &middot;
-                <a href="https://data.ca.gov" target="_blank">CA WQ</a> &middot;
-                <a href="https://www.coastal.ca.gov" target="_blank">CA Coastal</a> &middot;
-                <a href="https://www.sdbeachinfo.com" target="_blank">Swim Guide</a>
-                &middot; Updated <span id="lastUpdated">--</span> &middot;
-                <span class="visitor-badge" onclick="toggleStats()">Stats</span>
-            </div>
             <div class="footer-links">
                 <a onclick="openFooterModal('about')">About</a>
                 <a onclick="openFooterModal('safety')">Safety Disclaimer</a>
