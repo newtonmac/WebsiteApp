@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title>PaddlePoint - Weather & Tides</title>
+    <link rel="dns-prefetch" href="https://api.weather.gov">
+    <link rel="dns-prefetch" href="https://gis.ncdc.noaa.gov">
+    <link rel="dns-prefetch" href="https://data.ca.gov">
+    <link rel="dns-prefetch" href="https://api.coastal.ca.gov">
+    <link rel="dns-prefetch" href="https://fhab-api.sfei.org">
+    <link rel="preconnect" href="https://maps.googleapis.com" crossorigin>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -331,6 +337,91 @@
         .trend-label { color: #6b7280; }
         .trend-value { font-weight: 500; }
 
+        /* Alert Items */
+        .alert-list { display: flex; flex-direction: column; gap: 10px; }
+        .alert-item {
+            padding: 14px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .alert-item.warning { background: #fef3c7; border-left: 4px solid #f59e0b; }
+        .alert-item.watch { background: #fff7ed; border-left: 4px solid #fb923c; }
+        .alert-item.advisory { background: #ecfdf5; border-left: 4px solid #10b981; }
+        .alert-item.severe { background: #fef2f2; border-left: 4px solid #ef4444; }
+        .alert-title { font-weight: 600; margin-bottom: 4px; color: #1a1a2e; }
+        .alert-meta { font-size: 11px; color: #6b7280; margin-top: 6px; }
+        .alert-empty { color: #9ca3af; font-size: 13px; text-align: center; padding: 20px; background: #f7f8fa; border-radius: 12px; }
+
+        /* Water Quality Items */
+        .wq-list { display: flex; flex-direction: column; gap: 8px; }
+        .wq-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: #f7f8fa;
+            border-radius: 12px;
+            font-size: 13px;
+        }
+        .wq-badge {
+            flex: 0 0 auto;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            color: #fff;
+        }
+        .wq-badge.open { background: #10b981; }
+        .wq-badge.advisory { background: #f59e0b; }
+        .wq-badge.closed { background: #ef4444; }
+        .wq-name { font-weight: 500; color: #1a1a2e; flex: 1; }
+        .wq-detail { font-size: 11px; color: #6b7280; }
+        .wq-source-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+        .wq-source-link {
+            font-size: 11px; color: #3b82f6; text-decoration: none;
+            padding: 4px 8px; background: #eff6ff; border-radius: 6px;
+        }
+        .wq-source-link:hover { background: #dbeafe; }
+
+        /* HAB Items */
+        .hab-list { display: flex; flex-direction: column; gap: 8px; }
+        .hab-item {
+            padding: 12px 16px;
+            background: #f7f8fa;
+            border-radius: 12px;
+            font-size: 13px;
+        }
+        .hab-item.danger { background: #fef2f2; border-left: 4px solid #ef4444; }
+        .hab-item.caution { background: #fffbeb; border-left: 4px solid #f59e0b; }
+        .hab-item.clear { background: #f0fdf4; border-left: 4px solid #10b981; }
+        .hab-species { font-weight: 600; color: #1a1a2e; }
+        .hab-count { font-size: 12px; color: #6b7280; margin-top: 2px; }
+        .hab-date { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+
+        /* Coastal Access Items */
+        .access-list { display: flex; flex-direction: column; gap: 8px; }
+        .access-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 16px; background: #f7f8fa; border-radius: 12px; font-size: 13px;
+        }
+        .access-icon { font-size: 20px; flex: 0 0 auto; }
+        .access-name { font-weight: 500; color: #1a1a2e; }
+        .access-features { font-size: 11px; color: #6b7280; margin-top: 2px; }
+        .access-dist { font-size: 11px; color: #9ca3af; flex: 0 0 auto; text-align: right; }
+
+        /* Data Sources */
+        .data-sources {
+            display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px;
+            padding-top: 12px; border-top: 1px solid #f3f4f6;
+        }
+        .data-source-tag {
+            font-size: 10px; color: #6b7280; background: #f3f4f6;
+            padding: 3px 8px; border-radius: 4px; letter-spacing: 0.3px;
+        }
+
         /* Responsive */
         @media (max-width: 600px) {
             .header { padding: 10px 12px; }
@@ -353,6 +444,10 @@
 
             .water-temp-content { flex-direction: column; gap: 16px; }
             .water-temp-value { font-size: 36px; }
+
+            .alert-item { font-size: 12px; }
+            .wq-item { flex-wrap: wrap; }
+            .access-item { flex-wrap: wrap; }
         }
     </style>
 </head>
@@ -577,32 +672,85 @@
         </div>
     </div>
 
-    <!-- Water Temperature -->
-    <div class="card">
-        <div class="card-header"><span class="card-header-icon">&#x1F321;&#xFE0F;</span>Water Temperature</div>
+    <!-- Marine Conditions -->
+    <div class="card" id="marineCard">
+        <div class="card-header"><span class="card-header-icon">&#x1F30A;</span>Marine Conditions</div>
         <div class="water-temp-content">
             <div class="water-temp-main">
-                <div class="water-temp-value">--&deg;</div>
-                <div class="water-temp-label">Current Water Temp</div>
+                <div class="water-temp-value">--</div>
+                <div class="water-temp-label">Current Wave Height (ft)</div>
             </div>
             <div class="water-temp-trend">
                 <div class="trend-row">
-                    <span class="trend-label">Yesterday</span>
-                    <span class="trend-value">--&deg;F</span>
+                    <span class="trend-label">Wave Period</span>
+                    <span class="trend-value">--</span>
                 </div>
                 <div class="trend-row">
-                    <span class="trend-label">3-Day Avg</span>
-                    <span class="trend-value">--&deg;F</span>
+                    <span class="trend-label">Wave Direction</span>
+                    <span class="trend-value">--</span>
                 </div>
                 <div class="trend-row">
-                    <span class="trend-label">7-Day Avg</span>
-                    <span class="trend-value">--&deg;F</span>
+                    <span class="trend-label">Current Velocity</span>
+                    <span class="trend-value">--</span>
                 </div>
                 <div class="trend-row">
-                    <span class="trend-label">Trend</span>
+                    <span class="trend-label">Current Direction</span>
                     <span class="trend-value">--</span>
                 </div>
             </div>
+        </div>
+        <div class="data-sources">
+            <span class="data-source-tag">Open-Meteo Marine</span>
+        </div>
+    </div>
+
+    <!-- NWS Weather Alerts -->
+    <div class="card" id="alertsCard">
+        <div class="card-header"><span class="card-header-icon">&#x26A0;&#xFE0F;</span>Weather Alerts</div>
+        <div class="alert-list" id="alertList">
+            <div class="alert-empty">Search a location to check active weather alerts</div>
+        </div>
+        <div class="data-sources">
+            <span class="data-source-tag">NWS (weather.gov)</span>
+        </div>
+    </div>
+
+    <!-- Water Quality -->
+    <div class="card" id="wqCard">
+        <div class="card-header"><span class="card-header-icon">&#x1F9EA;</span>Beach Water Quality</div>
+        <div class="wq-list" id="wqList">
+            <div class="alert-empty">Search a location to check water quality advisories</div>
+        </div>
+        <div class="wq-source-row" id="wqSources" style="display:none;">
+            <a href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank" class="wq-source-link">CA Water Quality</a>
+            <a href="https://www.theswimguide.org/find" target="_blank" class="wq-source-link">Swim Guide</a>
+        </div>
+        <div class="data-sources">
+            <span class="data-source-tag">CA State Water Board</span>
+            <span class="data-source-tag">Swim Guide</span>
+        </div>
+    </div>
+
+    <!-- Harmful Algal Blooms -->
+    <div class="card" id="habCard">
+        <div class="card-header"><span class="card-header-icon">&#x1F9EC;</span>Harmful Algal Blooms</div>
+        <div class="hab-list" id="habList">
+            <div class="alert-empty">Search a location to check HAB status</div>
+        </div>
+        <div class="data-sources">
+            <span class="data-source-tag">NOAA HABSOS</span>
+            <span class="data-source-tag">CA FHAB (SFEI)</span>
+        </div>
+    </div>
+
+    <!-- Coastal Access Points -->
+    <div class="card" id="accessCard">
+        <div class="card-header"><span class="card-header-icon">&#x1F3D6;&#xFE0F;</span>Nearby Coastal Access</div>
+        <div class="access-list" id="accessList">
+            <div class="alert-empty">Search a location to find nearby beach access points</div>
+        </div>
+        <div class="data-sources">
+            <span class="data-source-tag">CA Coastal Commission</span>
         </div>
     </div>
 
@@ -825,38 +973,33 @@
             forecastGrid.innerHTML = forecastHTML;
 
             // ======== Marine Conditions card ========
+            const mc = document.getElementById('marineCard');
             if (marine && marine.current) {
                 const waveH = marine.current.wave_height;
                 const wavePeriod = marine.current.wave_period;
                 const waveDir = marine.current.wave_direction;
 
-                const waterTempMain = document.querySelector('.water-temp-value');
-                const waterTempLabel = document.querySelector('.water-temp-label');
-                const trendRows = document.querySelectorAll('.trend-row .trend-value');
-                const trendLabels = document.querySelectorAll('.trend-row .trend-label');
+                mc.querySelector('.water-temp-value').textContent = waveH != null ? `${(waveH * 3.281).toFixed(1)}` : '--';
 
-                waterTempMain.textContent = waveH != null ? `${(waveH * 3.281).toFixed(1)}` : '--';
-                waterTempLabel.textContent = 'Current Wave Height (ft)';
-
-                trendLabels[0].textContent = 'Wave Period';
+                const trendRows = mc.querySelectorAll('.trend-value');
                 trendRows[0].textContent = wavePeriod != null ? `${wavePeriod.toFixed(1)}s` : '--';
-
-                trendLabels[1].textContent = 'Wave Direction';
                 trendRows[1].textContent = waveDir != null ? windDirection(waveDir) : '--';
 
                 const currentVel = marine.current.ocean_current_velocity;
-                trendLabels[2].textContent = 'Current Velocity';
                 trendRows[2].textContent = currentVel != null ? `${currentVel.toFixed(2)} m/s` : '--';
 
                 const currentDir = marine.current.ocean_current_direction;
-                trendLabels[3].textContent = 'Current Direction';
                 trendRows[3].textContent = currentDir != null ? windDirection(currentDir) : '--';
-
-                document.querySelectorAll('.card-header')[5].innerHTML = '<span class="card-header-icon">\u{1F30A}</span>Marine Conditions';
             }
 
             // ======== Tide Chart (NOAA) ========
             loadTideChart(lat, lon);
+
+            // ======== NWS Alerts, Water Quality, HABs, Coastal Access — fire in parallel ========
+            loadNWSAlerts(lat, lon);
+            loadWaterQuality(lat, lon);
+            loadHABData(lat, lon);
+            loadCoastalAccess(lat, lon);
 
             searchInput.style.borderColor = '#10b981';
             showStatus(`Showing data for ${locationName}`, '#10b981');
@@ -887,27 +1030,65 @@
     }
 
     // ======== NOAA Tide Chart ========
+    // Hardcoded known NOAA tide prediction stations (same as paddle-conditions)
+    const TIDE_STATIONS = [
+        { id:'9410170', name:'San Diego', lat:32.7142, lon:-117.1736 },
+        { id:'9410196', name:'Del Mar', lat:32.9567, lon:-117.2717 },
+        { id:'9410230', name:'La Jolla', lat:32.8669, lon:-117.2571 },
+        { id:'9410580', name:'Newport Beach', lat:33.6031, lon:-117.8833 },
+        { id:'9410660', name:'Los Angeles', lat:33.7200, lon:-118.2720 },
+        { id:'9410840', name:'Santa Monica', lat:34.0083, lon:-118.5000 },
+        { id:'9411340', name:'Santa Barbara', lat:34.4083, lon:-119.6850 },
+        { id:'9412110', name:'Port San Luis', lat:35.1694, lon:-120.7556 },
+        { id:'9413450', name:'Monterey', lat:36.6050, lon:-121.8880 },
+        { id:'9414290', name:'San Francisco', lat:37.8063, lon:-122.4659 },
+        { id:'9414750', name:'Alameda', lat:37.7717, lon:-122.3000 },
+        { id:'9415020', name:'Point Reyes', lat:37.9961, lon:-122.9767 },
+        { id:'1612340', name:'Honolulu', lat:21.3069, lon:-157.8583 },
+        { id:'1612480', name:'Mokuoloe', lat:21.4331, lon:-157.7900 },
+        { id:'8443970', name:'Boston', lat:42.3539, lon:-71.0503 },
+        { id:'8518750', name:'The Battery NY', lat:40.7006, lon:-74.0142 },
+        { id:'8534720', name:'Atlantic City', lat:39.3550, lon:-74.4183 },
+        { id:'8574680', name:'Baltimore', lat:39.2667, lon:-76.5783 },
+        { id:'8658120', name:'Wilmington NC', lat:34.2275, lon:-77.9536 },
+        { id:'8665530', name:'Charleston SC', lat:32.7817, lon:-79.9250 },
+        { id:'8670870', name:'Fort Pulaski GA', lat:32.0333, lon:-80.9017 },
+        { id:'8720218', name:'Mayport FL', lat:30.3967, lon:-81.4300 },
+        { id:'8723214', name:'Virginia Key FL', lat:25.7317, lon:-80.1617 },
+        { id:'8724580', name:'Key West', lat:24.5508, lon:-81.8083 },
+        { id:'8726520', name:'St Petersburg', lat:27.7606, lon:-82.6269 },
+        { id:'8729108', name:'Panama City FL', lat:30.1522, lon:-85.6669 },
+        { id:'8735180', name:'Dauphin Island AL', lat:30.2500, lon:-88.0750 },
+        { id:'8761724', name:'Grand Isle LA', lat:29.2633, lon:-89.9567 },
+        { id:'8770570', name:'Sabine Pass TX', lat:29.7283, lon:-93.8700 },
+        { id:'8771450', name:'Galveston TX', lat:29.3100, lon:-94.7933 },
+        { id:'8775870', name:'Corpus Christi TX', lat:27.5800, lon:-97.2167 },
+        { id:'9447130', name:'Seattle', lat:47.6026, lon:-122.3393 },
+        { id:'9449424', name:'Cherry Point WA', lat:48.8633, lon:-122.7583 },
+        { id:'9440910', name:'Toke Point WA', lat:46.7075, lon:-123.9669 },
+        { id:'9432780', name:'Charleston OR', lat:43.3450, lon:-124.3220 },
+        { id:'9435380', name:'South Beach OR', lat:44.6254, lon:-124.0431 },
+        { id:'9451600', name:'Sitka AK', lat:57.0517, lon:-135.3417 },
+        { id:'9455920', name:'Anchorage AK', lat:61.2381, lon:-149.8900 },
+    ];
+
+    function nearestTideStation(lat, lon) {
+        let best = TIDE_STATIONS[0], bestDist = Infinity;
+        for (const s of TIDE_STATIONS) {
+            const d = haversine(lat, lon, s.lat, s.lon);
+            if (d < bestDist) { bestDist = d; best = s; }
+        }
+        return { station: best, dist: bestDist };
+    }
+
     async function loadTideChart(lat, lon) {
         const chartArea = document.querySelector('.tide-chart-area');
         chartArea.innerHTML = '<div style="color:#9ca3af;font-size:13px;">Loading tide data...</div>';
 
         try {
-            const stationsRes = await fetch('https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations.json?type=tidepredictions');
-            const stationsData = await stationsRes.json();
+            const { station, dist } = nearestTideStation(lat, lon);
 
-            if (!stationsData.stations || !stationsData.stations.length) {
-                chartArea.innerHTML = '<div style="color:#9ca3af;font-size:13px;">No tide stations found nearby</div>';
-                return;
-            }
-
-            let closest = null;
-            let minDist = Infinity;
-            for (const s of stationsData.stations) {
-                const d = Math.pow(s.lat - lat, 2) + Math.pow(s.lng - lon, 2);
-                if (d < minDist) { minDist = d; closest = s; }
-            }
-
-            if (!closest || minDist > 25) {
+            if (dist > 100) {
                 chartArea.innerHTML = '<div style="color:#9ca3af;font-size:13px;">No tide station found near this location</div>';
                 return;
             }
@@ -917,7 +1098,7 @@
             const endDate = new Date(today.getTime() + 48 * 3600000).toISOString().slice(0, 10).replace(/-/g, '');
 
             const tideRes = await fetch(
-                `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${beginDate}&end_date=${endDate}&station=${closest.id}&product=predictions&datum=MLLW&time_zone=lst_ldt&interval=h&units=english&format=json`
+                `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${beginDate}&end_date=${endDate}&station=${station.id}&product=predictions&datum=MLLW&time_zone=lst_ldt&interval=h&units=english&format=json`
             );
             const tideData = await tideRes.json();
 
@@ -926,7 +1107,7 @@
                 return;
             }
 
-            drawTideChart(chartArea, tideData.predictions, closest.name);
+            drawTideChart(chartArea, tideData.predictions, `${station.name} (${dist.toFixed(0)} mi away)`);
 
         } catch (err) {
             console.error('Tide error:', err);
@@ -1082,6 +1263,272 @@
             }
         }
     }
+
+    // ======== NWS Weather Alerts ========
+    async function loadNWSAlerts(lat, lon) {
+        const container = document.getElementById('alertList');
+        container.innerHTML = '<div class="alert-empty">Loading alerts...</div>';
+
+        try {
+            const r = await fetch(`https://api.weather.gov/alerts/active?point=${lat.toFixed(4)},${lon.toFixed(4)}`, {
+                headers: { 'User-Agent': 'PaddlePoint/1.0 (nwtjml@gmail.com)' }
+            });
+            if (!r.ok) throw new Error(`NWS: ${r.status}`);
+            const data = await r.json();
+
+            if (!data.features || data.features.length === 0) {
+                container.innerHTML = '<div class="alert-empty">No active weather alerts for this area</div>';
+                return;
+            }
+
+            let html = '';
+            data.features.slice(0, 5).forEach(f => {
+                const p = f.properties;
+                const severity = p.severity || 'Unknown';
+                let cls = 'advisory';
+                if (severity === 'Severe' || severity === 'Extreme') cls = 'severe';
+                else if (severity === 'Moderate') cls = 'warning';
+                else if (p.event && (p.event.includes('Watch') || p.event.includes('Warning'))) cls = 'watch';
+
+                const expires = p.expires ? new Date(p.expires).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
+                const headline = p.headline || p.event || 'Weather Alert';
+                const desc = p.description ? p.description.substring(0, 200).replace(/\n/g, ' ') + '...' : '';
+
+                html += `<div class="alert-item ${cls}">
+                    <div class="alert-title">${headline}</div>
+                    <div>${desc}</div>
+                    <div class="alert-meta">${severity} &bull; Expires: ${expires}</div>
+                </div>`;
+            });
+            container.innerHTML = html;
+        } catch (err) {
+            console.error('NWS error:', err);
+            container.innerHTML = '<div class="alert-empty">Could not load NWS alerts</div>';
+        }
+    }
+
+    // ======== Water Quality (CA WQ + Swim Guide) ========
+    async function loadWaterQuality(lat, lon) {
+        const container = document.getElementById('wqList');
+        const sourcesRow = document.getElementById('wqSources');
+        container.innerHTML = '<div class="alert-empty">Loading water quality data...</div>';
+
+        try {
+            // CA State Water Board Beach Advisories
+            const r = await fetch(`https://data.ca.gov/api/3/action/datastore_search?resource_id=d5cd6a23-829c-426d-a63e-689a55a3db9c&limit=100&sort=_id+desc&filters=${encodeURIComponent(JSON.stringify({ Beach_Status: 'Active' }))}`);
+
+            let advisories = [];
+            if (r.ok) {
+                const data = await r.json();
+                if (data.result && data.result.records) {
+                    const tenDaysAgo = Date.now() - 10 * 86400000;
+                    advisories = data.result.records.filter(rec => {
+                        // Filter by distance (~10 mile radius)
+                        const rlat = parseFloat(rec.Station_UpperLat || rec.Beach_UpperLat);
+                        const rlon = parseFloat(rec.Station_UpperLon || rec.Beach_UpperLon);
+                        if (!rlat || !rlon) return false;
+                        const dist = haversine(lat, lon, rlat, rlon);
+                        if (dist > 10) return false;
+                        // Filter by date (within 10 days)
+                        const advDate = new Date(rec.DateofAdvisory);
+                        if (advDate.getTime() < tenDaysAgo) return false;
+                        rec._dist = dist;
+                        return true;
+                    }).sort((a, b) => a._dist - b._dist).slice(0, 8);
+                }
+            }
+
+            if (advisories.length === 0) {
+                container.innerHTML = '<div class="alert-empty">No active beach water quality advisories nearby</div>';
+                sourcesRow.style.display = 'flex';
+                return;
+            }
+
+            let html = '';
+            advisories.forEach(rec => {
+                const type = (rec.AdvisoryType || '').toLowerCase();
+                const isClosed = type.includes('clos');
+                const badgeCls = isClosed ? 'closed' : 'advisory';
+                const badgeTxt = isClosed ? 'Closed' : 'Advisory';
+                const name = rec.Station_Name || rec.Beach_Name || 'Unknown Beach';
+                const cause = rec.AdvisoryCause || '';
+                const date = rec.DateofAdvisory ? new Date(rec.DateofAdvisory).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+                const dist = rec._dist ? `${rec._dist.toFixed(1)} mi` : '';
+
+                html += `<div class="wq-item">
+                    <span class="wq-badge ${badgeCls}">${badgeTxt}</span>
+                    <div style="flex:1">
+                        <div class="wq-name">${name}</div>
+                        <div class="wq-detail">${cause}${date ? ' &bull; ' + date : ''}${dist ? ' &bull; ' + dist : ''}</div>
+                    </div>
+                </div>`;
+            });
+            container.innerHTML = html;
+            sourcesRow.style.display = 'flex';
+        } catch (err) {
+            console.error('Water quality error:', err);
+            container.innerHTML = '<div class="alert-empty">Could not load water quality data</div>';
+        }
+    }
+
+    // ======== Harmful Algal Blooms (HABSOS + CA FHAB) ========
+    async function loadHABData(lat, lon) {
+        const container = document.getElementById('habList');
+        container.innerHTML = '<div class="alert-empty">Loading HAB data...</div>';
+
+        try {
+            const [habsos, cafhab] = await Promise.all([
+                fetchHABSOS(lat, lon),
+                fetchCAFHAB(lat, lon)
+            ]);
+
+            let html = '';
+            let hasData = false;
+
+            // HABSOS results
+            if (habsos && habsos.length > 0) {
+                hasData = true;
+                habsos.forEach(rec => {
+                    const count = rec.CELLCOUNT || 0;
+                    const species = `${rec.GENUS || ''} ${rec.SPECIES || ''}`.trim() || 'Unknown';
+                    const date = rec.SAMPLE_DATE ? new Date(rec.SAMPLE_DATE).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+                    const unit = rec.CELLCOUNT_UNIT || 'cells/L';
+                    let cls = 'clear';
+                    if (count >= 100000) cls = 'danger';
+                    else if (count >= 10000) cls = 'caution';
+
+                    html += `<div class="hab-item ${cls}">
+                        <div class="hab-species">${species}</div>
+                        <div class="hab-count">Cell count: ${count.toLocaleString()} ${unit}${cls === 'danger' ? ' — Elevated levels detected' : cls === 'caution' ? ' — Moderate levels' : ''}</div>
+                        <div class="hab-date">Sampled: ${date} &bull; Source: NOAA HABSOS</div>
+                    </div>`;
+                });
+            }
+
+            // CA FHAB satellite results
+            if (cafhab != null) {
+                hasData = true;
+                let cls = 'clear';
+                let label = 'No cyanobacteria detected';
+                if (cafhab >= 100000) { cls = 'danger'; label = 'High cyanobacteria index — Avoid contact'; }
+                else if (cafhab >= 10000) { cls = 'caution'; label = 'Moderate cyanobacteria levels'; }
+                else if (cafhab > 0) { label = 'Low cyanobacteria levels detected'; }
+
+                html += `<div class="hab-item ${cls}">
+                    <div class="hab-species">Satellite HAB Detection (Sentinel-3)</div>
+                    <div class="hab-count">Cyanobacteria index: ${cafhab.toLocaleString()}${cafhab > 0 ? ' — ' + label : ''}</div>
+                    <div class="hab-date">Source: CA FHAB (SFEI)</div>
+                </div>`;
+            }
+
+            if (!hasData) {
+                html = '<div class="alert-empty">No harmful algal bloom data available for this area</div>';
+            }
+
+            container.innerHTML = html;
+        } catch (err) {
+            console.error('HAB error:', err);
+            container.innerHTML = '<div class="alert-empty">Could not load HAB data</div>';
+        }
+    }
+
+    async function fetchHABSOS(lat, lon) {
+        try {
+            const thirtyDaysAgo = Date.now() - 30 * 86400000;
+            const buf = 0.75; // ~50 miles
+            const params = new URLSearchParams({
+                where: `SAMPLE_DATE >= ${thirtyDaysAgo}`,
+                geometry: JSON.stringify({ xmin: lon - buf, ymin: lat - buf, xmax: lon + buf, ymax: lat + buf, spatialReference: { wkid: 4326 } }),
+                geometryType: 'esriGeometryEnvelope',
+                spatialRel: 'esriSpatialRelIntersects',
+                outFields: 'DESCRIPTION,LATITUDE,LONGITUDE,SAMPLE_DATE,GENUS,SPECIES,CELLCOUNT,CELLCOUNT_UNIT,CATEGORY',
+                orderByFields: 'SAMPLE_DATE DESC',
+                resultRecordCount: 10,
+                f: 'json'
+            });
+            const r = await fetch(`https://gis.ncdc.noaa.gov/arcgis/rest/services/ms/HABSOS_CellCounts/MapServer/0/query?${params}`);
+            if (!r.ok) return [];
+            const data = await r.json();
+            return (data.features || []).map(f => f.attributes);
+        } catch { return []; }
+    }
+
+    async function fetchCAFHAB(lat, lon) {
+        // Try today, yesterday, 2 days ago
+        for (let d = 0; d < 3; d++) {
+            try {
+                const dt = new Date(Date.now() - d * 86400000);
+                const dateStr = dt.toISOString().slice(0, 10).replace(/-/g, '');
+                const r = await fetch(`https://fhab-api.sfei.org/cyano/1daymax/${dateStr}/lon/${lon}/lat/${lat}/json`);
+                if (!r.ok) continue;
+                const data = await r.json();
+                if (data && data.value != null) return data.value;
+            } catch { continue; }
+        }
+        return null;
+    }
+
+    // ======== Coastal Access (CA Coastal Commission) ========
+    let cachedCoastalAccess = null;
+    async function loadCoastalAccess(lat, lon) {
+        const container = document.getElementById('accessList');
+        container.innerHTML = '<div class="alert-empty">Loading coastal access data...</div>';
+
+        try {
+            if (!cachedCoastalAccess) {
+                const r = await fetch('https://api.coastal.ca.gov/access/v1/locations');
+                if (!r.ok) throw new Error(`Coastal API: ${r.status}`);
+                cachedCoastalAccess = await r.json();
+            }
+
+            // Filter to 5-mile radius and sort by distance
+            const nearby = cachedCoastalAccess
+                .filter(p => p.LATITUDE && p.LONGITUDE)
+                .map(p => ({ ...p, _dist: haversine(lat, lon, parseFloat(p.LATITUDE), parseFloat(p.LONGITUDE)) }))
+                .filter(p => p._dist <= 5)
+                .sort((a, b) => a._dist - b._dist)
+                .slice(0, 6);
+
+            if (nearby.length === 0) {
+                container.innerHTML = '<div class="alert-empty">No CA coastal access points found within 5 miles</div>';
+                return;
+            }
+
+            let html = '';
+            nearby.forEach(p => {
+                const name = p.NameMobileWeb || p.GEOGR_AREA || 'Access Point';
+                const features = [];
+                if (p.SNDY_BEACH === 'Yes') features.push('Sandy Beach');
+                if (p.RKY_SHORE === 'Yes') features.push('Rocky Shore');
+                if (p.BOATING === 'Yes') features.push('Boating');
+                if (p.FISHING === 'Yes') features.push('Fishing');
+                if (p.RESTROOMS === 'Yes') features.push('Restrooms');
+                if (p.PARKING === 'Yes' || p.FEE === 'Yes') features.push('Parking');
+
+                html += `<div class="access-item">
+                    <div class="access-icon">${p.SNDY_BEACH === 'Yes' ? '\u{1F3D6}\u{FE0F}' : p.BOATING === 'Yes' ? '\u{1F6F6}' : '\u{1F30A}'}</div>
+                    <div style="flex:1">
+                        <div class="access-name">${name}</div>
+                        <div class="access-features">${features.join(' &bull; ') || 'Beach access'}</div>
+                    </div>
+                    <div class="access-dist">${p._dist.toFixed(1)} mi</div>
+                </div>`;
+            });
+            container.innerHTML = html;
+        } catch (err) {
+            console.error('Coastal access error:', err);
+            container.innerHTML = '<div class="alert-empty">Could not load coastal access data</div>';
+        }
+    }
+
+    // ======== Haversine distance (miles) ========
+    function haversine(lat1, lon1, lat2, lon2) {
+        const R = 3958.8;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
 </script>
 <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAR81pUTUz5ON7ZBuoouTh2RTHyECr6yvg&libraries=places&callback=initWeatherPage"></script>
 
@@ -1092,6 +1539,17 @@
         <a href="paddle-clubs.html" style="color:#6b7280;text-decoration:none;font-size:12px;">Paddle Clubs</a>
         <a href="paddle-events.html" style="color:#6b7280;text-decoration:none;font-size:12px;">Events</a>
         <a href="paddle-gear.html" style="color:#6b7280;text-decoration:none;font-size:12px;">Gear</a>
+    </div>
+    <div style="display:flex;justify-content:center;flex-wrap:wrap;gap:4px 12px;margin-bottom:10px;">
+        <span style="color:#9ca3af;font-size:10px;font-weight:600;">Data:</span>
+        <a href="https://open-meteo.com" target="_blank" style="color:#9ca3af;text-decoration:none;font-size:10px;">Open-Meteo</a>
+        <a href="https://weather.google.com" target="_blank" style="color:#9ca3af;text-decoration:none;font-size:10px;">Google Weather</a>
+        <a href="https://tidesandcurrents.noaa.gov" target="_blank" style="color:#9ca3af;text-decoration:none;font-size:10px;">NOAA</a>
+        <a href="https://www.weather.gov" target="_blank" style="color:#9ca3af;text-decoration:none;font-size:10px;">NWS</a>
+        <a href="https://habsos.noaa.gov" target="_blank" style="color:#9ca3af;text-decoration:none;font-size:10px;">HABSOS</a>
+        <a href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank" style="color:#9ca3af;text-decoration:none;font-size:10px;">CA WQ</a>
+        <a href="https://www.coastal.ca.gov/YourCoast/" target="_blank" style="color:#9ca3af;text-decoration:none;font-size:10px;">CA Coastal</a>
+        <a href="https://www.theswimguide.org" target="_blank" style="color:#9ca3af;text-decoration:none;font-size:10px;">Swim Guide</a>
     </div>
     <div style="color:#9ca3af;font-size:10px;">&copy; 2026 PaddlePoint. All rights reserved.</div>
 </footer>
