@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PaddlePoint - Paddling Events</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0f1117;
+    color: #e1e4e8;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    min-height: 100vh;
+  }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #1a1d28, #252836);
+    padding: 20px 30px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    border-bottom: 1px solid #2d3040;
+  }
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .header-left img {
+    width: 40px;
+    height: 40px;
+  }
+  .header-title {
+    display: flex;
+    flex-direction: column;
+  }
+  .header-title h1 {
+    font-size: 22px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #06b6d4, #3b82f6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.2;
+  }
+  .header-title .subtitle {
+    font-size: 13px;
+    color: #8b949e;
+    margin-top: 2px;
+  }
+  .header-nav {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .header-nav a {
+    background: rgba(96, 165, 250, 0.1);
+    border: 1px solid rgba(96, 165, 250, 0.2);
+    color: #60a5fa;
+    border-radius: 10px;
+    font-size: 12px;
+    padding: 7px 14px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .header-nav a:hover {
+    background: rgba(96, 165, 250, 0.2);
+    border-color: rgba(96, 165, 250, 0.4);
+  }
+
+  /* Main content */
+  .content {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 30px 20px 60px;
+  }
+
+  /* Filter Bar */
+  .filter-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 30px;
+  }
+  .filter-label {
+    font-size: 13px;
+    color: #8b949e;
+    font-weight: 600;
+    margin-right: 4px;
+  }
+  .filter-pill {
+    background: rgba(96, 165, 250, 0.08);
+    border: 1px solid #2d3040;
+    color: #8b949e;
+    border-radius: 20px;
+    padding: 7px 16px;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .filter-pill:hover {
+    border-color: #06b6d4;
+    color: #e1e4e8;
+  }
+  .filter-pill.active {
+    background: #06b6d4;
+    color: #fff;
+    border-color: #06b6d4;
+  }
+  .filter-select {
+    background: rgba(96, 165, 250, 0.08);
+    border: 1px solid #2d3040;
+    color: #8b949e;
+    border-radius: 20px;
+    padding: 7px 16px;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%238b949e' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+    transition: all 0.2s;
+  }
+  .filter-select:hover {
+    border-color: #06b6d4;
+    color: #e1e4e8;
+  }
+  .filter-select:focus {
+    outline: none;
+    border-color: #06b6d4;
+  }
+  .filter-divider {
+    width: 1px;
+    height: 24px;
+    background: #2d3040;
+    margin: 0 4px;
+  }
+
+  /* Events Grid */
+  .events-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+  .event-card {
+    background: #1a1d28;
+    border: 1px solid #2d3040;
+    border-radius: 16px;
+    padding: 20px;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .event-card:hover {
+    border-color: rgba(6, 182, 212, 0.3);
+    transform: translateY(-2px);
+  }
+  .event-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: #e1e4e8;
+    margin-bottom: 8px;
+  }
+  .event-date {
+    font-size: 13px;
+    color: #8b949e;
+    margin-bottom: 4px;
+  }
+  .event-date::before {
+    content: "\1F4C5 ";
+  }
+  .event-location {
+    font-size: 13px;
+    color: #8b949e;
+    margin-bottom: 10px;
+  }
+  .event-location::before {
+    content: "\1F4CD ";
+  }
+  .discipline-tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    margin-right: 4px;
+  }
+  .tag-sup {
+    background: rgba(6, 182, 212, 0.15);
+    color: #06b6d4;
+  }
+  .tag-kayak {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+  }
+  .tag-outrigger {
+    background: rgba(249, 115, 22, 0.15);
+    color: #f97316;
+  }
+  .tag-dragon-boat {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+  }
+  .tag-canoe {
+    background: rgba(168, 85, 247, 0.15);
+    color: #a855f7;
+  }
+  .tag-all {
+    background: rgba(96, 165, 250, 0.15);
+    color: #60a5fa;
+  }
+  .event-desc {
+    font-size: 13px;
+    color: #6e7681;
+    line-height: 1.5;
+    margin-bottom: 12px;
+  }
+  .event-link {
+    font-size: 13px;
+    color: #06b6d4;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s;
+  }
+  .event-link:hover {
+    color: #22d3ee;
+    text-decoration: underline;
+  }
+
+  /* Responsive */
+  @media (max-width: 720px) {
+    .events-grid {
+      grid-template-columns: 1fr;
+    }
+    .header {
+      padding: 16px;
+    }
+    .header-nav {
+      width: 100%;
+    }
+    .filter-divider {
+      display: none;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <img src="paddle-pin.svg" alt="PaddlePoint Logo">
+    <div class="header-title">
+      <h1>PaddlePoint</h1>
+      <span class="subtitle">Paddling Events</span>
+    </div>
+  </div>
+  <nav class="header-nav">
+    <a href="paddlepoint.html">Home</a>
+    <a href="paddle-conditions.html">Water Conditions</a>
+    <a href="paddle-weather.html">Weather</a>
+    <a href="paddle-clubs.html">Clubs</a>
+    <a href="paddle-gear.html">Gear</a>
+  </nav>
+</div>
+
+<div class="content">
+
+  <!-- Filter Bar -->
+  <div class="filter-bar">
+    <span class="filter-label">Discipline:</span>
+    <button class="filter-pill active" onclick="setActive(this)">All</button>
+    <button class="filter-pill" onclick="setActive(this)">SUP</button>
+    <button class="filter-pill" onclick="setActive(this)">Kayak</button>
+    <button class="filter-pill" onclick="setActive(this)">Outrigger</button>
+    <button class="filter-pill" onclick="setActive(this)">Dragon Boat</button>
+    <button class="filter-pill" onclick="setActive(this)">Canoe</button>
+
+    <div class="filter-divider"></div>
+
+    <select class="filter-select">
+      <option>All Regions</option>
+      <option>West Coast</option>
+      <option>East Coast</option>
+      <option>Hawaii</option>
+      <option>Pacific Northwest</option>
+      <option>Canada</option>
+      <option>Southeast</option>
+      <option>Northeast</option>
+    </select>
+
+    <select class="filter-select">
+      <option>All Months</option>
+      <option>January</option>
+      <option>February</option>
+      <option>March</option>
+      <option>April</option>
+      <option>May</option>
+      <option>June</option>
+      <option>July</option>
+      <option>August</option>
+      <option>September</option>
+      <option>October</option>
+      <option>November</option>
+      <option>December</option>
+    </select>
+  </div>
+
+  <!-- Events Grid -->
+  <div class="events-grid">
+
+    <div class="event-card">
+      <div class="event-name">Pacific Paddle Games</div>
+      <div class="event-date">Oct 11-12, 2025</div>
+      <div class="event-location">Dana Point, CA</div>
+      <span class="discipline-tag tag-sup">SUP</span>
+      <div class="event-desc">The premier stand-up paddleboard competition on the West Coast, featuring elite and amateur racing, surfing, and distance events in the Dana Point Harbor.</div>
+      <a href="#" class="event-link">Learn More</a>
+    </div>
+
+    <div class="event-card">
+      <div class="event-name">Gorge Downwind Championships</div>
+      <div class="event-date">Jul 18-20, 2025</div>
+      <div class="event-location">Hood River, OR</div>
+      <span class="discipline-tag tag-sup">SUP</span>
+      <span class="discipline-tag tag-outrigger">Outrigger</span>
+      <div class="event-desc">Harness the legendary Columbia River Gorge winds in this thrilling downwind race. Open to SUP and outrigger canoe with multiple distance categories.</div>
+      <a href="#" class="event-link">Learn More</a>
+    </div>
+
+    <div class="event-card">
+      <div class="event-name">Catalina Crossing</div>
+      <div class="event-date">Sep 6, 2025</div>
+      <div class="event-location">Catalina Island, CA</div>
+      <span class="discipline-tag tag-all">All Crafts</span>
+      <div class="event-desc">A 32-mile open-ocean crossing from Catalina Island to the mainland. One of the most challenging and iconic paddle races in North America.</div>
+      <a href="#" class="event-link">Learn More</a>
+    </div>
+
+    <div class="event-card">
+      <div class="event-name">Na Pali Challenge</div>
+      <div class="event-date">Aug 2, 2025</div>
+      <div class="event-location">Kauai, HI</div>
+      <span class="discipline-tag tag-outrigger">Outrigger</span>
+      <span class="discipline-tag tag-sup">SUP</span>
+      <div class="event-desc">Paddle along the breathtaking Na Pali Coast in this bucket-list race. Open to OC-1, OC-2, surfski, and SUP with stunning cliff scenery.</div>
+      <a href="#" class="event-link">Learn More</a>
+    </div>
+
+    <div class="event-card">
+      <div class="event-name">Canadian Outrigger Championships</div>
+      <div class="event-date">Aug 23-24, 2025</div>
+      <div class="event-location">Vancouver, BC</div>
+      <span class="discipline-tag tag-outrigger">Outrigger</span>
+      <div class="event-desc">Canada's top outrigger canoe racing event, drawing crews from across the Pacific Northwest. Sprint and distance races in beautiful False Creek.</div>
+      <a href="#" class="event-link">Learn More</a>
+    </div>
+
+    <div class="event-card">
+      <div class="event-name">Queen Lili'uokalani Race</div>
+      <div class="event-date">Sep 1-5, 2025</div>
+      <div class="event-location">Kona, HI</div>
+      <span class="discipline-tag tag-outrigger">Outrigger</span>
+      <div class="event-desc">The world's largest outrigger canoe race, held annually on the Big Island. Features OC-6 long distance and iron races along the Kona Coast.</div>
+      <a href="#" class="event-link">Learn More</a>
+    </div>
+
+    <div class="event-card">
+      <div class="event-name">Dragon Boat Festival</div>
+      <div class="event-date">Jun 21-22, 2025</div>
+      <div class="event-location">Vancouver, BC</div>
+      <span class="discipline-tag tag-dragon-boat">Dragon Boat</span>
+      <div class="event-desc">One of the largest dragon boat festivals in North America, with over 180 teams competing. Enjoy cultural performances, food vendors, and exciting sprint races.</div>
+      <a href="#" class="event-link">Learn More</a>
+    </div>
+
+    <div class="event-card">
+      <div class="event-name">Adirondack Canoe Classic</div>
+      <div class="event-date">Sep 5-7, 2025</div>
+      <div class="event-location">Saranac Lake, NY</div>
+      <span class="discipline-tag tag-canoe">Canoe</span>
+      <div class="event-desc">A 90-mile, three-day wilderness canoe race through the Adirondack Park. Known as "The 90-Miler," it traverses lakes, rivers, and portage trails.</div>
+      <a href="#" class="event-link">Learn More</a>
+    </div>
+
+    <div class="event-card">
+      <div class="event-name">Carolina Cup</div>
+      <div class="event-date">Apr 25-27, 2025</div>
+      <div class="event-location">Wrightsville Beach, NC</div>
+      <span class="discipline-tag tag-sup">SUP</span>
+      <div class="event-desc">A world-class SUP event featuring the famous Graveyard course through open ocean, inlet, and flat water. Attracts top international paddlers each spring.</div>
+      <a href="#" class="event-link">Learn More</a>
+    </div>
+
+    <div class="event-card">
+      <div class="event-name">Chattajack</div>
+      <div class="event-date">Oct 25, 2025</div>
+      <div class="event-location">Chattanooga, TN</div>
+      <span class="discipline-tag tag-sup">SUP</span>
+      <span class="discipline-tag tag-kayak">Kayak</span>
+      <div class="event-desc">A 31-mile paddle through the Tennessee River Gorge, often called the "Grand Canyon of Tennessee." Open to SUP, kayak, surfski, and prone paddlers.</div>
+      <a href="#" class="event-link">Learn More</a>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function setActive(el) {
+    document.querySelectorAll('.filter-pill').forEach(function(pill) {
+      pill.classList.remove('active');
+    });
+    el.classList.add('active');
+  }
+</script>
+
+</body>
+</html>
