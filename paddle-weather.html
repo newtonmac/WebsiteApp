@@ -123,6 +123,12 @@
         .search-input::placeholder { color: #9ca3af; }
         .search-input:focus { border-color: #3b82f6; }
 
+        /* Google Places autocomplete dropdown styling */
+        .pac-container { border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 4px 20px rgba(0,0,0,0.1); margin-top: 4px; font-family: inherit; }
+        .pac-item { padding: 8px 14px; font-size: 14px; border-top: 1px solid #f3f4f6; cursor: pointer; }
+        .pac-item:hover { background: #f7f8fa; }
+        .pac-item-query { font-weight: 600; color: #1a1a2e; }
+
         .search-icon {
             position: absolute;
             left: 14px;
@@ -376,8 +382,9 @@
         <div class="card-header"><span class="card-header-icon">&#x1F4CD;</span>Location Search</div>
         <div class="search-wrapper">
             <span class="search-icon">&#x1F50D;</span>
-            <input type="text" class="search-input" placeholder="Enter a paddle location (e.g. Mission Bay, San Diego)">
+            <input type="text" class="search-input" placeholder="Enter a paddle location (e.g. Mission Bay, San Diego)" id="locationInput">
         </div>
+        <div id="searchStatus" style="margin-top:8px;font-size:12px;color:#9ca3af;display:none;"></div>
     </div>
 
     <!-- Current Conditions -->
@@ -600,6 +607,483 @@
     </div>
 
 </div>
+
+<script>
+    const GOOGLE_API_KEY = 'AIzaSyAR81pUTUz5ON7ZBuoouTh2RTHyECr6yvg';
+    const searchInput = document.getElementById('locationInput');
+    const searchStatus = document.getElementById('searchStatus');
+
+    function showStatus(msg, color) {
+        searchStatus.style.display = 'block';
+        searchStatus.style.color = color || '#9ca3af';
+        searchStatus.textContent = msg;
+    }
+
+    function windDirection(deg) {
+        const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+        return dirs[Math.round(deg / 22.5) % 16];
+    }
+
+    function weatherIcon(code, isNight) {
+        if (code === 0) return isNight ? '\u{1F319}' : '\u{2600}\u{FE0F}';
+        if (code <= 3) return isNight ? '\u{1F319}' : '\u{26C5}';
+        if (code <= 48) return '\u{1F32B}\u{FE0F}';
+        if (code <= 57) return '\u{1F327}\u{FE0F}';
+        if (code <= 67) return '\u{1F327}\u{FE0F}';
+        if (code <= 77) return '\u{2744}\u{FE0F}';
+        if (code <= 82) return '\u{1F327}\u{FE0F}';
+        if (code <= 86) return '\u{1F328}\u{FE0F}';
+        if (code <= 99) return '\u{26A1}';
+        return '\u{26C5}';
+    }
+
+    function weatherDesc(code) {
+        if (code === 0) return 'Clear';
+        if (code <= 3) return 'Partly Cloudy';
+        if (code <= 48) return 'Foggy';
+        if (code <= 57) return 'Drizzle';
+        if (code <= 67) return 'Rain';
+        if (code <= 77) return 'Snow';
+        if (code <= 82) return 'Showers';
+        if (code <= 86) return 'Snow Showers';
+        if (code <= 99) return 'Thunderstorm';
+        return 'Cloudy';
+    }
+
+    // ======== Google Places Autocomplete (initialized after Maps JS loads) ========
+    function initWeatherPage() {
+        const autocomplete = new google.maps.places.Autocomplete(searchInput, {
+            types: ['geocode', 'establishment'],
+        });
+
+        autocomplete.addListener('place_changed', () => {
+            const place = autocomplete.getPlace();
+            if (!place.geometry) {
+                showStatus('Please select a location from the dropdown.', '#ef4444');
+                return;
+            }
+            const lat = place.geometry.location.lat();
+            const lon = place.geometry.location.lng();
+            const name = place.formatted_address || place.name || searchInput.value;
+            fetchAllData(lat, lon, name);
+        });
+
+        // Also support Enter key with manual geocoding fallback
+        searchInput.addEventListener('keydown', async (e) => {
+            if (e.key !== 'Enter') return;
+            // Small delay to let autocomplete fire first
+            setTimeout(async () => {
+                const query = searchInput.value.trim();
+                if (!query) return;
+                // If autocomplete already handled it, skip
+                if (searchStatus.textContent.startsWith('Loading')) return;
+
+                showStatus('Searching...', '#3b82f6');
+                try {
+                    const geocoder = new google.maps.Geocoder();
+                    const result = await new Promise((resolve, reject) => {
+                        geocoder.geocode({ address: query }, (results, status) => {
+                            if (status === 'OK' && results.length > 0) resolve(results[0]);
+                            else reject(new Error('Location not found'));
+                        });
+                    });
+                    const lat = result.geometry.location.lat();
+                    const lon = result.geometry.location.lng();
+                    searchInput.value = result.formatted_address;
+                    fetchAllData(lat, lon, result.formatted_address);
+                } catch {
+                    showStatus('Location not found. Try a different search.', '#ef4444');
+                    searchInput.style.borderColor = '#ef4444';
+                }
+            }, 300);
+        });
+    }
+
+    // ======== Main data fetcher ========
+    async function fetchAllData(lat, lon, locationName) {
+        searchInput.style.borderColor = '#3b82f6';
+        showStatus('Loading weather data...', '#3b82f6');
+
+        try {
+            // Fetch Google Weather current + hourly, Open-Meteo for daily/marine, NOAA tides — all in parallel
+            const [googleCurrent, googleHourly, openMeteo, marine] = await Promise.all([
+                fetch(`https://weather.googleapis.com/v1/currentConditions:lookup?key=${GOOGLE_API_KEY}&location.latitude=${lat}&location.longitude=${lon}`)
+                    .then(r => r.ok ? r.json() : null).catch(() => null),
+                fetch(`https://weather.googleapis.com/v1/forecast/hours:lookup?key=${GOOGLE_API_KEY}&location.latitude=${lat}&location.longitude=${lon}&hours=12`)
+                    .then(r => r.ok ? r.json() : null).catch(() => null),
+                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,uv_index,visibility,weather_code,is_day&hourly=temperature_2m,wind_speed_10m,weather_code,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=7`)
+                    .then(r => r.json()),
+                fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&current=wave_height,wave_period,wave_direction,ocean_current_velocity,ocean_current_direction&daily=wave_height_max,wave_period_max&timezone=auto&forecast_days=7`)
+                    .then(r => r.ok ? r.json() : null).catch(() => null)
+            ]);
+
+            // ======== Current Conditions (prefer Google, fallback Open-Meteo) ========
+            const items = document.querySelectorAll('.condition-item');
+
+            if (googleCurrent) {
+                const gc = googleCurrent;
+                const tempF = gc.temperature ? Math.round(gc.temperature.degrees * 9/5 + 32) : null;
+                // Google Weather returns Celsius by default
+                if (gc.temperature) {
+                    const unit = gc.temperature.unit === 'FAHRENHEIT' ? gc.temperature.degrees : tempF;
+                    items[0].querySelector('.condition-value').innerHTML = `${Math.round(unit)} <span class="condition-unit">&deg;F</span>`;
+                }
+                if (gc.wind) {
+                    const windMph = gc.wind.speed ? Math.round(gc.wind.speed.value * 0.621371) : '--';
+                    items[1].querySelector('.condition-value').innerHTML = `${windMph} <span class="condition-unit">mph</span>`;
+                    const dir = gc.wind.direction ? windDirection(gc.wind.direction.degrees) : '--';
+                    items[1].querySelector('div[style]').textContent = `Dir: ${dir}`;
+                }
+                if (gc.relativeHumidity != null) {
+                    items[2].querySelector('.condition-value').innerHTML = `${gc.relativeHumidity} <span class="condition-unit">%</span>`;
+                }
+                if (gc.uvIndex != null) {
+                    items[3].querySelector('.condition-value').textContent = gc.uvIndex;
+                }
+                if (gc.visibility) {
+                    const visMi = gc.visibility.value ? (gc.visibility.value * 0.000621371).toFixed(1) : '--';
+                    items[4].querySelector('.condition-value').innerHTML = `${visMi} <span class="condition-unit">mi</span>`;
+                }
+            } else {
+                // Fallback: Open-Meteo
+                const cur = openMeteo.current;
+                items[0].querySelector('.condition-value').innerHTML = `${Math.round(cur.temperature_2m)} <span class="condition-unit">&deg;F</span>`;
+                items[1].querySelector('.condition-value').innerHTML = `${Math.round(cur.wind_speed_10m)} <span class="condition-unit">mph</span>`;
+                items[1].querySelector('div[style]').textContent = `Dir: ${windDirection(cur.wind_direction_10m)}`;
+                items[2].querySelector('.condition-value').innerHTML = `${cur.relative_humidity_2m} <span class="condition-unit">%</span>`;
+                items[3].querySelector('.condition-value').textContent = cur.uv_index != null ? cur.uv_index.toFixed(1) : '--';
+                items[4].querySelector('.condition-value').innerHTML = `${(cur.visibility / 1609.34).toFixed(1)} <span class="condition-unit">mi</span>`;
+            }
+
+            // ======== Hourly Forecast (prefer Google, fallback Open-Meteo) ========
+            const hourlyContainer = document.querySelector('.hourly-scroll');
+
+            if (googleHourly && googleHourly.forecastHours && googleHourly.forecastHours.length > 0) {
+                let hourlyHTML = '';
+                googleHourly.forecastHours.forEach((h, i) => {
+                    const dt = new Date(h.displayDateTime || h.interval?.startTime);
+                    const label = i === 0 ? 'Now' : dt.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
+                    const tempF = h.temperature ? Math.round(h.temperature.degrees * 9/5 + 32) : '--';
+                    const temp = h.temperature?.unit === 'FAHRENHEIT' ? Math.round(h.temperature.degrees) : tempF;
+                    const windMph = h.wind?.speed ? Math.round(h.wind.speed.value * 0.621371) : '--';
+                    const isDark = h.isDaytime === false;
+                    const icon = h.weatherCondition ? getGoogleWeatherIcon(h.weatherCondition.type, isDark) : '\u{26C5}';
+                    hourlyHTML += `<div class="hour-block">
+                        <div class="hour-time">${label}</div>
+                        <div class="hour-icon">${icon}</div>
+                        <div class="hour-temp">${temp}&deg;</div>
+                        <div class="hour-wind">${windMph} mph</div>
+                    </div>`;
+                });
+                hourlyContainer.innerHTML = hourlyHTML;
+            } else {
+                // Fallback: Open-Meteo hourly
+                const hourlyTimes = openMeteo.hourly.time;
+                const nowISO = new Date().toISOString().slice(0, 13);
+                let startIdx = hourlyTimes.findIndex(t => t.startsWith(nowISO));
+                if (startIdx < 0) startIdx = 0;
+
+                let hourlyHTML = '';
+                for (let i = startIdx; i < Math.min(startIdx + 12, hourlyTimes.length); i++) {
+                    const dt = new Date(hourlyTimes[i]);
+                    const label = i === startIdx ? 'Now' : dt.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
+                    const temp = Math.round(openMeteo.hourly.temperature_2m[i]);
+                    const wind = Math.round(openMeteo.hourly.wind_speed_10m[i]);
+                    const code = openMeteo.hourly.weather_code[i];
+                    const isNight = !openMeteo.hourly.is_day[i];
+                    hourlyHTML += `<div class="hour-block">
+                        <div class="hour-time">${label}</div>
+                        <div class="hour-icon">${weatherIcon(code, isNight)}</div>
+                        <div class="hour-temp">${temp}&deg;</div>
+                        <div class="hour-wind">${wind} mph</div>
+                    </div>`;
+                }
+                hourlyContainer.innerHTML = hourlyHTML;
+            }
+
+            // ======== 5-Day Forecast (Open-Meteo daily + marine swell) ========
+            const daily = openMeteo.daily;
+            const forecastGrid = document.querySelector('.forecast-grid');
+            let forecastHTML = '';
+            for (let i = 0; i < Math.min(5, daily.time.length); i++) {
+                const dt = new Date(daily.time[i] + 'T12:00:00');
+                const dayName = i === 0 ? 'Today' : dt.toLocaleDateString('en-US', { weekday: 'long' });
+                const hi = Math.round(daily.temperature_2m_max[i]);
+                const lo = Math.round(daily.temperature_2m_min[i]);
+                const wind = Math.round(daily.wind_speed_10m_max[i]);
+                const swell = marine && marine.daily && marine.daily.wave_height_max ? marine.daily.wave_height_max[i] : null;
+                const swellTxt = swell != null ? `${(swell * 3.281).toFixed(1)} ft` : '-- ft';
+                const desc = weatherDesc(daily.weather_code[i]);
+                forecastHTML += `<div class="forecast-row">
+                    <div class="forecast-day">${dayName}</div>
+                    <div class="forecast-cell"><div class="forecast-cell-value">${hi}&deg; / ${lo}&deg;</div></div>
+                    <div class="forecast-cell"><div class="forecast-cell-value">${wind} mph</div></div>
+                    <div class="forecast-cell"><div class="forecast-cell-value">${swellTxt}</div></div>
+                    <div class="forecast-cell"><div class="forecast-cell-value">${desc}</div></div>
+                </div>`;
+            }
+            forecastGrid.innerHTML = forecastHTML;
+
+            // ======== Marine Conditions card ========
+            if (marine && marine.current) {
+                const waveH = marine.current.wave_height;
+                const wavePeriod = marine.current.wave_period;
+                const waveDir = marine.current.wave_direction;
+
+                const waterTempMain = document.querySelector('.water-temp-value');
+                const waterTempLabel = document.querySelector('.water-temp-label');
+                const trendRows = document.querySelectorAll('.trend-row .trend-value');
+                const trendLabels = document.querySelectorAll('.trend-row .trend-label');
+
+                waterTempMain.textContent = waveH != null ? `${(waveH * 3.281).toFixed(1)}` : '--';
+                waterTempLabel.textContent = 'Current Wave Height (ft)';
+
+                trendLabels[0].textContent = 'Wave Period';
+                trendRows[0].textContent = wavePeriod != null ? `${wavePeriod.toFixed(1)}s` : '--';
+
+                trendLabels[1].textContent = 'Wave Direction';
+                trendRows[1].textContent = waveDir != null ? windDirection(waveDir) : '--';
+
+                const currentVel = marine.current.ocean_current_velocity;
+                trendLabels[2].textContent = 'Current Velocity';
+                trendRows[2].textContent = currentVel != null ? `${currentVel.toFixed(2)} m/s` : '--';
+
+                const currentDir = marine.current.ocean_current_direction;
+                trendLabels[3].textContent = 'Current Direction';
+                trendRows[3].textContent = currentDir != null ? windDirection(currentDir) : '--';
+
+                document.querySelectorAll('.card-header')[5].innerHTML = '<span class="card-header-icon">\u{1F30A}</span>Marine Conditions';
+            }
+
+            // ======== Tide Chart (NOAA) ========
+            loadTideChart(lat, lon);
+
+            searchInput.style.borderColor = '#10b981';
+            showStatus(`Showing data for ${locationName}`, '#10b981');
+
+        } catch (err) {
+            console.error('Weather fetch error:', err);
+            showStatus('Error loading weather data. Please try again.', '#ef4444');
+            searchInput.style.borderColor = '#ef4444';
+        }
+    }
+
+    function getGoogleWeatherIcon(type, isDark) {
+        const map = {
+            'CLEAR': isDark ? '\u{1F319}' : '\u{2600}\u{FE0F}',
+            'MOSTLY_CLEAR': isDark ? '\u{1F319}' : '\u{1F324}\u{FE0F}',
+            'PARTLY_CLOUDY': '\u{26C5}',
+            'MOSTLY_CLOUDY': '\u{1F325}\u{FE0F}',
+            'CLOUDY': '\u{2601}\u{FE0F}',
+            'RAIN': '\u{1F327}\u{FE0F}',
+            'LIGHT_RAIN': '\u{1F326}\u{FE0F}',
+            'HEAVY_RAIN': '\u{1F327}\u{FE0F}',
+            'SNOW': '\u{1F328}\u{FE0F}',
+            'THUNDERSTORM': '\u{26A1}',
+            'FOG': '\u{1F32B}\u{FE0F}',
+            'HAZE': '\u{1F32B}\u{FE0F}',
+        };
+        return map[type] || '\u{26C5}';
+    }
+
+    // ======== NOAA Tide Chart ========
+    async function loadTideChart(lat, lon) {
+        const chartArea = document.querySelector('.tide-chart-area');
+        chartArea.innerHTML = '<div style="color:#9ca3af;font-size:13px;">Loading tide data...</div>';
+
+        try {
+            const stationsRes = await fetch('https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations.json?type=tidepredictions');
+            const stationsData = await stationsRes.json();
+
+            if (!stationsData.stations || !stationsData.stations.length) {
+                chartArea.innerHTML = '<div style="color:#9ca3af;font-size:13px;">No tide stations found nearby</div>';
+                return;
+            }
+
+            let closest = null;
+            let minDist = Infinity;
+            for (const s of stationsData.stations) {
+                const d = Math.pow(s.lat - lat, 2) + Math.pow(s.lng - lon, 2);
+                if (d < minDist) { minDist = d; closest = s; }
+            }
+
+            if (!closest || minDist > 25) {
+                chartArea.innerHTML = '<div style="color:#9ca3af;font-size:13px;">No tide station found near this location</div>';
+                return;
+            }
+
+            const today = new Date();
+            const beginDate = today.toISOString().slice(0, 10).replace(/-/g, '');
+            const endDate = new Date(today.getTime() + 48 * 3600000).toISOString().slice(0, 10).replace(/-/g, '');
+
+            const tideRes = await fetch(
+                `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${beginDate}&end_date=${endDate}&station=${closest.id}&product=predictions&datum=MLLW&time_zone=lst_ldt&interval=h&units=english&format=json`
+            );
+            const tideData = await tideRes.json();
+
+            if (!tideData.predictions || !tideData.predictions.length) {
+                chartArea.innerHTML = '<div style="color:#9ca3af;font-size:13px;">No tide predictions available</div>';
+                return;
+            }
+
+            drawTideChart(chartArea, tideData.predictions, closest.name);
+
+        } catch (err) {
+            console.error('Tide error:', err);
+            chartArea.innerHTML = '<div style="color:#9ca3af;font-size:13px;">Could not load tide data</div>';
+        }
+    }
+
+    function drawTideChart(container, predictions, stationName) {
+        const now = new Date();
+        const filtered = predictions.filter(p => {
+            const t = new Date(p.t);
+            return t >= new Date(now.getTime() - 3600000) && t <= new Date(now.getTime() + 30 * 3600000);
+        });
+
+        if (filtered.length < 3) {
+            container.innerHTML = '<div style="color:#9ca3af;font-size:13px;">Insufficient tide data</div>';
+            return;
+        }
+
+        const values = filtered.map(p => parseFloat(p.v));
+        const times = filtered.map(p => new Date(p.t));
+        const minV = Math.min(...values);
+        const maxV = Math.max(...values);
+        const range = maxV - minV || 1;
+
+        container.innerHTML = '';
+        container.style.display = 'block';
+        container.style.position = 'relative';
+
+        const canvas = document.createElement('canvas');
+        const dpr = window.devicePixelRatio || 1;
+        const w = container.clientWidth;
+        const h = container.clientHeight;
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        canvas.style.width = w + 'px';
+        canvas.style.height = h + 'px';
+        container.appendChild(canvas);
+
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+
+        const padTop = 30, padBot = 40, padLeft = 45, padRight = 20;
+        const chartW = w - padLeft - padRight;
+        const chartH = h - padTop - padBot;
+
+        ctx.fillStyle = '#f7f8fa';
+        ctx.fillRect(0, 0, w, h);
+
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillText(`Station: ${stationName}`, padLeft, 16);
+
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '10px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.textAlign = 'right';
+        for (let i = 0; i <= 4; i++) {
+            const v = minV + (range * i / 4);
+            const y = padTop + chartH - (i / 4) * chartH;
+            ctx.fillText(v.toFixed(1) + ' ft', padLeft - 6, y + 3);
+            ctx.strokeStyle = '#e5e7eb';
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(padLeft, y);
+            ctx.lineTo(padLeft + chartW, y);
+            ctx.stroke();
+        }
+
+        ctx.textAlign = 'center';
+        const step = Math.max(1, Math.floor(filtered.length / 8));
+        for (let i = 0; i < filtered.length; i += step) {
+            const x = padLeft + (i / (filtered.length - 1)) * chartW;
+            const label = times[i].toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
+            ctx.fillStyle = '#9ca3af';
+            ctx.font = '10px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx.fillText(label, x, h - padBot + 16);
+            if (times[i].getHours() === 0) {
+                ctx.fillText(times[i].toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), x, h - padBot + 28);
+            }
+        }
+
+        ctx.beginPath();
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 2.5;
+        ctx.lineJoin = 'round';
+        for (let i = 0; i < filtered.length; i++) {
+            const x = padLeft + (i / (filtered.length - 1)) * chartW;
+            const y = padTop + chartH - ((values[i] - minV) / range) * chartH;
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        ctx.lineTo(padLeft + chartW, padTop + chartH);
+        ctx.lineTo(padLeft, padTop + chartH);
+        ctx.closePath();
+        const grad = ctx.createLinearGradient(0, padTop, 0, padTop + chartH);
+        grad.addColorStop(0, 'rgba(59, 130, 246, 0.2)');
+        grad.addColorStop(1, 'rgba(59, 130, 246, 0.02)');
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // Current time marker
+        const nowMs = now.getTime();
+        const startMs = times[0].getTime();
+        const endMs = times[times.length - 1].getTime();
+        if (nowMs >= startMs && nowMs <= endMs) {
+            const frac = (nowMs - startMs) / (endMs - startMs);
+            const nowX = padLeft + frac * chartW;
+            const idx = frac * (filtered.length - 1);
+            const lo = Math.floor(idx);
+            const hi = Math.min(lo + 1, filtered.length - 1);
+            const t = idx - lo;
+            const nowV = values[lo] * (1 - t) + values[hi] * t;
+            const nowY = padTop + chartH - ((nowV - minV) / range) * chartH;
+
+            ctx.setLineDash([4, 3]);
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(nowX, padTop);
+            ctx.lineTo(nowX, padTop + chartH);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.beginPath();
+            ctx.arc(nowX, nowY, 5, 0, Math.PI * 2);
+            ctx.fillStyle = '#ef4444';
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.fillStyle = '#ef4444';
+            ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`Now: ${nowV.toFixed(1)} ft`, nowX, nowY - 10);
+        }
+
+        // High/low markers
+        for (let i = 1; i < values.length - 1; i++) {
+            const isHigh = values[i] > values[i - 1] && values[i] > values[i + 1];
+            const isLow = values[i] < values[i - 1] && values[i] < values[i + 1];
+            if (isHigh || isLow) {
+                const x = padLeft + (i / (filtered.length - 1)) * chartW;
+                const y = padTop + chartH - ((values[i] - minV) / range) * chartH;
+                ctx.beginPath();
+                ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+                ctx.fillStyle = isHigh ? '#10b981' : '#f59e0b';
+                ctx.fill();
+                ctx.font = '9px -apple-system, BlinkMacSystemFont, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${isHigh ? 'H' : 'L'} ${values[i].toFixed(1)}ft`, x, isHigh ? y - 8 : y + 14);
+            }
+        }
+    }
+</script>
+<script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAR81pUTUz5ON7ZBuoouTh2RTHyECr6yvg&libraries=places&callback=initWeatherPage"></script>
 
 <footer style="text-align:center;padding:20px 16px 28px;border-top:1px solid #e5e7eb;margin-top:24px;">
     <div style="display:flex;justify-content:center;flex-wrap:wrap;gap:6px 16px;margin-bottom:10px;">
