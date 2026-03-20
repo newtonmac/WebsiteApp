@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PaddlePoint - Surfski Guide</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #ffffff; color: #1a1a2e; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+
+        header {
+            position: sticky; top: 0; z-index: 100;
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid #e5e7eb;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 24px;
+        }
+        .header-left { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+        .header-left img { width: 90px; height: 90px; }
+        .header-left h1 {
+            font-size: 22px; font-weight: 700;
+            background: linear-gradient(90deg, #06b6d4, #3b82f6);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .header-left .subtitle { font-size: 12px; color: #6b7280; }
+        .header-right { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .nav-btn {
+            padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 500;
+            border: none; background: transparent; color: #4b5563; text-decoration: none;
+            cursor: pointer; transition: background 0.2s;
+        }
+        .nav-btn:hover { background: #f3f4f6; }
+        .nav-btn.accent { background: #0e7a6b; color: #fff; }
+        .nav-btn.accent:hover { background: #0b6358; }
+
+        main { max-width: 900px; margin: 0 auto; padding: 40px 24px; }
+
+        .hero { text-align: center; margin-bottom: 32px; }
+        .hero .emoji { font-size: 80px; display: block; margin-bottom: 12px; }
+        .hero h1 { font-size: 36px; font-weight: 800; color: #1a1a2e; }
+
+        h2 { font-size: 24px; font-weight: 700; color: #1a1a2e; margin: 32px 0 12px; }
+        p { font-size: 15px; line-height: 1.7; color: #4b5563; }
+
+        .card { background: #f7f8fa; border-radius: 12px; padding: 20px; margin-bottom: 12px; }
+        .card h3 { font-size: 17px; font-weight: 600; color: #1a1a2e; margin-bottom: 6px; }
+        .card p { font-size: 14px; color: #6b7280; line-height: 1.6; }
+        .price { color: #0e7a6b; font-weight: 600; }
+
+        .tip-list { padding-left: 20px; }
+        .tip-list li { margin-bottom: 8px; font-size: 15px; color: #4b5563; }
+
+        footer {
+            text-align: center; padding: 20px 16px 28px;
+            border-top: 1px solid #e5e7eb; margin-top: 24px;
+        }
+        .footer-links { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
+        .footer-links a { font-size: 12px; color: #6b7280; text-decoration: none; }
+        .footer-links a:hover { text-decoration: underline; }
+        .copyright { color: #9ca3af; font-size: 10px; }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="paddlepoint.html" class="header-left" style="text-decoration:none;">
+            <img src="paddle-pin.svg" alt="PaddlePoint Logo">
+            <div>
+                <h1>PaddlePoint</h1>
+                <div class="subtitle">Surfski Guide</div>
+            </div>
+        </a>
+        <nav class="header-right">
+            <a href="paddlepoint.html" class="nav-btn accent">Home</a>
+            <a href="paddle-conditions.html" class="nav-btn">Water Conditions</a>
+            <a href="paddle-weather.html" class="nav-btn">Weather</a>
+            <a href="paddle-clubs.html" class="nav-btn">Clubs</a>
+            <a href="paddle-events.html" class="nav-btn">Events</a>
+            <a href="paddle-gear.html" class="nav-btn">Gear</a>
+        </nav>
+    </header>
+
+    <main>
+        <div class="hero">
+            <span class="emoji">🚣</span>
+            <h1>Surfski</h1>
+        </div>
+
+        <h2>What is Surfski?</h2>
+        <p>A narrow, sit-on-top kayak designed for open ocean paddling. Evolved from lifesaving boats in South Africa and Australia. Paddled with a double-blade paddle. Built for speed, downwind runs, and ocean racing. The ultimate open-water craft — fast, exhilarating, and demanding.</p>
+
+        <h2>Types of Surfski</h2>
+        <div class="card">
+            <h3>Entry-Level / Stability Surfski</h3>
+            <p>Wider beam (~50-52cm), forgiving, and great for learning. Examples: Epic V5, Think Evo II.</p>
+        </div>
+        <div class="card">
+            <h3>Intermediate Surfski</h3>
+            <p>Medium beam (~46-48cm), offering a balance of speed and stability. Examples: Epic V7, Fenn Swordfish.</p>
+        </div>
+        <div class="card">
+            <h3>Elite / Racing Surfski</h3>
+            <p>Narrow (~42-44cm), the fastest option, designed for experienced paddlers. Examples: Epic V10, Fenn Elite, Nelo 560.</p>
+        </div>
+        <div class="card">
+            <h3>Double Surfski (S2)</h3>
+            <p>Two-person surfski, great for training partners and shared ocean adventures.</p>
+        </div>
+
+        <h2>Essential Gear</h2>
+        <div class="card">
+            <h3>Surfski</h3>
+            <p>The boat itself. <span class="price">$2,500 - $8,000+</span></p>
+        </div>
+        <div class="card">
+            <h3>Wing Paddle</h3>
+            <p>Carbon wing paddle for efficient forward stroke. <span class="price">$200 - $600</span></p>
+        </div>
+        <div class="card">
+            <h3>PFD (Life Jacket)</h3>
+            <p>Low-profile personal flotation device. <span class="price">$50 - $150</span></p>
+        </div>
+        <div class="card">
+            <h3>Leash</h3>
+            <p>Critical for ocean paddling — keeps you connected to the boat. <span class="price">$20 - $40</span></p>
+        </div>
+        <div class="card">
+            <h3>Hydration System</h3>
+            <p>Stay hydrated during long open-water sessions.</p>
+        </div>
+        <div class="card">
+            <h3>GPS Watch</h3>
+            <p>Track speed, distance, and routes. <span class="price">$300 - $500</span></p>
+        </div>
+
+        <h2>Getting Started</h2>
+        <ul class="tip-list">
+            <li>Learn to remount — you WILL fall off.</li>
+            <li>Start on flat water.</li>
+            <li>Practice bracing and balance.</li>
+            <li>Join a surfski club for group paddles.</li>
+            <li>Work up to downwind runs gradually.</li>
+            <li>Swim fitness is essential as backup.</li>
+        </ul>
+
+        <h2>Who Is It For?</h2>
+        <p>Fit paddlers seeking speed and ocean thrills. Triathletes, ocean swimmers, and kayakers looking for the next challenge. Not ideal for true beginners (start with a wider model).</p>
+    </main>
+
+    <footer>
+        <div class="footer-links">
+            <a href="paddle-gear.html">Gear</a>
+            <a href="paddle-clubs.html">Clubs</a>
+            <a href="paddle-events.html">Events</a>
+        </div>
+        <div class="copyright">&copy; 2026 PaddlePoint. All rights reserved.</div>
+    </footer>
+</body>
+</html>
