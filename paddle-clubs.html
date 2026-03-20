@@ -1420,6 +1420,20 @@
             setTimeout(() => fetch(`${COUNTER_API}/visit?page=clubs`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ referrer: document.referrer }) }).catch(() => {}), 3000);
         }
 
+        // Track time on page
+        const _pageStart = Date.now();
+        let _durationSent = false;
+        function _sendDuration() {
+            if (_durationSent) return;
+            _durationSent = true;
+            const seconds = Math.round((Date.now() - _pageStart) / 1000);
+            if (seconds >= 3) {
+                navigator.sendBeacon(`${COUNTER_API}/duration?page=clubs`, JSON.stringify({ seconds }));
+            }
+        }
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') _sendDuration(); });
+        window.addEventListener('pagehide', _sendDuration);
+
         let statsLoaded = false;
 
         function toggleStats() {
