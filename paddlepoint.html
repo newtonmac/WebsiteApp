@@ -265,89 +265,28 @@
 
         /* === FOOTER === */
         .footer {
-            background: #1a1a2e;
-            color: rgba(255,255,255,0.7);
-            padding: 48px 24px 32px;
+            text-align: center;
+            padding: 20px 16px 28px;
+            border-top: 1px solid #e5e7eb;
             margin-top: 32px;
         }
-
-        .footer-inner {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: 2fr 1fr 1fr 1fr;
-            gap: 40px;
-        }
-
-        .footer-brand {
+        .footer-links {
             display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 6px 16px;
+            margin-bottom: 10px;
+            list-style: none;
         }
-
-        .footer-brand img {
-            width: 36px;
-            height: 36px;
-        }
-
-        .footer-brand span {
-            color: #fff;
-            font-size: 18px;
-            font-weight: 700;
-        }
-
-        .footer-about {
-            font-size: 13px;
-            line-height: 1.6;
-            color: rgba(255,255,255,0.45);
-        }
-
-        .footer h4 {
-            color: #fff;
-            font-size: 13px;
-            font-weight: 600;
-            margin-bottom: 14px;
-        }
-
-        .footer-links { list-style: none; }
-
-        .footer-links li { margin-bottom: 8px; }
-
         .footer-links a {
-            color: rgba(255,255,255,0.45);
-            text-decoration: none;
-            font-size: 13px;
-            transition: color 0.2s;
-        }
-
-        .footer-links a:hover { color: #fff; }
-
-        .footer-bottom {
-            max-width: 1200px;
-            margin: 32px auto 0;
-            padding-top: 24px;
-            border-top: 1px solid rgba(255,255,255,0.1);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 12px;
-            color: rgba(255,255,255,0.3);
-        }
-
-        .footer-bottom-links {
-            display: flex;
-            gap: 20px;
-        }
-
-        .footer-bottom-links a {
-            color: rgba(255,255,255,0.3);
+            color: #6b7280;
             text-decoration: none;
             font-size: 12px;
+            cursor: pointer;
             transition: color 0.2s;
         }
-
-        .footer-bottom-links a:hover { color: rgba(255,255,255,0.7); }
+        .footer-links a:hover { color: #06b6d4; }
+        .footer-copy { color: #9ca3af; font-size: 10px; }
 
         /* === MOBILE === */
         .mobile-nav-toggle {
@@ -419,17 +358,6 @@
             .hero { height: 380px; }
 
             .sections-grid { grid-template-columns: 1fr; }
-
-            .footer-inner {
-                grid-template-columns: 1fr 1fr;
-                gap: 24px;
-            }
-
-            .footer-bottom {
-                flex-direction: column;
-                gap: 8px;
-                text-align: center;
-            }
         }
 
         @media (max-width: 480px) {
@@ -438,8 +366,6 @@
             .header { padding: 10px 14px; }
 
             .hero { height: 300px; }
-
-            .footer-inner { grid-template-columns: 1fr; }
         }
 
         /* Stats badge */
@@ -682,55 +608,17 @@
 
     <!-- FOOTER -->
     <footer class="footer">
-        <div class="footer-inner">
-            <div>
-                <div class="footer-brand">
-                    <img src="paddle-pin.svg" alt="PaddlePoint">
-                    <span>PaddlePoint</span>
-                </div>
-                <p class="footer-about">Real-time paddle conditions, weather, and community resources for paddlers across the US and Canada.</p>
-            </div>
-            <div>
-                <h4>Explore</h4>
-                <ul class="footer-links">
-                    <li><a href="paddle-conditions.html">Water Conditions</a></li>
-                    <li><a href="paddle-weather.html">Weather & Tides</a></li>
-                    <li><a href="paddle-clubs.html">Paddle Clubs</a></li>
-                    <li><a href="paddle-events.html">Events</a></li>
-                    <li><a href="paddle-gear.html">Gear</a></li>
-                </ul>
-            </div>
-            <div>
-                <h4>Disciplines</h4>
-                <ul class="footer-links">
-                    <li><a href="discipline-sup.html">SUP</a></li>
-                    <li><a href="discipline-kayak.html">Kayak</a></li>
-                    <li><a href="discipline-outrigger.html">Outrigger</a></li>
-                    <li><a href="discipline-dragon-boat.html">Dragon Boat</a></li>
-                    <li><a href="discipline-canoe.html">Canoe</a></li>
-                    <li><a href="discipline-surfski.html">Surfski</a></li>
-                    <li><a href="discipline-k1.html">Sprint Kayak (K1)</a></li>
-                    <li><a href="discipline-c1.html">Sprint Canoe (C1)</a></li>
-                </ul>
-            </div>
-            <div>
-                <h4>Company</h4>
-                <ul class="footer-links">
-                    <li><a href="javascript:void(0)" onclick="openModal('about')">About</a></li>
-                    <li><a href="javascript:void(0)" onclick="openModal('contact')">Contact</a></li>
-                    <li><a href="javascript:void(0)" onclick="openModal('privacy')">Privacy Policy</a></li>
-                    <li><a href="javascript:void(0)" onclick="openModal('terms')">Terms of Service</a></li>
-                </ul>
-            </div>
+        <div class="footer-links">
+            <a href="javascript:void(0)" onclick="openModal('about')">About</a>
+            <a href="javascript:void(0)" onclick="openModal('safety')">Safety Disclaimer</a>
+            <a href="javascript:void(0)" onclick="openModal('privacy')">Privacy Policy</a>
+            <a href="javascript:void(0)" onclick="openModal('cookies')">Cookie Policy</a>
+            <a href="javascript:void(0)" onclick="openModal('terms')">Terms of Service</a>
+            <a href="javascript:void(0)" onclick="openModal('faq')">FAQ</a>
+            <a href="javascript:void(0)" onclick="openModal('accessibility')">Accessibility</a>
+            <a href="javascript:void(0)" onclick="openModal('contact')">Contact</a>
         </div>
-        <div class="footer-bottom">
-            <span>&copy; 2026 PaddlePoint. All rights reserved. &bull; <span class="visitor-badge" onclick="toggleStats()">Stats</span></span>
-            <div class="footer-bottom-links">
-                <a href="javascript:void(0)" onclick="openModal('terms')">Terms of Service</a>
-                <a href="javascript:void(0)" onclick="openModal('privacy')">Privacy Policy</a>
-                <a href="javascript:void(0)" onclick="openModal('cookies')">Cookie Policy</a>
-            </div>
-        </div>
+        <div class="footer-copy">&copy; 2026 PaddlePoint. All rights reserved. &bull; <span class="visitor-badge" onclick="toggleStats()" style="cursor:pointer;">Stats</span></div>
     </footer>
 
     <!-- Stats Modal -->
@@ -832,6 +720,28 @@
                 <p>You can control cookies through your browser settings. Blocking all cookies may affect Google Maps functionality.</p>
                 <h3>Do Not Track</h3>
                 <p>PaddlePoint honors DNT browser signals. Since we do not track users, no changes are needed.</p>`
+            },
+            safety: {
+                html: `<h2>Safety Disclaimer</h2>
+                <p>PaddlePoint provides informational weather and water conditions data for recreational paddling. This service is <strong>not</strong> a professional weather service or safety advisory system.</p>
+                <p>Always check official sources (NOAA, Coast Guard, local authorities) before going on the water. Conditions can change rapidly and may differ from displayed data.</p>
+                <p>PaddlePoint assumes no liability for decisions made based on information provided through this service. Paddle at your own risk and always wear appropriate safety gear including a PFD.</p>`
+            },
+            faq: {
+                html: `<h2>Frequently Asked Questions</h2>
+                <h3>What is PaddlePoint?</h3>
+                <p>PaddlePoint is a free resource for paddlers providing real-time water conditions, weather, club directories, events, and gear information.</p>
+                <h3>How do I add my club?</h3>
+                <p>Contact us and we'll add your club to our directory of 7,700+ clubs across 77 countries.</p>
+                <h3>Is PaddlePoint free?</h3>
+                <p>Yes, PaddlePoint is completely free to use. No account required.</p>
+                <h3>Where does the data come from?</h3>
+                <p>Water conditions come from NOAA and Open-Meteo APIs. Club data is sourced from Google Places, OpenStreetMap, and community submissions.</p>`
+            },
+            accessibility: {
+                html: `<h2>Accessibility</h2>
+                <p>PaddlePoint is committed to making our platform accessible to all users. We follow WCAG 2.1 guidelines and continuously work to improve the accessibility of our site.</p>
+                <p>If you experience any accessibility issues, please <a href="javascript:void(0)" onclick="openModal('contact')">contact us</a> and we will work to address them promptly.</p>`
             }
         };
 
