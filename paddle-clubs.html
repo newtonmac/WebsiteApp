@@ -255,14 +255,15 @@
         .search-wrap {
             flex: 1;
             position: relative;
+            display: flex;
         }
 
         .search-box {
             width: 100%;
-            padding: 12px 16px 12px 38px;
+            padding: 12px 16px;
             background: #1a1d28;
             border: 1px solid #2d3040;
-            border-radius: 12px;
+            border-radius: 0 12px 12px 0;
             color: #e1e4e8;
             font-size: 15px;
             outline: none;
@@ -669,7 +670,10 @@
         <div class="controls" id="controlsBar">
             <div class="controls-drag-handle" id="dragHandle" title="Drag to move">&#x2630;</div>
             <div class="search-wrap">
-                <span class="search-icon">&#128269;</span>
+                <select id="searchMode" style="background:#2d3040;color:#e1e4e8;border:1px solid #3d4050;border-radius:8px 0 0 8px;padding:8px 8px;font-size:13px;cursor:pointer;outline:none;-webkit-appearance:none;appearance:none;min-width:90px;text-align:center;" onchange="switchSearchMode()">
+                    <option value="location">📍 Location</option>
+                    <option value="club">🛶 Club</option>
+                </select>
                 <input type="text" id="clubSearch" class="search-box" placeholder="Search by city, state, zip, or country...">
             </div>
             <select id="craftFilter" class="craft-select" onchange="applyFilters()">
@@ -725,24 +729,65 @@
             loadClubs();
         }
 
+        let autocompleteInstance = null;
+        let searchModeIsClub = false;
+
+        function switchSearchMode() {
+            const mode = document.getElementById('searchMode').value;
+            const input = document.getElementById('clubSearch');
+            searchModeIsClub = (mode === 'club');
+            input.value = '';
+            if (searchModeIsClub) {
+                input.placeholder = 'Search by club name...';
+                // Disable autocomplete dropdown by removing the pac-container
+                if (autocompleteInstance) {
+                    google.maps.event.clearInstanceListeners(autocompleteInstance);
+                }
+                document.querySelectorAll('.pac-container').forEach(el => el.style.display = 'none');
+            } else {
+                input.placeholder = 'Search by city, state, zip, or country...';
+                initSearchBox();
+            }
+            input.focus();
+        }
+
         function initSearchBox() {
             const input = document.getElementById('clubSearch');
             const autocomplete = new google.maps.places.Autocomplete(input, {
                 types: ['(regions)'],
                 fields: ['geometry', 'name', 'formatted_address', 'address_components', 'types']
             });
+            autocompleteInstance = autocomplete;
 
-            // Text-based search fallback on Enter key
+            // Text-based search on Enter key
             input.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    setTimeout(() => textSearch(input.value.trim()), 300);
+                    const q = input.value.trim();
+                    if (searchModeIsClub) {
+                        clubNameSearch(q);
+                    } else {
+                        setTimeout(() => textSearch(q), 300);
+                    }
                 }
             });
 
-            // Clear button restores all
+            // Clear button restores all clubs
             input.addEventListener('input', () => {
-                if (!input.value.trim()) {
+                if (searchModeIsClub) {
+                    // Hide autocomplete dropdown in club mode
+                    document.querySelectorAll('.pac-container').forEach(el => el.style.display = 'none');
+                    // Live search as you type in club mode
+                    const q = input.value.trim();
+                    if (q.length >= 2) {
+                        clubNameSearch(q);
+                    } else if (!q) {
+                        filteredClubs = currentCraftFilter
+                            ? allClubs.filter(c => c.ct && c.ct.includes(currentCraftFilter))
+                            : [...allClubs];
+                        plotMarkers(filteredClubs);
+                    }
+                } else if (!input.value.trim()) {
                     filteredClubs = currentCraftFilter
                         ? allClubs.filter(c => c.ct && c.ct.includes(currentCraftFilter))
                         : [...allClubs];
@@ -858,6 +903,28 @@
                 const bounds = new google.maps.LatLngBounds();
                 filteredClubs.forEach(c => { if (c.la && c.lo) bounds.extend({ lat: c.la, lng: c.lo }); });
                 map.fitBounds(bounds, 60);
+            }
+        }
+
+        function clubNameSearch(query) {
+            if (!query) return;
+            const q = query.toLowerCase();
+            filteredClubs = allClubs.filter(club => {
+                if (currentCraftFilter && (!club.ct || !club.ct.includes(currentCraftFilter))) return false;
+                return club.n && club.n.toLowerCase().includes(q);
+            });
+            plotMarkers(filteredClubs);
+            if (filteredClubs.length > 0) {
+                const bounds = new google.maps.LatLngBounds();
+                filteredClubs.forEach(c => { if (c.la && c.lo) bounds.extend({ lat: c.la, lng: c.lo }); });
+                map.fitBounds(bounds, 60);
+                // If single result, zoom in and open its panel
+                if (filteredClubs.length === 1) {
+                    map.setZoom(13);
+                    const club = filteredClubs[0];
+                    const marker = markers.find(m => m._clubData && m._clubData.n === club.n);
+                    if (marker) onMarkerClick(club, marker);
+                }
             }
         }
 
