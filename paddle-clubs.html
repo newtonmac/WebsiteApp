@@ -189,7 +189,7 @@
             transform: translateX(-50%);
             z-index: 10;
             width: 94%;
-            max-width: 600px;
+            max-width: 900px;
             display: flex;
             gap: 8px;
             transition: opacity 0.3s, transform 0.3s, width 0.3s;
@@ -455,10 +455,14 @@
         .count-badge {
             display: flex;
             align-items: center;
-            padding: 0 12px;
-            font-size: 12px;
+            padding: 0 14px;
+            font-size: 13px;
             color: #8b8fa3;
             white-space: nowrap;
+            background: #1a1d28;
+            border: 1px solid #2d3040;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
         }
         .count-badge strong { color: #22d3ee; margin-right: 4px; }
 
@@ -467,8 +471,11 @@
             .header h1 { font-size: 28px; }
             .controls { top: 115px; flex-direction: column; max-width: 92%; }
             .controls.collapsed { flex-direction: row; }
-            .craft-select { min-width: unset; }
-            .count-badge { font-size: 11px; padding: 0 6px; }
+            .search-row { flex-wrap: wrap; }
+            .search-input-wrap { min-width: 100%; order: 3; }
+            .mode-btn { font-size: 12px; padding: 8px 10px; }
+            .craft-select { font-size: 12px; padding: 8px 10px; flex: 1; }
+            .count-badge { font-size: 11px; padding: 6px 10px; }
         }
         @media (max-width: 480px) {
             .header-logo { width: 50px; height: 50px; }
