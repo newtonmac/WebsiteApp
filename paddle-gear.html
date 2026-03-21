@@ -454,215 +454,28 @@
     <!-- Main Content -->
     <div class="main">
         <h1 class="page-title">Gear</h1>
-        <p class="page-desc">Curated equipment recommendations, buyer's guides, and brand directory for the paddling community.</p>
+        <p class="page-desc">Paddle equipment brands and manufacturers worldwide. Click any brand for details, products, and links.</p>
 
         <!-- Category Filter -->
-        <div class="filter-row">
-            <span class="filter-pill active" onclick="filterCategory(this, 'all')">All</span>
-            <span class="filter-pill" onclick="filterCategory(this, 'paddles')">Paddles</span>
-            <span class="filter-pill" onclick="filterCategory(this, 'boats')">Boats & Boards</span>
-            <span class="filter-pill" onclick="filterCategory(this, 'safety')">PFDs & Safety</span>
-            <span class="filter-pill" onclick="filterCategory(this, 'accessories')">Accessories</span>
+        <div class="discipline-tabs" id="catTabs">
+            <span class="discipline-tab active" onclick="filterCat(this,'')">All</span>
+            <span class="discipline-tab" onclick="filterCat(this,'SUP')">SUP</span>
+            <span class="discipline-tab" onclick="filterCat(this,'surfski')">Surfski</span>
+            <span class="discipline-tab" onclick="filterCat(this,'sprint kayak')">Sprint Kayak</span>
+            <span class="discipline-tab" onclick="filterCat(this,'canoe')">Canoe</span>
+            <span class="discipline-tab" onclick="filterCat(this,'outrigger')">Outrigger</span>
+            <span class="discipline-tab" onclick="filterCat(this,'va\\'a')">Va'a</span>
+            <span class="discipline-tab" onclick="filterCat(this,'kayak')">Kayak</span>
+            <span class="discipline-tab" onclick="filterCat(this,'paddles')">Paddles</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+            <input type="text" id="brandSearch" placeholder="Search brands..." oninput="renderBrands()" style="flex:1;padding:10px 14px;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;">
+            <span style="background:#0ea5e9;color:#fff;font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;" id="brandCount">0</span>
+            <a href="paddle-gear-admin.html" style="color:#6b7280;font-size:11px;text-decoration:none;">⚙️ Admin</a>
         </div>
 
-        <!-- Discipline Tabs -->
-        <div class="discipline-tabs">
-            <span class="discipline-tab active" onclick="filterDiscipline(this, 'all')">All</span>
-            <span class="discipline-tab" onclick="filterDiscipline(this, 'sup')">SUP</span>
-            <span class="discipline-tab" onclick="filterDiscipline(this, 'kayak')">Kayak</span>
-            <span class="discipline-tab" onclick="filterDiscipline(this, 'outrigger')">Outrigger</span>
-            <span class="discipline-tab" onclick="filterDiscipline(this, 'canoe')">Canoe</span>
-            <span class="discipline-tab" onclick="filterDiscipline(this, 'k1')">K1 Sprint</span>
-            <span class="discipline-tab" onclick="filterDiscipline(this, 'c1')">C1 Sprint</span>
-            <span class="discipline-tab" onclick="filterDiscipline(this, 'surfski')">Surfski</span>
-        </div>
-
-        <!-- Gear Cards Grid -->
-        <div class="gear-grid" id="gearGrid">
-
-            <!-- Kialoa Outrigger Paddle -->
-            <div class="gear-card" data-category="paddles" data-discipline="outrigger">
-                <div class="gear-icon">🏓</div>
-                <div class="gear-name">Kialoa Outrigger Paddle</div>
-                <div class="gear-center">
-                    <span class="gear-category-tag">Paddles</span>
-                </div>
-                <div class="gear-center gear-rating">★★★★★</div>
-                <div class="gear-center gear-price">$350 - $500</div>
-                <p class="gear-desc">Lightweight carbon fiber paddle with a smooth catch and clean exit. Ideal for long-distance outrigger racing and training sessions.</p>
-                <div class="gear-center"><a href="https://www.kialoa.com/collections/outrigger" target="_blank" class="gear-link">View Product →</a></div>
-            </div>
-
-            <!-- SIC Maui RS -->
-            <div class="gear-card" data-category="boats" data-discipline="sup">
-                <div class="gear-icon">🏄</div>
-                <div class="gear-name">SIC Maui RS</div>
-                <div class="gear-center">
-                    <span class="gear-category-tag">Boards</span>
-                </div>
-                <div class="gear-center gear-rating">★★★★☆</div>
-                <div class="gear-center gear-price">$1,800 - $2,200</div>
-                <p class="gear-desc">High-performance racing SUP with excellent glide and stability. A top choice for competitive flat-water and downwind paddling.</p>
-                <div class="gear-center"><a href="https://www.sicmaui.com/products/rs" target="_blank" class="gear-link">View Product →</a></div>
-            </div>
-
-            <!-- Puakea Designs OC-1 -->
-            <div class="gear-card" data-category="boats" data-discipline="outrigger">
-                <div class="gear-icon">🛶</div>
-                <div class="gear-name">Puakea Designs OC-1</div>
-                <div class="gear-center">
-                    <span class="gear-category-tag">Boats</span>
-                </div>
-                <div class="gear-center gear-rating">★★★★★</div>
-                <div class="gear-center gear-price">$2,500 - $3,500</div>
-                <p class="gear-desc">Premium single-person outrigger canoe built for speed and ocean conditions. Trusted by elite paddlers across the Pacific.</p>
-                <div class="gear-center"><a href="https://www.puakeadesigns.com" target="_blank" class="gear-link">View Product →</a></div>
-            </div>
-
-            <!-- NRS Ninja PFD -->
-            <div class="gear-card" data-category="safety" data-discipline="kayak">
-                <div class="gear-icon">🦺</div>
-                <div class="gear-name">NRS Ninja PFD</div>
-                <div class="gear-center">
-                    <span class="gear-category-tag">Safety</span>
-                </div>
-                <div class="gear-center gear-rating">★★★★☆</div>
-                <div class="gear-center gear-price">$90 - $120</div>
-                <p class="gear-desc">Low-profile life vest designed for kayakers. Thin-back design fits comfortably in high-back seats with excellent mobility.</p>
-                <div class="gear-center"><a href="https://www.nrs.com/ninja-pfd/pihb" target="_blank" class="gear-link">View Product →</a></div>
-            </div>
-
-            <!-- Garmin Instinct 2 Solar -->
-            <div class="gear-card" data-category="accessories" data-discipline="all">
-                <div class="gear-icon">⌚</div>
-                <div class="gear-name">Garmin Instinct 2 Solar</div>
-                <div class="gear-center">
-                    <span class="gear-category-tag">Accessories</span>
-                </div>
-                <div class="gear-center gear-rating">★★★★★</div>
-                <div class="gear-center gear-price">$350 - $450</div>
-                <p class="gear-desc">Rugged GPS watch with solar charging and water sport profiles. Tracks paddle strokes, distance, and tide data on the go.</p>
-                <div class="gear-center"><a href="https://www.garmin.com/en-US/p/775412" target="_blank" class="gear-link">View Product →</a></div>
-            </div>
-
-            <!-- Quickblade V-Drive -->
-            <div class="gear-card" data-category="paddles" data-discipline="sup">
-                <div class="gear-icon">🏓</div>
-                <div class="gear-name">Quickblade V-Drive</div>
-                <div class="gear-center">
-                    <span class="gear-category-tag">Paddles</span>
-                </div>
-                <div class="gear-center gear-rating">★★★★☆</div>
-                <div class="gear-center gear-price">$280 - $400</div>
-                <p class="gear-desc">Full carbon SUP paddle with a V-shaped dihedral blade for flutter-free strokes. Great for racing and fitness paddling.</p>
-                <div class="gear-center"><a href="https://www.quickbladepaddles.com/v-drive-elite.html" target="_blank" class="gear-link">View Product →</a></div>
-            </div>
-
-            <!-- Starboard All Star -->
-            <div class="gear-card" data-category="boats" data-discipline="sup">
-                <div class="gear-icon">🏄</div>
-                <div class="gear-name">Starboard All Star</div>
-                <div class="gear-center">
-                    <span class="gear-category-tag">Boards</span>
-                </div>
-                <div class="gear-center gear-rating">★★★★★</div>
-                <div class="gear-center gear-price">$2,000 - $2,800</div>
-                <p class="gear-desc">Versatile race board excelling in both flat water and open ocean. Carbon construction offers unmatched speed-to-weight ratio.</p>
-                <div class="gear-center"><a href="https://www.starboardsup.com/allstar.html" target="_blank" class="gear-link">View Product →</a></div>
-            </div>
-
-            <!-- Astral YTV PFD -->
-            <div class="gear-card" data-category="safety" data-discipline="canoe">
-                <div class="gear-icon">🦺</div>
-                <div class="gear-name">Astral YTV PFD</div>
-                <div class="gear-center">
-                    <span class="gear-category-tag">Safety</span>
-                </div>
-                <div class="gear-center gear-rating">★★★★☆</div>
-                <div class="gear-center gear-price">$100 - $130</div>
-                <p class="gear-desc">Thin, breathable PFD with foam-free Airlock technology. Ideal for warm-weather canoe trips and all-day comfort on the water.</p>
-                <div class="gear-center"><a href="https://www.astraldesigns.com/shop/pfds/recreational/ytv-2" target="_blank" class="gear-link">View Product →</a></div>
-            </div>
-
-            <!-- Nelo Cinco K1 -->
-            <div class="gear-card" data-category="boats" data-discipline="k1">
-                <div class="gear-icon">🏅</div>
-                <div class="gear-name">Nelo Cinco K1</div>
-                <div class="gear-center">
-                    <span class="gear-category-tag">Boats</span>
-                </div>
-                <div class="gear-center gear-rating">★★★★★</div>
-                <div class="gear-center gear-price">$3,500 - $6,000</div>
-                <p class="gear-desc">Elite Olympic-class sprint kayak. Carbon/kevlar construction with adjustable footrest and seat. The choice of world champions.</p>
-                <div class="gear-center"><a href="https://www.nfraysurfski.com" target="_blank" class="gear-link">View Product →</a></div>
-            </div>
-
-            <!-- Vajda K1 Wing Paddle -->
-            <div class="gear-card" data-category="paddles" data-discipline="k1">
-                <div class="gear-icon">🏓</div>
-                <div class="gear-name">Vajda Wing Paddle</div>
-                <div class="gear-center">
-                    <span class="gear-category-tag">Paddles</span>
-                </div>
-                <div class="gear-center gear-rating">★★★★★</div>
-                <div class="gear-center gear-price">$300 - $550</div>
-                <p class="gear-desc">High-performance wing paddle for sprint kayak racing. Full carbon shaft with optimized blade angle for maximum power transfer.</p>
-                <div class="gear-center"><a href="https://www.vajdasport.com" target="_blank" class="gear-link">View Product →</a></div>
-            </div>
-
-            <!-- Nelo C1 Sprint Canoe -->
-            <div class="gear-card" data-category="boats" data-discipline="c1">
-                <div class="gear-icon">🥇</div>
-                <div class="gear-name">Nelo Vanquish C1</div>
-                <div class="gear-center">
-                    <span class="gear-category-tag">Boats</span>
-                </div>
-                <div class="gear-center gear-rating">★★★★★</div>
-                <div class="gear-center gear-price">$3,000 - $5,500</div>
-                <p class="gear-desc">Olympic-class sprint canoe with ultra-light carbon layup. Designed for kneeling position with integrated knee block mounting points.</p>
-                <div class="gear-center"><a href="https://www.nfraysurfski.com" target="_blank" class="gear-link">View Product →</a></div>
-            </div>
-
-            <!-- Braca C1 Paddle -->
-            <div class="gear-card" data-category="paddles" data-discipline="c1">
-                <div class="gear-icon">🏓</div>
-                <div class="gear-name">Braca XI C1 Paddle</div>
-                <div class="gear-center">
-                    <span class="gear-category-tag">Paddles</span>
-                </div>
-                <div class="gear-center gear-rating">★★★★☆</div>
-                <div class="gear-center gear-price">$200 - $450</div>
-                <p class="gear-desc">Premium single-blade sprint canoe paddle. Carbon construction with signature Braca blade shape for powerful single-side strokes.</p>
-                <div class="gear-center"><a href="https://www.bracasport.com" target="_blank" class="gear-link">View Product →</a></div>
-            </div>
-
-            <!-- Epic V8 Surfski -->
-            <div class="gear-card" data-category="boats" data-discipline="surfski">
-                <div class="gear-icon">🚣</div>
-                <div class="gear-name">Epic V8 Surfski</div>
-                <div class="gear-center">
-                    <span class="gear-category-tag">Boats</span>
-                </div>
-                <div class="gear-center gear-rating">★★★★★</div>
-                <div class="gear-center gear-price">$3,500 - $5,500</div>
-                <p class="gear-desc">Intermediate performance surfski with a great balance of speed and stability. Excellent for ocean racing and fitness paddling.</p>
-                <div class="gear-center"><a href="https://www.epicsurfski.com/surfski/v8/" target="_blank" class="gear-link">View Product →</a></div>
-            </div>
-
-            <!-- Fenn Blue Fin Surfski -->
-            <div class="gear-card" data-category="boats" data-discipline="surfski">
-                <div class="gear-icon">🚣</div>
-                <div class="gear-name">Fenn Blue Fin S</div>
-                <div class="gear-center">
-                    <span class="gear-category-tag">Boats</span>
-                </div>
-                <div class="gear-center gear-rating">★★★★☆</div>
-                <div class="gear-center gear-price">$3,000 - $4,800</div>
-                <p class="gear-desc">Stable entry-level surfski ideal for paddlers transitioning from kayak. Wide beam offers confidence in open water while building ocean skills.</p>
-                <div class="gear-center"><a href="https://www.faboratory.com" target="_blank" class="gear-link">View Product →</a></div>
-            </div>
-
-        </div>
+        <!-- Brand Cards (from DB) -->
+        <div class="gear-grid" id="brandGrid"></div>
 
         <!-- Buyer's Guide Section -->
         <h2 class="section-title">Buyer's Guides</h2>
@@ -691,162 +504,25 @@
 
         </div>
 
-        <!-- Brand Directory -->
-        <div class="directory-section">
-            <h2 class="section-title">Brand Directory</h2>
-            <p class="page-desc">Browse paddling gear brands by category. Links go directly to manufacturer websites.</p>
-
-            <div class="directory-grid">
-
-                <div class="directory-card">
-                    <h3>Surfskis</h3>
-                    <div class="dir-subtitle">Ocean racing & fitness surfskis</div>
-                    <ul>
-                        <li><a href="https://www.epicsurfski.com" target="_blank" rel="noopener">Epic Kayaks <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.thinkkayak.com" target="_blank" rel="noopener">Think Kayak <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.faboratory.com" target="_blank" rel="noopener">Fenn / Faboratory <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.stellarkayaks.com" target="_blank" rel="noopener">Stellar Kayaks <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.nfraysurfski.com" target="_blank" rel="noopener">Nelo / NFRAY <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.vajdasport.com" target="_blank" rel="noopener">Vajda Sport <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.cimamarinedesign.com" target="_blank" rel="noopener">Cima Marine Design <span class="dir-arrow">&rarr;</span></a></li>
-                    </ul>
+<!-- BRAND DETAIL POPUP -->
+<div id="brandDetailOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;" onclick="if(event.target===this)closeBrandDetail()">
+    <div style="background:#fff;border-radius:20px;max-width:560px;width:92%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+        <div style="padding:24px 24px 16px;border-bottom:1px solid #e2e8f0;">
+            <div style="display:flex;align-items:center;gap:14px;">
+                <img id="bdLogo" src="" style="width:56px;height:56px;border-radius:10px;object-fit:contain;background:#f1f5f9;display:none;" referrerpolicy="no-referrer" onerror="this.style.display='none'">
+                <div>
+                    <h2 id="bdName" style="font-size:20px;font-weight:800;color:#0c4a6e;"></h2>
+                    <div id="bdCountry" style="font-size:13px;color:#64748b;"></div>
                 </div>
-
-                <div class="directory-card">
-                    <h3>Outrigger Canoes</h3>
-                    <div class="dir-subtitle">OC-1, OC-2 & OC-6 manufacturers</div>
-                    <ul>
-                        <li><a href="https://www.puakeadesigns.com" target="_blank" rel="noopener">Puakea Designs <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.hurricanepaddles.com" target="_blank" rel="noopener">Hurricane <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.kahelepaddleboards.com" target="_blank" rel="noopener">Kahele <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.tigerpaddles.com" target="_blank" rel="noopener">Tiger Paddles <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.ozonepaddlesports.com" target="_blank" rel="noopener">Ozone <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.kai-wa-a.com" target="_blank" rel="noopener">Kai Wa'a <span class="dir-arrow">&rarr;</span></a></li>
-                    </ul>
-                </div>
-
-                <div class="directory-card">
-                    <h3>SUP Boards</h3>
-                    <div class="dir-subtitle">Stand-up paddleboard brands</div>
-                    <ul>
-                        <li><a href="https://www.starboardsup.com" target="_blank" rel="noopener">Starboard <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.sicmaui.com" target="_blank" rel="noopener">SIC Maui <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.naishsurfing.com" target="_blank" rel="noopener">Naish <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.nsp.com" target="_blank" rel="noopener">NSP <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.boardworkssurfsup.com" target="_blank" rel="noopener">Boardworks <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.404sup.com" target="_blank" rel="noopener">404 <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.sunova.com" target="_blank" rel="noopener">Sunova <span class="dir-arrow">&rarr;</span></a></li>
-                    </ul>
-                </div>
-
-                <div class="directory-card">
-                    <h3>Paddles</h3>
-                    <div class="dir-subtitle">SUP, outrigger & kayak paddles</div>
-                    <ul>
-                        <li><a href="https://www.kialoa.com" target="_blank" rel="noopener">Kialoa <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.quickbladepaddles.com" target="_blank" rel="noopener">Quickblade <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.wernerpaddles.com" target="_blank" rel="noopener">Werner Paddles <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.zaborskipaddles.com" target="_blank" rel="noopener">ZRE (Zaveral) <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.blackprojectfins.com" target="_blank" rel="noopener">Black Project <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.onapaddles.com" target="_blank" rel="noopener">ONA Paddles <span class="dir-arrow">&rarr;</span></a></li>
-                    </ul>
-                </div>
-
-                <div class="directory-card">
-                    <h3>Kayaks</h3>
-                    <div class="dir-subtitle">Sea kayaks, sprint & touring</div>
-                    <ul>
-                        <li><a href="https://www.epickayaks.com" target="_blank" rel="noopener">Epic Kayaks <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.currentdesigns.com" target="_blank" rel="noopener">Current Designs <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.kokatat.com" target="_blank" rel="noopener">Kokatat <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.valleyseakayaks.com" target="_blank" rel="noopener">Valley Sea Kayaks <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.nfraysurfski.com" target="_blank" rel="noopener">Nelo <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.stellarkayaks.com" target="_blank" rel="noopener">Stellar <span class="dir-arrow">&rarr;</span></a></li>
-                    </ul>
-                </div>
-
-                <div class="directory-card">
-                    <h3>PFDs & Safety</h3>
-                    <div class="dir-subtitle">Life vests, leashes & safety gear</div>
-                    <ul>
-                        <li><a href="https://www.nrs.com" target="_blank" rel="noopener">NRS <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.astraldesigns.com" target="_blank" rel="noopener">Astral <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.kokatat.com" target="_blank" rel="noopener">Kokatat <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.mustangsurvival.com" target="_blank" rel="noopener">Mustang Survival <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.stohlquist.com" target="_blank" rel="noopener">Stohlquist <span class="dir-arrow">&rarr;</span></a></li>
-                    </ul>
-                </div>
-
-                <div class="directory-card">
-                    <h3>Accessories & Electronics</h3>
-                    <div class="dir-subtitle">Watches, drybags, racks & more</div>
-                    <ul>
-                        <li><a href="https://www.garmin.com" target="_blank" rel="noopener">Garmin <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.suunto.com" target="_blank" rel="noopener">Suunto <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.seallinegear.com" target="_blank" rel="noopener">SealLine <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.yakima.com" target="_blank" rel="noopener">Yakima <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.thule.com" target="_blank" rel="noopener">Thule <span class="dir-arrow">&rarr;</span></a></li>
-                    </ul>
-                </div>
-
-                <div class="directory-card">
-                    <h3>Apparel & Wetsuits</h3>
-                    <div class="dir-subtitle">Paddle-specific clothing & protection</div>
-                    <ul>
-                        <li><a href="https://www.oneil.com" target="_blank" rel="noopener">O'Neill <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.patagonia.com" target="_blank" rel="noopener">Patagonia <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.kokatat.com" target="_blank" rel="noopener">Kokatat <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.nrs.com" target="_blank" rel="noopener">NRS <span class="dir-arrow">&rarr;</span></a></li>
-                        <li><a href="https://www.levelsixtechnology.com" target="_blank" rel="noopener">Level Six <span class="dir-arrow">&rarr;</span></a></li>
-                    </ul>
-                </div>
-
             </div>
         </div>
-
+        <div id="bdBody" style="padding:16px 24px 24px;"></div>
+        <div style="padding:16px 24px;border-top:1px solid #e2e8f0;display:flex;gap:8px;justify-content:space-between;">
+            <button onclick="closeBrandDetail()" style="padding:8px 20px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;color:#64748b;cursor:pointer;font-size:13px;font-weight:600;">Close</button>
+            <a id="bdWebLink" href="#" target="_blank" style="padding:8px 20px;border-radius:8px;border:1px solid #0ea5e9;background:#fff;color:#0ea5e9;cursor:pointer;font-size:13px;font-weight:600;text-decoration:none;display:none;">🌐 Visit Website →</a>
+        </div>
     </div>
-
-    <script>
-        function filterCategory(el, category) {
-            document.querySelectorAll('.filter-pill').forEach(function(p) {
-                p.classList.remove('active');
-            });
-            el.classList.add('active');
-            applyFilters();
-        }
-
-        function filterDiscipline(el, discipline) {
-            document.querySelectorAll('.discipline-tab').forEach(function(t) {
-                t.classList.remove('active');
-            });
-            el.classList.add('active');
-            applyFilters();
-        }
-
-        function applyFilters() {
-            var activePill = document.querySelector('.filter-pill.active');
-            var activeTab = document.querySelector('.discipline-tab.active');
-            var category = activePill ? activePill.textContent.trim().toLowerCase() : 'all';
-            var discipline = activeTab ? activeTab.textContent.trim().toLowerCase() : 'all';
-
-            var categoryMap = {
-                'all': 'all',
-                'paddles': 'paddles',
-                'boats & boards': 'boats',
-                'pfds & safety': 'safety',
-                'accessories': 'accessories'
-            };
-            var catFilter = categoryMap[category] || 'all';
-
-            document.querySelectorAll('.gear-card').forEach(function(card) {
-                var cardCat = card.getAttribute('data-category');
-                var cardDisc = card.getAttribute('data-discipline');
-                var showCat = (catFilter === 'all' || cardCat === catFilter);
-                var showDisc = (discipline === 'all' || cardDisc === discipline || cardDisc === 'all');
-                card.style.display = (showCat && showDisc) ? '' : 'none';
-            });
-        }
-    </script>
+</div>
 
 <footer style="text-align:center;padding:20px 16px 28px;border-top:1px solid #e5e7eb;margin-top:24px;">
     <div style="display:flex;justify-content:center;flex-wrap:wrap;gap:6px 16px;margin-bottom:10px;">
@@ -867,6 +543,89 @@ async function toggleStats(){
   const w=d.days?d.days.reduce((s,dy)=>s+dy.uniqueVisitors,0):0;
   alert(`Gear Page Stats\n\nAll-time: ${d.total||0} visitors\nLast 7 days: ${w}\nToday: ${d.days&&d.days.length?d.days[d.days.length-1].uniqueVisitors:0}`);}catch(e){alert('Stats unavailable');}
 }
+
+// ============ BRAND DATA ============
+let allBrands = [], currentCat = '';
+
+async function loadBrands() {
+    try {
+        const res = await fetch('/api/gear-brands', {headers:{'X-API-Token':'pp-clubs-7742-v1'}});
+        allBrands = await res.json();
+        renderBrands();
+    } catch(e) { document.getElementById('brandGrid').innerHTML = '<p style="color:red;">Error loading brands</p>'; }
+}
+
+function filterCat(el, cat) {
+    currentCat = cat;
+    document.querySelectorAll('.discipline-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    renderBrands();
+}
+
+function renderBrands() {
+    const q = (document.getElementById('brandSearch').value || '').toLowerCase();
+    const filtered = allBrands.filter(b => {
+        if (currentCat && !(b.categories||'').toLowerCase().includes(currentCat.toLowerCase())) return false;
+        if (q && !b.name.toLowerCase().includes(q) && !(b.country||'').toLowerCase().includes(q) && !(b.categories||'').toLowerCase().includes(q)) return false;
+        return true;
+    });
+    document.getElementById('brandCount').textContent = filtered.length;
+    const grid = document.getElementById('brandGrid');
+    const tierColors = {budget:'#22c55e',mid:'#f59e0b',premium:'#8b5cf6',luxury:'#ec4899'};
+    grid.innerHTML = filtered.map(b => {
+        const cats = (b.categories||'').split(',').map(c => `<span style="display:inline-block;background:#f1f5f9;color:#475569;padding:2px 8px;border-radius:6px;font-size:10px;margin:1px;">${c.trim()}</span>`).join('');
+        const tier = b.price_tier ? `<span style="color:${tierColors[b.price_tier]||'#6b7280'};font-size:10px;font-weight:700;text-transform:uppercase;">${b.price_tier}</span>` : '';
+        const logo = b.logo_url ? `<img src="${b.logo_url}" style="width:48px;height:48px;border-radius:10px;object-fit:contain;background:#f8fafc;" referrerpolicy="no-referrer" onerror="this.outerHTML='<div style=\\'width:48px;height:48px;border-radius:10px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:20px;\\'>🎯</div>'">` : '<div style="width:48px;height:48px;border-radius:10px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:20px;">🎯</div>';
+        const social = [(b.instagram_url?'<a href="'+b.instagram_url+'" target="_blank" onclick="event.stopPropagation()" style="text-decoration:none;">📸</a>':''), (b.facebook_url?'<a href="'+b.facebook_url+'" target="_blank" onclick="event.stopPropagation()" style="text-decoration:none;">📘</a>':'')].filter(Boolean).join(' ');
+        return `<div class="gear-card" onclick="showBrandDetail(${b.id})" style="cursor:pointer;padding:16px;display:flex;gap:12px;align-items:flex-start;" data-category="all" data-discipline="all">
+            ${logo}
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:15px;font-weight:700;color:#1e293b;">${b.name}</div>
+                <div style="font-size:12px;color:#64748b;margin:2px 0;">${b.country||''} ${tier}</div>
+                <div style="margin-top:4px;">${cats}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;align-items:center;">${social}</div>
+        </div>`;
+    }).join('');
+}
+</script>
+<script>
+function showBrandDetail(id) {
+    const b = allBrands.find(x => x.id === id);
+    if (!b) return;
+    document.getElementById('bdName').textContent = b.name;
+    document.getElementById('bdCountry').textContent = [b.country, b.city].filter(Boolean).join(', ');
+    const logo = document.getElementById('bdLogo');
+    if (b.logo_url) { logo.src = b.logo_url; logo.style.display = ''; } else { logo.style.display = 'none'; }
+    const webLink = document.getElementById('bdWebLink');
+    if (b.website) { webLink.href = b.website; webLink.style.display = ''; } else { webLink.style.display = 'none'; }
+    const link = (url, text) => url ? `<a href="${url}" target="_blank" style="color:#0ea5e9;text-decoration:none;">${text}</a>` : null;
+    const tierColors = {budget:'#22c55e',mid:'#f59e0b',premium:'#8b5cf6',luxury:'#ec4899'};
+    const rows = [
+        ['Categories', (b.categories||'').split(',').map(c=>`<span style="display:inline-block;background:#f1f5f9;padding:3px 10px;border-radius:8px;font-size:12px;margin:2px;">${c.trim()}</span>`).join('')],
+        ['Price Tier', b.price_tier ? `<span style="color:${tierColors[b.price_tier]};font-weight:700;text-transform:capitalize;">${b.price_tier}</span>` : null],
+        ['Website', b.website ? link(b.website, b.website.replace(/^https?:\/\/(www\.)?/,'').replace(/\/$/,'')) : null],
+        ['Email', b.email ? `<a href="mailto:${b.email}" style="color:#0ea5e9;text-decoration:none;">${b.email}</a>` : null],
+        ['Phone', b.phone],
+        ['Address', [b.address, b.city, b.country].filter(Boolean).join(', ') || null],
+        ['Founded', b.year_founded],
+        ['Popular Products', b.popular_products ? `<div style="line-height:1.6;">${b.popular_products}</div>` : null],
+        ['Facebook', b.facebook_url ? link(b.facebook_url, '📘 Facebook Page') : null],
+        ['Instagram', b.instagram_url ? link(b.instagram_url, '📸 Instagram Profile') : null],
+        ['YouTube', b.youtube_url ? link(b.youtube_url, '🎬 YouTube Channel') : null],
+        ['Description', b.description ? `<div style="line-height:1.5;">${b.description}</div>` : null],
+    ].filter(r => r[1]);
+    document.getElementById('bdBody').innerHTML = rows.map(r =>
+        `<div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:13px;">
+            <span style="color:#94a3b8;min-width:110px;font-weight:600;">${r[0]}</span>
+            <span style="color:#1e293b;flex:1;word-break:break-word;">${r[1]}</span></div>`
+    ).join('') || '<p style="color:#94a3b8;padding:12px 0;">No details yet. Details will be added as we enrich each brand.</p>';
+    const ov = document.getElementById('brandDetailOverlay');
+    ov.style.display = 'flex';
+}
+function closeBrandDetail() { document.getElementById('brandDetailOverlay').style.display = 'none'; }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeBrandDetail(); });
+loadBrands();
 </script>
 <script src="pp-shared.js"></script>
 
