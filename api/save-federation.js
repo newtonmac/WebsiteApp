@@ -1,4 +1,4 @@
-const pool = require('./_db');
+const { query } = require('./_db');
 const API_TOKEN = 'pp-clubs-7742-v1';
 const ALLOWED_ORIGINS = ['https://paddlepoint.org','https://jmlsd.org','http://localhost'];
 
@@ -18,7 +18,7 @@ module.exports = async (req, res) => {
 
   if (req.method === 'DELETE') {
     if (!data.id) return res.status(400).json({ error: 'id required' });
-    await pool.query('DELETE FROM federations WHERE id=?', [data.id]);
+    await query('DELETE FROM federations WHERE id=?', [data.id]);
     return res.status(200).json({ success: true });
   }
 
@@ -35,7 +35,7 @@ module.exports = async (req, res) => {
     }
     if (sets.length === 0) return res.status(400).json({ error: 'No fields to update' });
     vals.push(data.id);
-    await pool.query(`UPDATE federations SET ${sets.join(',')} WHERE id=?`, vals);
+    await query(`UPDATE federations SET ${sets.join(',')} WHERE id=?`, vals);
     return res.status(200).json({ success: true, id: data.id });
   } else {
     // INSERT
@@ -43,7 +43,7 @@ module.exports = async (req, res) => {
     const cols = fields.filter(f => data[f] !== undefined);
     const vals = cols.map(f => data[f]);
     const placeholders = cols.map(() => '?').join(',');
-    const [result] = await pool.query(
+    const result = await query(
       `INSERT INTO federations (${cols.join(',')}) VALUES (${placeholders})`, vals
     );
     return res.status(200).json({ success: true, id: result.insertId });

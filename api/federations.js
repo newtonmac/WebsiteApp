@@ -1,4 +1,4 @@
-const pool = require('./_db');
+const { query } = require('./_db');
 const API_TOKEN = 'pp-clubs-7742-v1';
 const ALLOWED_ORIGINS = ['https://paddlepoint.org','https://jmlsd.org','http://localhost'];
 
@@ -12,7 +12,7 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    const [rows] = await pool.query(
+    const rows = await query(
       `SELECT id, ioc_code, name, country, continent, federation_type,
        website, email, phone, address, city, state, description, sports,
        facebook_url, instagram_url, logo_url, icf_url, founded_year,
