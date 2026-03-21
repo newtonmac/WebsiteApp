@@ -256,14 +256,63 @@
             flex: 1;
             position: relative;
             display: flex;
+            flex-direction: column;
+            gap: 6px;
         }
+        .search-mode-btns {
+            display: flex;
+            gap: 4px;
+        }
+        .mode-btn {
+            padding: 5px 14px;
+            border-radius: 8px;
+            border: 1px solid #2d3040;
+            background: #0f1117;
+            color: #8b8fa3;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .mode-btn.active {
+            background: #1e3a5f;
+            color: #60a5fa;
+            border-color: #3b82f6;
+        }
+        .mode-btn:hover:not(.active) { background: #1a1d28; color: #e1e4e8; }
+        .search-input-wrap { position: relative; }
+        .club-suggestions {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #1a1d28;
+            border: 1px solid #2d3040;
+            border-radius: 0 0 10px 10px;
+            max-height: 260px;
+            overflow-y: auto;
+            z-index: 20;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+        .club-suggestions.open { display: block; }
+        .club-sug-item {
+            padding: 8px 14px;
+            cursor: pointer;
+            border-bottom: 1px solid #1e2130;
+            font-size: 13px;
+        }
+        .club-sug-item:hover, .club-sug-item.selected { background: #1e3a5f; }
+        .club-sug-item .sug-name { color: #e1e4e8; }
+        .club-sug-item .sug-loc { color: #8b8fa3; font-size: 11px; margin-left: 6px; }
+        .club-sug-item .sug-craft { color: #22d3ee; font-size: 10px; margin-left: 6px; }
 
         .search-box {
             width: 100%;
             padding: 12px 16px;
             background: #1a1d28;
             border: 1px solid #2d3040;
-            border-radius: 0 12px 12px 0;
+            border-radius: 12px;
             color: #e1e4e8;
             font-size: 15px;
             outline: none;
@@ -670,11 +719,14 @@
         <div class="controls" id="controlsBar">
             <div class="controls-drag-handle" id="dragHandle" title="Drag to move">&#x2630;</div>
             <div class="search-wrap">
-                <select id="searchMode" style="background:#2d3040;color:#e1e4e8;border:1px solid #3d4050;border-radius:8px 0 0 8px;padding:8px 8px;font-size:13px;cursor:pointer;outline:none;-webkit-appearance:none;appearance:none;min-width:90px;text-align:center;" onchange="switchSearchMode()">
-                    <option value="location">📍 Location</option>
-                    <option value="club">🛶 Club</option>
-                </select>
-                <input type="text" id="clubSearch" class="search-box" placeholder="Search by city, state, zip, or country...">
+                <div class="search-mode-btns">
+                    <button class="mode-btn active" id="modeLocation" onclick="setSearchMode('location')">📍 Location</button>
+                    <button class="mode-btn" id="modeClub" onclick="setSearchMode('club')">🛶 Club</button>
+                </div>
+                <div class="search-input-wrap">
+                    <input type="text" id="clubSearch" class="search-box" placeholder="Search by city, state, zip, or country..." autocomplete="off">
+                    <div class="club-suggestions" id="clubSuggestions"></div>
+                </div>
             </div>
             <select id="craftFilter" class="craft-select" onchange="applyFilters()">
                 <option value="">All Craft Types</option>
@@ -731,23 +783,27 @@
 
         let autocompleteInstance = null;
         let searchModeIsClub = false;
+        let sugHighlight = -1;
 
-        function switchSearchMode() {
-            const mode = document.getElementById('searchMode').value;
-            const input = document.getElementById('clubSearch');
+        function setSearchMode(mode) {
             searchModeIsClub = (mode === 'club');
+            document.getElementById('modeLocation').classList.toggle('active', !searchModeIsClub);
+            document.getElementById('modeClub').classList.toggle('active', searchModeIsClub);
+            const input = document.getElementById('clubSearch');
             input.value = '';
+            document.getElementById('clubSuggestions').classList.remove('open');
             if (searchModeIsClub) {
-                input.placeholder = 'Search by club name...';
-                // Disable autocomplete dropdown by removing the pac-container
-                if (autocompleteInstance) {
-                    google.maps.event.clearInstanceListeners(autocompleteInstance);
-                }
+                input.placeholder = 'Type club name...';
                 document.querySelectorAll('.pac-container').forEach(el => el.style.display = 'none');
             } else {
                 input.placeholder = 'Search by city, state, zip, or country...';
                 initSearchBox();
             }
+            // Reset to all clubs
+            filteredClubs = currentCraftFilter
+                ? allClubs.filter(c => c.ct && c.ct.includes(currentCraftFilter))
+                : [...allClubs];
+            plotMarkers(filteredClubs);
             input.focus();
         }
 
@@ -772,20 +828,21 @@
                 }
             });
 
-            // Clear button restores all clubs
+            // Clear button restores all clubs; club mode shows suggestions
             input.addEventListener('input', () => {
                 if (searchModeIsClub) {
-                    // Hide autocomplete dropdown in club mode
                     document.querySelectorAll('.pac-container').forEach(el => el.style.display = 'none');
-                    // Live search as you type in club mode
-                    const q = input.value.trim();
+                    const q = input.value.trim().toLowerCase();
                     if (q.length >= 2) {
-                        clubNameSearch(q);
-                    } else if (!q) {
-                        filteredClubs = currentCraftFilter
-                            ? allClubs.filter(c => c.ct && c.ct.includes(currentCraftFilter))
-                            : [...allClubs];
-                        plotMarkers(filteredClubs);
+                        showClubSuggestions(q);
+                    } else {
+                        document.getElementById('clubSuggestions').classList.remove('open');
+                        if (!q) {
+                            filteredClubs = currentCraftFilter
+                                ? allClubs.filter(c => c.ct && c.ct.includes(currentCraftFilter))
+                                : [...allClubs];
+                            plotMarkers(filteredClubs);
+                        }
                     }
                 } else if (!input.value.trim()) {
                     filteredClubs = currentCraftFilter
@@ -918,7 +975,6 @@
                 const bounds = new google.maps.LatLngBounds();
                 filteredClubs.forEach(c => { if (c.la && c.lo) bounds.extend({ lat: c.la, lng: c.lo }); });
                 map.fitBounds(bounds, 60);
-                // If single result, zoom in and open its panel
                 if (filteredClubs.length === 1) {
                     map.setZoom(13);
                     const club = filteredClubs[0];
@@ -927,6 +983,79 @@
                 }
             }
         }
+
+        function showClubSuggestions(q) {
+            const LABELS = {kayak:'Kayak',canoe:'Canoe',rowing:'Rowing',sup:'SUP',dragon_boat:'Dragon Boat',
+                outrigger:'Outrigger',sea_kayak:'Sea Kayak',surfski:'Surfski',whitewater_kayak:'Whitewater',
+                sprint_kayak:'Sprint',canoe_polo:'Canoe Polo',prone_paddle:'Prone Paddle'};
+            const matches = allClubs.filter(c => {
+                if (currentCraftFilter && (!c.ct || !c.ct.includes(currentCraftFilter))) return false;
+                return c.n && c.n.toLowerCase().includes(q);
+            }).slice(0, 15);
+
+            const box = document.getElementById('clubSuggestions');
+            if (!matches.length) { box.classList.remove('open'); return; }
+            sugHighlight = -1;
+            box.innerHTML = matches.map((c, i) => {
+                const loc = [c.ci, c.sa || c.st, c.co].filter(Boolean).join(', ');
+                const craft = (c.ct || '').split(',').map(t => LABELS[t.trim()] || t.trim()).filter(Boolean).join(', ');
+                return `<div class="club-sug-item" data-idx="${i}" onclick="selectClubSuggestion(${i})">
+                    <span class="sug-name">${c.n}</span>
+                    <span class="sug-loc">${loc}</span>
+                    ${craft ? `<span class="sug-craft">${craft}</span>` : ''}
+                </div>`;
+            }).join('');
+            box._matches = matches;
+            box.classList.add('open');
+        }
+
+        function selectClubSuggestion(idx) {
+            const box = document.getElementById('clubSuggestions');
+            const club = box._matches && box._matches[idx];
+            if (!club) return;
+            box.classList.remove('open');
+            document.getElementById('clubSearch').value = club.n;
+
+            // Zoom to the club and open its panel
+            if (club.la && club.lo) {
+                map.setCenter({ lat: club.la, lng: club.lo });
+                map.setZoom(14);
+            }
+            filteredClubs = [club];
+            plotMarkers(filteredClubs);
+            setTimeout(() => {
+                const marker = markers.find(m => m._clubData && m._clubData.n === club.n);
+                if (marker) onMarkerClick(club, marker);
+            }, 200);
+        }
+
+        // Arrow key navigation for suggestions
+        document.addEventListener('keydown', (e) => {
+            const box = document.getElementById('clubSuggestions');
+            if (!box.classList.contains('open') || !box._matches) return;
+            const items = box.querySelectorAll('.club-sug-item');
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                sugHighlight = Math.min(sugHighlight + 1, items.length - 1);
+                items.forEach((el, i) => el.classList.toggle('selected', i === sugHighlight));
+                items[sugHighlight]?.scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                sugHighlight = Math.max(sugHighlight - 1, 0);
+                items.forEach((el, i) => el.classList.toggle('selected', i === sugHighlight));
+                items[sugHighlight]?.scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'Enter' && sugHighlight >= 0) {
+                e.preventDefault();
+                selectClubSuggestion(sugHighlight);
+            }
+        });
+
+        // Close suggestions when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-input-wrap')) {
+                document.getElementById('clubSuggestions').classList.remove('open');
+            }
+        });
 
         function applyFilters() {
             currentCraftFilter = document.getElementById('craftFilter').value;
