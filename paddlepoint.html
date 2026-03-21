@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title>PaddlePoint — Paddle Conditions, Clubs & Events</title>
+    <link rel="stylesheet" href="pp-shared.css">
     <meta name="description" content="Real-time paddle conditions, weather, clubs, events, and gear for SUP, kayak, outrigger, and canoe paddlers.">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -575,6 +576,8 @@
             <a href="paddle-clubs.html" class="nav-btn">Paddle Clubs</a>
             <a href="paddle-events.html" class="nav-btn">Events</a>
             <a href="paddle-gear.html" class="nav-btn">Gear</a>
+            <span class="nav-btn" onclick="openSuggestModal()" style="cursor:pointer;">Suggest</span>
+            <span class="nav-btn" onclick="openUpdatesModal()" style="cursor:pointer;">Updates</span>
             <button class="mobile-nav-toggle" onclick="toggleMobileMenu()" aria-label="Menu">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                     <line x1="3" y1="6" x2="21" y2="6"/>
@@ -998,5 +1001,6 @@
         }
     </script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="pp-shared.js"></script>
 </body>
 </html>

@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PaddlePoint - Paddling Events</title>
+<link rel="stylesheet" href="pp-shared.css">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -277,6 +278,8 @@
         <a href="paddle-clubs.html" class="nav-btn">Paddle Clubs</a>
         <a href="paddle-events.html" class="nav-btn">Events</a>
         <a href="paddle-gear.html" class="nav-btn">Gear</a>
+        <span class="nav-btn" onclick="openSuggestModal()" style="cursor:pointer;">Suggest</span>
+        <span class="nav-btn" onclick="openUpdatesModal()" style="cursor:pointer;">Updates</span>
     </div>
 </div>
 
@@ -449,6 +452,7 @@ async function toggleStats(){
   alert(`Events Page Stats\n\nAll-time: ${d.total||0} visitors\nLast 7 days: ${w}\nToday: ${d.days&&d.days.length?d.days[d.days.length-1].uniqueVisitors:0}`);}catch(e){alert('Stats unavailable');}
 }
 </script>
+<script src="pp-shared.js"></script>
 
 </body>
 </html>

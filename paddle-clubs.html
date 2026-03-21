@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title>PaddlePoint - Paddle Clubs</title>
+    <link rel="stylesheet" href="pp-shared.css">
     <link rel="preconnect" href="https://maps.googleapis.com" crossorigin>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -711,6 +712,8 @@
             <a href="paddle-clubs.html" class="back-btn">Paddle Clubs</a>
             <a href="paddle-events.html" class="back-btn">Events</a>
             <a href="paddle-gear.html" class="back-btn">Gear</a>
+            <span class="back-btn" onclick="openSuggestModal()" style="cursor:pointer;">Suggest</span>
+            <span class="back-btn" onclick="openUpdatesModal()" style="cursor:pointer;">Updates</span>
         </div>
     </div>
 
@@ -1990,5 +1993,6 @@
     </script>
 
     <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAR81pUTUz5ON7ZBuoouTh2RTHyECr6yvg&libraries=places&callback=initMap"></script>
+    <script src="pp-shared.js"></script>
 </body>
 </html>

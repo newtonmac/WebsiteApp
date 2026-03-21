@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title>PaddlePoint - Weather & Tides</title>
+    <link rel="stylesheet" href="pp-shared.css">
     <link rel="dns-prefetch" href="https://api.weather.gov">
     <link rel="dns-prefetch" href="https://gis.ncdc.noaa.gov">
     <link rel="dns-prefetch" href="https://data.ca.gov">
@@ -747,6 +748,8 @@
         <a href="paddle-clubs.html" class="back-btn">Paddle Clubs</a>
         <a href="paddle-events.html" class="back-btn">Events</a>
         <a href="paddle-gear.html" class="back-btn">Gear</a>
+        <span class="back-btn" onclick="openSuggestModal()" style="cursor:pointer;">Suggest</span>
+        <span class="back-btn" onclick="openUpdatesModal()" style="cursor:pointer;">Updates</span>
     </div>
 </div>
 
@@ -2846,5 +2849,6 @@ async function toggleStats(){
 }
 </script>
 
+<script src="pp-shared.js"></script>
 </body>
 </html>
