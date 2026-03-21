@@ -87,7 +87,7 @@ module.exports = async (req, res) => {
     // 2. GOOGLE PLACES — find the club, get rating, reviews, address, coords, photo
     try {
       const searchQuery = encodeURIComponent(name);
-      const placesUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${searchQuery}&inputtype=textquery&fields=place_id,name,formatted_address,geometry,rating,user_ratings_total,photos,website,formatted_phone_number,types&key=${GOOGLE_API_KEY}`;
+      const placesUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${searchQuery}&inputtype=textquery&fields=place_id,name,formatted_address,geometry,rating,user_ratings_total,photos,types&key=${GOOGLE_API_KEY}`;
       const placesRes = await fetch(placesUrl);
       const placesData = await placesRes.json();
       console.log('Places search status:', placesData.status, 'candidates:', placesData.candidates?.length || 0);
