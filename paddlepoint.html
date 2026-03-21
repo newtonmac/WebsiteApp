@@ -661,7 +661,7 @@
                 <ul>
                     <li><strong>Water Conditions</strong> — Live wind, waves, tides, water quality, and a paddle score for any location</li>
                     <li><strong>Weather & Tides</strong> — Detailed marine forecasts and tide predictions</li>
-                    <li><strong>Paddle Clubs</strong> — The world's largest paddling club directory with 9,000+ clubs across 50+ countries</li>
+                    <li><strong>Paddle Clubs</strong> — The world's largest paddling club directory with 7,700+ clubs across 77 countries</li>
                     <li><strong>Events</strong> — Races, regattas, and clinics across the US and Canada</li>
                     <li><strong>Gear</strong> — Equipment recommendations and a brand directory by discipline</li>
                 </ul>
@@ -766,16 +766,12 @@
         // --- Visitor Counter & Stats ---
         const COUNTER_API = 'https://visitor-counter.newtonmac.workers.dev';
 
-        // Record visit silently
-        (async () => {
-            try {
-                await fetch(`${COUNTER_API}/visit`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ page: 'paddlepoint', referrer: document.referrer })
-                });
-            } catch { /* silent */ }
-        })();
+        // Record visit silently (matches format used by other pages)
+        if (typeof requestIdleCallback !== 'undefined') {
+            requestIdleCallback(() => fetch(`${COUNTER_API}/visit?page=paddlepoint`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ referrer: document.referrer }) }).catch(() => {}));
+        } else {
+            setTimeout(() => fetch(`${COUNTER_API}/visit?page=paddlepoint`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ referrer: document.referrer }) }).catch(() => {}), 1000);
+        }
 
         let statsLoaded = false;
 
