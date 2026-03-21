@@ -196,6 +196,12 @@ body { background: #f8fafc; color: #1e293b; font-family: 'DM Sans', -apple-syste
         <option value="upcoming">Upcoming</option>
         <option value="closed">Closed</option>
     </select>
+    <select class="filter-select" id="filterCountry" onchange="onCountryChange()">
+        <option value="">All Countries</option>
+    </select>
+    <select class="filter-select" id="filterState" onchange="applyFilters()" style="display:none;">
+        <option value="">All States</option>
+    </select>
     <select class="filter-select" id="sortBy" onchange="applyFilters()">
         <option value="date">Sort: Date ↑</option>
         <option value="date_desc">Sort: Date ↓</option>
@@ -254,6 +260,7 @@ async function loadEvents() {
     try {
         const res = await fetch('/api/events', { headers: { 'X-API-Token': API_TOKEN } });
         allEvents = await res.json();
+        populateCountryFilter();
         applyFilters();
         document.getElementById('eventsCount').textContent = `${allEvents.length} events`;
     } catch (e) {
@@ -268,12 +275,45 @@ function daysAway(dateStr) {
     return Math.ceil((d - now) / 86400000);
 }
 
+function populateCountryFilter() {
+    const countries = {};
+    allEvents.forEach(ev => { if (ev.country) countries[ev.country] = (countries[ev.country]||0)+1; });
+    const sel = document.getElementById('filterCountry');
+    sel.innerHTML = '<option value="">All Countries</option>' +
+        Object.entries(countries).sort((a,b) => b[1]-a[1]).map(([c,n]) =>
+            `<option value="${c}">${c} (${n})</option>`).join('');
+}
+
+function populateStateFilter(country) {
+    const states = {};
+    allEvents.forEach(ev => { if (ev.country === country && ev.state) states[ev.state] = (states[ev.state]||0)+1; });
+    const sel = document.getElementById('filterState');
+    if (Object.keys(states).length === 0) { sel.style.display = 'none'; return; }
+    sel.style.display = '';
+    sel.innerHTML = '<option value="">All States</option>' +
+        Object.entries(states).sort((a,b) => b[1]-a[1]).map(([s,n]) =>
+            `<option value="${s}">${s} (${n})</option>`).join('');
+}
+
+function onCountryChange() {
+    const country = document.getElementById('filterCountry').value;
+    document.getElementById('filterState').value = '';
+    if (country === 'United States' || country === 'Canada') {
+        populateStateFilter(country);
+    } else {
+        document.getElementById('filterState').style.display = 'none';
+    }
+    applyFilters();
+}
+
 function applyFilters() {
     const q = document.getElementById('searchInput').value.toLowerCase();
     const type = document.getElementById('filterType').value;
     const sport = document.getElementById('filterSport').value;
     const level = document.getElementById('filterLevel').value;
     const status = document.getElementById('filterStatus').value;
+    const country = document.getElementById('filterCountry').value;
+    const state = document.getElementById('filterState').value;
     const sort = document.getElementById('sortBy').value;
 
     filtered = allEvents.filter(ev => {
@@ -281,6 +321,8 @@ function applyFilters() {
         if (sport && (!ev.sports || !ev.sports.includes(sport))) return false;
         if (level && ev.level !== level) return false;
         if (status && ev.registration_status !== status) return false;
+        if (country && ev.country !== country) return false;
+        if (state && ev.state !== state) return false;
         if (q) {
             const haystack = [ev.name, ev.city, ev.state, ev.country, ev.venue, ev.organizer, ev.sports, ev.description].join(' ').toLowerCase();
             if (!haystack.includes(q)) return false;
