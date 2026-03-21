@@ -161,9 +161,11 @@
             </div>
             <div class="actions">
                 <button class="btn-delete" onclick="deleteClub()">🗑 Delete</button>
+                <button style="background:#8b5cf6;color:white;border:none;padding:10px 24px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;" onclick="enrichFromForm()" id="enrichBtn">🔄 Enrich</button>
                 <button class="btn-cancel" onclick="closeModal()">Cancel</button>
                 <button class="btn-save" onclick="saveClub()">💾 Save</button>
             </div>
+            <div id="enrichStatus" style="margin-top:8px;font-size:12px;color:#8b8fa3;text-align:center;display:none;"></div>
         </div>
     </div>
     <div class="toast" id="toast"></div>
@@ -345,6 +347,58 @@
     }
 
     function closeModal() { document.getElementById('editModal').classList.remove('open'); }
+    async function enrichFromForm() {
+        const name = document.getElementById('ed_n').value.trim();
+        const website = document.getElementById('ed_w').value.trim();
+        const facebook = document.getElementById('ed_fb').value.trim();
+        const instagram = document.getElementById('ed_ig').value.trim();
+        if (!name) { showToast('Name is required to enrich', true); return; }
+
+        const btn = document.getElementById('enrichBtn');
+        const status = document.getElementById('enrichStatus');
+        btn.disabled = true; btn.textContent = '⏳ Fetching...';
+        status.style.display = 'block';
+        status.style.color = '#22d3ee';
+        status.textContent = 'Scraping website + Google Places + social media...';
+
+        try {
+            const res = await fetch('/api/enrich-club', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-API-Token': 'pp-clubs-7742-v1' },
+                body: JSON.stringify({ name, website, facebook, instagram })
+            });
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+
+            // Only fill EMPTY fields — never overwrite existing data
+            const FILL_MAP = {
+                a:'ed_a', ci:'ed_ci', st:'ed_st', co:'ed_co', la:'ed_la', lo:'ed_lo',
+                p:'ed_p', e:'ed_e', d:'ed_d', ct:'ed_ct', di:'ed_di', fe:'ed_fe',
+                se:'ed_se', fb:'ed_fb', ig:'ed_ig', gr:'ed_gr', gc:'ed_gc',
+                w:'ed_w'
+            };
+            let filled = 0;
+            for (const [key, elId] of Object.entries(FILL_MAP)) {
+                const el = document.getElementById(elId);
+                if (!el) continue;
+                if (el.value && el.value.trim()) continue; // skip non-empty
+                if (data[key] && String(data[key]).trim() && data[key] !== 'None') {
+                    el.value = data[key];
+                    el.style.borderColor = '#22c55e'; // flash green
+                    setTimeout(() => el.style.borderColor = '', 2000);
+                    filled++;
+                }
+            }
+            status.style.color = '#22c55e';
+            status.textContent = filled > 0 ? `✅ Filled ${filled} empty field${filled>1?'s':''}` : '✅ No empty fields to fill — record is complete';
+        } catch (e) {
+            status.style.color = '#ef4444';
+            status.textContent = '❌ ' + e.message;
+        }
+        btn.disabled = false; btn.textContent = '🔄 Enrich';
+        setTimeout(() => status.style.display = 'none', 4000);
+    }
+
     async function saveClub() {
         const idx = parseInt(document.getElementById('editIdx').value);
         const club = allClubs.find(c => c._idx === idx);
