@@ -22,7 +22,7 @@ module.exports = async (req, res) => {
 
   const fields = ['name','categories','brand_type','product_types','country','city',
     'website','email','phone','address','description','popular_products',
-    'year_founded','logo_url','facebook_url','instagram_url','youtube_url','featured'];
+    'year_founded','logo_url','facebook_url','instagram_url','youtube_url','distributors','featured'];
 
   if (data.id) {
     const sets = [], vals = [];

@@ -585,6 +585,25 @@ function showBrandDetail(id){
     if(b.instagram_url) socialLinks.push(`<a href="${b.instagram_url}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;color:#E1306C;text-decoration:none;font-size:13px;">${IC_IG} Instagram</a>`);
     if(b.youtube_url) socialLinks.push(`<a href="${b.youtube_url}" target="_blank" style="color:#FF0000;text-decoration:none;font-size:13px;">▶ YouTube</a>`);
     if(socialLinks.length) html += row('Social', socialLinks.join('&nbsp;&nbsp;&nbsp;'));
+    // Distributors
+    try {
+        const dists = JSON.parse(b.distributors || '[]');
+        if (dists.length) {
+            const distHtml = dists.map(d => {
+                let links = [];
+                if(d.website) links.push(`<a href="${d.website}" target="_blank" style="color:#0ea5e9;text-decoration:none;font-size:12px;">🌐</a>`);
+                if(d.facebook) links.push(`<a href="${d.facebook}" target="_blank" style="text-decoration:none;font-size:12px;">${IC_FB}</a>`);
+                if(d.instagram) links.push(`<a href="${d.instagram}" target="_blank" style="text-decoration:none;font-size:12px;">${IC_IG}</a>`);
+                return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f8fafc;">
+                    <span style="font-weight:600;color:#1e293b;font-size:13px;">${d.name||'—'}</span>
+                    <span style="display:flex;gap:8px;align-items:center;">${links.join('')}</span>
+                </div>`;
+            }).join('');
+            html += `<div style="padding:12px 0;border-bottom:1px solid #f1f5f9;">
+                <div style="font-size:13px;font-weight:600;color:#94a3b8;margin-bottom:6px;">Authorized Distributors</div>
+                <div style="background:#f8fafc;border-radius:10px;padding:8px 14px;">${distHtml}</div></div>`;
+        }
+    } catch(e) {}
     document.getElementById('bdBody').innerHTML = html || '<p style="color:#94a3b8;padding:12px 0;">No details yet.</p>';
     document.getElementById('brandOverlay').style.display='flex';
 }

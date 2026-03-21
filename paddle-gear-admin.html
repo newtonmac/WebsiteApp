@@ -116,6 +116,11 @@ tr.selected{background:#1e2040}
             <div><label>Logo URL</label><input id="ed_logo_url"></div></div>
         <label>Popular Products</label><textarea id="ed_popular_products" placeholder="e.g. Nelo Cinco K1, Nelo Vanquish C1, Nelo 540 Surfski"></textarea>
         <label>Description</label><textarea id="ed_description" placeholder="Brand story, specialties, what they're known for..."></textarea>
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid #2d3040;">
+            <h3 style="font-size:14px;color:#a0a4b8;margin-bottom:12px;">📦 Distributors (up to 4)</h3>
+            <div id="distFields"></div>
+            <button type="button" onclick="addDistField()" style="background:#252836;color:#60a5fa;border:1px solid #2d3040;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;margin-top:8px;">+ Add Distributor</button>
+        </div>
         <div class="actions">
             <button class="btn-delete" id="deleteBtn" onclick="deleteBrand()">🗑️ Delete</button>
             <button style="background:#0ea5e9;color:#fff;border:none;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;" id="enrichBtn" onclick="enrichBrand()">🔍 Enrich from Website</button>
@@ -190,10 +195,45 @@ function renderTable(){
 
 const FIELDS=['id','name','categories','brand_type','product_types','country','city','website','email','phone','address','description','popular_products','year_founded','logo_url','facebook_url','instagram_url','youtube_url'];
 
+function getDistributors(){
+    const divs=document.querySelectorAll('.dist-entry');
+    const dists=[];
+    divs.forEach(d=>{
+        const n=d.querySelector('.dist-name').value.trim();
+        const w=d.querySelector('.dist-web').value.trim();
+        const fb=d.querySelector('.dist-fb').value.trim();
+        const ig=d.querySelector('.dist-ig').value.trim();
+        if(n||w) dists.push({name:n,website:w,facebook:fb,instagram:ig});
+    });
+    return dists;
+}
+
+function setDistributors(dists){
+    const container=document.getElementById('distFields');
+    container.innerHTML='';
+    (dists||[]).forEach(d=>addDistField(d));
+}
+
+function addDistField(data){
+    const container=document.getElementById('distFields');
+    if(container.querySelectorAll('.dist-entry').length>=4) return;
+    const div=document.createElement('div');
+    div.className='dist-entry';
+    div.style.cssText='background:#0f1117;border:1px solid #2d3040;border-radius:8px;padding:10px;margin-bottom:8px;position:relative;';
+    const d=data||{};
+    div.innerHTML=`<button type="button" onclick="this.parentElement.remove()" style="position:absolute;top:6px;right:8px;background:none;border:none;color:#ef4444;cursor:pointer;font-size:14px;">✕</button>
+        <div class="row"><div><label>Company Name</label><input class="dist-name" value="${d.name||''}" placeholder="e.g. West Coast Paddler"></div>
+        <div><label>Website</label><input class="dist-web" value="${d.website||''}" placeholder="https://..."></div></div>
+        <div class="row"><div><label>Facebook</label><input class="dist-fb" value="${d.facebook||''}" placeholder="https://facebook.com/..."></div>
+        <div><label>Instagram</label><input class="dist-ig" value="${d.instagram||''}" placeholder="https://instagram.com/..."></div></div>`;
+    container.appendChild(div);
+}
+
 function editBrand(id){
     const b=allBrands.find(x=>x.id===id);if(!b)return;
     document.getElementById('editTitle').textContent=`Edit: ${b.name}`;
     FIELDS.forEach(f=>{const el=document.getElementById('ed_'+f);if(el)el.value=b[f]||'';});
+    try{setDistributors(JSON.parse(b.distributors||'[]'));}catch(e){setDistributors([]);}
     document.getElementById('deleteBtn').style.display='';
     document.getElementById('editModal').classList.add('open');
 }
@@ -202,6 +242,7 @@ function showAdd(){
     document.getElementById('editTitle').textContent='➕ Add New Brand';
     FIELDS.forEach(f=>{const el=document.getElementById('ed_'+f);if(el)el.value='';});
     document.getElementById('ed_brand_type').value='manufacturer';
+    setDistributors([]);
     document.getElementById('deleteBtn').style.display='none';
     document.getElementById('editModal').classList.add('open');
     document.getElementById('ed_name').focus();
@@ -214,6 +255,8 @@ async function saveBrand(){
     FIELDS.forEach(f=>{const el=document.getElementById('ed_'+f);if(el&&el.value)data[f]=el.value;});
     if(data.id)data.id=parseInt(data.id);
     if(!data.name){alert('Brand name required');return;}
+    const dists=getDistributors();
+    data.distributors=JSON.stringify(dists);
     try{
         const res=await fetch('/api/save-gear-brand',{method:'POST',
             headers:{'Content-Type':'application/json','X-API-Token':'pp-clubs-7742-v1'},
