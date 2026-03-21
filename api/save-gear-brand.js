@@ -21,7 +21,7 @@ module.exports = async (req, res) => {
   }
 
   const fields = ['name','categories','brand_type','product_types','country','city',
-    'website','email','phone','address','description','popular_products','price_tier',
+    'website','email','phone','address','description','popular_products',
     'year_founded','logo_url','facebook_url','instagram_url','youtube_url','featured'];
 
   if (data.id) {
