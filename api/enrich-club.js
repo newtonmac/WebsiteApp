@@ -90,6 +90,10 @@ module.exports = async (req, res) => {
       const placesUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${searchQuery}&inputtype=textquery&fields=place_id,name,formatted_address,geometry,rating,user_ratings_total,photos,website,formatted_phone_number,types&key=${GOOGLE_API_KEY}`;
       const placesRes = await fetch(placesUrl);
       const placesData = await placesRes.json();
+      console.log('Places search status:', placesData.status, 'candidates:', placesData.candidates?.length || 0);
+      if (placesData.error_message) console.log('Places error:', placesData.error_message);
+      result._placesStatus = placesData.status;
+      if (placesData.error_message) result._placesMsg = placesData.error_message;
 
       if (placesData.candidates && placesData.candidates.length > 0) {
         const place = placesData.candidates[0];
