@@ -575,10 +575,10 @@ function showBrandDetail(id){
             <div style="background:#f8fafc;border-radius:10px;padding:10px 14px;">${products}</div></div>`;
     }
     html += row('Categories', cats);
+    html += row('Country', b.country);
     html += row('Website', b.website ? link(b.website, b.website.replace(/^https?:\/\/(www\.)?/,'').replace(/\/$/,'')) : '');
     html += row('Email', b.email ? `<a href="mailto:${b.email}" style="color:#0ea5e9;text-decoration:none;">${b.email}</a>` : '');
     html += row('Phone', b.phone);
-    html += row('Address', [b.address,b.city,b.country].filter(Boolean).join(', ') || '');
     // Social row with real icons
     const socialLinks = [];
     if(b.facebook_url) socialLinks.push(`<a href="${b.facebook_url}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;color:#1877F2;text-decoration:none;font-size:13px;">${IC_FB} Facebook</a>`);
