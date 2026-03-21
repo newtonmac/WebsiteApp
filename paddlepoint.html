@@ -611,6 +611,59 @@
         </div>
     </section>
 
+    <!-- LIVE STATS BAR -->
+    <section style="max-width:1200px;margin:0 auto;padding:24px 24px 0;">
+        <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:16px;" id="liveStats">
+            <div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+                <span style="font-size:24px;font-weight:800;color:#0ea5e9;" id="statClubs">—</span>
+                <span style="font-size:13px;color:#64748b;line-height:1.3;">Paddle Clubs<br>Worldwide</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+                <span style="font-size:24px;font-weight:800;color:#8b5cf6;" id="statCountries">—</span>
+                <span style="font-size:13px;color:#64748b;line-height:1.3;">Countries<br>Covered</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+                <span style="font-size:24px;font-weight:800;color:#f59e0b;" id="statEvents">—</span>
+                <span style="font-size:13px;color:#64748b;line-height:1.3;">Paddling<br>Events</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+                <span style="font-size:24px;font-weight:800;color:#22c55e;" id="statSources">12+</span>
+                <span style="font-size:13px;color:#64748b;line-height:1.3;">Data<br>Sources</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- QUICK NAV CARDS -->
+    <section style="max-width:1200px;margin:0 auto;padding:24px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;">
+            <a href="paddle-conditions.html" style="display:block;background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:20px;text-decoration:none;transition:all 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.04);" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 25px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'">
+                <div style="font-size:28px;margin-bottom:8px;">🌊</div>
+                <div style="font-size:16px;font-weight:700;color:#1e293b;margin-bottom:4px;">Water Conditions</div>
+                <div style="font-size:12px;color:#64748b;line-height:1.4;">Live wind, waves, tides, water quality & paddle score</div>
+            </a>
+            <a href="paddle-weather.html" style="display:block;background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:20px;text-decoration:none;transition:all 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.04);" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 25px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'">
+                <div style="font-size:28px;margin-bottom:8px;">⛅</div>
+                <div style="font-size:16px;font-weight:700;color:#1e293b;margin-bottom:4px;">Weather & Tides</div>
+                <div style="font-size:12px;color:#64748b;line-height:1.4;">Triple-source forecasts, tide charts & marine conditions</div>
+            </a>
+            <a href="paddle-clubs.html" style="display:block;background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:20px;text-decoration:none;transition:all 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.04);" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 25px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'">
+                <div style="font-size:28px;margin-bottom:8px;">🛶</div>
+                <div style="font-size:16px;font-weight:700;color:#1e293b;margin-bottom:4px;">Paddle Clubs</div>
+                <div style="font-size:12px;color:#64748b;line-height:1.4;">7,700+ clubs across 77 countries on an interactive map</div>
+            </a>
+            <a href="paddle-events.html" style="display:block;background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:20px;text-decoration:none;transition:all 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.04);" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 25px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'">
+                <div style="font-size:28px;margin-bottom:8px;">🏁</div>
+                <div style="font-size:16px;font-weight:700;color:#1e293b;margin-bottom:4px;">Events</div>
+                <div style="font-size:12px;color:#64748b;line-height:1.4;">Races, regattas & championships worldwide</div>
+            </a>
+            <a href="paddle-gear.html" style="display:block;background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:20px;text-decoration:none;transition:all 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.04);" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 25px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'">
+                <div style="font-size:28px;margin-bottom:8px;">🎯</div>
+                <div style="font-size:16px;font-weight:700;color:#1e293b;margin-bottom:4px;">Gear & Reviews</div>
+                <div style="font-size:12px;color:#64748b;line-height:1.4;">Equipment reviews, buyer's guides & brand directory</div>
+            </a>
+        </div>
+    </section>
+
     <!-- FOOTER -->
     <footer class="footer">
         <div class="footer-links">
@@ -1051,6 +1104,24 @@
         }
     </script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// Live stats
+(async function(){
+    try{
+        const [clubsRes, eventsRes] = await Promise.all([
+            fetch('/api/clubs',{headers:{'X-API-Token':'pp-clubs-7742-v1'}}).then(r=>r.json()).catch(()=>[]),
+            fetch('/api/events',{headers:{'X-API-Token':'pp-clubs-7742-v1'}}).then(r=>r.json()).catch(()=>[])
+        ]);
+        const countries = new Set();
+        clubsRes.forEach(c=>{if(c.co)countries.add(c.co);});
+        eventsRes.forEach(e=>{if(e.country)countries.add(e.country);});
+        const animate = (el,target)=>{let n=0;const step=Math.max(1,Math.floor(target/30));const iv=setInterval(()=>{n=Math.min(n+step,target);el.textContent=n.toLocaleString();if(n>=target)clearInterval(iv);},30);};
+        animate(document.getElementById('statClubs'),clubsRes.length);
+        animate(document.getElementById('statCountries'),countries.size);
+        animate(document.getElementById('statEvents'),eventsRes.length);
+    }catch(e){}
+})();
+</script>
 <script src="pp-shared.js"></script>
 </body>
 </html>
