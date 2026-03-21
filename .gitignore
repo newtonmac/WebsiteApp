@@ -1,0 +1,5 @@
+.DS_Store
+*.xcuserstate
+models/*.bin
+models/*.gltf
+node_modules/
