@@ -3,6 +3,53 @@
 const SUGGEST_API='https://suggestions.newtonmac.workers.dev';
 const UPDATES_API='https://updates.newtonmac.workers.dev';
 
+// ============ MOBILE HAMBURGER NAV (auto-injected on all pages) ============
+(function injectMobileNav(){
+    // Find the nav container (different class on each page)
+    var navContainer = document.querySelector('.header-right, .nav-btns, .header-nav');
+    var topBar = document.querySelector('.header, .top-bar, .page-header-bar');
+    if (!topBar) topBar = document.querySelector('[class*="header"]');
+    if (!topBar) return;
+    // Make sure container is position:relative for the absolute hamburger
+    topBar.style.position = topBar.style.position || 'relative';
+    // Inject hamburger button if not already present
+    // Remove any existing page-specific hamburger to avoid duplicates
+    var existing = document.querySelector('.mobile-nav-toggle');
+    if (existing) existing.remove();
+    var existingMenu = document.getElementById('mobileMenu');
+    if (existingMenu) existingMenu.remove();
+    if (!document.querySelector('.pp-mobile-toggle')) {
+        var btn = document.createElement('button');
+        btn.className = 'pp-mobile-toggle';
+        btn.setAttribute('aria-label', 'Menu');
+        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>';
+        btn.onclick = function(){ document.getElementById('ppMobileMenu').classList.add('open'); };
+        topBar.appendChild(btn);
+    }
+    // Inject mobile menu overlay
+    if (!document.getElementById('ppMobileMenu')) {
+        var menu = document.createElement('div');
+        menu.className = 'pp-mobile-menu';
+        menu.id = 'ppMobileMenu';
+        menu.onclick = function(e){ if(e.target===this) this.classList.remove('open'); };
+        menu.innerHTML = '<div class="pp-mobile-panel" onclick="event.stopPropagation()">'
+            + '<button class="pp-mobile-panel-close" onclick="document.getElementById(\'ppMobileMenu\').classList.remove(\'open\')">&times;</button>'
+            + '<a href="paddlepoint.html">🏠 Home</a>'
+            + '<a href="paddle-conditions.html">🌊 Water Conditions</a>'
+            + '<a href="paddle-weather.html">⛅ Weather & Tides</a>'
+            + '<a href="paddle-clubs.html">🛶 Paddle Clubs</a>'
+            + '<a href="paddle-events.html">🏁 Events</a>'
+            + '<a href="paddle-gear.html">🎯 Gear & Reviews</a>'
+            + '<a href="paddle-federations.html">🏛️ Federations</a>'
+            + '<div class="pp-mobile-divider"></div>'
+            + '<span onclick="document.getElementById(\'ppMobileMenu\').classList.remove(\'open\');openSuggestModal()">💬 Feedback</span>'
+            + '<span onclick="document.getElementById(\'ppMobileMenu\').classList.remove(\'open\');openUpdatesModal()">📋 Updates</span>'
+            + '<span onclick="document.getElementById(\'ppMobileMenu\').classList.remove(\'open\');openDataSourcesModal()">📡 Data Sources</span>'
+            + '</div>';
+        document.body.appendChild(menu);
+    }
+})();
+
 // Inject modals if not already present
 if(!document.getElementById('suggestModal')){
 document.body.insertAdjacentHTML('beforeend',`
@@ -166,5 +213,6 @@ if(e.key==='Escape'){
 var s=document.getElementById('suggestModal');if(s&&s.classList.contains('open'))closeSuggestModal();
 var u=document.getElementById('updatesModal');if(u&&u.classList.contains('open'))closeUpdatesModal();
 var d=document.getElementById('dataSourcesModal');if(d&&d.classList.contains('open'))closeDataSourcesModal();
+var m=document.getElementById('ppMobileMenu');if(m&&m.classList.contains('open'))m.classList.remove('open');
 }});
 })();

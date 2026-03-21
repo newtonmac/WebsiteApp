@@ -560,7 +560,13 @@
         .quick-nav-section .nav-card .nav-icon { font-size:20px; margin-bottom:4px; }
         .quick-nav-section .nav-card .nav-title { font-size:13px; }
         .quick-nav-section .nav-card .nav-desc { font-size:11px; }
-        @media (max-width: 768px) { .quick-nav-section { display: none !important; } }
+        @media (max-width: 768px) {
+            .quick-nav-section { display: none !important; }
+            #liveStats { gap: 8px !important; }
+            #liveStats > div { padding: 8px 12px !important; border-radius: 10px !important; }
+            #liveStats > div > span:first-child { font-size: 18px !important; }
+            #liveStats > div > span:last-child { font-size: 11px !important; }
+        }
     </style>
 </head>
 <body>

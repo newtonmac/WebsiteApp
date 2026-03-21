@@ -48,3 +48,20 @@
 .update-title{font-size:14px;font-weight:600;color:#e1e4e8}
 .update-desc{font-size:13px;color:#8b8fa3;line-height:1.4;margin-top:2px}
 .update-date{font-size:11px;color:#4b5060;margin-top:4px}
+
+
+/* ============ MOBILE HAMBURGER NAV (shared across all pages) ============ */
+.pp-mobile-toggle{display:none;background:none;border:none;cursor:pointer;padding:8px;color:#1a1a2e;position:absolute;right:16px;top:50%;transform:translateY(-50%);z-index:100}
+.pp-mobile-toggle svg{width:24px;height:24px}
+.pp-mobile-menu{display:none;position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,0.4);backdrop-filter:blur(4px)}
+.pp-mobile-menu.open{display:flex}
+.pp-mobile-panel{background:#fff;width:280px;margin-left:auto;height:100%;padding:24px;display:flex;flex-direction:column;gap:4px;box-shadow:-8px 0 30px rgba(0,0,0,0.1);overflow-y:auto}
+.pp-mobile-panel-close{align-self:flex-end;background:none;border:none;font-size:28px;cursor:pointer;color:#1a1a2e;margin-bottom:12px}
+.pp-mobile-panel a,.pp-mobile-panel span{text-decoration:none;color:#1a1a2e;font-size:16px;font-weight:500;padding:12px 16px;border-radius:8px;transition:background 0.2s;cursor:pointer;display:block}
+.pp-mobile-panel a:hover,.pp-mobile-panel span:hover{background:#f1f5f9}
+.pp-mobile-panel .pp-mobile-divider{height:1px;background:#e2e8f0;margin:8px 0}
+@media(max-width:768px){
+    .pp-mobile-toggle{display:block}
+    .nav-btn,.back-btn,.suggest-btn,.updates-btn,.clubs-btn,.nav-btns .nav-btn,.header-right .nav-btn{display:none!important}
+    .nav-btns,.header-right{min-width:0!important}
+}
