@@ -38,7 +38,6 @@ module.exports = async (req, res) => {
         const siteRes = await fetch(website, {
           headers: { 'User-Agent': 'Mozilla/5.0 PaddlePoint ClubBot/1.0' },
           redirect: 'follow',
-          signal: AbortSignal.timeout(8000),
         });
         if (siteRes.ok) {
           const html = await siteRes.text();
@@ -89,7 +88,7 @@ module.exports = async (req, res) => {
     try {
       const searchQuery = encodeURIComponent(name);
       const placesUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${searchQuery}&inputtype=textquery&fields=place_id,name,formatted_address,geometry,rating,user_ratings_total,photos,website,formatted_phone_number,types&key=${GOOGLE_API_KEY}`;
-      const placesRes = await fetch(placesUrl, { signal: AbortSignal.timeout(5000) });
+      const placesRes = await fetch(placesUrl);
       const placesData = await placesRes.json();
 
       if (placesData.candidates && placesData.candidates.length > 0) {
@@ -98,7 +97,7 @@ module.exports = async (req, res) => {
         // Get more details via Place Details API
         if (place.place_id) {
           const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}&fields=name,formatted_address,geometry,rating,user_ratings_total,photos,website,formatted_phone_number,address_components,url&key=${GOOGLE_API_KEY}`;
-          const detailsRes = await fetch(detailsUrl, { signal: AbortSignal.timeout(5000) });
+          const detailsRes = await fetch(detailsUrl);
           const details = await detailsRes.json();
 
           if (details.result) {
@@ -142,6 +141,7 @@ module.exports = async (req, res) => {
 
     result.cl = 'club';
     result.se = 'year-round';
+    result._debug = { hadWebsite: !!website, hadName: !!name };
     return res.status(200).json(result);
   } catch (err) {
     return res.status(500).json({ error: err.message });
