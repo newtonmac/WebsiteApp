@@ -12,7 +12,7 @@ const ALLOWED_ORIGINS = [
 // In-memory cache (lives for the life of the serverless instance)
 let cachedData = null;
 let cacheTime = 0;
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL = 30 * 1000; // 30 seconds — short enough for admin edits to appear fast
 
 // State abbreviation → full name
 const STATE_MAP = {
@@ -60,7 +60,7 @@ module.exports = async (req, res) => {
     if (!forceRefresh && cachedData && (Date.now() - cacheTime) < CACHE_TTL) {
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('X-Cache', 'HIT');
-      res.setHeader('Cache-Control', 's-maxage=300, max-age=60, stale-while-revalidate=600');
+      res.setHeader('Cache-Control', 'no-store');
       res.setHeader('X-Robots-Tag', 'noindex, nofollow');
       return res.status(200).send(cachedData);
     }
@@ -110,7 +110,7 @@ module.exports = async (req, res) => {
 
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('X-Cache', 'MISS');
-    res.setHeader('Cache-Control', 's-maxage=300, max-age=60, stale-while-revalidate=600');
+    res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Robots-Tag', 'noindex, nofollow');
     return res.status(200).send(json);
   } catch (err) {
