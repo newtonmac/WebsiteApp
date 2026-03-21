@@ -49,9 +49,11 @@ module.exports = async (req, res) => {
   const results = [];
   for (const src of toScrape) {
     try {
+      const apiKey = process.env.ANTHROPIC_API_KEY || '';
+      if (!apiKey) { results.push({ source: src.name, status: 'error', error: 'ANTHROPIC_API_KEY not set' }); continue; }
       const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY || '', 'anthropic-version': '2023-06-01' },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
           max_tokens: 8000,
@@ -79,11 +81,20 @@ Return ONLY the JSON array, nothing else.` }]
         })
       });
 
+      const apiStatus = aiRes.status;
       const data = await aiRes.json();
       // Debug: log response structure
       const blockTypes = (data.content || []).map(b => b.type);
-      console.log(`[${src.name}] stop_reason=${data.stop_reason}, blocks=${JSON.stringify(blockTypes)}, model=${data.model||'?'}`);
-      if (data.error) { console.log(`[${src.name}] API error:`, JSON.stringify(data.error)); }
+      const apiError = data.error ? JSON.stringify(data.error) : null;
+      const stopReason = data.stop_reason || null;
+      console.log(`[${src.name}] HTTP=${apiStatus}, stop=${stopReason}, blocks=${JSON.stringify(blockTypes)}`);
+      if (apiError) { console.log(`[${src.name}] API error: ${apiError}`); }
+      
+      // If API returned an error, report it
+      if (data.error) {
+        results.push({ source: src.name, status: 'api_error', error: apiError, httpStatus: apiStatus });
+        continue;
+      }
       // Collect ALL text blocks (web_search responses have tool_use + tool_result + text)
       const textBlocks = (data.content || []).filter(b => b.type === 'text').map(b => b.text);
       const fullText = textBlocks.join('\n');
