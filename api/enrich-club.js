@@ -50,9 +50,12 @@ module.exports = async (req, res) => {
           // Extract phone numbers
           const phones = html.match(/(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g);
           if (phones) result.p = phones[0];
-          // Facebook
-          const fb = html.match(/https?:\/\/(?:www\.)?facebook\.com\/[a-zA-Z0-9._\-]+\/?/);
-          if (fb) result.fb = fb[0];
+          // Facebook (skip tracking pixels and short paths)
+          const fbMatches = html.match(/https?:\/\/(?:www\.)?facebook\.com\/[a-zA-Z0-9._\-]{3,}\/?/g);
+          if (fbMatches) {
+            const fbGood = fbMatches.filter(u => !u.includes('/tr') && !u.includes('/sharer') && !u.includes('/plugins') && !u.includes('/dialog'));
+            if (fbGood.length) result.fb = fbGood[0];
+          }
           // Instagram
           const ig = html.match(/https?:\/\/(?:www\.)?instagram\.com\/[a-zA-Z0-9._]+\/?/);
           if (ig) result.ig = ig[0];
@@ -113,7 +116,7 @@ module.exports = async (req, res) => {
             }
             if (r.rating) result.gr = r.rating;
             if (r.user_ratings_total) result.gc = r.user_ratings_total;
-            if (r.formatted_phone_number && !result.p) result.p = r.formatted_phone_number;
+            if (r.formatted_phone_number) result.p = r.formatted_phone_number;
             if (r.url) result.gm = r.url;
             if (!result.w && r.website) result.w = r.website;
 
@@ -145,7 +148,12 @@ module.exports = async (req, res) => {
 
     result.cl = 'club';
     result.se = 'year-round';
-    result._debug = { hadWebsite: !!website, hadName: !!name };
+    // Clean up internal debug fields
+    delete result._webError;
+    delete result._placesError;
+    delete result._placesStatus;
+    delete result._placesMsg;
+    delete result._debug;
     return res.status(200).json(result);
   } catch (err) {
     return res.status(500).json({ error: err.message });
