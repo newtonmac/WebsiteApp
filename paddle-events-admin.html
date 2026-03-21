@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PaddlePoint - Events Admin</title>
+<link rel="stylesheet" href="pp-shared.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0f1117; color: #e1e4e8; font-family: 'DM Sans', sans-serif; }
+.admin-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; background: #1a1d28; border-bottom: 1px solid #2d3040; }
+.admin-header h1 { font-size: 20px; font-weight: 700; }
+.admin-header h1 span { color: #f59e0b; }
+.admin-login { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80vh; gap: 16px; }
+.admin-login input { padding: 14px 20px; width: 280px; border: 1px solid #2d3040; border-radius: 12px; background: #1a1d28; color: #e1e4e8; font-size: 15px; font-family: inherit; text-align: center; }
+.admin-login button { padding: 12px 32px; background: #f59e0b; color: #000; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; }
+</style>
+<style>
+.admin-content { display: none; }
+.admin-content.visible { display: block; }
+.stats-bar { padding: 10px 20px; background: #1a1d28; border-bottom: 1px solid #2d3040; font-size: 13px; color: #8b8fa3; display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+.stats-bar strong { color: #22d3ee; }
+.toolbar { padding: 12px 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; background: #0f1117; border-bottom: 1px solid #1a1d28; }
+.toolbar input, .toolbar select { padding: 8px 14px; border: 1px solid #2d3040; border-radius: 8px; background: #1a1d28; color: #e1e4e8; font-size: 13px; font-family: inherit; outline: none; }
+.toolbar input:focus, .toolbar select:focus { border-color: #f59e0b; }
+.toolbar input { flex: 1; min-width: 200px; }
+.btn { padding: 8px 16px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity 0.2s; }
+.btn:hover { opacity: 0.85; }
+.btn-add { background: #22c55e; color: #fff; }
+.btn-scrape { background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: #fff; }
+.btn-delete { background: #ef4444; color: #fff; }
+.btn-save { background: #3b82f6; color: #fff; }
+.btn-cancel { background: #374151; color: #e1e4e8; }
+</style>
+<style>
+/* Table */
+.events-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.events-table th { text-align: left; padding: 10px 12px; background: #1a1d28; color: #8b8fa3; font-weight: 600; border-bottom: 1px solid #2d3040; position: sticky; top: 0; cursor: pointer; white-space: nowrap; }
+.events-table th:hover { color: #e1e4e8; }
+.events-table td { padding: 10px 12px; border-bottom: 1px solid #1e2130; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.events-table tr:hover { background: #1a1d28; }
+.events-table tr { cursor: pointer; }
+.type-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.dot-regatta { background: #3b82f6; } .dot-trial { background: #22c55e; } .dot-international { background: #8b5cf6; }
+.dot-festival { background: #f59e0b; } .dot-clinic { background: #ec4899; } .dot-fun_paddle { background: #06b6d4; }
+.pagination { display: flex; gap: 8px; padding: 12px 20px; justify-content: center; }
+.pagination button { padding: 6px 14px; border: 1px solid #2d3040; border-radius: 8px; background: #1a1d28; color: #e1e4e8; cursor: pointer; font-family: inherit; font-size: 12px; }
+.pagination button.active { background: #f59e0b; color: #000; border-color: #f59e0b; }
+</style>
+<style>
+/* Modal */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: #1a1d28; border: 1px solid #2d3040; border-radius: 16px; padding: 24px; width: 90%; max-width: 600px; max-height: 85vh; overflow-y: auto; }
+.modal h2 { font-size: 18px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+.modal-close { background: none; border: none; color: #8b8fa3; font-size: 22px; cursor: pointer; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.form-group { margin-bottom: 12px; }
+.form-group.full { grid-column: 1 / -1; }
+.form-group label { display: block; font-size: 11px; font-weight: 600; color: #8b8fa3; margin-bottom: 4px; text-transform: uppercase; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid #2d3040; border-radius: 8px; background: #0f1117; color: #e1e4e8; font-size: 13px; font-family: inherit; outline: none; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #f59e0b; }
+.form-group textarea { resize: vertical; min-height: 60px; }
+.form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 10px 24px; border-radius: 10px; background: #22c55e; color: #fff; font-size: 13px; font-weight: 600; z-index: 2000; animation: toastIn 0.3s ease; }
+.toast.error { background: #ef4444; }
+@keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(20px); } }
+</style>
+<style>
+/* Scraper */
+.scraper-panel { background: #1a1d28; border: 1px solid #2d3040; border-radius: 12px; margin: 20px; padding: 20px; }
+.scraper-panel h3 { font-size: 16px; margin-bottom: 12px; }
+.source-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; margin-bottom: 16px; }
+.source-card { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid #2d3040; border-radius: 10px; font-size: 13px; }
+.source-card input { margin: 0; accent-color: #f59e0b; }
+.source-card .flag { font-size: 16px; }
+.source-card .sname { flex: 1; }
+.source-card .sstatus { font-size: 11px; color: #8b8fa3; }
+.scrape-log { background: #0f1117; border-radius: 10px; padding: 12px; font-family: monospace; font-size: 11px; color: #64748b; max-height: 250px; overflow-y: auto; margin-top: 12px; display: none; white-space: pre-wrap; }
+.scrape-log.open { display: block; }
+.scrape-log .log-ok { color: #22c55e; }
+.scrape-log .log-err { color: #ef4444; }
+.scrape-log .log-info { color: #3b82f6; }
+@media (max-width: 700px) { .form-row { grid-template-columns: 1fr; } .source-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="loginScreen" class="admin-login">
+    <h2>🏁 Events Admin</h2>
+    <input type="password" id="adminPass" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')login()">
+    <button onclick="login()">Login</button>
+</div>
+
+<!-- Admin Content -->
+<div id="adminContent" class="admin-content">
+    <div class="admin-header">
+        <h1>🏁 Events <span>Admin</span></h1>
+        <div style="display:flex;gap:8px;">
+            <button class="btn btn-add" onclick="openAddModal()">➕ Add Event</button>
+            <a href="paddle-events.html" class="btn btn-cancel" style="text-decoration:none;">← Public Page</a>
+        </div>
+    </div>
+    <div class="stats-bar" id="statsBar">Loading events...</div>
+    <div class="toolbar">
+        <input type="text" id="searchInput" placeholder="Search events..." oninput="filterEvents()">
+        <select id="filterType" onchange="filterEvents()">
+            <option value="">All Types</option>
+            <option value="regatta">Regatta</option><option value="trial">Trial</option>
+            <option value="international">International</option><option value="festival">Festival</option>
+            <option value="clinic">Clinic</option><option value="fun_paddle">Fun Paddle</option>
+        </select>
+    </div>
+
+    <!-- Table -->
+    <div style="overflow-x:auto;">
+        <table class="events-table">
+            <thead><tr>
+                <th onclick="sortBy('name')">Name ↕</th>
+                <th onclick="sortBy('event_type')">Type ↕</th>
+                <th onclick="sortBy('start_date')">Date ↕</th>
+                <th onclick="sortBy('city')">Location ↕</th>
+                <th onclick="sortBy('sports')">Sports</th>
+                <th onclick="sortBy('level')">Level ↕</th>
+                <th>Status</th>
+            </tr></thead>
+            <tbody id="eventsTableBody"></tbody>
+        </table>
+    </div>
+    <div class="pagination" id="pagination"></div>
+
+    <!-- AI Scraper Panel -->
+    <div class="scraper-panel">
+        <h3>🤖 AI Event Scraper</h3>
+        <p style="font-size:12px;color:#64748b;margin-bottom:12px;">Scrapes governing body websites using Claude AI + web search. Finds upcoming races, regattas, and championships.</p>
+        <div class="source-grid" id="sourceGrid"></div>
+        <div style="display:flex;gap:10px;align-items:center;">
+            <button class="btn btn-scrape" id="scrapeBtn" onclick="runScrape()">🔍 Run Scrape</button>
+            <span id="scrapeStatus" style="font-size:12px;color:#64748b;"></span>
+        </div>
+        <div class="scrape-log" id="scrapeLog"></div>
+    </div>
+</div>
+
+<!-- Edit/Add Modal -->
+<div class="modal-overlay" id="editModal" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+        <h2><span id="modalTitle">Add Event</span><button class="modal-close" onclick="closeModal()">&times;</button></h2>
+        <input type="hidden" id="editId">
+        <div class="form-row">
+            <div class="form-group"><label>Event Name *</label><input id="ed_name"></div>
+            <div class="form-group"><label>Type</label>
+                <select id="ed_event_type"><option value="regatta">Regatta</option><option value="trial">Trial</option><option value="international">International</option><option value="festival">Festival</option><option value="clinic">Clinic</option><option value="fun_paddle">Fun Paddle</option></select></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Sports (comma-separated)</label><input id="ed_sports" placeholder="kayak,canoe,sup"></div>
+            <div class="form-group"><label>Level</label>
+                <select id="ed_level"><option value="local">Local</option><option value="regional">Regional</option><option value="national">National</option><option value="international">International</option><option value="olympic">Olympic</option></select></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Start Date</label><input type="date" id="ed_start_date"></div>
+            <div class="form-group"><label>End Date</label><input type="date" id="ed_end_date"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Venue</label><input id="ed_venue"></div>
+            <div class="form-group"><label>City</label><input id="ed_city"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>State</label><input id="ed_state"></div>
+            <div class="form-group"><label>Country</label><input id="ed_country" value="United States"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Organizer</label><input id="ed_organizer"></div>
+            <div class="form-group"><label>Website</label><input id="ed_website" placeholder="https://..."></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Registration Status</label>
+                <select id="ed_registration_status"><option value="upcoming">Upcoming</option><option value="open">Open</option><option value="closed">Closed</option><option value="sold_out">Sold Out</option></select></div>
+            <div class="form-group"><label>Registration Deadline</label><input type="date" id="ed_registration_deadline"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Latitude</label><input id="ed_lat" type="number" step="any"></div>
+            <div class="form-group"><label>Longitude</label><input id="ed_lng" type="number" step="any"></div>
+        </div>
+        <div class="form-group full">
+            <label>Description</label><textarea id="ed_description" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+            <label><input type="checkbox" id="ed_featured"> Featured Event</label>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-delete" onclick="deleteEvent()" id="deleteBtn" style="display:none;">Delete</button>
+            <button class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-save" onclick="saveEvent()">Save</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const API_TOKEN = 'pp-clubs-7742-v1';
+const SOURCES = [
+    { name: 'American Canoe Association', flag: '🇺🇸', country: 'US' },
+    { name: 'Canoe Kayak Canada', flag: '🇨🇦', country: 'CA' },
+    { name: 'ICF', flag: '🌍', country: 'INT' },
+    { name: 'British Canoeing', flag: '🇬🇧', country: 'GB' },
+    { name: 'Paddle Australia', flag: '🇦🇺', country: 'AU' },
+    { name: 'USA Surfing (SUP)', flag: '🇺🇸', country: 'US' },
+    { name: 'Dragon Boat Canada', flag: '🇨🇦', country: 'CA' },
+    { name: 'US Dragon Boat Federation', flag: '🇺🇸', country: 'US' },
+];
+
+let allEvents = [], filtered = [], currentPage = 0, perPage = 50, sortField = 'start_date', sortDir = 1;
+
+function login() {
+    if (document.getElementById('adminPass').value === 'paddle2026') {
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('adminContent').classList.add('visible');
+        loadEvents();
+        renderSources();
+    } else { alert('Wrong password'); }
+}
+
+async function loadEvents() {
+    const res = await fetch('/api/events', { headers: { 'X-API-Token': API_TOKEN } });
+    allEvents = await res.json();
+    filterEvents();
+    updateStats();
+}
+
+function updateStats() {
+    const types = {};
+    allEvents.forEach(e => { types[e.event_type] = (types[e.event_type] || 0) + 1; });
+    const parts = Object.entries(types).map(([t, c]) => `${t}: <strong>${c}</strong>`).join(' · ');
+    document.getElementById('statsBar').innerHTML = `Total: <strong>${allEvents.length}</strong> events · ${parts}`;
+}
+
+function filterEvents() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    const type = document.getElementById('filterType').value;
+    filtered = allEvents.filter(ev => {
+        if (type && ev.event_type !== type) return false;
+        if (q) {
+            const h = [ev.name, ev.city, ev.state, ev.country, ev.organizer, ev.sports].join(' ').toLowerCase();
+            if (!h.includes(q)) return false;
+        }
+        return true;
+    });
+    filtered.sort((a, b) => {
+        const av = a[sortField] || '', bv = b[sortField] || '';
+        return av < bv ? -sortDir : av > bv ? sortDir : 0;
+    });
+    currentPage = 0;
+    renderTable();
+}
+
+function sortBy(field) {
+    if (sortField === field) sortDir *= -1;
+    else { sortField = field; sortDir = 1; }
+    filterEvents();
+}
+
+function renderTable() {
+    const start = currentPage * perPage;
+    const page = filtered.slice(start, start + perPage);
+    const tbody = document.getElementById('eventsTableBody');
+    tbody.innerHTML = page.map(ev => {
+        const loc = [ev.city, ev.state, ev.country].filter(Boolean).join(', ');
+        const dateStr = ev.start_date ? ev.start_date.substring(0, 10) : '—';
+        return `<tr onclick="openEdit(${ev.id})">
+            <td><span class="type-dot dot-${ev.event_type}"></span>${ev.name}${ev.featured ? ' ⭐' : ''}</td>
+            <td>${ev.event_type}</td>
+            <td>${dateStr}</td>
+            <td>${loc}</td>
+            <td>${(ev.sports||'').replace(/,/g, ', ')}</td>
+            <td>${ev.level || ''}</td>
+            <td>${ev.registration_status || ''}</td>
+        </tr>`;
+    }).join('');
+    // Pagination
+    const pages = Math.ceil(filtered.length / perPage);
+    const pag = document.getElementById('pagination');
+    if (pages <= 1) { pag.innerHTML = ''; return; }
+    pag.innerHTML = Array.from({ length: pages }, (_, i) =>
+        `<button class="${i === currentPage ? 'active' : ''}" onclick="currentPage=${i};renderTable()">${i + 1}</button>`).join('');
+}
+
+const FIELDS = ['name','event_type','sports','level','start_date','end_date','venue','city','state','country','organizer','website','registration_status','registration_deadline','lat','lng','description','featured'];
+
+function openAddModal() {
+    document.getElementById('editId').value = '';
+    document.getElementById('modalTitle').textContent = 'Add Event';
+    document.getElementById('deleteBtn').style.display = 'none';
+    FIELDS.forEach(f => {
+        const el = document.getElementById('ed_' + f);
+        if (!el) return;
+        if (f === 'featured') el.checked = false;
+        else if (f === 'country') el.value = 'United States';
+        else if (f === 'event_type') el.value = 'regatta';
+        else if (f === 'level') el.value = 'regional';
+        else if (f === 'registration_status') el.value = 'upcoming';
+        else el.value = '';
+    });
+    document.getElementById('editModal').classList.add('open');
+}
+
+function openEdit(id) {
+    const ev = allEvents.find(e => e.id === id);
+    if (!ev) return;
+    document.getElementById('editId').value = id;
+    document.getElementById('modalTitle').textContent = 'Edit Event';
+    document.getElementById('deleteBtn').style.display = 'block';
+    FIELDS.forEach(f => {
+        const el = document.getElementById('ed_' + f);
+        if (!el) return;
+        if (f === 'featured') el.checked = !!ev[f];
+        else if (f === 'start_date' || f === 'end_date' || f === 'registration_deadline')
+            el.value = ev[f] ? String(ev[f]).substring(0, 10) : '';
+        else el.value = ev[f] || '';
+    });
+    document.getElementById('editModal').classList.add('open');
+}
+
+function closeModal() { document.getElementById('editModal').classList.remove('open'); }
+
+async function saveEvent() {
+    const id = document.getElementById('editId').value;
+    const data = {};
+    if (id) data.id = parseInt(id);
+    FIELDS.forEach(f => {
+        const el = document.getElementById('ed_' + f);
+        if (!el) return;
+        if (f === 'featured') data[f] = el.checked;
+        else data[f] = el.value.trim() || null;
+    });
+    if (!data.name) { showToast('Name required', true); return; }
+    try {
+        const res = await fetch('/api/save-event', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-API-Token': API_TOKEN }, body: JSON.stringify(data) });
+        const result = await res.json();
+        if (result.error) throw new Error(result.error);
+        closeModal();
+        showToast(id ? 'Event updated ✓' : 'Event added ✓');
+        await loadEvents();
+    } catch (e) { showToast('Save failed: ' + e.message, true); }
+}
+
+async function deleteEvent() {
+    const id = document.getElementById('editId').value;
+    if (!id || !confirm('Delete this event permanently?')) return;
+    try {
+        const res = await fetch('/api/save-event', { method: 'DELETE', headers: { 'Content-Type': 'application/json', 'X-API-Token': API_TOKEN }, body: JSON.stringify({ id: parseInt(id) }) });
+        const result = await res.json();
+        if (result.error) throw new Error(result.error);
+        closeModal();
+        showToast('Event deleted', true);
+        await loadEvents();
+    } catch (e) { showToast('Delete failed: ' + e.message, true); }
+}
+
+function showToast(msg, isError) {
+    const t = document.createElement('div');
+    t.className = 'toast' + (isError ? ' error' : '');
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+}
+
+// Scraper UI
+function renderSources() {
+    const grid = document.getElementById('sourceGrid');
+    grid.innerHTML = SOURCES.map((s, i) => `<label class="source-card">
+        <input type="checkbox" checked data-idx="${i}">
+        <span class="flag">${s.flag}</span>
+        <span class="sname">${s.name}</span>
+        <span class="sstatus" id="srcStatus${i}"></span>
+    </label>`).join('');
+}
+
+async function runScrape() {
+    const btn = document.getElementById('scrapeBtn');
+    const log = document.getElementById('scrapeLog');
+    const status = document.getElementById('scrapeStatus');
+    btn.disabled = true;
+    log.classList.add('open');
+    log.innerHTML = '';
+    const checked = [...document.querySelectorAll('.source-card input:checked')].map(el => parseInt(el.dataset.idx));
+    if (!checked.length) { log.innerHTML = '<span class="log-err">No sources selected</span>'; btn.disabled = false; return; }
+    
+    status.textContent = `Scraping ${checked.length} sources...`;
+    let totalInserted = 0;
+
+    for (const idx of checked) {
+        const src = SOURCES[idx];
+        const statusEl = document.getElementById('srcStatus' + idx);
+        statusEl.textContent = '⏳';
+        log.innerHTML += `<span class="log-info">[${new Date().toLocaleTimeString()}] Scraping ${src.name}...</span>\n`;
+        log.scrollTop = log.scrollHeight;
+
+        try {
+            const res = await fetch('/api/scrape-events', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-API-Token': API_TOKEN },
+                body: JSON.stringify({ sourceIndex: idx })
+            });
+            const data = await res.json();
+            const r = data.results && data.results[0];
+            if (r && r.status === 'ok') {
+                statusEl.textContent = `✅ ${r.found} found, ${r.inserted} new`;
+                log.innerHTML += `<span class="log-ok">[${new Date().toLocaleTimeString()}] ${src.name}: ${r.found} events found, ${r.inserted} new inserted</span>\n`;
+                totalInserted += r.inserted;
+            } else {
+                statusEl.textContent = '⚠️';
+                log.innerHTML += `<span class="log-err">[${new Date().toLocaleTimeString()}] ${src.name}: ${r ? r.error || r.status : 'unknown error'}</span>\n`;
+            }
+        } catch (e) {
+            statusEl.textContent = '❌';
+            log.innerHTML += `<span class="log-err">[${new Date().toLocaleTimeString()}] ${src.name}: ${e.message}</span>\n`;
+        }
+        log.scrollTop = log.scrollHeight;
+    }
+
+    status.textContent = `Done! ${totalInserted} new events added.`;
+    btn.disabled = false;
+    if (totalInserted > 0) await loadEvents();
+}
+</script>
+<script src="pp-shared.js"></script>
+</body>
+</html>

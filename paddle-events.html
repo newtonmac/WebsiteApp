@@ -5,271 +5,139 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PaddlePoint - Paddling Events</title>
 <link rel="stylesheet" href="pp-shared.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    background: #ffffff;
-    color: #1a1a2e;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    min-height: 100vh;
-  }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #f8fafc; color: #1e293b; font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; min-height: 100vh; }
 
-  /* Header */
-  .header {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    background: rgba(255,255,255,0.92);
-    backdrop-filter: blur(12px);
-    padding: 14px 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 10px;
-    border-bottom: 1px solid #e5e7eb;
-  }
-  .header-left {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    text-decoration: none;
-  }
-  .header-logo {
-    width: 90px;
-    height: 90px;
-    border-radius: 10px;
-    object-fit: contain;
-  }
-  .header-left h1 {
-    font-size: 40px;
-    font-weight: 700;
-    background: linear-gradient(90deg, #06b6d4, #3b82f6);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    line-height: 1.2;
-  }
-  .subtitle {
-    font-size: 12px;
-    color: #6b7280;
-    margin-top: 2px;
-  }
-  .header-right {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  .nav-btn {
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    border: none;
-    background: transparent;
-    color: #4b5563;
-    text-decoration: none;
-    transition: background 0.2s;
-  }
-  .nav-btn:hover {
-    background: #f3f4f6;
-  }
-  .nav-btn.accent {
-    background: #0e7a6b;
-    color: #fff;
-    border-radius: 8px;
-  }
-
-  /* Main content */
-  .content {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 30px 20px 60px;
-  }
-
-  /* Filter Bar */
-  .filter-bar {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 30px;
-  }
-  .filter-label {
-    font-size: 13px;
-    color: #6b7280;
-    font-weight: 600;
-    margin-right: 4px;
-  }
-  .filter-pill {
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    color: #6b7280;
-    border-radius: 20px;
-    padding: 7px 16px;
-    font-size: 13px;
-    font-family: inherit;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .filter-pill:hover {
-    border-color: #0891b2;
-    color: #1a1a2e;
-  }
-  .filter-pill.active {
-    background: #0e7a6b;
-    color: #fff;
-    border-color: #0e7a6b;
-  }
-  .filter-select {
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    color: #6b7280;
-    border-radius: 20px;
-    padding: 7px 16px;
-    font-size: 13px;
-    font-family: inherit;
-    cursor: pointer;
-    appearance: none;
-    -webkit-appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 12px center;
-    padding-right: 32px;
-    transition: all 0.2s;
-  }
-  .filter-select:hover {
-    border-color: #0891b2;
-    color: #1a1a2e;
-  }
-  .filter-select:focus {
-    outline: none;
-    border-color: #0891b2;
-  }
-  .filter-divider {
-    width: 1px;
-    height: 24px;
-    background: #e5e7eb;
-    margin: 0 4px;
-  }
-
-  /* Events Grid */
-  .events-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 18px;
-  }
-  .event-card {
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 16px;
-    padding: 20px;
-    transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
-  }
-  .event-card:hover {
-    border-color: rgba(14,122,107,0.4);
-    box-shadow: 0 8px 30px rgba(0,0,0,0.06);
-    transform: translateY(-2px);
-  }
-  .event-name {
-    font-size: 16px;
-    font-weight: 700;
-    color: #1a1a2e;
-    margin-bottom: 8px;
-  }
-  .event-date {
-    font-size: 13px;
-    color: #6b7280;
-    margin-bottom: 4px;
-  }
-  .event-date::before {
-    content: "\1F4C5 ";
-  }
-  .event-location {
-    font-size: 13px;
-    color: #6b7280;
-    margin-bottom: 10px;
-  }
-  .event-location::before {
-    content: "\1F4CD ";
-  }
-  .discipline-tag {
-    display: inline-block;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 3px 10px;
-    border-radius: 12px;
-    margin-bottom: 10px;
-    margin-right: 4px;
-  }
-  .tag-sup {
-    background: rgba(8,145,178,0.1);
-    color: #0891b2;
-  }
-  .tag-kayak {
-    background: rgba(5,150,105,0.1);
-    color: #059669;
-  }
-  .tag-outrigger {
-    background: rgba(234,88,12,0.1);
-    color: #ea580c;
-  }
-  .tag-dragon-boat {
-    background: rgba(220,38,38,0.1);
-    color: #dc2626;
-  }
-  .tag-canoe {
-    background: rgba(124,58,237,0.1);
-    color: #7c3aed;
-  }
-  .tag-all {
-    background: rgba(37,99,235,0.1);
-    color: #2563eb;
-  }
-  .event-desc {
-    font-size: 13px;
-    color: #6b7280;
-    line-height: 1.5;
-    margin-bottom: 12px;
-  }
-  .event-link {
-    font-size: 13px;
-    color: #0e7a6b;
-    text-decoration: none;
-    font-weight: 600;
-    transition: color 0.2s;
-  }
-  .event-link:hover {
-    color: #0b6358;
-    text-decoration: underline;
-  }
-
-  /* Responsive */
-  @media (max-width: 720px) {
-    .events-grid {
-      grid-template-columns: 1fr;
-    }
-    .header {
-      padding: 14px 16px;
-    }
-    .header-right {
-      width: 100%;
-    }
-    .filter-divider {
-      display: none;
-    }
-  }
+/* Header */
+.header { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; background: #fff; border-bottom: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.header-left { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
+.header-left img { width: 36px; height: 36px; }
+.header-left h1 { font-size: 22px; font-weight: 800; background: linear-gradient(135deg, #0ea5e9, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.header-left .sub { font-size: 11px; color: #94a3b8; font-weight: 500; }
+.header-right { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.nav-btn { cursor: pointer; padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; color: #64748b; text-decoration: none; border: none; background: none; transition: all 0.2s; white-space: nowrap; }
+.nav-btn:hover { background: #f1f5f9; color: #1e293b; }
+.nav-btn.accent { background: #0e7a6b; color: #fff; }
+.nav-btn.accent:hover { background: #0b6358; }
 </style>
 </head>
 <body>
+<style>
+/* Hero */
+.events-hero { background: linear-gradient(135deg, #0c4a6e 0%, #164e63 50%, #1e3a5f 100%); padding: 40px 24px 32px; text-align: center; color: #fff; position: relative; overflow: hidden; }
+.events-hero::before { content: ''; position: absolute; inset: 0; background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); }
+.events-hero h2 { font-size: 32px; font-weight: 800; margin-bottom: 6px; position: relative; }
+.events-hero p { font-size: 15px; color: rgba(255,255,255,0.7); position: relative; }
+.events-count { display: inline-block; background: rgba(255,255,255,0.15); border-radius: 20px; padding: 4px 16px; font-size: 13px; font-weight: 600; margin-top: 10px; position: relative; }
 
+/* Controls */
+.controls-bar { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 12px 24px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; position: sticky; top: 57px; z-index: 50; }
+.search-input { flex: 1; min-width: 200px; padding: 10px 16px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 14px; font-family: inherit; outline: none; transition: border-color 0.2s; background: #f8fafc; }
+.search-input:focus { border-color: #0ea5e9; background: #fff; }
+.filter-select { padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 13px; font-family: inherit; background: #fff; cursor: pointer; outline: none; color: #475569; }
+.filter-select:focus { border-color: #0ea5e9; }
+.view-toggle { display: flex; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; }
+.view-btn { padding: 10px 14px; border: none; background: #fff; cursor: pointer; font-size: 16px; transition: all 0.15s; }
+.view-btn.active { background: #0ea5e9; color: #fff; }
+.view-btn:hover:not(.active) { background: #f1f5f9; }
+</style>
+<style>
+/* Event Cards */
+.events-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; padding: 24px; max-width: 1400px; margin: 0 auto; }
+.events-grid.list-view { grid-template-columns: 1fr; max-width: 900px; }
+
+.event-card { background: #fff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; transition: all 0.2s; cursor: pointer; position: relative; }
+.event-card:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
+.event-card .type-bar { height: 4px; }
+.type-regatta { background: linear-gradient(90deg, #3b82f6, #0ea5e9); }
+.type-trial { background: linear-gradient(90deg, #22c55e, #10b981); }
+.type-international { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+.type-festival { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.type-clinic { background: linear-gradient(90deg, #ec4899, #f472b6); }
+.type-fun_paddle { background: linear-gradient(90deg, #06b6d4, #67e8f9); }
+
+.card-body { padding: 16px 20px; }
+.card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.event-type-badge { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 3px 10px; border-radius: 6px; }
+.badge-regatta { background: #dbeafe; color: #1d4ed8; }
+.badge-trial { background: #dcfce7; color: #15803d; }
+.badge-international { background: #ede9fe; color: #6d28d9; }
+.badge-festival { background: #fef3c7; color: #b45309; }
+.badge-clinic { background: #fce7f3; color: #be185d; }
+.badge-fun_paddle { background: #cffafe; color: #0e7490; }
+
+.event-level { font-size: 10px; color: #94a3b8; font-weight: 600; text-transform: uppercase; }
+.event-name { font-size: 17px; font-weight: 700; color: #1e293b; margin-bottom: 6px; line-height: 1.3; }
+</style>
+<style>
+.event-meta { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #64748b; margin-bottom: 10px; }
+.event-meta span { display: flex; align-items: center; gap: 6px; }
+.event-sports { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+.sport-tag { font-size: 11px; padding: 2px 8px; border-radius: 6px; background: #f1f5f9; color: #475569; font-weight: 500; }
+.event-desc { font-size: 13px; color: #64748b; line-height: 1.5; display: none; margin-bottom: 10px; }
+.event-card.expanded .event-desc { display: block; }
+.event-countdown { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
+.countdown-soon { color: #dc2626; }
+.countdown-near { color: #f59e0b; }
+.countdown-far { color: #22c55e; }
+.countdown-past { color: #94a3b8; }
+.event-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid #f1f5f9; }
+.event-status { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 6px; }
+.status-open { background: #dcfce7; color: #15803d; }
+.status-closed { background: #fee2e2; color: #dc2626; }
+.status-upcoming { background: #fef3c7; color: #b45309; }
+.status-sold_out { background: #fce7f3; color: #be185d; }
+.event-link { font-size: 13px; color: #0ea5e9; text-decoration: none; font-weight: 600; }
+.event-link:hover { text-decoration: underline; }
+.featured-star { color: #f59e0b; font-size: 14px; margin-left: 4px; }
+
+/* Empty state */
+.empty-state { text-align: center; padding: 60px 24px; color: #94a3b8; }
+.empty-state h3 { font-size: 20px; margin-bottom: 8px; color: #64748b; }
+
+/* Admin scraper section */
+.scraper-section { max-width: 900px; margin: 40px auto; padding: 0 24px; }
+.scraper-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; }
+.scraper-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.scraper-sources { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.source-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 13px; }
+.source-item input { margin: 0; }
+.source-status { font-size: 11px; margin-left: auto; }
+.scraper-log { background: #0f172a; border-radius: 10px; padding: 16px; font-family: 'SF Mono', monospace; font-size: 12px; color: #94a3b8; max-height: 300px; overflow-y: auto; margin-top: 16px; display: none; }
+.scraper-log.open { display: block; }
+.scraper-btn { padding: 12px 24px; background: linear-gradient(135deg, #8b5cf6, #6d28d9); border: none; border-radius: 12px; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity 0.2s; }
+.scraper-btn:hover { opacity: 0.9; }
+.scraper-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+</style>
+<style>
+/* Footer */
+.site-footer { text-align: center; padding: 20px 16px 28px; border-top: 1px solid #e5e7eb; margin-top: 40px; }
+.footer-links { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 10px; }
+.footer-links a { color: #6b7280; text-decoration: none; font-size: 12px; cursor: pointer; }
+.footer-links a:hover { color: #06b6d4; }
+.footer-copy { color: #9ca3af; font-size: 10px; }
+
+/* Mobile */
+@media (max-width: 700px) {
+    .header { padding: 10px 14px; }
+    .header-left h1 { font-size: 18px; }
+    .header-right { gap: 4px; }
+    .nav-btn { font-size: 11px; padding: 5px 8px; }
+    .events-hero h2 { font-size: 24px; }
+    .controls-bar { padding: 10px 14px; gap: 8px; }
+    .events-grid { grid-template-columns: 1fr; padding: 16px; gap: 14px; }
+    .scraper-sources { grid-template-columns: 1fr; }
+}
+</style>
+
+<!-- Header -->
 <div class="header">
     <a href="paddlepoint.html" class="header-left">
-        <img src="paddle-pin.svg" alt="PaddlePoint" class="header-logo">
-        <div>
-            <h1>PaddlePoint</h1>
-            <div class="subtitle">Paddling Events</div>
-        </div>
+        <img src="paddle-pin.svg" alt="PaddlePoint">
+        <div><h1>PaddlePoint</h1><div class="sub">Paddling Events</div></div>
     </a>
     <div class="header-right">
         <a href="paddlepoint.html" class="nav-btn accent">Home</a>
@@ -283,176 +151,257 @@
     </div>
 </div>
 
-<div class="content">
-
-  <!-- Filter Bar -->
-  <div class="filter-bar">
-    <span class="filter-label">Discipline:</span>
-    <button class="filter-pill active" onclick="setActive(this)">All</button>
-    <button class="filter-pill" onclick="setActive(this)">SUP</button>
-    <button class="filter-pill" onclick="setActive(this)">Kayak</button>
-    <button class="filter-pill" onclick="setActive(this)">Outrigger</button>
-    <button class="filter-pill" onclick="setActive(this)">Dragon Boat</button>
-    <button class="filter-pill" onclick="setActive(this)">Canoe</button>
-
-    <div class="filter-divider"></div>
-
-    <select class="filter-select">
-      <option>All Regions</option>
-      <option>West Coast</option>
-      <option>East Coast</option>
-      <option>Hawaii</option>
-      <option>Pacific Northwest</option>
-      <option>Canada</option>
-      <option>Southeast</option>
-      <option>Northeast</option>
-    </select>
-
-    <select class="filter-select">
-      <option>All Months</option>
-      <option>January</option>
-      <option>February</option>
-      <option>March</option>
-      <option>April</option>
-      <option>May</option>
-      <option>June</option>
-      <option>July</option>
-      <option>August</option>
-      <option>September</option>
-      <option>October</option>
-      <option>November</option>
-      <option>December</option>
-    </select>
-  </div>
-
-  <!-- Events Grid -->
-  <div class="events-grid">
-
-    <div class="event-card">
-      <div class="event-name">Pacific Paddle Games</div>
-      <div class="event-date">Oct 11-12, 2025</div>
-      <div class="event-location">Dana Point, CA</div>
-      <span class="discipline-tag tag-sup">SUP</span>
-      <div class="event-desc">The premier stand-up paddleboard competition on the West Coast, featuring elite and amateur racing, surfing, and distance events in the Dana Point Harbor.</div>
-      <a href="#" class="event-link">Learn More</a>
-    </div>
-
-    <div class="event-card">
-      <div class="event-name">Gorge Downwind Championships</div>
-      <div class="event-date">Jul 18-20, 2025</div>
-      <div class="event-location">Hood River, OR</div>
-      <span class="discipline-tag tag-sup">SUP</span>
-      <span class="discipline-tag tag-outrigger">Outrigger</span>
-      <div class="event-desc">Harness the legendary Columbia River Gorge winds in this thrilling downwind race. Open to SUP and outrigger canoe with multiple distance categories.</div>
-      <a href="#" class="event-link">Learn More</a>
-    </div>
-
-    <div class="event-card">
-      <div class="event-name">Catalina Crossing</div>
-      <div class="event-date">Sep 6, 2025</div>
-      <div class="event-location">Catalina Island, CA</div>
-      <span class="discipline-tag tag-all">All Crafts</span>
-      <div class="event-desc">A 32-mile open-ocean crossing from Catalina Island to the mainland. One of the most challenging and iconic paddle races in North America.</div>
-      <a href="#" class="event-link">Learn More</a>
-    </div>
-
-    <div class="event-card">
-      <div class="event-name">Na Pali Challenge</div>
-      <div class="event-date">Aug 2, 2025</div>
-      <div class="event-location">Kauai, HI</div>
-      <span class="discipline-tag tag-outrigger">Outrigger</span>
-      <span class="discipline-tag tag-sup">SUP</span>
-      <div class="event-desc">Paddle along the breathtaking Na Pali Coast in this bucket-list race. Open to OC-1, OC-2, surfski, and SUP with stunning cliff scenery.</div>
-      <a href="#" class="event-link">Learn More</a>
-    </div>
-
-    <div class="event-card">
-      <div class="event-name">Canadian Outrigger Championships</div>
-      <div class="event-date">Aug 23-24, 2025</div>
-      <div class="event-location">Vancouver, BC</div>
-      <span class="discipline-tag tag-outrigger">Outrigger</span>
-      <div class="event-desc">Canada's top outrigger canoe racing event, drawing crews from across the Pacific Northwest. Sprint and distance races in beautiful False Creek.</div>
-      <a href="#" class="event-link">Learn More</a>
-    </div>
-
-    <div class="event-card">
-      <div class="event-name">Queen Lili'uokalani Race</div>
-      <div class="event-date">Sep 1-5, 2025</div>
-      <div class="event-location">Kona, HI</div>
-      <span class="discipline-tag tag-outrigger">Outrigger</span>
-      <div class="event-desc">The world's largest outrigger canoe race, held annually on the Big Island. Features OC-6 long distance and iron races along the Kona Coast.</div>
-      <a href="#" class="event-link">Learn More</a>
-    </div>
-
-    <div class="event-card">
-      <div class="event-name">Dragon Boat Festival</div>
-      <div class="event-date">Jun 21-22, 2025</div>
-      <div class="event-location">Vancouver, BC</div>
-      <span class="discipline-tag tag-dragon-boat">Dragon Boat</span>
-      <div class="event-desc">One of the largest dragon boat festivals in North America, with over 180 teams competing. Enjoy cultural performances, food vendors, and exciting sprint races.</div>
-      <a href="#" class="event-link">Learn More</a>
-    </div>
-
-    <div class="event-card">
-      <div class="event-name">Adirondack Canoe Classic</div>
-      <div class="event-date">Sep 5-7, 2025</div>
-      <div class="event-location">Saranac Lake, NY</div>
-      <span class="discipline-tag tag-canoe">Canoe</span>
-      <div class="event-desc">A 90-mile, three-day wilderness canoe race through the Adirondack Park. Known as "The 90-Miler," it traverses lakes, rivers, and portage trails.</div>
-      <a href="#" class="event-link">Learn More</a>
-    </div>
-
-    <div class="event-card">
-      <div class="event-name">Carolina Cup</div>
-      <div class="event-date">Apr 25-27, 2025</div>
-      <div class="event-location">Wrightsville Beach, NC</div>
-      <span class="discipline-tag tag-sup">SUP</span>
-      <div class="event-desc">A world-class SUP event featuring the famous Graveyard course through open ocean, inlet, and flat water. Attracts top international paddlers each spring.</div>
-      <a href="#" class="event-link">Learn More</a>
-    </div>
-
-    <div class="event-card">
-      <div class="event-name">Chattajack</div>
-      <div class="event-date">Oct 25, 2025</div>
-      <div class="event-location">Chattanooga, TN</div>
-      <span class="discipline-tag tag-sup">SUP</span>
-      <span class="discipline-tag tag-kayak">Kayak</span>
-      <div class="event-desc">A 31-mile paddle through the Tennessee River Gorge, often called the "Grand Canyon of Tennessee." Open to SUP, kayak, surfski, and prone paddlers.</div>
-      <a href="#" class="event-link">Learn More</a>
-    </div>
-
-  </div>
+<!-- Hero -->
+<div class="events-hero">
+    <h2>🏁 Paddling Events</h2>
+    <p>Races, regattas, festivals &amp; championships worldwide</p>
+    <div class="events-count" id="eventsCount">Loading...</div>
 </div>
 
-<script>
-  function setActive(el) {
-    document.querySelectorAll('.filter-pill').forEach(function(pill) {
-      pill.classList.remove('active');
-    });
-    el.classList.add('active');
-  }
-</script>
-
-<footer style="text-align:center;padding:20px 16px 28px;border-top:1px solid #e5e7eb;margin-top:24px;">
-    <div style="display:flex;justify-content:center;flex-wrap:wrap;gap:6px 16px;margin-bottom:10px;">
-        <a href="paddlepoint.html" style="color:#6b7280;text-decoration:none;font-size:12px;">Home</a>
-        <a href="paddle-conditions.html" style="color:#6b7280;text-decoration:none;font-size:12px;">Water Conditions</a>
-        <a href="paddle-weather.html" style="color:#6b7280;text-decoration:none;font-size:12px;">Weather & Tides</a>
-        <a href="paddle-clubs.html" style="color:#6b7280;text-decoration:none;font-size:12px;">Paddle Clubs</a>
-        <a href="paddle-gear.html" style="color:#6b7280;text-decoration:none;font-size:12px;">Gear</a>
+<!-- Controls -->
+<div class="controls-bar">
+    <input type="text" class="search-input" id="searchInput" placeholder="Search events, locations, organizers...">
+    <select class="filter-select" id="filterType" onchange="applyFilters()">
+        <option value="">All Types</option>
+        <option value="regatta">🏆 Regatta</option>
+        <option value="trial">🎯 Trial / Selection</option>
+        <option value="international">🌍 International</option>
+        <option value="festival">🎪 Festival</option>
+        <option value="clinic">📚 Clinic</option>
+        <option value="fun_paddle">🛶 Fun Paddle</option>
+    </select>
+    <select class="filter-select" id="filterSport" onchange="applyFilters()">
+        <option value="">All Sports</option>
+        <option value="kayak">Kayak</option>
+        <option value="canoe">Canoe</option>
+        <option value="sup">SUP</option>
+        <option value="outrigger">Outrigger</option>
+        <option value="dragon_boat">Dragon Boat</option>
+        <option value="surfski">Surfski</option>
+        <option value="rowing">Rowing</option>
+        <option value="canoe_polo">Canoe Polo</option>
+        <option value="prone_paddle">Prone Paddle</option>
+    </select>
+    <select class="filter-select" id="filterLevel" onchange="applyFilters()">
+        <option value="">All Levels</option>
+        <option value="local">Local</option>
+        <option value="regional">Regional</option>
+        <option value="national">National</option>
+        <option value="international">International</option>
+        <option value="olympic">Olympic</option>
+    </select>
+    <select class="filter-select" id="filterStatus" onchange="applyFilters()">
+        <option value="">All Status</option>
+        <option value="open">Open</option>
+        <option value="upcoming">Upcoming</option>
+        <option value="closed">Closed</option>
+    </select>
+    <select class="filter-select" id="sortBy" onchange="applyFilters()">
+        <option value="date">Sort: Date ↑</option>
+        <option value="date_desc">Sort: Date ↓</option>
+        <option value="name">Sort: Name A→Z</option>
+        <option value="level">Sort: Level</option>
+    </select>
+    <div class="view-toggle">
+        <button class="view-btn active" id="gridBtn" onclick="setView('grid')" title="Grid">▦</button>
+        <button class="view-btn" id="listBtn" onclick="setView('list')" title="List">☰</button>
     </div>
-    <div style="color:#9ca3af;font-size:10px;">&copy; 2026 PaddlePoint. All rights reserved. &bull; <span onclick="toggleStats()" style="cursor:pointer;text-decoration:underline;">Stats</span></div>
+</div>
+
+<!-- Events Grid -->
+<div class="events-grid" id="eventsGrid">
+    <div class="empty-state"><h3>Loading events...</h3></div>
+</div>
+
+<!-- Admin Scraper (hidden by default) -->
+<div class="scraper-section" id="scraperSection" style="display:none;">
+    <div class="scraper-card">
+        <h3>🤖 AI Event Scraper</h3>
+        <p style="font-size:13px;color:#64748b;margin-bottom:16px;">Powered by Claude AI with web search. Scrapes governing body websites for upcoming paddling events.</p>
+        <div class="scraper-sources" id="scraperSources"></div>
+        <div style="display:flex;gap:10px;align-items:center;">
+            <button class="scraper-btn" id="scrapeBtn" onclick="runScraper()">🔍 Run Weekly Scrape</button>
+            <span id="scrapeStatus" style="font-size:13px;color:#64748b;"></span>
+        </div>
+        <div class="scraper-log" id="scraperLog"></div>
+    </div>
+</div>
+
+<!-- Footer -->
+<footer class="site-footer">
+    <div class="footer-links">
+        <a onclick="openFooterModal('about')">About</a>
+        <a onclick="openFooterModal('safety')">Safety Disclaimer</a>
+        <a onclick="openFooterModal('privacy')">Privacy Policy</a>
+        <a onclick="openFooterModal('cookies')">Cookie Policy</a>
+        <a onclick="openFooterModal('terms')">Terms of Service</a>
+        <a onclick="openFooterModal('faq')">FAQ</a>
+        <a onclick="openFooterModal('accessibility')">Accessibility</a>
+        <a onclick="openFooterModal('contact')">Contact</a>
+    </div>
+    <div class="footer-copy">&copy; 2026 PaddlePoint. All rights reserved. &bull; <span onclick="toggleStats()" style="cursor:pointer;text-decoration:underline;">Stats</span></div>
 </footer>
+
 <script>
-const COUNTER_API='https://visitor-counter.newtonmac.workers.dev';
-try{fetch(`${COUNTER_API}/visit?page=events`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({referrer:document.referrer})}).catch(()=>{});}catch(e){}
-async function toggleStats(){
-  try{const r=await fetch(`${COUNTER_API}/stats?page=events`);const d=await r.json();
-  const w=d.days?d.days.reduce((s,dy)=>s+dy.uniqueVisitors,0):0;
-  alert(`Events Page Stats\n\nAll-time: ${d.total||0} visitors\nLast 7 days: ${w}\nToday: ${d.days&&d.days.length?d.days[d.days.length-1].uniqueVisitors:0}`);}catch(e){alert('Stats unavailable');}
+const API_TOKEN = 'pp-clubs-7742-v1';
+const SPORT_LABELS = {kayak:'Kayak',canoe:'Canoe',sup:'SUP',outrigger:'Outrigger',dragon_boat:'Dragon Boat',surfski:'Surfski',rowing:'Rowing',canoe_polo:'Canoe Polo',prone_paddle:'Prone Paddle'};
+const TYPE_LABELS = {regatta:'Regatta',trial:'Trial',international:'International',festival:'Festival',clinic:'Clinic',fun_paddle:'Fun Paddle'};
+const LEVEL_ORDER = {olympic:5,international:4,national:3,regional:2,local:1};
+
+let allEvents = [], filtered = [], currentView = 'grid';
+
+async function loadEvents() {
+    try {
+        const res = await fetch('/api/events', { headers: { 'X-API-Token': API_TOKEN } });
+        allEvents = await res.json();
+        applyFilters();
+        document.getElementById('eventsCount').textContent = `${allEvents.length} events`;
+    } catch (e) {
+        document.getElementById('eventsGrid').innerHTML = '<div class="empty-state"><h3>Failed to load events</h3><p>' + e.message + '</p></div>';
+    }
 }
+
+function daysAway(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    const now = new Date(); now.setHours(0,0,0,0);
+    return Math.ceil((d - now) / 86400000);
+}
+
+function applyFilters() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    const type = document.getElementById('filterType').value;
+    const sport = document.getElementById('filterSport').value;
+    const level = document.getElementById('filterLevel').value;
+    const status = document.getElementById('filterStatus').value;
+    const sort = document.getElementById('sortBy').value;
+
+    filtered = allEvents.filter(ev => {
+        if (type && ev.event_type !== type) return false;
+        if (sport && (!ev.sports || !ev.sports.includes(sport))) return false;
+        if (level && ev.level !== level) return false;
+        if (status && ev.registration_status !== status) return false;
+        if (q) {
+            const haystack = [ev.name, ev.city, ev.state, ev.country, ev.venue, ev.organizer, ev.sports, ev.description].join(' ').toLowerCase();
+            if (!haystack.includes(q)) return false;
+        }
+        return true;
+    });
+
+    // Sort
+    filtered.sort((a, b) => {
+        if (sort === 'date') return (a.start_date || '').localeCompare(b.start_date || '');
+        if (sort === 'date_desc') return (b.start_date || '').localeCompare(a.start_date || '');
+        if (sort === 'name') return (a.name || '').localeCompare(b.name || '');
+        if (sort === 'level') return (LEVEL_ORDER[b.level] || 0) - (LEVEL_ORDER[a.level] || 0);
+        return 0;
+    });
+
+    renderEvents();
+}
+
+function renderEvents() {
+    const grid = document.getElementById('eventsGrid');
+    if (!filtered.length) {
+        grid.innerHTML = '<div class="empty-state"><h3>No events found</h3><p>Try adjusting your filters</p></div>';
+        return;
+    }
+
+    grid.innerHTML = filtered.map(ev => {
+        const days = daysAway(ev.start_date);
+        let countdownClass = 'countdown-far', countdownText = '';
+        if (days < 0) { countdownClass = 'countdown-past'; countdownText = 'Past event'; }
+        else if (days === 0) { countdownClass = 'countdown-soon'; countdownText = 'TODAY!'; }
+        else if (days <= 7) { countdownClass = 'countdown-soon'; countdownText = `${days} day${days>1?'s':''} away`; }
+        else if (days <= 30) { countdownClass = 'countdown-near'; countdownText = `${days} days away`; }
+        else { countdownClass = 'countdown-far'; countdownText = `${days} days away`; }
+
+        const sports = (ev.sports || '').split(',').filter(Boolean).map(s =>
+            `<span class="sport-tag">${SPORT_LABELS[s.trim()] || s.trim()}</span>`).join('');
+        const loc = [ev.city, ev.state, ev.country].filter(Boolean).join(', ');
+        const dateStr = formatDateRange(ev.start_date, ev.end_date);
+        const typeLabel = TYPE_LABELS[ev.event_type] || ev.event_type;
+        const featured = ev.featured ? '<span class="featured-star" title="Featured">⭐</span>' : '';
+
+        return `<div class="event-card" onclick="toggleExpand(this)">
+            <div class="type-bar type-${ev.event_type}"></div>
+            <div class="card-body">
+                <div class="card-top">
+                    <span class="event-type-badge badge-${ev.event_type}">${typeLabel}</span>
+                    <span class="event-level">${ev.level}${featured}</span>
+                </div>
+                <div class="event-name">${ev.name}</div>
+                <div class="event-meta">
+                    <span>📅 ${dateStr}</span>
+                    <span>📍 ${ev.venue ? ev.venue + ', ' : ''}${loc}</span>
+                    ${ev.organizer ? `<span>🏢 ${ev.organizer}</span>` : ''}
+                </div>
+                <div class="event-sports">${sports}</div>
+                ${ev.description ? `<div class="event-desc">${ev.description}</div>` : ''}
+                <div class="event-footer">
+                    <div class="event-countdown ${countdownClass}">${countdownText}</div>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <span class="event-status status-${ev.registration_status || 'upcoming'}">${(ev.registration_status||'upcoming').replace('_',' ')}</span>
+                        ${ev.website ? `<a href="${ev.website}" target="_blank" class="event-link" onclick="event.stopPropagation()">Website →</a>` : ''}
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function formatDateRange(start, end) {
+    if (!start) return 'TBD';
+    const s = new Date(start + 'T12:00:00');
+    const opts = { month: 'short', day: 'numeric', year: 'numeric' };
+    if (!end || start === end) return s.toLocaleDateString('en-US', opts);
+    const e = new Date(end + 'T12:00:00');
+    if (s.getMonth() === e.getMonth()) return `${s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}–${e.getDate()}, ${s.getFullYear()}`;
+    return `${s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${e.toLocaleDateString('en-US', opts)}`;
+}
+
+function toggleExpand(card) { card.classList.toggle('expanded'); }
+
+function setView(v) {
+    currentView = v;
+    document.getElementById('eventsGrid').classList.toggle('list-view', v === 'list');
+    document.getElementById('gridBtn').classList.toggle('active', v === 'grid');
+    document.getElementById('listBtn').classList.toggle('active', v === 'list');
+}
+
+// Search debounce
+let searchTimer;
+document.getElementById('searchInput').addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(applyFilters, 250);
+});
+
+// Stats
+const COUNTER_API = 'https://visitor-counter.newtonmac.workers.dev';
+try { fetch(`${COUNTER_API}/visit?page=events`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ referrer: document.referrer }) }).catch(() => {}); } catch(e) {}
+
+async function toggleStats() {
+    try { const r = await fetch(`${COUNTER_API}/stats?page=events`); const d = await r.json();
+    const w = d.days ? d.days.reduce((s, dy) => s + dy.uniqueVisitors, 0) : 0;
+    alert(`Events Page Stats\n\nAll-time: ${d.total || 0} visitors\nLast 7 days: ${w}\nToday: ${d.days && d.days.length ? d.days[d.days.length - 1].uniqueVisitors : 0}`);
+    } catch (e) { alert('Stats unavailable'); }
+}
+
+// Footer modals
+const footerContent = {
+    about: { html: '<h2>About PaddlePoint</h2><p>PaddlePoint is the paddler\'s digital companion — real-time conditions, weather, 7,700+ clubs, events, and gear for every paddle sport.</p>' },
+    safety: { html: '<h2>Safety Disclaimer</h2><p>PaddlePoint provides informational data for recreational paddling. Always check official sources before going on the water.</p>' },
+    privacy: { html: '<h2>Privacy Policy</h2><p>PaddlePoint does not track users or use cookies. Google Maps may use its own cookies.</p>' },
+    cookies: { html: '<h2>Cookie Policy</h2><p>PaddlePoint does not set cookies. Third-party services may use their own.</p>' },
+    terms: { html: '<h2>Terms of Service</h2><p>PaddlePoint is provided as-is for informational purposes.</p>' },
+    faq: { html: '<h2>FAQ</h2><p>PaddlePoint is free. No account needed.</p>' },
+    accessibility: { html: '<h2>Accessibility</h2><p>We follow WCAG 2.1 guidelines.</p>' },
+    contact: { html: '<h2>Contact</h2><p>Use the Suggest button to reach us.</p>' }
+};
+function openFooterModal(key) { const d = footerContent[key]; if (!d) return; alert(d.html.replace(/<[^>]*>/g, '')); }
+
+// Load on start
+loadEvents();
 </script>
 <script src="pp-shared.js"></script>
-
 </body>
 </html>
