@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PaddlePoint — Paddling Federations Worldwide</title>
+    <link rel="icon" type="image/svg+xml" href="paddle-pin.svg">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="pp-shared.css">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Inter',sans-serif; background:#f8fafc; color:#1e293b; }
+</style>
+</head>
+<body>
+<style>
+.top-bar { display:flex; align-items:center; padding:10px 24px; background:#fff; border-bottom:1px solid #e2e8f0; flex-wrap:wrap; gap:8px; }
+.logo { display:flex; align-items:center; gap:10px; text-decoration:none; }
+.logo img { width:44px; height:44px; }
+.logo-text { font-size:22px; font-weight:800; color:#0c4a6e; }
+.logo-sub { font-size:11px; color:#64748b; }
+.nav-btns { display:flex; gap:6px; margin-left:auto; flex-wrap:wrap; }
+.nav-btn { padding:8px 14px; border-radius:20px; font-size:13px; font-weight:600; text-decoration:none; color:#475569; cursor:pointer; transition:all .2s; }
+.nav-btn:hover { background:#f1f5f9; color:#0284c7; }
+.nav-btn.active { background:#0ea5e9; color:#fff; }
+.page-header { max-width:1200px; margin:0 auto; padding:32px 24px 16px; }
+.page-title { font-size:28px; font-weight:800; color:#0c4a6e; }
+.page-desc { font-size:14px; color:#64748b; margin-top:6px; max-width:700px; line-height:1.6; }
+.search-row { max-width:1200px; margin:0 auto; padding:0 24px 16px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+.search-input { padding:10px 14px; border:1px solid #e2e8f0; border-radius:10px; font-size:13px; width:240px; }
+.filter-select { padding:10px 14px; border:1px solid #e2e8f0; border-radius:10px; font-size:13px; background:#fff; }
+.count-badge { background:#0ea5e9; color:#fff; font-size:12px; font-weight:700; padding:4px 10px; border-radius:20px; }
+</style>
+<style>
+.continental-section { max-width:1200px; margin:0 auto; padding:0 24px 24px; }
+.continental-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; }
+.continental-card { background:linear-gradient(135deg,#0c4a6e,#164e63); border-radius:14px; padding:18px; color:#fff; text-decoration:none; transition:transform .2s,box-shadow .2s; }
+.continental-card:hover { transform:translateY(-3px); box-shadow:0 8px 25px rgba(0,0,0,.15); }
+.continental-card h3 { font-size:15px; font-weight:700; margin-bottom:4px; }
+.continental-card p { font-size:12px; color:rgba(255,255,255,.7); }
+.section-label { font-size:18px; font-weight:700; color:#0c4a6e; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+.fed-grid { max-width:1200px; margin:0 auto; padding:0 24px 32px; display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:10px; }
+.fed-card { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:14px 16px; display:flex; align-items:center; gap:12px; transition:all .2s; text-decoration:none; color:#1e293b; }
+.fed-card:hover { border-color:#0ea5e9; box-shadow:0 4px 12px rgba(0,0,0,.06); transform:translateY(-1px); }
+.fed-ioc { font-size:12px; font-weight:800; color:#fff; background:#0ea5e9; border-radius:6px; padding:4px 8px; min-width:36px; text-align:center; }
+.fed-ioc.africa { background:#f59e0b; }
+.fed-ioc.asia { background:#ef4444; }
+.fed-ioc.americas { background:#22c55e; }
+.fed-ioc.oceania { background:#8b5cf6; }
+.fed-info { flex:1; min-width:0; }
+.fed-country { font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.fed-name { font-size:11px; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.fed-arrow { color:#cbd5e1; font-size:16px; }
+.site-footer { text-align:center; padding:20px 16px 28px; border-top:1px solid #e5e7eb; margin-top:40px; }
+.footer-links { display:flex; justify-content:center; flex-wrap:wrap; gap:6px 16px; margin-bottom:10px; }
+.footer-links a { color:#6b7280; text-decoration:none; font-size:12px; cursor:pointer; }
+.footer-links a:hover { color:#06b6d4; }
+@media(max-width:600px) { .search-input{width:100%;} .fed-grid{grid-template-columns:1fr;} }
+</style>
+
+<!-- NAV -->
+<div class="top-bar">
+    <a href="paddlepoint.html" class="logo">
+        <img src="paddle-pin.svg" alt="PaddlePoint">
+        <div><div class="logo-text">PaddlePoint</div><div class="logo-sub">Federations</div></div>
+    </a>
+    <div class="nav-btns">
+        <a href="paddlepoint.html" class="nav-btn">Home</a>
+        <a href="paddle-conditions.html" class="nav-btn">Water Conditions</a>
+        <a href="paddle-weather.html" class="nav-btn">Weather</a>
+        <a href="paddle-clubs.html" class="nav-btn">Paddle Clubs</a>
+        <a href="paddle-events.html" class="nav-btn">Events</a>
+        <a href="paddle-gear.html" class="nav-btn">Gear</a>
+        <span class="nav-btn" onclick="openSuggestModal()" style="cursor:pointer;">Feedback</span>
+        <span class="nav-btn" onclick="openUpdatesModal()" style="cursor:pointer;">Updates</span>
+    </div>
+</div>
+
+<!-- HEADER -->
+<div class="page-header">
+    <h1 class="page-title">🏛️ Paddling Federations Worldwide</h1>
+    <p class="page-desc">The official governing bodies for paddling sports — 5 continental associations and 176 national federations affiliated with the <a href="https://www.canoeicf.com" target="_blank" style="color:#0ea5e9;">International Canoe Federation (ICF)</a>. Find your country's federation below.</p>
+</div>
+
+<!-- CONTINENTAL ASSOCIATIONS -->
+<div class="continental-section">
+    <div class="section-label">🌍 Continental Associations</div>
+    <div class="continental-grid">
+        <a href="https://www.canoe-europe.org/" target="_blank" class="continental-card">
+            <h3>🇪🇺 European Canoe Association</h3><p>45 member countries · canoe-europe.org</p>
+        </a>
+        <a href="https://copaconline.com/" target="_blank" class="continental-card">
+            <h3>🌎 Pan American Canoe Federation</h3><p>31 member countries · copaconline.com</p>
+        </a>
+        <a href="https://asiacanoe.wixsite.com/asian-canoe" target="_blank" class="continental-card">
+            <h3>🌏 Asian Canoe Confederation</h3><p>38 member countries · asiacanoe</p>
+        </a>
+        <a href="https://paddlinginafrica.com/" target="_blank" class="continental-card">
+            <h3>🌍 Confederation of African Canoeing</h3><p>39 member countries · paddlinginafrica.com</p>
+        </a>
+        <a href="https://www.canoeicf.com/oceania-canoe-association-0" target="_blank" class="continental-card">
+            <h3>🏝️ Oceania Canoe Association</h3><p>14 member countries · via ICF</p>
+        </a>
+    </div>
+</div>
+
+<!-- SEARCH & FILTER -->
+<div class="search-row">
+    <div class="section-label" style="margin:0;">🏳️ National Federations</div>
+    <input type="text" class="search-input" id="searchInput" placeholder="Search country or federation..." oninput="filterFeds()">
+    <select class="filter-select" id="filterContinent" onchange="filterFeds()">
+        <option value="">All Continents</option>
+        <option value="Europe">Europe (45)</option>
+        <option value="Africa">Africa (39)</option>
+        <option value="Asia">Asia (38)</option>
+        <option value="Americas">Americas (31)</option>
+        <option value="Oceania">Oceania (14)</option>
+    </select>
+    <span class="count-badge" id="fedCount">176</span>
+</div>
+
+<!-- FEDERATION CARDS -->
+<div class="fed-grid" id="fedGrid"></div>
+
+<!-- FOOTER -->
+<footer class="site-footer">
+    <div class="footer-links">
+        <a href="paddlepoint.html">Home</a>
+        <a href="paddle-conditions.html">Water Conditions</a>
+        <a href="paddle-weather.html">Weather</a>
+        <a href="paddle-clubs.html">Paddle Clubs</a>
+        <a href="paddle-events.html">Events</a>
+        <a href="paddle-gear.html">Gear</a>
+        <a onclick="openFooterModal('about')">About</a>
+        <a onclick="openDataSourcesModal()">Data Sources</a>
+        <a onclick="openFooterModal('safety')">Safety Disclaimer</a>
+        <a onclick="openFooterModal('privacy')">Privacy Policy</a>
+    </div>
+    <div style="color:#9ca3af;font-size:10px;">&copy; 2026 PaddlePoint. All rights reserved. &bull; <span onclick="toggleStats()" style="cursor:pointer;text-decoration:underline;">Stats</span></div>
+</footer>
+
+<script>
+let allFeds = [];
+const CONTINENT_COLORS = {europe:'',africa:'africa',asia:'asia',americas:'americas',oceania:'oceania',other:''};
+
+async function loadFederations() {
+    try {
+        const res = await fetch('federations.json');
+        allFeds = await res.json();
+        filterFeds();
+    } catch(e) { document.getElementById('fedGrid').innerHTML = '<p style="color:red;padding:20px;">Error loading federations</p>'; }
+}
+
+function filterFeds() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    const continent = document.getElementById('filterContinent').value;
+    const filtered = allFeds.filter(f => {
+        if (continent && f.continent !== continent) return false;
+        if (q && !f.country.toLowerCase().includes(q) && !f.name.toLowerCase().includes(q) && !f.ioc_code.toLowerCase().includes(q)) return false;
+        return true;
+    });
+    document.getElementById('fedCount').textContent = filtered.length;
+    renderFeds(filtered);
+}
+
+function renderFeds(feds) {
+    const grid = document.getElementById('fedGrid');
+    grid.innerHTML = feds.map(f => {
+        const cls = CONTINENT_COLORS[(f.continent||'').toLowerCase()] || '';
+        return `<a href="${f.icf_url}" target="_blank" class="fed-card">
+            <span class="fed-ioc ${cls}">${f.ioc_code}</span>
+            <div class="fed-info">
+                <div class="fed-country">${f.country}</div>
+                <div class="fed-name">${f.name}</div>
+            </div>
+            <span class="fed-arrow">→</span>
+        </a>`;
+    }).join('');
+}
+
+loadFederations();
+
+// Footer modals
+const footerContent = {
+    about: '<h2>About PaddlePoint</h2><p>PaddlePoint is built by paddlers, for paddlers. A 100% free community resource — no ads, no accounts, no paywalls.</p>',
+    safety: '<h2>Safety Disclaimer</h2><p>PaddlePoint provides data from public sources for informational purposes only. Always check official sources and use your own judgment before going on the water.</p>',
+    privacy: '<h2>Privacy Policy</h2><p>PaddlePoint does not collect, store, or transmit personal data. Location data is used only in your browser to fetch conditions.</p>'
+};
+
+function openFooterModal(key) {
+    const html = footerContent[key]; if(!html) return;
+    let ov = document.getElementById('footerModalOverlay');
+    if(!ov){document.body.insertAdjacentHTML('beforeend','<div id="footerModalOverlay" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;" onclick="if(event.target===this)this.remove()"><div style="background:#fff;border-radius:16px;padding:32px;max-width:560px;width:90%;max-height:80vh;overflow-y:auto;"><div id="footerModalContent"></div></div></div>');ov=document.getElementById('footerModalOverlay');}
+    else{ov.style.display='flex';}
+    document.getElementById('footerModalContent').innerHTML=html;
+}
+
+const COUNTER_API='https://visitor-counter.newtonmac.workers.dev';
+try{fetch(`${COUNTER_API}/visit?page=federations`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({referrer:document.referrer})}).catch(()=>{});}catch(e){}
+async function toggleStats(){
+    try{const r=await fetch(`${COUNTER_API}/stats?page=federations`);const d=await r.json();
+    const w=d.days?d.days.reduce((s,dy)=>s+dy.uniqueVisitors,0):0;
+    alert(`Federations Page Stats\n\nAll-time: ${d.total||0} visitors\nLast 7 days: ${w}\nToday: ${d.days&&d.days.length?d.days[d.days.length-1].uniqueVisitors:0}`);}catch(e){alert('Stats unavailable');}
+}
+</script>
+<script src="pp-shared.js"></script>
+</body>
+</html>

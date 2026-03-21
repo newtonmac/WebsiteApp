@@ -146,6 +146,7 @@ body { background: #f8fafc; color: #1e293b; font-family: 'DM Sans', -apple-syste
         <a href="paddle-clubs.html" class="nav-btn">Paddle Clubs</a>
         <a href="paddle-events.html" class="nav-btn">Events</a>
         <a href="paddle-gear.html" class="nav-btn">Gear</a>
+        <a href="paddle-federations.html" class="nav-btn">Federations</a>
         <span class="nav-btn" onclick="openSuggestModal()" style="cursor:pointer;">Feedback</span>
         <span class="nav-btn" onclick="openUpdatesModal()" style="cursor:pointer;">Updates</span>
     </div>
@@ -292,21 +293,40 @@ function populateStateFilter(country) {
     const sel = document.getElementById('filterState');
     if (Object.keys(states).length === 0) { sel.style.display = 'none'; return; }
     sel.style.display = '';
-    sel.innerHTML = '<option value="">All States</option>' +
-        Object.entries(states).sort((a,b) => b[1]-a[1]).map(([s,n]) =>
+    const label = {Canada:'All Provinces',
+        'United Kingdom':'All Regions','Australia':'All States',
+        Germany:'All States',France:'All Regions'}[country] || 'All States';
+    sel.innerHTML = `<option value="">${label}</option>` +
+        Object.entries(states).sort((a,b) => a[0].localeCompare(b[0])).map(([s,n]) =>
             `<option value="${s}">${s} (${n})</option>`).join('');
 }
 
 function onCountryChange() {
     const country = document.getElementById('filterCountry').value;
     document.getElementById('filterState').value = '';
-    if (country === 'United States' || country === 'Canada') {
+    if (country) {
         populateStateFilter(country);
     } else {
         document.getElementById('filterState').style.display = 'none';
     }
     applyFilters();
 }
+
+// State/Province abbreviation lookup for search
+const STATE_ABBREVS = {
+    'AL':'Alabama','AK':'Alaska','AZ':'Arizona','AR':'Arkansas','CA':'California','CO':'Colorado',
+    'CT':'Connecticut','DE':'Delaware','FL':'Florida','GA':'Georgia','HI':'Hawaii','ID':'Idaho',
+    'IL':'Illinois','IN':'Indiana','IA':'Iowa','KS':'Kansas','KY':'Kentucky','LA':'Louisiana',
+    'ME':'Maine','MD':'Maryland','MA':'Massachusetts','MI':'Michigan','MN':'Minnesota','MS':'Mississippi',
+    'MO':'Missouri','MT':'Montana','NE':'Nebraska','NV':'Nevada','NH':'New Hampshire','NJ':'New Jersey',
+    'NM':'New Mexico','NY':'New York','NC':'North Carolina','ND':'North Dakota','OH':'Ohio',
+    'OK':'Oklahoma','OR':'Oregon','PA':'Pennsylvania','RI':'Rhode Island','SC':'South Carolina',
+    'SD':'South Dakota','TN':'Tennessee','TX':'Texas','UT':'Utah','VT':'Vermont','VA':'Virginia',
+    'WA':'Washington','WV':'West Virginia','WI':'Wisconsin','WY':'Wyoming','DC':'District of Columbia',
+    'AB':'Alberta','BC':'British Columbia','MB':'Manitoba','NB':'New Brunswick','NL':'Newfoundland and Labrador',
+    'NS':'Nova Scotia','ON':'Ontario','PE':'Prince Edward Island','QC':'Quebec','SK':'Saskatchewan',
+    'NSW':'New South Wales','VIC':'Victoria','QLD':'Queensland','TAS':'Tasmania','ACT':'Australian Capital Territory',
+};
 
 function applyFilters() {
     const q = document.getElementById('searchInput').value.toLowerCase();
@@ -327,7 +347,9 @@ function applyFilters() {
         if (state && ev.state !== state) return false;
         if (q) {
             const haystack = [ev.name, ev.city, ev.state, ev.country, ev.venue, ev.organizer, ev.sports, ev.description].join(' ').toLowerCase();
-            if (!haystack.includes(q)) return false;
+            // Also match state abbreviations (e.g. "CA" → "California")
+            const expanded = STATE_ABBREVS[q.toUpperCase()];
+            if (!haystack.includes(q) && !(expanded && haystack.includes(expanded.toLowerCase()))) return false;
         }
         return true;
     });

@@ -1,0 +1,1410 @@
+[
+  {
+    "ioc_code": "AFG",
+    "country": "Afghanistan",
+    "name": "AFGHANISTAN CANOEING FEDERATION",
+    "slug": "afghanistan-canoeing-federation",
+    "icf_url": "https://www.canoeicf.com/federation/afghanistan-canoeing-federation",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "AIN",
+    "country": "Ain",
+    "name": "INDIVIDUAL NEUTRAL ATHLETES",
+    "slug": "individual-neutral-athletes",
+    "icf_url": "https://www.canoeicf.com/federation/individual-neutral-athletes",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "ALB",
+    "country": "Albania",
+    "name": "ALBANIAN ROWING AND CANOE ASSOCIATION 'LIBURNA'",
+    "slug": "albanian-rowing-and-canoe-association-liburna",
+    "icf_url": "https://www.canoeicf.com/federation/albanian-rowing-and-canoe-association-liburna",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "ALG",
+    "country": "Algeria",
+    "name": "FÉDÉRATION ALGÉRIENNE DES SOCIÉTÉS D'AVIRON ET DE CANOE / KAYAK",
+    "slug": "federation-algerienne-des-societes-daviron-et-de-canoe-kayak",
+    "icf_url": "https://www.canoeicf.com/federation/federation-algerienne-des-societes-daviron-et-de-canoe-kayak",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "ASA",
+    "country": "American Samoa",
+    "name": "AMERICAN SAMOA ASSOCIATION OF PADDLERS",
+    "slug": "american-samoa-association-paddlers",
+    "icf_url": "https://www.canoeicf.com/federation/american-samoa-association-paddlers",
+    "continent": "Oceania"
+  },
+  {
+    "ioc_code": "AND",
+    "country": "Andorra",
+    "name": "FEDERACIÓ ANDORRANA DE CANOA I CAIAC",
+    "slug": "federacio-andorrana-de-canoa-i-caiac",
+    "icf_url": "https://www.canoeicf.com/federation/federacio-andorrana-de-canoa-i-caiac",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "ANG",
+    "country": "Angola",
+    "name": "FEDERAÇÃO ANGOLANA DE DESPORTOS NAUTICOS",
+    "slug": "federacao-angolana-de-desportos-nauticos",
+    "icf_url": "https://www.canoeicf.com/federation/federacao-angolana-de-desportos-nauticos",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "ANT",
+    "country": "Antigua And Barbuda",
+    "name": "ANTIGUA & BARBUDA CANOE AND KAYAK ASSOCIATION",
+    "slug": "antigua-barbuda-canoe-and-kayak-association",
+    "icf_url": "https://www.canoeicf.com/federation/antigua-barbuda-canoe-and-kayak-association",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "ARG",
+    "country": "Argentina",
+    "name": "FEDERACIÓN ARGENTINA DE CANOAS",
+    "slug": "federacion-argentina-de-canoas",
+    "icf_url": "https://www.canoeicf.com/federation/federacion-argentina-de-canoas",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "ARM",
+    "country": "Armenia",
+    "name": "ARMENIAN NATIONAL FEDERATION OF ROWING AND CANOE",
+    "slug": "armenian-national-federation-rowing-and-canoe",
+    "icf_url": "https://www.canoeicf.com/federation/armenian-national-federation-rowing-and-canoe",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "ARU",
+    "country": "Aruba",
+    "name": "ARUBA ROWING AND CANOE ASSOCIATION",
+    "slug": "aruba-rowing-and-canoe-association",
+    "icf_url": "https://www.canoeicf.com/federation/aruba-rowing-and-canoe-association",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "AUS",
+    "country": "Australia",
+    "name": "PADDLE AUSTRALIA",
+    "slug": "paddle-australia",
+    "icf_url": "https://www.canoeicf.com/federation/paddle-australia",
+    "continent": "Oceania"
+  },
+  {
+    "ioc_code": "AUT",
+    "country": "Austria",
+    "name": "OESTERREICHISCHER KANUVERBAND",
+    "slug": "oesterreichischer-kanuverband",
+    "icf_url": "https://www.canoeicf.com/federation/oesterreichischer-kanuverband",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "AZE",
+    "country": "Azerbaijan",
+    "name": "AZERBAIJAN CANOE & ROWING FEDERATION",
+    "slug": "azerbaijan-canoe-rowing-federation",
+    "icf_url": "https://www.canoeicf.com/federation/azerbaijan-canoe-rowing-federation",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "BAR",
+    "country": "Barbados",
+    "name": "BARBADOS KAYAK ASSOCIATION",
+    "slug": "barbados-kayak-association",
+    "icf_url": "https://www.canoeicf.com/federation/barbados-kayak-association",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "BLR",
+    "country": "Belarus",
+    "name": "BELARUS CANOE ASSOCIATION",
+    "slug": "belarus-canoe-association",
+    "icf_url": "https://www.canoeicf.com/federation/belarus-canoe-association",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "BEL",
+    "country": "Belgium",
+    "name": "ROYAL BELGIAN CANOE FEDERATION",
+    "slug": "royal-belgian-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/royal-belgian-canoe-federation",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "BIZ",
+    "country": "Belize",
+    "name": "BELIZE CANOE ASSOCIATION",
+    "slug": "belize-canoe-association",
+    "icf_url": "https://www.canoeicf.com/federation/belize-canoe-association",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "BHU",
+    "country": "Bhutan",
+    "name": "BHUTAN CANOE FEDERATION",
+    "slug": "bhutan-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/bhutan-canoe-federation",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "BOL",
+    "country": "Bolivia",
+    "name": "FEDERACIÓN BOLIVIANA DE CANOTAJE 'FEBOCA'",
+    "slug": "federacion-boliviana-de-canotaje-feboca",
+    "icf_url": "https://www.canoeicf.com/federation/federacion-boliviana-de-canotaje-feboca",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "BIH",
+    "country": "Bosnia And Herzegovina",
+    "name": "CANOE FEDERATION OF BOSNIA AND HERZEGOVINA",
+    "slug": "canoe-federation-bosnia-and-herzegovina",
+    "icf_url": "https://www.canoeicf.com/federation/canoe-federation-bosnia-and-herzegovina",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "BOT",
+    "country": "Botswana",
+    "name": "BOTSWANA ROWING AND CANOEING FEDERATION",
+    "slug": "botswana-rowing-and-canoeing-federation",
+    "icf_url": "https://www.canoeicf.com/federation/botswana-rowing-and-canoeing-federation",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "BRA",
+    "country": "Brazil",
+    "name": "BRAZILIAN CANOE CONFEDERATION",
+    "slug": "brazilian-canoe-confederation",
+    "icf_url": "https://www.canoeicf.com/federation/brazilian-canoe-confederation",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "IVB",
+    "country": "British Virgin Islands",
+    "name": "BRITISH VIRGIN ISLANDS CANOE AND KAYAK FEDERATION",
+    "slug": "british-virgin-islands-canoe-and-kayak-federation",
+    "icf_url": "https://www.canoeicf.com/federation/british-virgin-islands-canoe-and-kayak-federation",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "BRU",
+    "country": "Brunei Darussalam",
+    "name": "BRUNEI DARUSSALAM NATIONAL CANOE ASSOCIATION",
+    "slug": "brunei-darussalam-national-canoe-association",
+    "icf_url": "https://www.canoeicf.com/federation/brunei-darussalam-national-canoe-association",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "BUL",
+    "country": "Bulgaria",
+    "name": "BULGARIAN CANOE FEDERATION",
+    "slug": "bulgarian-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/bulgarian-canoe-federation",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "BUR",
+    "country": "Burkina Faso",
+    "name": "BURKINA ROWING AND CANOEING FEDERATION",
+    "slug": "burkina-rowing-and-canoeing-federation",
+    "icf_url": "https://www.canoeicf.com/federation/burkina-rowing-and-canoeing-federation",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "BDI",
+    "country": "Burundi",
+    "name": "FÉDÉRATION NATIONALE DE CANOE DU BURUNDI",
+    "slug": "federation-nationale-de-canoe-du-burundi",
+    "icf_url": "https://www.canoeicf.com/federation/federation-nationale-de-canoe-du-burundi",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "CAM",
+    "country": "Cambodia",
+    "name": "CAMBODIAN CANOEING, ROWING AND TRADITIONAL BOAT RACE FEDERATION",
+    "slug": "cambodian-canoeing-rowing-and-traditional-boat-race-federation",
+    "icf_url": "https://www.canoeicf.com/federation/cambodian-canoeing-rowing-and-traditional-boat-race-federation",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "CMR",
+    "country": "Cameroon",
+    "name": "CAMEROON NAUTICAL SPORTS FEDERATION",
+    "slug": "cameroon-nautical-sports-federation",
+    "icf_url": "https://www.canoeicf.com/federation/cameroon-nautical-sports-federation",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "CAN",
+    "country": "Canada",
+    "name": "CANOE KAYAK CANADA",
+    "slug": "canoe-kayak-canada",
+    "icf_url": "https://www.canoeicf.com/federation/canoe-kayak-canada",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "CPV",
+    "country": "Cape Verde",
+    "name": "CAPE VERDE ROWING AND CANOEING ASSOCIATION (PROVISIONAL MEMBER)",
+    "slug": "cape-verde-rowing-and-canoeing-association-provisional-member",
+    "icf_url": "https://www.canoeicf.com/federation/cape-verde-rowing-and-canoeing-association-provisional-member",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "CAF",
+    "country": "Central African Republic",
+    "name": "FÉDÉRATION CENTRAFRICAINE DE CANOË KAYAK ET SPORTS DE PAGAIE (FCCK)",
+    "slug": "federation-centrafricaine-de-canoe-kayak-et-sports-de-pagaie-fcck",
+    "icf_url": "https://www.canoeicf.com/federation/federation-centrafricaine-de-canoe-kayak-et-sports-de-pagaie-fcck",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "CHI",
+    "country": "Chile",
+    "name": "FEDERACION DEPORTIVA NACIONAL DE CANOTAJE (CHILE)",
+    "slug": "federacion-deportiva-nacional-de-canotaje-chile",
+    "icf_url": "https://www.canoeicf.com/federation/federacion-deportiva-nacional-de-canotaje-chile",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "TPE",
+    "country": "Chinese Taipei",
+    "name": "CHINESE TAIPEI CANOE ASSOCIATION",
+    "slug": "chinese-taipei-canoe-association",
+    "icf_url": "https://www.canoeicf.com/federation/chinese-taipei-canoe-association",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "COL",
+    "country": "Colombia",
+    "name": "FEDERACIÓN COLOMBIANA DE CANOTAJE",
+    "slug": "federacion-colombiana-de-canotaje",
+    "icf_url": "https://www.canoeicf.com/federation/federacion-colombiana-de-canotaje",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "COM",
+    "country": "Comoros",
+    "name": "FÉDÉRATION COMORIENNE DE CANOÉ KAYAK",
+    "slug": "federation-comorienne-de-canoe-kayak",
+    "icf_url": "https://www.canoeicf.com/federation/federation-comorienne-de-canoe-kayak",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "COK",
+    "country": "Cook Islands",
+    "name": "COOK ISLANDS CANOE ASSOCIATION (CICA)",
+    "slug": "cook-islands-canoe-association-cica",
+    "icf_url": "https://www.canoeicf.com/federation/cook-islands-canoe-association-cica",
+    "continent": "Oceania"
+  },
+  {
+    "ioc_code": "CRC",
+    "country": "Costa Rica",
+    "name": "FEDERACION COSTARRICENSE DE KAYAK Y CANOTAJE",
+    "slug": "federacion-costarricense-de-kayak-y-canotaje",
+    "icf_url": "https://www.canoeicf.com/federation/federacion-costarricense-de-kayak-y-canotaje",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "CRO",
+    "country": "Croatia",
+    "name": "CROATIAN CANOE FEDERATION",
+    "slug": "croatian-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/croatian-canoe-federation",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "CUB",
+    "country": "Cuba",
+    "name": "FEDERACIÓN CUBANA DE CANOA",
+    "slug": "federacion-cubana-de-canoa",
+    "icf_url": "https://www.canoeicf.com/federation/federacion-cubana-de-canoa",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "CYP",
+    "country": "Cyprus",
+    "name": "CYPRUS CANOE FEDERATION",
+    "slug": "cyprus-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/cyprus-canoe-federation",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "CZE",
+    "country": "Czechia",
+    "name": "CZECH CANOE UNION - CCU",
+    "slug": "czech-canoe-union-ccu",
+    "icf_url": "https://www.canoeicf.com/federation/czech-canoe-union-ccu",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "PRK",
+    "country": "Democratic Peoples Republic Of Korea",
+    "name": "DPR KOREA CANOE ASSOCIATION",
+    "slug": "dpr-korea-canoe-association",
+    "icf_url": "https://www.canoeicf.com/federation/dpr-korea-canoe-association",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "COD",
+    "country": "Democratic Republic Of Congo",
+    "name": "FEDERATION CONGOLAISE DE CANOE KAYAK",
+    "slug": "federation-congolaise-de-canoe-kayak",
+    "icf_url": "https://www.canoeicf.com/federation/federation-congolaise-de-canoe-kayak",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "TLS",
+    "country": "Democratic Republic Of Timor-Leste",
+    "name": "FEDERAÇAO DE CANOAGEM DE TIMOR-LESTE",
+    "slug": "federacao-de-canoagem-de-timor-leste",
+    "icf_url": "https://www.canoeicf.com/federation/federacao-de-canoagem-de-timor-leste",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "DEN",
+    "country": "Denmark",
+    "name": "DANSK KANO OG KAJAK FORBUND DKF",
+    "slug": "dansk-kano-og-kajak-forbund-dkf",
+    "icf_url": "https://www.canoeicf.com/federation/dansk-kano-og-kajak-forbund-dkf",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "DJI",
+    "country": "Djibouti",
+    "name": "DJIBOUTI ROWING AND CANOE FEDERATION",
+    "slug": "djibouti-rowing-and-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/djibouti-rowing-and-canoe-federation",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "DMA",
+    "country": "Dominica",
+    "name": "DOMINICA CANOEING AND KAYAKING ASSOCIATION",
+    "slug": "dominica-canoeing-and-kayaking-association",
+    "icf_url": "https://www.canoeicf.com/federation/dominica-canoeing-and-kayaking-association",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "DOM",
+    "country": "Dominican Republic",
+    "name": "FEDERACIÓN DOMINICANA DE REMO Y CANOTAJE (FEDORECA)",
+    "slug": "federacion-dominicana-de-remo-y-canotaje-fedoreca",
+    "icf_url": "https://www.canoeicf.com/federation/federacion-dominicana-de-remo-y-canotaje-fedoreca",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "ECU",
+    "country": "Ecuador",
+    "name": "FEDERACIÓN ECUATORIANA DE CANOTAJE",
+    "slug": "federacion-ecuatoriana-de-canotaje",
+    "icf_url": "https://www.canoeicf.com/federation/federacion-ecuatoriana-de-canotaje",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "EGY",
+    "country": "Egypt",
+    "name": "THE EGYPTIAN CANOE & KAYAK FEDERATION",
+    "slug": "egyptian-canoe-kayak-federation",
+    "icf_url": "https://www.canoeicf.com/federation/egyptian-canoe-kayak-federation",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "ESA",
+    "country": "El Salvador",
+    "name": "FEDERACION SALVADOREÑA DE CANOTAJE",
+    "slug": "federacion-salvadorena-de-canotaje",
+    "icf_url": "https://www.canoeicf.com/federation/federacion-salvadorena-de-canotaje",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "ERI",
+    "country": "Eritrea",
+    "name": "ERITREAN ROWING AND CANOEING FEDERATION",
+    "slug": "eritrean-rowing-and-canoeing-federation",
+    "icf_url": "https://www.canoeicf.com/federation/eritrean-rowing-and-canoeing-federation",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "EST",
+    "country": "Estonia",
+    "name": "ESTONIAN CANOEING FEDERATION",
+    "slug": "estonian-canoeing-federation",
+    "icf_url": "https://www.canoeicf.com/federation/estonian-canoeing-federation",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "ETH",
+    "country": "Ethiopia",
+    "name": "ETHIOPIAN CANOEING FEDERATION",
+    "slug": "ethiopian-canoeing-federation",
+    "icf_url": "https://www.canoeicf.com/federation/ethiopian-canoeing-federation",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "FIJ",
+    "country": "Fiji",
+    "name": "FIJI OUTRIGGER",
+    "slug": "fiji-outrigger",
+    "icf_url": "https://www.canoeicf.com/federation/fiji-outrigger",
+    "continent": "Oceania"
+  },
+  {
+    "ioc_code": "FIN",
+    "country": "Finland",
+    "name": "FINNISH CANOE FEDERATION",
+    "slug": "finnish-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/finnish-canoe-federation",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "FRA",
+    "country": "France",
+    "name": "FÉDÉRATION FRANÇAISE DE CANOË-KAYAK ET SPORTS DE PAGAIE (FFCK)",
+    "slug": "federation-francaise-de-canoe-kayak-et-sports-de-pagaie-ffck",
+    "icf_url": "https://www.canoeicf.com/federation/federation-francaise-de-canoe-kayak-et-sports-de-pagaie-ffck",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "GEO",
+    "country": "Georgia",
+    "name": "GEORGIAN NATIONAL CANOE AND ROWING FEDERATION",
+    "slug": "georgian-national-canoe-and-rowing-federation",
+    "icf_url": "https://www.canoeicf.com/federation/georgian-national-canoe-and-rowing-federation",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "GER",
+    "country": "Germany",
+    "name": "DEUTSCHER KANU VERBAND E. V.",
+    "slug": "deutscher-kanu-verband-e-v",
+    "icf_url": "https://www.canoeicf.com/federation/deutscher-kanu-verband-e-v",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "GHA",
+    "country": "Ghana",
+    "name": "GHANA ROWING & CANOE ASSOCIATION",
+    "slug": "ghana-rowing-canoe-association",
+    "icf_url": "https://www.canoeicf.com/federation/ghana-rowing-canoe-association",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "GBR",
+    "country": "Great Britain",
+    "name": "PADDLE UK",
+    "slug": "paddle-uk",
+    "icf_url": "https://www.canoeicf.com/federation/paddle-uk",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "GRE",
+    "country": "Greece",
+    "name": "HELLENIC CANOE-KAYAK, SUP, SURFING FEDERATION",
+    "slug": "hellenic-canoe-kayak-sup-surfing-federation",
+    "icf_url": "https://www.canoeicf.com/federation/hellenic-canoe-kayak-sup-surfing-federation",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "GUM",
+    "country": "Guam",
+    "name": "GUAM KAYAK AND CANOE FEDERATION",
+    "slug": "guam-kayak-and-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/guam-kayak-and-canoe-federation",
+    "continent": "Oceania"
+  },
+  {
+    "ioc_code": "GUA",
+    "country": "Guatemala",
+    "name": "FEDERACIÓN NACIONAL DE REMO Y CANOTAJE DE GUATEMALA",
+    "slug": "federacion-nacional-de-remo-y-canotaje-de-guatemala",
+    "icf_url": "https://www.canoeicf.com/federation/federacion-nacional-de-remo-y-canotaje-de-guatemala",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "GUI",
+    "country": "Guinea",
+    "name": "FÉDÉRATION GUINÉENNE DE CANOE KAYAK",
+    "slug": "federation-guineenne-de-canoe-kayak",
+    "icf_url": "https://www.canoeicf.com/federation/federation-guineenne-de-canoe-kayak",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "GBS",
+    "country": "Guinea-Bissau",
+    "name": "FEDERAÇAO DE CANOAGEM DA GUINEA-BISSAU",
+    "slug": "federacao-de-canoagem-da-guinea-bissau",
+    "icf_url": "https://www.canoeicf.com/federation/federacao-de-canoagem-da-guinea-bissau",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "GUY",
+    "country": "Guyana",
+    "name": "GUYANA CANOE FEDERATION",
+    "slug": "guyana-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/guyana-canoe-federation",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "HON",
+    "country": "Honduras",
+    "name": "FEDERACIÓN HONDUREÑA DE REMO Y CANOTAJE",
+    "slug": "federacion-hondurena-de-remo-y-canotaje",
+    "icf_url": "https://www.canoeicf.com/federation/federacion-hondurena-de-remo-y-canotaje",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "HKG",
+    "country": "Hong Kong, China",
+    "name": "HONG KONG CHINA CANOE UNION",
+    "slug": "hong-kong-china-canoe-union",
+    "icf_url": "https://www.canoeicf.com/federation/hong-kong-china-canoe-union",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "HUN",
+    "country": "Hungary",
+    "name": "MAGYAR KAJAK-KENU SZÖVETSÉG MKKSZ",
+    "slug": "magyar-kajak-kenu-szovetseg-mkksz",
+    "icf_url": "https://www.canoeicf.com/federation/magyar-kajak-kenu-szovetseg-mkksz",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "ICF",
+    "country": "Icf",
+    "name": "ICF",
+    "slug": "icf",
+    "icf_url": "https://www.canoeicf.com/federation/icf",
+    "continent": "Other"
+  },
+  {
+    "ioc_code": "IND",
+    "country": "India",
+    "name": "INDIAN KAYAKING & CANOEING ASSOCIATION",
+    "slug": "indian-kayaking-canoeing-association",
+    "icf_url": "https://www.canoeicf.com/federation/indian-kayaking-canoeing-association",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "INA",
+    "country": "Indonesia",
+    "name": "INDONESIAN ROWING AND CANOEING ASSOCIATION",
+    "slug": "indonesian-rowing-and-canoeing-association",
+    "icf_url": "https://www.canoeicf.com/federation/indonesian-rowing-and-canoeing-association",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "IRQ",
+    "country": "Iraq",
+    "name": "IRAQI CANOE FEDERATION",
+    "slug": "iraqi-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/iraqi-canoe-federation",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "IRL",
+    "country": "Ireland",
+    "name": "CANOEING IRELAND",
+    "slug": "canoeing-ireland",
+    "icf_url": "https://www.canoeicf.com/federation/canoeing-ireland",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "IRI",
+    "country": "Islamic Republic Of Iran",
+    "name": "IRAN CANOE, ROWING & SAILING FEDERATION",
+    "slug": "iran-canoe-rowing-sailing-federation",
+    "icf_url": "https://www.canoeicf.com/federation/iran-canoe-rowing-sailing-federation",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "ISR",
+    "country": "Israel",
+    "name": "ISRAEL CANOE ASSOCIATION",
+    "slug": "israel-canoe-association",
+    "icf_url": "https://www.canoeicf.com/federation/israel-canoe-association",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "ITA",
+    "country": "Italy",
+    "name": "FEDERAZIONE ITALIANA CANOA KAYAK FICK",
+    "slug": "federazione-italiana-canoa-kayak-fick",
+    "icf_url": "https://www.canoeicf.com/federation/federazione-italiana-canoa-kayak-fick",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "CIV",
+    "country": "Ivory Coast",
+    "name": "FEDERATION IVOIRIENNE DE PIROGUE ET CANOE KAYAK",
+    "slug": "federation-ivoirienne-de-pirogue-et-canoe-kayak",
+    "icf_url": "https://www.canoeicf.com/federation/federation-ivoirienne-de-pirogue-et-canoe-kayak",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "JAM",
+    "country": "Jamaica",
+    "name": "JAMAICA CANOEING FEDERATION",
+    "slug": "jamaica-canoeing-federation",
+    "icf_url": "https://www.canoeicf.com/federation/jamaica-canoeing-federation",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "JPN",
+    "country": "Japan",
+    "name": "JAPAN CANOE FEDERATION",
+    "slug": "japan-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/japan-canoe-federation",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "KAZ",
+    "country": "Kazakhstan",
+    "name": "KAIK FEDERATION OF THE REPUBLIC OF KAZAKHSTAN",
+    "slug": "kaik-federation-republic-kazakhstan",
+    "icf_url": "https://www.canoeicf.com/federation/kaik-federation-republic-kazakhstan",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "KEN",
+    "country": "Kenya",
+    "name": "KENYA ROWING AND CANOE FEDERATION",
+    "slug": "kenya-rowing-and-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/kenya-rowing-and-canoe-federation",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "TGA",
+    "country": "Kingdom Of Tonga",
+    "name": "NUKU'ALOFA OUTRIGGER CANOE CLUB",
+    "slug": "nukualofa-outrigger-canoe-club",
+    "icf_url": "https://www.canoeicf.com/federation/nukualofa-outrigger-canoe-club",
+    "continent": "Oceania"
+  },
+  {
+    "ioc_code": "KIR",
+    "country": "Kiribati",
+    "name": "KIRIBATI NATIONAL CANOEING FEDERATION INC.",
+    "slug": "kiribati-national-canoeing-federation-inc",
+    "icf_url": "https://www.canoeicf.com/federation/kiribati-national-canoeing-federation-inc",
+    "continent": "Oceania"
+  },
+  {
+    "ioc_code": "KOR",
+    "country": "Korea",
+    "name": "KOREAN CANOE FEDERATION",
+    "slug": "korean-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/korean-canoe-federation",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "KOS",
+    "country": "Kosovo",
+    "name": "CANOE FEDERATION OF KOSOVO",
+    "slug": "canoe-federation-kosovo",
+    "icf_url": "https://www.canoeicf.com/federation/canoe-federation-kosovo",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "KUW",
+    "country": "Kuwait",
+    "name": "KUWAIT SEA SPORT CLUB",
+    "slug": "kuwait-sea-sport-club",
+    "icf_url": "https://www.canoeicf.com/federation/kuwait-sea-sport-club",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "KGZ",
+    "country": "Kyrgyz Republic",
+    "name": "CANOE KAYAK FEDERATION OF KYRGYZSTAN",
+    "slug": "canoe-kayak-federation-kyrgyzstan",
+    "icf_url": "https://www.canoeicf.com/federation/canoe-kayak-federation-kyrgyzstan",
+    "continent": "Other"
+  },
+  {
+    "ioc_code": "LAO",
+    "country": "Lao People&#039;S Democratic Republic",
+    "name": "LAO CANOE-KAYAK FEDERATION",
+    "slug": "lao-canoe-kayak-federation",
+    "icf_url": "https://www.canoeicf.com/federation/lao-canoe-kayak-federation",
+    "continent": "Other"
+  },
+  {
+    "ioc_code": "LAT",
+    "country": "Latvia",
+    "name": "LATVIA CANOE FEDERATION",
+    "slug": "latvia-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/latvia-canoe-federation",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "LBN",
+    "country": "Lebanon",
+    "name": "FÉDÉRATION LIBANAISE DE CANOË-KAYAK",
+    "slug": "federation-libanaise-de-canoe-kayak",
+    "icf_url": "https://www.canoeicf.com/federation/federation-libanaise-de-canoe-kayak",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "LBR",
+    "country": "Liberia",
+    "name": "LIBERIA ROWING AND CANOEING FEDERATION (LRCF)",
+    "slug": "liberia-rowing-and-canoeing-federation-lrcf",
+    "icf_url": "https://www.canoeicf.com/federation/liberia-rowing-and-canoeing-federation-lrcf",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "LBA",
+    "country": "Libya",
+    "name": "THE GENERAL LIBYAN SAILING AND SEA SPORT FEDERATION",
+    "slug": "general-libyan-sailing-and-sea-sport-federation",
+    "icf_url": "https://www.canoeicf.com/federation/general-libyan-sailing-and-sea-sport-federation",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "LTU",
+    "country": "Lithuania",
+    "name": "LITHUANIAN CANOE FEDERATION",
+    "slug": "lithuanian-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/lithuanian-canoe-federation",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "LUX",
+    "country": "Luxembourg",
+    "name": "FÉDÉRATION LUXEMBOURGOISE DE CANOE-KAYAK FLCK",
+    "slug": "federation-luxembourgoise-de-canoe-kayak-flck",
+    "icf_url": "https://www.canoeicf.com/federation/federation-luxembourgoise-de-canoe-kayak-flck",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "MAC",
+    "country": "Macau China",
+    "name": "GENERAL ASSOCIATION OF MACAU CANOEING",
+    "slug": "general-association-macau-canoeing",
+    "icf_url": "https://www.canoeicf.com/federation/general-association-macau-canoeing",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "MAD",
+    "country": "Madagascar",
+    "name": "MADAGASCAR CANOE KAYAK FEDERATION",
+    "slug": "madagascar-canoe-kayak-federation",
+    "icf_url": "https://www.canoeicf.com/federation/madagascar-canoe-kayak-federation",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "MAW",
+    "country": "Malawi",
+    "name": "CANOEING ASSOCIATION OF MALAWI",
+    "slug": "canoeing-association-malawi",
+    "icf_url": "https://www.canoeicf.com/federation/canoeing-association-malawi",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "MAS",
+    "country": "Malaysia",
+    "name": "MALAYSIA CANOE ASSOCIATION",
+    "slug": "malaysia-canoe-association",
+    "icf_url": "https://www.canoeicf.com/federation/malaysia-canoe-association",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "MLI",
+    "country": "Mali",
+    "name": "FEDERATION MALLIENNE DE CANOE KAYAK",
+    "slug": "federation-mallienne-de-canoe-kayak",
+    "icf_url": "https://www.canoeicf.com/federation/federation-mallienne-de-canoe-kayak",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "MLT",
+    "country": "Malta",
+    "name": "MALTA CANOE FEDERATION",
+    "slug": "malta-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/malta-canoe-federation",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "MRI",
+    "country": "Mauritius",
+    "name": "MAURITIUS CANOE/KAYAK FEDERATION",
+    "slug": "mauritius-canoekayak-federation",
+    "icf_url": "https://www.canoeicf.com/federation/mauritius-canoekayak-federation",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "MEX",
+    "country": "Mexico",
+    "name": "FEDERACIÓN MEXICANA DE CANOTAJE",
+    "slug": "federacion-mexicana-de-canotaje",
+    "icf_url": "https://www.canoeicf.com/federation/federacion-mexicana-de-canotaje",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "MDA",
+    "country": "Moldova",
+    "name": "KAYAK-CANOE FEDERATION OF MOLDOVA",
+    "slug": "kayak-canoe-federation-moldova",
+    "icf_url": "https://www.canoeicf.com/federation/kayak-canoe-federation-moldova",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "MGL",
+    "country": "Mongolia",
+    "name": "MONGOLIAN CANOE AND KAYAK ASSOCIATION",
+    "slug": "mongolian-canoe-and-kayak-association",
+    "icf_url": "https://www.canoeicf.com/federation/mongolian-canoe-and-kayak-association",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "MNE",
+    "country": "Montenegro",
+    "name": "MONTENEGRIN CANOE FEDERATION",
+    "slug": "montenegrin-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/montenegrin-canoe-federation",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "MAR",
+    "country": "Morocco",
+    "name": "FÉDÉRATION ROYALE MAROCAINE DE CANOE-KAYAK",
+    "slug": "federation-royale-marocaine-de-canoe-kayak",
+    "icf_url": "https://www.canoeicf.com/federation/federation-royale-marocaine-de-canoe-kayak",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "MOZ",
+    "country": "Mozambique",
+    "name": "FEDERACAO MOCAMBICANA DE VELA E CANOAGEM",
+    "slug": "federacao-mocambicana-de-vela-e-canoagem",
+    "icf_url": "https://www.canoeicf.com/federation/federacao-mocambicana-de-vela-e-canoagem",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "MYA",
+    "country": "Myanmar",
+    "name": "MYANMAR ROWING & CANOEING FEDERATION",
+    "slug": "myanmar-rowing-canoeing-federation",
+    "icf_url": "https://www.canoeicf.com/federation/myanmar-rowing-canoeing-federation",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "NAM",
+    "country": "Namibia",
+    "name": "NAMIBIA CANOEING & ROWING FEDERATION",
+    "slug": "namibia-canoeing-rowing-federation",
+    "icf_url": "https://www.canoeicf.com/federation/namibia-canoeing-rowing-federation",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "NEP",
+    "country": "Nepal",
+    "name": "NEPAL RAFTING AND CANOEING ASSOCIATION",
+    "slug": "nepal-rafting-and-canoeing-association",
+    "icf_url": "https://www.canoeicf.com/federation/nepal-rafting-and-canoeing-association",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "NED",
+    "country": "Netherlands",
+    "name": "WATERSPORTVERBOND",
+    "slug": "watersportverbond",
+    "icf_url": "https://www.canoeicf.com/federation/watersportverbond",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "NZL",
+    "country": "New Zealand",
+    "name": "NEW ZEALAND CANOEING FEDERATION INC.",
+    "slug": "new-zealand-canoeing-federation-inc",
+    "icf_url": "https://www.canoeicf.com/federation/new-zealand-canoeing-federation-inc",
+    "continent": "Oceania"
+  },
+  {
+    "ioc_code": "NCA",
+    "country": "Nicaragua",
+    "name": "FEDERACIÓN NICARAGÜENSE DE CANOTAJE",
+    "slug": "federacion-nicaraguense-de-canotaje",
+    "icf_url": "https://www.canoeicf.com/federation/federacion-nicaraguense-de-canotaje",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "NGR",
+    "country": "Nigeria",
+    "name": "NIGERIAN ROWING CANOE AND SAILING FEDERATION",
+    "slug": "nigerian-rowing-canoe-and-sailing-federation",
+    "icf_url": "https://www.canoeicf.com/federation/nigerian-rowing-canoe-and-sailing-federation",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "NOR",
+    "country": "Norway",
+    "name": "NORGES PADLEFORBUND",
+    "slug": "norges-padleforbund",
+    "icf_url": "https://www.canoeicf.com/federation/norges-padleforbund",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "PAK",
+    "country": "Pakistan",
+    "name": "PAKISTAN CANOE AND KAYAK FEDERATION",
+    "slug": "pakistan-canoe-and-kayak-federation",
+    "icf_url": "https://www.canoeicf.com/federation/pakistan-canoe-and-kayak-federation",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "PLW",
+    "country": "Palau",
+    "name": "PALAU CANOE AND WATERSPORTS FEDERATION",
+    "slug": "palau-canoe-and-watersports-federation",
+    "icf_url": "https://www.canoeicf.com/federation/palau-canoe-and-watersports-federation",
+    "continent": "Oceania"
+  },
+  {
+    "ioc_code": "PLE",
+    "country": "Palestine",
+    "name": "PALESTINE SAILING AND ROWING FEDERATION",
+    "slug": "palestine-sailing-and-rowing-federation",
+    "icf_url": "https://www.canoeicf.com/federation/palestine-sailing-and-rowing-federation",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "PAN",
+    "country": "Panama",
+    "name": "UNIÓN PANAMEÑA DE REMO AFICIONADO",
+    "slug": "union-panamena-de-remo-aficionado",
+    "icf_url": "https://www.canoeicf.com/federation/union-panamena-de-remo-aficionado",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "PNG",
+    "country": "Papua New Guinea",
+    "name": "PAPUA NEW GUINEA CANOEING ASSOCIATION INC.",
+    "slug": "papua-new-guinea-canoeing-association-inc",
+    "icf_url": "https://www.canoeicf.com/federation/papua-new-guinea-canoeing-association-inc",
+    "continent": "Oceania"
+  },
+  {
+    "ioc_code": "PAR",
+    "country": "Paraguay",
+    "name": "FEDERACIÓN PARAGUAYA DE CANOTAJE 'FEPACA'",
+    "slug": "federacion-paraguaya-de-canotaje-fepaca",
+    "icf_url": "https://www.canoeicf.com/federation/federacion-paraguaya-de-canotaje-fepaca",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "CHN",
+    "country": "Peoples Republic Of China",
+    "name": "CHINESE CANOE ASSOCIATION",
+    "slug": "chinese-canoe-association",
+    "icf_url": "https://www.canoeicf.com/federation/chinese-canoe-association",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "PER",
+    "country": "Peru",
+    "name": "FEDERACION DEPORTIVA NACIONAL DE CANOTAJE",
+    "slug": "federacion-deportiva-nacional-de-canotaje",
+    "icf_url": "https://www.canoeicf.com/federation/federacion-deportiva-nacional-de-canotaje",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "PHI",
+    "country": "Philippines",
+    "name": "PHILIPPINE PADDLING FEDERATION (PPF)",
+    "slug": "philippine-paddling-federation-ppf",
+    "icf_url": "https://www.canoeicf.com/federation/philippine-paddling-federation-ppf",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "POL",
+    "country": "Poland",
+    "name": "POLISH CANOE FEDERATION",
+    "slug": "polish-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/polish-canoe-federation",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "POR",
+    "country": "Portugal",
+    "name": "FEDERAÇÃO PORTUGUESA DE CANOAGEM",
+    "slug": "federacao-portuguesa-de-canoagem",
+    "icf_url": "https://www.canoeicf.com/federation/federacao-portuguesa-de-canoagem",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "PUR",
+    "country": "Puerto Rico",
+    "name": "FEDERACIÓN PUERTORRIQUEÑA DE CANOTAJE",
+    "slug": "federacion-puertorriquena-de-canotaje",
+    "icf_url": "https://www.canoeicf.com/federation/federacion-puertorriquena-de-canotaje",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "QAT",
+    "country": "Qatar",
+    "name": "QATAR SAILING AND ROWING FEDERATION",
+    "slug": "qatar-sailing-and-rowing-federation",
+    "icf_url": "https://www.canoeicf.com/federation/qatar-sailing-and-rowing-federation",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "GEQ",
+    "country": "Republic Of Equatorial-Guinea",
+    "name": "FEDERACIÓN ECUATOGUINEANA DE CANOA/KAYAK",
+    "slug": "federacion-ecuatoguineana-de-canoakayak",
+    "icf_url": "https://www.canoeicf.com/federation/federacion-ecuatoguineana-de-canoakayak",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "MKD",
+    "country": "Republic Of North Macedonia",
+    "name": "MACEDONIAN CANOE FEDERATION",
+    "slug": "macedonian-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/macedonian-canoe-federation",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "UZB",
+    "country": "Republic Of Uzbekistan",
+    "name": "THE ROWING AND CANOEING FEDERATION OF UZBEKISTAN",
+    "slug": "rowing-and-canoeing-federation-uzbekistan",
+    "icf_url": "https://www.canoeicf.com/federation/rowing-and-canoeing-federation-uzbekistan",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "ROU",
+    "country": "Romania",
+    "name": "FEDERATIA ROMANA DE KAIAC-CANOE",
+    "slug": "federatia-romana-de-kaiac-canoe",
+    "icf_url": "https://www.canoeicf.com/federation/federatia-romana-de-kaiac-canoe",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "RUS",
+    "country": "Russia",
+    "name": "RUSSIAN CANOE FEDERATION",
+    "slug": "russian-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/russian-canoe-federation",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "VIN",
+    "country": "Saint Vincent And The Grenadines",
+    "name": "SAINT VINCENT AND THE GRENADINES CANOE ASSOCIATION",
+    "slug": "saint-vincent-and-grenadines-canoe-association",
+    "icf_url": "https://www.canoeicf.com/federation/saint-vincent-and-grenadines-canoe-association",
+    "continent": "Other"
+  },
+  {
+    "ioc_code": "SAM",
+    "country": "Samoa",
+    "name": "FAALAPOTOPOTOGA ALO VA'A SAMOA - SAMOA OUTRIGGER CANOE ASSOCIATION (SOCA)",
+    "slug": "faalapotopotoga-alo-vaa-samoa-samoa-outrigger-canoe-association-soca",
+    "icf_url": "https://www.canoeicf.com/federation/faalapotopotoga-alo-vaa-samoa-samoa-outrigger-canoe-association-soca",
+    "continent": "Oceania"
+  },
+  {
+    "ioc_code": "STP",
+    "country": "Sao Tome And Principe",
+    "name": "SAO TOME AND PRINCIPE CANOE FEDERATION",
+    "slug": "sao-tome-and-principe-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/sao-tome-and-principe-canoe-federation",
+    "continent": "Other"
+  },
+  {
+    "ioc_code": "KSA",
+    "country": "Saudi Arabia",
+    "name": "SAUDI CANOE AND KAYAK FEDERATION",
+    "slug": "saudi-canoe-and-kayak-federation",
+    "icf_url": "https://www.canoeicf.com/federation/saudi-canoe-and-kayak-federation",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "SEN",
+    "country": "Senegal",
+    "name": "FEDERATION SENEGALAISE DE CANOE KAYAK",
+    "slug": "federation-senegalaise-de-canoe-kayak",
+    "icf_url": "https://www.canoeicf.com/federation/federation-senegalaise-de-canoe-kayak",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "SRB",
+    "country": "Serbia",
+    "name": "CANOE FEDERATION OF SERBIA",
+    "slug": "canoe-federation-serbia",
+    "icf_url": "https://www.canoeicf.com/federation/canoe-federation-serbia",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "SEY",
+    "country": "Seychelles",
+    "name": "SEYCHELLES CANOE ASSOCIATION",
+    "slug": "seychelles-canoe-association",
+    "icf_url": "https://www.canoeicf.com/federation/seychelles-canoe-association",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "SLE",
+    "country": "Sierra Leone",
+    "name": "SIERRA LEONE",
+    "slug": "sierra-leone",
+    "icf_url": "https://www.canoeicf.com/federation/sierra-leone",
+    "continent": "Other"
+  },
+  {
+    "ioc_code": "SGP",
+    "country": "Singapore",
+    "name": "SINGAPORE CANOE FEDERATION",
+    "slug": "singapore-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/singapore-canoe-federation",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "SXM",
+    "country": "Sint Maarten",
+    "name": "SINT MAARTEN CANOE FEDERATION",
+    "slug": "sint-maarten-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/sint-maarten-canoe-federation",
+    "continent": "Other"
+  },
+  {
+    "ioc_code": "SVK",
+    "country": "Slovakia",
+    "name": "SLOVAK CANOEING",
+    "slug": "slovak-canoeing",
+    "icf_url": "https://www.canoeicf.com/federation/slovak-canoeing",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "SLO",
+    "country": "Slovenia",
+    "name": "CANOE FEDERATION OF SLOVENIA",
+    "slug": "canoe-federation-slovenia",
+    "icf_url": "https://www.canoeicf.com/federation/canoe-federation-slovenia",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "SOL",
+    "country": "Solomon Islands",
+    "name": "SOLOMON ISLANDS OUTRIGGER AND CANOE FEDERATION",
+    "slug": "solomon-islands-outrigger-and-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/solomon-islands-outrigger-and-canoe-federation",
+    "continent": "Oceania"
+  },
+  {
+    "ioc_code": "SOM",
+    "country": "Somalia",
+    "name": "SOMALI ROWING AND CANOEING FEDERATION",
+    "slug": "somali-rowing-and-canoeing-federation",
+    "icf_url": "https://www.canoeicf.com/federation/somali-rowing-and-canoeing-federation",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "RSA",
+    "country": "South Africa",
+    "name": "PADDLESPORT SOUTH AFRICA",
+    "slug": "paddlesport-south-africa",
+    "icf_url": "https://www.canoeicf.com/federation/paddlesport-south-africa",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "ESP",
+    "country": "Spain",
+    "name": "REAL FEDERACIÓN ESPAÑOLA DE PIRAGÜISMO",
+    "slug": "real-federacion-espanola-de-piraguismo",
+    "icf_url": "https://www.canoeicf.com/federation/real-federacion-espanola-de-piraguismo",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "SRI",
+    "country": "Sri Lanka",
+    "name": "NATIONAL ASSOCIATION OF CANOEING AND KAYAKING IN SRI LANKA",
+    "slug": "national-association-canoeing-and-kayaking-sri-lanka",
+    "icf_url": "https://www.canoeicf.com/federation/national-association-canoeing-and-kayaking-sri-lanka",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "SUD",
+    "country": "Sudan",
+    "name": "SUDANESE ROWING & CANOE FEDERATION",
+    "slug": "sudanese-rowing-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/sudanese-rowing-canoe-federation",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "SUR",
+    "country": "Suriname",
+    "name": "SURINAME CANOE FEDERATION",
+    "slug": "suriname-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/suriname-canoe-federation",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "SWE",
+    "country": "Sweden",
+    "name": "SVENSKA KANOTFÖRBUNDET",
+    "slug": "svenska-kanotforbundet",
+    "icf_url": "https://www.canoeicf.com/federation/svenska-kanotforbundet",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "SUI",
+    "country": "Switzerland",
+    "name": "SCHWEIZERISCHER KANU-VERBAND (SKV)",
+    "slug": "schweizerischer-kanu-verband-skv",
+    "icf_url": "https://www.canoeicf.com/federation/schweizerischer-kanu-verband-skv",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "TAH",
+    "country": "Tahiti",
+    "name": "FEDERATION POLYNESIENNE DE KAYAK SURFSKI",
+    "slug": "federation-polynesienne-de-kayak-surfski",
+    "icf_url": "https://www.canoeicf.com/federation/federation-polynesienne-de-kayak-surfski",
+    "continent": "Oceania"
+  },
+  {
+    "ioc_code": "TJK",
+    "country": "Tajikistan",
+    "name": "CANOE FEDERATION OF TAJIKISTAN",
+    "slug": "canoe-federation-tajikistan",
+    "icf_url": "https://www.canoeicf.com/federation/canoe-federation-tajikistan",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "AIN",
+    "country": "Test",
+    "name": "TEST",
+    "slug": "test",
+    "icf_url": "https://www.canoeicf.com/federation/test",
+    "continent": "Other"
+  },
+  {
+    "ioc_code": "THA",
+    "country": "Thailand",
+    "name": "THE ROWING AND CANOEING ASSOCIATION OF THAILAND",
+    "slug": "rowing-and-canoeing-association-thailand",
+    "icf_url": "https://www.canoeicf.com/federation/rowing-and-canoeing-association-thailand",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "TOG",
+    "country": "Togo",
+    "name": "FÉDÉRATION TOGOLAISE DE CANOË",
+    "slug": "federation-togolaise-de-canoe",
+    "icf_url": "https://www.canoeicf.com/federation/federation-togolaise-de-canoe",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "TTO",
+    "country": "Trinidad And Tobago",
+    "name": "TRINIDAD & TOBAGO CANOEING & ROWING FEDERATION",
+    "slug": "trinidad-tobago-canoeing-rowing-federation",
+    "icf_url": "https://www.canoeicf.com/federation/trinidad-tobago-canoeing-rowing-federation",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "TUN",
+    "country": "Tunisia",
+    "name": "FÉDÉRATION TUNISIENNE DE CANOE-KAYAK",
+    "slug": "federation-tunisienne-de-canoe-kayak",
+    "icf_url": "https://www.canoeicf.com/federation/federation-tunisienne-de-canoe-kayak",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "TUR",
+    "country": "Turkiye",
+    "name": "TURKISH CANOE FEDERATION",
+    "slug": "turkish-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/turkish-canoe-federation",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "TKM",
+    "country": "Turkmenistan",
+    "name": "TURKMENISTAN ROWING AND CANOE FEDERATION",
+    "slug": "turkmenistan-rowing-and-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/turkmenistan-rowing-and-canoe-federation",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "UGA",
+    "country": "Uganda",
+    "name": "UGANDA CANOE FEDERATION",
+    "slug": "uganda-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/uganda-canoe-federation",
+    "continent": "Africa"
+  },
+  {
+    "ioc_code": "UKR",
+    "country": "Ukraine",
+    "name": "UKRAINIAN CANOE FEDERATION",
+    "slug": "ukrainian-canoe-federation",
+    "icf_url": "https://www.canoeicf.com/federation/ukrainian-canoe-federation",
+    "continent": "Europe"
+  },
+  {
+    "ioc_code": "UAE",
+    "country": "United Arab Emirates",
+    "name": "EMIRATES CANOE AND RAFTING FEDERATION",
+    "slug": "emirates-canoe-and-rafting-federation",
+    "icf_url": "https://www.canoeicf.com/federation/emirates-canoe-and-rafting-federation",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "USA",
+    "country": "United States Of America",
+    "name": "AMERICAN CANOE ASSOCIATION (ACA)",
+    "slug": "american-canoe-association-aca",
+    "icf_url": "https://www.canoeicf.com/federation/american-canoe-association-aca",
+    "continent": "Other"
+  },
+  {
+    "ioc_code": "URU",
+    "country": "Uruguay",
+    "name": "FEDERACIÓN URUGUAYA DE CANOTAJE",
+    "slug": "federacion-uruguaya-de-canotaje",
+    "icf_url": "https://www.canoeicf.com/federation/federacion-uruguaya-de-canotaje",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "VAN",
+    "country": "Vanuatu",
+    "name": "VANUATU CANOEING ASSOCIATION",
+    "slug": "vanuatu-canoeing-association",
+    "icf_url": "https://www.canoeicf.com/federation/vanuatu-canoeing-association",
+    "continent": "Oceania"
+  },
+  {
+    "ioc_code": "VEN",
+    "country": "Venezuela",
+    "name": "FEDERACIÓN VENEZOLANA DE CANOTAJE",
+    "slug": "federacion-venezolana-de-canotaje",
+    "icf_url": "https://www.canoeicf.com/federation/federacion-venezolana-de-canotaje",
+    "continent": "Americas"
+  },
+  {
+    "ioc_code": "VIE",
+    "country": "Vietnam",
+    "name": "VIETNAM CANOEING, ROWING AND SAILING FEDERATION",
+    "slug": "vietnam-canoeing-rowing-and-sailing-federation",
+    "icf_url": "https://www.canoeicf.com/federation/vietnam-canoeing-rowing-and-sailing-federation",
+    "continent": "Asia"
+  },
+  {
+    "ioc_code": "ZAM",
+    "country": "Zambia",
+    "name": "ZAMBIA AMATEUR ROWING AND CANOEING ASSOCIATION",
+    "slug": "zambia-amateur-rowing-and-canoeing-association",
+    "icf_url": "https://www.canoeicf.com/federation/zambia-amateur-rowing-and-canoeing-association",
+    "continent": "Africa"
+  }
+]
