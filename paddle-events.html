@@ -262,7 +262,8 @@ async function loadEvents() {
 }
 
 function daysAway(dateStr) {
-    const d = new Date(dateStr + 'T00:00:00');
+    if (!dateStr) return 999;
+    const d = new Date(dateStr);
     const now = new Date(); now.setHours(0,0,0,0);
     return Math.ceil((d - now) / 86400000);
 }
@@ -351,11 +352,12 @@ function renderEvents() {
 
 function formatDateRange(start, end) {
     if (!start) return 'TBD';
-    const s = new Date(start + 'T12:00:00');
+    const s = new Date(start);
     const opts = { month: 'short', day: 'numeric', year: 'numeric' };
     if (!end || start === end) return s.toLocaleDateString('en-US', opts);
-    const e = new Date(end + 'T12:00:00');
-    if (s.getMonth() === e.getMonth()) return `${s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}–${e.getDate()}, ${s.getFullYear()}`;
+    const e = new Date(end);
+    if (s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear())
+        return `${s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}–${e.getDate()}, ${s.getFullYear()}`;
     return `${s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${e.toLocaleDateString('en-US', opts)}`;
 }
 
