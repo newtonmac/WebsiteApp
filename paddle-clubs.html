@@ -756,6 +756,7 @@
 
                 // Determine what was searched (country, state, city)
                 let searchCountry = '', searchState = '', searchCity = '';
+                let isCountry = false, isState = false;
                 if (place.address_components) {
                     for (const comp of place.address_components) {
                         if (comp.types.includes('country')) searchCountry = comp.short_name;
@@ -763,20 +764,29 @@
                         if (comp.types.includes('locality')) searchCity = comp.long_name;
                         if (comp.types.includes('postal_code')) searchCity = comp.long_name;
                     }
+                    // Detect if the search was for a state or country (not a city)
+                    const types = place.types || [];
+                    isCountry = types.includes('country');
+                    isState = types.includes('administrative_area_level_1');
                 }
 
                 // Filter clubs by the searched location
                 filterByLocation(searchCountry, searchState, searchCity);
 
-                // Move map to show results
-                if (filteredClubs.length > 0) {
+                // Zoom map to the place viewport (state/country boundaries)
+                // This gives proper geographic framing instead of fitting to scattered markers
+                if (place.geometry.viewport && (isState || isCountry)) {
+                    // Use Google's viewport for state/country — shows actual boundaries
+                    map.fitBounds(place.geometry.viewport, { top: 40, bottom: 40, left: 40, right: 40 });
+                } else if (filteredClubs.length > 0) {
+                    // For city/zip searches, fit to the clubs found
                     const bounds = new google.maps.LatLngBounds();
                     filteredClubs.forEach(c => {
                         if (c.la && c.lo) {
                             bounds.extend({ lat: c.la, lng: c.lo });
                         }
                     });
-                    map.fitBounds(bounds);
+                    map.fitBounds(bounds, 60);
                     if (filteredClubs.length === 1) map.setZoom(12);
                 } else if (place.geometry.viewport) {
                     map.fitBounds(place.geometry.viewport);
@@ -850,7 +860,7 @@
             if (filteredClubs.length > 0) {
                 const bounds = new google.maps.LatLngBounds();
                 filteredClubs.forEach(c => { if (c.la && c.lo) bounds.extend({ lat: c.la, lng: c.lo }); });
-                map.fitBounds(bounds);
+                map.fitBounds(bounds, 60);
             }
         }
 
@@ -879,7 +889,7 @@
                         hasCoords = true;
                     }
                 });
-                if (hasCoords) map.fitBounds(bounds);
+                if (hasCoords) map.fitBounds(bounds, 60);
             }
         }
 
