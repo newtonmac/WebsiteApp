@@ -54,7 +54,7 @@ module.exports = async (req, res) => {
         headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY || '', 'anthropic-version': '2023-06-01' },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 4000,
+          max_tokens: 8000,
           tools: [{ type: 'web_search_20250305', name: 'web_search' }],
           messages: [{ role: 'user', content: `Search for upcoming paddling events from ${src.name} (${src.url}) for 2026. Find races, regattas, championships, festivals.
 
@@ -80,17 +80,19 @@ Return ONLY the JSON array, nothing else.` }]
       });
 
       const data = await aiRes.json();
-      const textBlock = data.content?.find(b => b.type === 'text');
-      if (!textBlock) { results.push({ source: src.name, status: 'no_text', events: [] }); continue; }
+      // Collect ALL text blocks (web_search responses have tool_use + tool_result + text)
+      const textBlocks = (data.content || []).filter(b => b.type === 'text').map(b => b.text);
+      const fullText = textBlocks.join('\n');
+      if (!fullText.trim()) { results.push({ source: src.name, status: 'no_text', events: [] }); continue; }
 
       // Parse JSON from response
       let events = [];
       try {
-        const clean = textBlock.text.replace(/```json|```/g, '').trim();
+        const clean = fullText.replace(/```json|```/g, '').trim();
         events = JSON.parse(clean);
       } catch (e) {
         // Try to extract JSON array from text
-        const match = textBlock.text.match(/\[[\s\S]*\]/);
+        const match = fullText.match(/\[[\s\S]*\]/);
         if (match) { try { events = JSON.parse(match[0]); } catch (e2) {} }
       }
 
