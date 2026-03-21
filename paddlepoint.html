@@ -606,7 +606,49 @@
         <div class="hero-overlay">
             <h1 class="hero-title">Know Before You Paddle</h1>
             <p class="hero-subtitle">Real-time water conditions, weather, tides, clubs, and events for SUP, kayak, outrigger & canoe paddlers.</p>
+            <p style="color:rgba(255,255,255,0.6);font-size:13px;margin-top:8px;font-weight:500;">🌊 A free community resource for paddlers worldwide — no ads, no account required</p>
             <a href="paddle-conditions.html" class="hero-cta">Check Conditions</a>
+        </div>
+    </section>
+
+    <!-- DATA SOURCES SECTION -->
+    <section style="max-width:1200px;margin:0 auto 32px;padding:0 24px;">
+        <div style="background:linear-gradient(135deg,#0c4a6e,#164e63);border-radius:20px;padding:36px 32px;color:#fff;position:relative;overflow:hidden;">
+            <div style="position:absolute;inset:0;background:url('data:image/svg+xml,%3Csvg width=&quot;40&quot; height=&quot;40&quot; viewBox=&quot;0 0 40 40&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;%3E%3Cg fill=&quot;%23ffffff&quot; fill-opacity=&quot;0.04&quot;%3E%3Cpath d=&quot;M20 20.5V18H0v-2h20V0h2v16h18v2H22v4.5z&quot;/%3E%3C/g%3E%3C/svg%3E');"></div>
+            <div style="position:relative;">
+                <h2 style="font-size:24px;font-weight:800;margin-bottom:8px;">📡 Open Data, Full Transparency</h2>
+                <p style="font-size:15px;color:rgba(255,255,255,0.8);max-width:700px;line-height:1.6;margin-bottom:20px;">Every data point on PaddlePoint is sourced from reputable, publicly available resources. We publish and link to every data source directly on the page — so you can always verify and trace information back to the original provider.</p>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:20px;">
+                    <div style="background:rgba(255,255,255,0.1);border-radius:12px;padding:14px 16px;">
+                        <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🌊 Weather & Marine</div>
+                        <div style="font-size:12px;color:rgba(255,255,255,0.65);line-height:1.5;">Google Weather · Open-Meteo · NWS (weather.gov) — triple-source verification for temperature, wind, humidity, visibility, pressure</div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.1);border-radius:12px;padding:14px 16px;">
+                        <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🌡️ Tides & Water Temp</div>
+                        <div style="font-size:12px;color:rgba(255,255,255,0.65);line-height:1.5;">NOAA CO-OPS stations · Open-Meteo Marine satellite SST — real station readings cross-referenced with satellite data</div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.1);border-radius:12px;padding:14px 16px;">
+                        <div style="font-weight:700;font-size:14px;margin-bottom:4px;">💧 Water Quality & Safety</div>
+                        <div style="font-size:12px;color:rgba(255,255,255,0.65);line-height:1.5;">CA State Water Board · Swim Guide · NOAA HABSOS · CA FHAB (SFEI) — beach advisories, bacteria levels, harmful algal blooms</div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.1);border-radius:12px;padding:14px 16px;">
+                        <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🌬️ Air & River</div>
+                        <div style="font-size:12px;color:rgba(255,255,255,0.65);line-height:1.5;">Open-Meteo Air Quality · EPA AirNow · USGS Water Services — AQI, river flow rates, and stream conditions for inland paddlers</div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.1);border-radius:12px;padding:14px 16px;">
+                        <div style="font-weight:700;font-size:14px;margin-bottom:4px;">⚠️ Alerts & Coastal Access</div>
+                        <div style="font-size:12px;color:rgba(255,255,255,0.65);line-height:1.5;">National Weather Service alerts · CA Coastal Commission — active weather warnings and public beach access points</div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.1);border-radius:12px;padding:14px 16px;">
+                        <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🏁 Events & Clubs</div>
+                        <div style="font-size:12px;color:rgba(255,255,255,0.65);line-height:1.5;">21 governing bodies worldwide · ICF · ACA · Google Places — AI-powered scraping from official paddling organizations</div>
+                    </div>
+                </div>
+                <div style="background:rgba(255,255,255,0.08);border-left:3px solid rgba(255,255,255,0.4);border-radius:0 12px 12px 0;padding:14px 18px;">
+                    <div style="font-weight:700;font-size:14px;margin-bottom:4px;">🚀 Growing with Local Data</div>
+                    <p style="font-size:13px;color:rgba(255,255,255,0.7);line-height:1.6;margin:0;">Today we monitor conditions using national and international open data. As PaddlePoint expands, our goal is to integrate <strong style="color:#fff;">localized resources shared by municipalities, counties, and regional authorities</strong> — hyperlocal water quality reports, beach advisories, and flow data that paddlers in each community rely on. If your local agency publishes paddling-relevant data, <a href="mailto:nwtjml@gmail.com" style="color:#67e8f9;text-decoration:underline;">let us know</a>.</p>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -659,18 +701,38 @@
         const modalData = {
             about: {
                 html: `<h2>About PaddlePoint</h2>
+                <p style="background:linear-gradient(135deg,#0c4a6e,#164e63);color:#fff;padding:14px 18px;border-radius:12px;font-size:14px;font-weight:600;margin-bottom:16px;">🌊 PaddlePoint is a <strong>100% free community resource</strong> for paddlers worldwide. No ads, no accounts, no paywalls — just open data for the paddling community.</p>
                 <h3>What is PaddlePoint?</h3>
-                <p>PaddlePoint is a free, real-time resource built for paddlers — kayakers, stand-up paddleboarders, outrigger canoeists, dragon boaters, and anyone who loves being on the water.</p>
-                <h3>What We Offer</h3>
+                <p>PaddlePoint is built by paddlers, for paddlers — kayakers, stand-up paddleboarders, outrigger canoeists, surfski paddlers, dragon boaters, rowers, and anyone who loves being on the water. Our mission is to make paddling safer, more accessible, and more connected.</p>
+                <h3>What We Offer — All Free</h3>
                 <ul>
                     <li><strong>Water Conditions</strong> — Live wind, waves, tides, water quality, and a paddle score for any location</li>
-                    <li><strong>Weather & Tides</strong> — Detailed marine forecasts and tide predictions</li>
-                    <li><strong>Paddle Clubs</strong> — The world's largest paddling club directory with 7,700+ clubs across 77 countries</li>
-                    <li><strong>Events</strong> — Races, regattas, and clinics across the US and Canada</li>
+                    <li><strong>Weather & Tides</strong> — Triple-source marine forecasts (Google Weather + Open-Meteo + NWS)</li>
+                    <li><strong>Paddle Clubs</strong> — The world's largest paddling club directory: 7,700+ clubs across 77 countries</li>
+                    <li><strong>Events</strong> — Races, regattas, and championships worldwide, scraped from 21 governing body sources</li>
                     <li><strong>Gear</strong> — Equipment recommendations and a brand directory by discipline</li>
                 </ul>
+                <h3>Community Driven</h3>
+                <p>PaddlePoint is an open community project. You can suggest features, submit your club, and report events through the site. We believe paddling information should be free and accessible to everyone.</p>
                 <h3>How It Works</h3>
-                <p>PaddlePoint aggregates publicly available data from established sources including NOAA, Open-Meteo, Google Weather, NWS, and more. The app runs entirely in your browser — no accounts, no downloads required.</p>`
+                <p>PaddlePoint aggregates publicly available data from NOAA, Open-Meteo, Google Weather, NWS, USGS, and more. The app runs entirely in your browser — no accounts, no tracking, no downloads required.</p>
+                <h3>Open Data, Full Transparency</h3>
+                <p>Every data point on PaddlePoint is sourced from reputable, publicly available resources. We believe paddlers deserve to know <strong>where their information comes from</strong> — so we publish and link to every data source directly on the page. Whether it's weather, water temperature, tide predictions, or water quality advisories, you can always trace the data back to the original provider.</p>
+                <h3>Our Data Sources</h3>
+                <ul>
+                    <li><strong>Weather & Marine</strong> — <a href="https://open-meteo.com" target="_blank">Open-Meteo</a>, <a href="https://weather.google.com" target="_blank">Google Weather</a>, <a href="https://www.weather.gov" target="_blank">NWS (weather.gov)</a></li>
+                    <li><strong>Tides & Water Temp</strong> — <a href="https://tidesandcurrents.noaa.gov" target="_blank">NOAA CO-OPS</a></li>
+                    <li><strong>River Flow</strong> — <a href="https://waterservices.usgs.gov" target="_blank">USGS Water Services</a></li>
+                    <li><strong>Air Quality</strong> — <a href="https://open-meteo.com/en/docs/air-quality-api" target="_blank">Open-Meteo AQ</a>, <a href="https://www.airnow.gov" target="_blank">EPA AirNow</a></li>
+                    <li><strong>Water Quality</strong> — <a href="https://www.waterboards.ca.gov" target="_blank">CA State Water Board</a>, <a href="https://www.theswimguide.org" target="_blank">Swim Guide</a></li>
+                    <li><strong>Harmful Algal Blooms</strong> — <a href="https://habsos.noaa.gov" target="_blank">NOAA HABSOS</a>, <a href="https://fhab.sfei.org" target="_blank">CA FHAB (SFEI)</a></li>
+                    <li><strong>Weather Alerts</strong> — <a href="https://www.weather.gov" target="_blank">National Weather Service</a></li>
+                    <li><strong>Coastal Access</strong> — <a href="https://www.coastal.ca.gov/YourCoast/" target="_blank">CA Coastal Commission</a></li>
+                </ul>
+                <h3>Growing with Local Data</h3>
+                <p>Today PaddlePoint monitors conditions using national and international open data. As we expand, our goal is to integrate <strong>localized resources shared by municipalities, counties, and regional authorities</strong> — the kind of hyperlocal water quality reports, beach advisories, and flow data that paddlers in each community rely on. If your local agency publishes paddling-relevant data, <a href="mailto:nwtjml@gmail.com">let us know</a> — we want to include it.</p>
+                <h3>Support the Project</h3>
+                <p>PaddlePoint is a volunteer-driven project. If you find it useful, spread the word to your paddling community, suggest features, or submit your local club or event.</p>`
             },
             contact: {
                 html: `<h2>Contact Us</h2>

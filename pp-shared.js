@@ -79,11 +79,15 @@ const shipped=`
 <p>Club database protected behind API token + origin checking. No direct file access, anti-indexing headers, proprietary data secured.</p>
 <p class="cn-label">🌊 Real-Time Water Conditions</p>
 <p>San Diego County coverage with NOAA tides, NWS alerts, Open-Meteo wind/waves/swell/UV, Google Weather, beach water quality, and harmful algal bloom monitoring.</p>
+<p class="cn-label">📡 Open Data Transparency</p>
+<p>Every data source is published and linked directly on the page. Weather, water quality, tides, air quality — all traceable back to the original provider (NOAA, NWS, Open-Meteo, USGS, EPA, and more).</p>
 </div>
 <div class="coming-next">
 <h3 style="color:#60a5fa;">🚀 Coming Next</h3>
 <p class="cn-label">Expanding Coverage</p>
 <p>Starting from California and expanding outward across the U.S. and beyond, adding localized conditions for more paddling regions.</p>
+<p class="cn-label">Municipal &amp; Local Data Integration</p>
+<p>Integrating hyperlocal resources from municipalities, counties, and regional authorities — the water quality reports, beach advisories, and flow data that local paddlers depend on.</p>
 <p class="cn-label">Events Calendar</p>
 <p>Races, regattas, festivals, and paddling events worldwide with dates, locations, registration links, and craft types.</p>
 <p class="cn-label">Craft &amp; Location Matching</p>
