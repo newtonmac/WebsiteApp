@@ -306,6 +306,7 @@
         }
         .source-om { background: #dbeafe; color: #2563eb; }
         .source-gw { background: #fef3c7; color: #d97706; }
+        .source-nws { background: #dcfce7; color: #16a34a; }
 
         /* Condition sub-value (e.g. gusts, feels like) */
         .condition-sub {
@@ -848,7 +849,9 @@
         </div>
         <div class="golden-hour-row" id="goldenHourRow" style="display:none;"></div>
         <div class="data-sources">
+            <a href="https://weather.google.com" target="_blank" class="data-source-tag">Google Weather</a>
             <a href="https://open-meteo.com" target="_blank" class="data-source-tag">Open-Meteo</a>
+            <a href="https://www.weather.gov" target="_blank" class="data-source-tag">NWS</a>
         </div>
     </div>
 
@@ -1021,6 +1024,11 @@
                 </div>
             </div>
         </div>
+        <div class="data-sources">
+            <a href="https://open-meteo.com" target="_blank" class="data-source-tag">Open-Meteo</a>
+            <a href="https://open-meteo.com/en/docs/marine-weather-api" target="_blank" class="data-source-tag">Open-Meteo Marine</a>
+            <a href="https://www.weather.gov" target="_blank" class="data-source-tag">NWS Forecast</a>
+        </div>
     </div>
 
     <!-- Water Temperature -->
@@ -1098,6 +1106,7 @@
         <div class="chart-area" id="windChartArea">Wind trend will appear here</div>
         <div class="data-sources">
             <a href="https://open-meteo.com" target="_blank" class="data-source-tag">Open-Meteo</a>
+            <a href="https://www.weather.gov" target="_blank" class="data-source-tag">NWS</a>
         </div>
     </div>
 
@@ -1118,6 +1127,7 @@
         </div>
         <div class="data-sources">
             <a href="https://open-meteo.com" target="_blank" class="data-source-tag">Open-Meteo</a>
+            <a href="https://www.weather.gov" target="_blank" class="data-source-tag">NWS</a>
         </div>
     </div>
 
@@ -1142,6 +1152,7 @@
         </div>
         <div class="data-sources">
             <a href="https://open-meteo.com/en/docs/air-quality-api" target="_blank" class="data-source-tag">Open-Meteo Air Quality</a>
+            <a href="https://www.airnow.gov" target="_blank" class="data-source-tag">EPA AirNow</a>
         </div>
     </div>
 
@@ -1388,17 +1399,66 @@
         const heightUnit = isMetric ? 'm' : 'ft';
 
         try {
-            // Fetch Google Weather current + hourly, Open-Meteo for daily/marine, NOAA tides — all in parallel
-            const [googleCurrent, googleHourly, openMeteo, marine] = await Promise.all([
+            // Fetch Google Weather, Open-Meteo, Marine, NWS obs + forecast — all in parallel
+            const nwsHeaders = {'User-Agent':'PaddlePoint paddlepoint.org','Accept':'application/json'};
+            const nwsPointP = fetch(`https://api.weather.gov/points/${lat.toFixed(4)},${lon.toFixed(4)}`,{headers:nwsHeaders})
+                .then(r=>r.ok?r.json():null).catch(()=>null);
+
+            const [googleCurrent, googleHourly, openMeteo, marine, nwsPoint] = await Promise.all([
                 fetch(`https://weather.googleapis.com/v1/currentConditions:lookup?key=${GOOGLE_API_KEY}&location.latitude=${lat}&location.longitude=${lon}`)
                     .then(r => r.ok ? r.json() : null).catch(() => null),
                 fetch(`https://weather.googleapis.com/v1/forecast/hours:lookup?key=${GOOGLE_API_KEY}&location.latitude=${lat}&location.longitude=${lon}&hours=12`)
                     .then(r => r.ok ? r.json() : null).catch(() => null),
-                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index,visibility,weather_code,is_day,surface_pressure,dew_point_2m,precipitation&hourly=temperature_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation_probability,weather_code,is_day,cloud_cover&daily=weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_gusts_10m_max,precipitation_probability_max,sunrise,sunset&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=3`)
+                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index,visibility,weather_code,is_day,surface_pressure,dew_point_2m,precipitation&hourly=temperature_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation_probability,weather_code,is_day,cloud_cover&daily=weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_gusts_10m_max,precipitation_probability_max,sunrise,sunset&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=6`)
                     .then(r => r.json()),
-                fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&current=wave_height,wave_period,wave_direction,ocean_current_velocity,ocean_current_direction,swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature&hourly=wave_height,wave_period&daily=wave_height_max,wave_period_max&timezone=auto&forecast_days=3`)
-                    .then(r => r.ok ? r.json() : null).catch(() => null)
+                fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&current=wave_height,wave_period,wave_direction,ocean_current_velocity,ocean_current_direction,swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature&hourly=wave_height,wave_period,swell_wave_height&daily=wave_height_max,wave_period_max,swell_wave_height_max&timezone=auto&forecast_days=6`)
+                    .then(r => r.ok ? r.json() : null).catch(() => null),
+                nwsPointP
             ]);
+
+            // NWS chained fetches (obs + forecast) — in parallel after point lookup
+            let nwsObs = null, nwsForecast = null;
+            if (nwsPoint && nwsPoint.properties) {
+                const np = nwsPoint.properties;
+                const [obsRes, fcRes] = await Promise.all([
+                    fetch(np.observationStations, {headers:nwsHeaders})
+                        .then(r=>r.ok?r.json():null)
+                        .then(stns => stns&&stns.features&&stns.features[0] ?
+                            fetch(`https://api.weather.gov/stations/${stns.features[0].properties.stationIdentifier}/observations/latest`,{headers:nwsHeaders}).then(r=>r.ok?r.json():null) : null)
+                        .catch(()=>null),
+                    fetch(np.forecast, {headers:nwsHeaders}).then(r=>r.ok?r.json():null).catch(()=>null)
+                ]);
+                nwsObs = obsRes;
+                nwsForecast = fcRes;
+            }
+
+            // ======== Parse NWS observation data ========
+            let nws = null;
+            if (nwsObs && nwsObs.properties) {
+                const p = nwsObs.properties;
+                const cToF = (c) => c!=null ? Math.round(c*9/5+32) : null;
+                const msToMph = (ms) => ms!=null ? Math.round(ms*2.237) : null;
+                nws = {
+                    station: p.station ? p.station.split('/').pop() : '',
+                    desc: p.textDescription || '',
+                    tempF: cToF(p.temperature&&p.temperature.value),
+                    feelsF: cToF(p.windChill&&p.windChill.value!=null ? p.windChill.value : p.heatIndex&&p.heatIndex.value),
+                    dewF: cToF(p.dewpoint&&p.dewpoint.value),
+                    humidity: p.relativeHumidity&&p.relativeHumidity.value!=null ? Math.round(p.relativeHumidity.value) : null,
+                    windMph: msToMph(p.windSpeed&&p.windSpeed.value),
+                    gustMph: msToMph(p.windGust&&p.windGust.value),
+                    windDeg: p.windDirection&&p.windDirection.value!=null ? Math.round(p.windDirection.value) : null,
+                    pressHpa: p.barometricPressure&&p.barometricPressure.value!=null ? Math.round(p.barometricPressure.value/100) : null,
+                    visMi: p.visibility&&p.visibility.value!=null ? Math.round(p.visibility.value/1609.34*10)/10 : null,
+                };
+            }
+
+            // ======== Parse NWS text forecast periods ========
+            const nwsPeriods = nwsForecast&&nwsForecast.properties&&nwsForecast.properties.periods ? nwsForecast.properties.periods : [];
+
+            // ======== Parse Open-Meteo Marine SST ========
+            const marineSST = marine&&marine.current&&marine.current.sea_surface_temperature!=null
+                ? Math.round(marine.current.sea_surface_temperature*9/5+32) : null;
 
             // ======== Current Conditions (dual-source: Google + Open-Meteo) ========
             const cur = openMeteo.current;
@@ -1418,21 +1478,22 @@
                 return 'uv-low';
             }
 
-            // Temperature (with feels like)
+            // Temperature (with feels like — triple source)
             {
                 const el = document.getElementById('condTemp');
                 const omTemp = Math.round(cur.temperature_2m);
                 const gTemp = gc ? gTempF(gc.temperature) : null;
-                if (gTemp != null && omTemp != null) {
-                    el.querySelector('.condition-value').innerHTML = `${gTemp} <span class="condition-unit">&deg;F</span> <span class="source-tag source-gw">G</span>`;
-                    el.querySelector('.condition-sub').innerHTML = `Feels ${Math.round(cur.apparent_temperature)}&deg; &bull; <span class="source-tag source-om">OM</span> ${omTemp}&deg;`;
-                } else {
-                    el.querySelector('.condition-value').innerHTML = `${omTemp} <span class="condition-unit">&deg;F</span>`;
-                    el.querySelector('.condition-sub').textContent = `Feels like ${Math.round(cur.apparent_temperature)}\u00B0`;
-                }
+                const nwsTemp = nws ? nws.tempF : null;
+                const primary = gTemp || nwsTemp || omTemp;
+                el.querySelector('.condition-value').innerHTML = `${toDispTemp(primary)} <span class="condition-unit">${tempUnit}</span>`;
+                const sources = [];
+                if (gTemp!=null) sources.push(`<span class="source-tag source-gw">G</span>${toDispTemp(gTemp)}°`);
+                if (omTemp!=null) sources.push(`<span class="source-tag source-om">OM</span>${toDispTemp(omTemp)}°`);
+                if (nwsTemp!=null) sources.push(`<span class="source-tag source-nws">NWS</span>${toDispTemp(nwsTemp)}°`);
+                el.querySelector('.condition-sub').innerHTML = `Feels ${toDispTemp(Math.round(cur.apparent_temperature))}° · ${sources.join(' ')}`;
             }
 
-            // Wind (with gusts and dual source)
+            // Wind (triple source)
             {
                 const el = document.getElementById('condWind');
                 const omWind = Math.round(cur.wind_speed_10m);
@@ -1440,17 +1501,20 @@
                 const gWind = gc && gc.wind && gc.wind.speed ? Math.round(gc.wind.speed.value * 0.621371) : null;
                 const gDir = gc && gc.wind && gc.wind.direction ? windDirection(gc.wind.direction.degrees) : null;
                 const gGust = gc && gc.wind && gc.wind.gust ? Math.round(gc.wind.gust.value * 0.621371) : null;
-                const dir = gDir || windDirection(cur.wind_direction_10m);
+                const nwsWind = nws ? nws.windMph : null;
+                const nwsGust = nws ? nws.gustMph : null;
+                const nwsDir = nws && nws.windDeg != null ? windDirection(nws.windDeg) : null;
+                const primary = gWind || nwsWind || omWind;
+                const dir = gDir || nwsDir || windDirection(cur.wind_direction_10m);
 
-                if (gWind != null) {
-                    el.querySelector('.condition-value').innerHTML = `${gWind} <span class="condition-unit">mph</span> <span class="source-tag source-gw">G</span>`;
-                    document.getElementById('windDir').innerHTML = `${dir} &bull; <span class="source-tag source-om">OM</span> ${omWind} mph`;
-                } else {
-                    el.querySelector('.condition-value').innerHTML = `${omWind} <span class="condition-unit">mph</span>`;
-                    document.getElementById('windDir').textContent = `Dir: ${dir}`;
-                }
-                const gustVal = gGust || omGusts;
-                document.getElementById('windGusts').textContent = gustVal != null ? `Gusts: ${gustVal} mph` : '';
+                el.querySelector('.condition-value').innerHTML = `${toDispSpeed(primary)} <span class="condition-unit">${speedUnit}</span>`;
+                const wsrc = [];
+                if (gWind!=null) wsrc.push(`<span class="source-tag source-gw">G</span>${toDispSpeed(gWind)}`);
+                if (omWind!=null) wsrc.push(`<span class="source-tag source-om">OM</span>${toDispSpeed(omWind)}`);
+                if (nwsWind!=null) wsrc.push(`<span class="source-tag source-nws">NWS</span>${toDispSpeed(nwsWind)}`);
+                document.getElementById('windDir').innerHTML = `${dir} · ${wsrc.join(' ')} ${speedUnit}`;
+                const gustVal = gGust || nwsGust || omGusts;
+                document.getElementById('windGusts').textContent = gustVal != null ? `Gusts: ${toDispSpeed(gustVal)} ${speedUnit}` : '';
             }
 
             // Humidity
@@ -1458,11 +1522,14 @@
                 const el = document.getElementById('condHumidity');
                 const omHum = cur.relative_humidity_2m;
                 const gHum = gc ? gc.relativeHumidity : null;
-                if (gHum != null) {
-                    el.querySelector('.condition-value').innerHTML = `${gHum} <span class="condition-unit">%</span> <span class="source-tag source-gw">G</span>`;
-                } else {
-                    el.querySelector('.condition-value').innerHTML = `${omHum} <span class="condition-unit">%</span>`;
-                }
+                const nwsHum = nws ? nws.humidity : null;
+                const primary = gHum || nwsHum || omHum;
+                el.querySelector('.condition-value').innerHTML = `${primary} <span class="condition-unit">%</span>`;
+                const hsrc = [];
+                if (gHum!=null) hsrc.push(`<span class="source-tag source-gw">G</span>${gHum}%`);
+                if (omHum!=null) hsrc.push(`<span class="source-tag source-om">OM</span>${omHum}%`);
+                if (nwsHum!=null) hsrc.push(`<span class="source-tag source-nws">NWS</span>${nwsHum}%`);
+                el.querySelector('.condition-sub').innerHTML = hsrc.join(' ');
             }
 
             // UV Index (with color coding)
@@ -1473,27 +1540,42 @@
                 const uv = gUV != null ? gUV : (omUV != null ? omUV.toFixed(1) : '--');
                 const uvNum = parseFloat(uv);
                 const cls = !isNaN(uvNum) ? uvClass(uvNum) : '';
-                const tag = gUV != null ? '<span class="source-tag source-gw">G</span>' : '';
-                el.querySelector('.condition-value').innerHTML = `<span class="${cls}">${uv}</span> ${tag}`;
+                el.querySelector('.condition-value').innerHTML = `<span class="${cls}">${uv}</span>`;
+                const usrc = [];
+                if (gUV!=null) usrc.push(`<span class="source-tag source-gw">G</span>${gUV}`);
+                if (omUV!=null) usrc.push(`<span class="source-tag source-om">OM</span>${omUV.toFixed(1)}`);
+                el.querySelector('.condition-sub').innerHTML = usrc.join(' ');
             }
 
-            // Visibility
+            // Visibility (triple source)
             {
                 const el = document.getElementById('condVis');
-                if (gc && gc.visibility) {
-                    const visMi = (gc.visibility.value * 0.000621371).toFixed(1);
-                    el.querySelector('.condition-value').innerHTML = `${visMi} <span class="condition-unit">mi</span> <span class="source-tag source-gw">G</span>`;
-                } else {
-                    el.querySelector('.condition-value').innerHTML = `${(cur.visibility / 1609.34).toFixed(1)} <span class="condition-unit">mi</span>`;
-                }
+                const gVis = gc && gc.visibility ? (gc.visibility.value * 0.000621371) : null;
+                const omVis = cur.visibility ? (cur.visibility / 1609.34) : null;
+                const nwsVis = nws ? nws.visMi : null;
+                const primary = gVis || nwsVis || omVis || 0;
+                el.querySelector('.condition-value').innerHTML = `${toDispDist(primary)} <span class="condition-unit">${distUnit}</span>`;
+                const vsrc = [];
+                if (gVis!=null) vsrc.push(`<span class="source-tag source-gw">G</span>${toDispDist(gVis)}`);
+                if (omVis!=null) vsrc.push(`<span class="source-tag source-om">OM</span>${toDispDist(omVis)}`);
+                if (nwsVis!=null) vsrc.push(`<span class="source-tag source-nws">NWS</span>${toDispDist(nwsVis)}`);
+                el.querySelector('.condition-sub').innerHTML = vsrc.join(' ') + ` ${distUnit}`;
             }
 
-            // Pressure
+            // Pressure (triple source)
             {
                 const el = document.getElementById('condPressure');
-                const pressure = gc && gc.airPressure ? gc.airPressure.meanSeaLevelMillibars : (cur.surface_pressure || null);
-                if (pressure != null) {
-                    el.querySelector('.condition-value').innerHTML = `${Math.round(pressure)} <span class="condition-unit">hPa</span>`;
+                const gPres = gc && gc.airPressure ? Math.round(gc.airPressure.meanSeaLevelMillibars) : null;
+                const omPres = cur.surface_pressure ? Math.round(cur.surface_pressure) : null;
+                const nwsPres = nws ? nws.pressHpa : null;
+                const primary = gPres || nwsPres || omPres;
+                if (primary != null) {
+                    el.querySelector('.condition-value').innerHTML = `${primary} <span class="condition-unit">hPa</span>`;
+                    const psrc = [];
+                    if (gPres!=null) psrc.push(`<span class="source-tag source-gw">G</span>${gPres}`);
+                    if (omPres!=null) psrc.push(`<span class="source-tag source-om">OM</span>${omPres}`);
+                    if (nwsPres!=null) psrc.push(`<span class="source-tag source-nws">NWS</span>${nwsPres}`);
+                    el.querySelector('.condition-sub').innerHTML = psrc.join(' ') + ' hPa';
                 }
             }
 
@@ -1520,12 +1602,18 @@
                 document.getElementById('thunderChance').textContent = thunderPct != null ? `Thunder: ${thunderPct}%` : '';
             }
 
-            // Dew Point
+            // Dew Point (dual source)
             {
                 const el = document.getElementById('condDewpoint');
-                const dp = cur.dew_point_2m;
-                if (dp != null) {
-                    el.querySelector('.condition-value').innerHTML = `${toDispTemp(dp)} <span class="condition-unit">${tempUnit}</span>`;
+                const omDp = cur.dew_point_2m;
+                const nwsDp = nws ? nws.dewF : null;
+                const primary = nwsDp || (omDp != null ? Math.round(omDp) : null);
+                if (primary != null) {
+                    el.querySelector('.condition-value').innerHTML = `${toDispTemp(primary)} <span class="condition-unit">${tempUnit}</span>`;
+                    const dsrc = [];
+                    if (omDp!=null) dsrc.push(`<span class="source-tag source-om">OM</span>${toDispTemp(Math.round(omDp))}°`);
+                    if (nwsDp!=null) dsrc.push(`<span class="source-tag source-nws">NWS</span>${toDispTemp(nwsDp)}°`);
+                    el.querySelector('.condition-sub').innerHTML = dsrc.join(' ');
                 }
             }
 
@@ -1666,12 +1754,20 @@
                 const swellTxt = swellFt != null ? `${toDispHeight(swellFt)} ${heightUnit}` : `-- ${heightUnit}`;
                 const desc = weatherDesc(daily.weather_code[i]);
                 const rainBadge = rainPct != null && rainPct > 0 ? ` <span style="color:#3b82f6;font-size:11px;">\u{1F4A7}${rainPct}%</span>` : '';
+                // NWS detailed text for this day
+                let nwsDetail = '';
+                if (nwsPeriods.length) {
+                    const dayStr = dt.toLocaleDateString('en-US', { weekday: 'long' });
+                    const match = nwsPeriods.find(p => p.name === dayStr || p.name === dayStr + ' Night' || (i===0 && (p.name==='Today' || p.name==='This Afternoon' || p.name==='Tonight')));
+                    if (match) nwsDetail = match.shortForecast || '';
+                }
+                const descFinal = nwsDetail || desc;
                 forecastHTML += `<div class="forecast-row">
                     <div class="forecast-day">${dayName}</div>
                     <div class="forecast-cell"><div class="forecast-cell-value">${hi}\u00B0 / ${lo}\u00B0</div></div>
                     <div class="forecast-cell"><div class="forecast-cell-value">${windTxt} ${speedUnit}</div></div>
                     <div class="forecast-cell"><div class="forecast-cell-value">${swellTxt}</div></div>
-                    <div class="forecast-cell"><div class="forecast-cell-value">${desc}${rainBadge}</div></div>
+                    <div class="forecast-cell"><div class="forecast-cell-value">${descFinal}${rainBadge}</div></div>
                 </div>`;
             }
             forecastGrid.innerHTML = forecastHTML;
@@ -1711,9 +1807,16 @@
                 }
 
                 if (waterTemp != null) {
-                    wtValue.textContent = Math.round(waterTemp);
+                    wtValue.textContent = toDispTemp(Math.round(waterTemp));
+                    document.getElementById('waterTempLabel').innerHTML = `Water Temp (${tempUnit})`;
                     wtSource.textContent = wtSourceText;
                     wtStation.textContent = wtStationText;
+                    // Show secondary source if available
+                    if (wtSourceText === 'NOAA CO-OPS' && marineSST != null) {
+                        wtStation.innerHTML += ` · <span class="source-tag source-om">SST</span> ${toDispTemp(marineSST)}°`;
+                    } else if (wtSourceText !== 'NOAA CO-OPS' && marineSST == null) {
+                        // already showing marine SST
+                    }
                 } else {
                     wtValue.textContent = '--';
                     document.getElementById('waterTempLabel').textContent = 'No water temp data available';
