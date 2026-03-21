@@ -145,7 +145,7 @@ body { font-family:'Inter',sans-serif; background:#f8fafc; color:#1e293b; }
     <div class="detail-modal">
         <div class="detail-header">
             <div style="display:flex;align-items:center;gap:16px;">
-                <img id="detailLogo" src="" style="width:56px;height:56px;border-radius:10px;object-fit:contain;background:#f1f5f9;display:none;">
+                <img id="detailLogo" src="" style="width:56px;height:56px;border-radius:10px;object-fit:contain;background:#f1f5f9;display:none;" referrerpolicy="no-referrer" onerror="this.style.display='none'">
                 <div>
                     <h2 id="detailName"></h2>
                     <span class="detail-country" id="detailCountry"></span>
@@ -277,8 +277,10 @@ function renderFeds(feds) {
     const grid = document.getElementById('fedGrid');
     grid.innerHTML = feds.map(f => {
         const cls = CONTINENT_COLORS[(f.continent||'').toLowerCase()] || '';
+        const badge = `<span class="fed-ioc ${cls}">${f.ioc_code||'?'}</span>`;
+        const logo = f.logo_url ? `<img src="${f.logo_url}" style="width:32px;height:32px;border-radius:6px;object-fit:contain;background:#f1f5f9;" referrerpolicy="no-referrer" onerror="this.style.display='none';this.nextElementSibling.style.display=''">` : '';
         return `<div class="fed-card" onclick="showDetail(${f.id})" style="cursor:pointer;">
-            <span class="fed-ioc ${cls}">${f.ioc_code||'?'}</span>
+            ${logo}${f.logo_url ? `<span class="fed-ioc ${cls}" style="display:none">${f.ioc_code||'?'}</span>` : badge}
             <div class="fed-info">
                 <div class="fed-country">${f.country||'—'}</div>
                 <div class="fed-name">${f.name}</div>
