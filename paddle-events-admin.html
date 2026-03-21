@@ -187,14 +187,34 @@
 <script>
     const API_TOKEN = 'pp-clubs-7742-v1';
     const SOURCES = [
+        // North America
         { name: 'American Canoe Association', flag: '🇺🇸' },
+        { name: 'USA SUP', flag: '🇺🇸' },
         { name: 'Canoe Kayak Canada', flag: '🇨🇦' },
-        { name: 'ICF', flag: '🌍' },
-        { name: 'British Canoeing', flag: '🇬🇧' },
-        { name: 'Paddle Australia', flag: '🇦🇺' },
-        { name: 'USA Surfing (SUP)', flag: '🇺🇸' },
-        { name: 'Dragon Boat Canada', flag: '🇨🇦' },
         { name: 'US Dragon Boat Federation', flag: '🇺🇸' },
+        { name: 'Dragon Boat Canada', flag: '🇨🇦' },
+        { name: 'USA Surfing (SUP)', flag: '🇺🇸' },
+        // International
+        { name: 'ICF', flag: '🌍' },
+        { name: 'European Canoe Association', flag: '🇪🇺' },
+        // Europe
+        { name: 'British Canoeing', flag: '🇬🇧' },
+        { name: 'French Canoe Federation (FFCK)', flag: '🇫🇷' },
+        { name: 'Deutscher Kanu-Verband', flag: '🇩🇪' },
+        { name: 'Spanish Canoe Federation', flag: '🇪🇸' },
+        { name: 'Italian Canoe Federation', flag: '🇮🇹' },
+        // Oceania
+        { name: 'Paddle Australia', flag: '🇦🇺' },
+        { name: 'Paddle New Zealand', flag: '🇳🇿' },
+        // SUP Circuits
+        { name: 'European SUP League', flag: '🏄' },
+        { name: 'TotalSUP Events', flag: '🌊' },
+        { name: 'PaddleGuru Races', flag: '🏁' },
+        // Outrigger
+        { name: 'IVF (Va\'a)', flag: '🛶' },
+        { name: 'USAORCA', flag: '🇺🇸' },
+        // Dragon Boat International
+        { name: 'IDBF', flag: '🐉' },
     ];
     const TYPE_LABELS = {regatta:'Regatta',trial:'Trial',international:'International',festival:'Festival',clinic:'Clinic',fun_paddle:'Fun Paddle'};
     const FIELDS = ['name','event_type','sports','level','start_date','end_date','venue','city','state','country','organizer','website','registration_status','registration_deadline','lat','lng','description','featured','source'];

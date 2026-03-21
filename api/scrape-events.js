@@ -3,14 +3,34 @@ const { query } = require('./_db');
 const API_TOKEN = 'pp-clubs-7742-v1';
 
 const SOURCES = [
-  { name: 'American Canoe Association', url: 'americancanoe.org', country: 'US', query: 'ACA American Canoe Association 2026 events races' },
-  { name: 'Canoe Kayak Canada', url: 'canoekayak.ca', country: 'CA', query: 'Canoe Kayak Canada 2026 events competitions' },
-  { name: 'ICF', url: 'canoeicf.com', country: 'INT', query: 'ICF International Canoe Federation 2026 world championships calendar' },
-  { name: 'British Canoeing', url: 'britishcanoeing.org.uk', country: 'GB', query: 'British Canoeing 2026 events races calendar' },
-  { name: 'Paddle Australia', url: 'paddle.org.au', country: 'AU', query: 'Paddle Australia 2026 events competitions calendar' },
-  { name: 'USA Surfing (SUP)', url: 'usasurfing.org', country: 'US', query: 'USA Surfing SUP 2026 events championships' },
-  { name: 'Dragon Boat Canada', url: 'dragonboat.ca', country: 'CA', query: 'Dragon Boat Canada 2026 festivals races' },
+  // NORTH AMERICA
+  { name: 'American Canoe Association', url: 'americancanoe.org', country: 'US', query: 'ACA American Canoe Association 2026 events races sprint slalom' },
+  { name: 'USA SUP', url: 'usasup.org', country: 'US', query: 'USA SUP 2026 national championships regional race series events' },
+  { name: 'Canoe Kayak Canada', url: 'canoekayak.ca', country: 'CA', query: 'Canoe Kayak Canada 2026 events competitions sprint slalom' },
   { name: 'US Dragon Boat Federation', url: 'usdbf.org', country: 'US', query: 'US Dragon Boat Federation 2026 events races festivals' },
+  { name: 'Dragon Boat Canada', url: 'dragonboat.ca', country: 'CA', query: 'Dragon Boat Canada 2026 festivals races events' },
+  { name: 'USA Surfing (SUP)', url: 'usasurfing.org', country: 'US', query: 'USA Surfing SUP 2026 events championships paddleboard' },
+  // INTERNATIONAL
+  { name: 'ICF', url: 'canoeicf.com', country: 'INT', query: 'ICF International Canoe Federation 2026 world championships world cup calendar' },
+  { name: 'European Canoe Association', url: 'canoe-europe.org', country: 'EU', query: 'European Canoe Association ECA 2026 European championships events' },
+  // EUROPE
+  { name: 'British Canoeing', url: 'britishcanoeing.org.uk', country: 'GB', query: 'British Canoeing 2026 events races national championships calendar' },
+  { name: 'French Canoe Federation (FFCK)', url: 'ffck.org', country: 'FR', query: 'FFCK Federation Francaise Canoe Kayak 2026 events competitions' },
+  { name: 'Deutscher Kanu-Verband', url: 'kanu.de', country: 'DE', query: 'Deutscher Kanu-Verband DKV Germany 2026 canoe kayak events' },
+  { name: 'Spanish Canoe Federation', url: 'rfep.es', country: 'ES', query: 'Real Federacion Espanola Piragüismo 2026 events races Spain' },
+  { name: 'Italian Canoe Federation', url: 'federcanoa.it', country: 'IT', query: 'Federazione Italiana Canoa Kayak 2026 events competitions Italy' },
+  // OCEANIA
+  { name: 'Paddle Australia', url: 'paddle.org.au', country: 'AU', query: 'Paddle Australia 2026 events competitions nationals calendar' },
+  { name: 'Paddle New Zealand', url: 'canoenz.org.nz', country: 'NZ', query: 'Canoe Racing New Zealand Paddle NZ 2026 events competitions' },
+  // SUP CIRCUITS
+  { name: 'European SUP League', url: 'standupmagazin.com', country: 'EU', query: 'European SUP League ESL 2026 calendar race series events' },
+  { name: 'TotalSUP Events', url: 'totalsup.com', country: 'INT', query: 'TotalSUP 2026 SUP race events calendar worldwide' },
+  { name: 'PaddleGuru Races', url: 'paddleguru.com', country: 'US', query: 'PaddleGuru 2026 paddle races SUP kayak outrigger events calendar' },
+  // OUTRIGGER
+  { name: 'IVF (Va\'a)', url: 'ivf.org.fj', country: 'INT', query: 'International Va\'a Federation IVF 2026 outrigger world sprints championships' },
+  { name: 'USAORCA', url: 'usaorca.org', country: 'US', query: 'USAORCA USA Outrigger 2026 national championships events races' },
+  // DRAGON BOAT INTERNATIONAL
+  { name: 'IDBF', url: 'idbf.org', country: 'INT', query: 'International Dragon Boat Federation IDBF 2026 world championships events races' },
 ];
 
 module.exports = async (req, res) => {
