@@ -203,7 +203,7 @@
     async function loadData() {
         document.getElementById('statsBar').textContent = 'Loading clubs...';
         try {
-            const res = await fetch('/api/clubs', {
+            const res = await fetch('/api/clubs?refresh=1', {
                 headers: { 'X-API-Token': 'pp-clubs-7742-v1' }
             });
             allClubs = await res.json();
@@ -370,6 +370,8 @@
         renderTable();
         updateStats();
         showToast('Club saved to database ✓');
+        // Invalidate cache so next page load gets fresh data
+        fetch('/api/clubs?refresh=1', { headers: { 'X-API-Token': 'pp-clubs-7742-v1' } }).catch(() => {});
     }
 
     async function deleteClub() {
@@ -400,6 +402,7 @@
         renderTable();
         updateStats();
         showToast('Club deleted from database', true);
+        fetch('/api/clubs?refresh=1', { headers: { 'X-API-Token': 'pp-clubs-7742-v1' } }).catch(() => {});
     }
     function exportChanges() {
         if (changes.length === 0 && deleted.length === 0) {

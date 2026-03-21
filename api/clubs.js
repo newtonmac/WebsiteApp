@@ -52,9 +52,12 @@ module.exports = async (req, res) => {
     return res.status(403).json({ error: 'Access denied. This data is proprietary.' });
   }
 
+  // Cache bust: ?refresh=1 forces a fresh DB read
+  const forceRefresh = req.query.refresh === '1';
+
   try {
     // Check cache
-    if (cachedData && (Date.now() - cacheTime) < CACHE_TTL) {
+    if (!forceRefresh && cachedData && (Date.now() - cacheTime) < CACHE_TTL) {
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('X-Cache', 'HIT');
       res.setHeader('Cache-Control', 's-maxage=300, max-age=60, stale-while-revalidate=600');
