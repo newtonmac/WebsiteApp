@@ -201,7 +201,7 @@
             transform: none;
             opacity: 1;
         }
-        .controls.collapsed .search-wrap,
+        .controls.collapsed .search-row,
         .controls.collapsed .craft-select { display: none; }
 
         .controls-drag-handle {
@@ -252,27 +252,24 @@
         }
         .controls.collapsed .controls-drag-handle { display: none; }
 
-        .search-wrap {
-            flex: 1;
-            position: relative;
+        .search-row {
             display: flex;
-            flex-direction: column;
+            align-items: stretch;
             gap: 6px;
-        }
-        .search-mode-btns {
-            display: flex;
-            gap: 4px;
+            flex: 1;
         }
         .mode-btn {
-            padding: 6px 14px;
-            border-radius: 8px;
+            padding: 0 14px;
+            border-radius: 12px;
             border: 1px solid #2d3040;
             background: #0f1117;
             color: #8b8fa3;
-            font-size: 12px;
+            font-size: 13px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.15s;
+            white-space: nowrap;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
         }
         .mode-btn.active {
             background: #1e3a5f;
@@ -280,7 +277,7 @@
             border-color: #3b82f6;
         }
         .mode-btn:hover:not(.active) { background: #1a1d28; color: #e1e4e8; }
-        .search-input-wrap { position: relative; }
+        .search-input-wrap { position: relative; flex: 1; }
         .club-suggestions {
             display: none;
             position: absolute;
@@ -333,16 +330,16 @@
         }
 
         .craft-select {
-            padding: 12px 16px;
+            padding: 0 14px;
             background: #1a1d28;
             border: 1px solid #2d3040;
             border-radius: 12px;
             color: #e1e4e8;
-            font-size: 14px;
+            font-size: 13px;
             outline: none;
             cursor: pointer;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-            min-width: 120px;
+            white-space: nowrap;
         }
         .craft-select:focus { border-color: #06b6d4; }
 
@@ -718,11 +715,9 @@
     <div class="map-wrap">
         <div class="controls" id="controlsBar">
             <div class="controls-drag-handle" id="dragHandle" title="Drag to move">&#x2630;</div>
-            <div class="search-wrap">
-                <div class="search-mode-btns">
-                    <button class="mode-btn active" id="modeLocation" onclick="setSearchMode('location')">📍 Location</button>
-                    <button class="mode-btn" id="modeClub" onclick="setSearchMode('club')">🛶 Club</button>
-                </div>
+            <div class="search-row">
+                <button class="mode-btn active" id="modeLocation" onclick="setSearchMode('location')">📍 Location</button>
+                <button class="mode-btn" id="modeClub" onclick="setSearchMode('club')">🛶 Club</button>
                 <div class="search-input-wrap" id="locationSearchWrap">
                     <input type="text" id="clubSearch" class="search-box" placeholder="Search by city, state, zip, or country...">
                 </div>
@@ -730,10 +725,10 @@
                     <input type="text" id="clubNameSearch" class="search-box" placeholder="Type club name..." autocomplete="off">
                     <div class="club-suggestions" id="clubSuggestions"></div>
                 </div>
+                <select id="craftFilter" class="craft-select" onchange="applyFilters()">
+                    <option value="">All Craft Types</option>
+                </select>
             </div>
-            <select id="craftFilter" class="craft-select" onchange="applyFilters()">
-                <option value="">All Craft Types</option>
-            </select>
             <div class="controls-collapse-btn" id="collapseBtn" onclick="toggleSearchCollapse()" title="Collapse search">&#x2715;</div>
         </div>
         <div class="results-count" id="resultsCount" style="display:none;">
@@ -1344,7 +1339,7 @@
             }
 
             function onPointerDown(e) {
-                if (e.target.closest('.search-wrap') || e.target.closest('.craft-select') || e.target.closest('.controls-collapse-btn')) return;
+                if (e.target.closest('.search-row') || e.target.closest('.controls-collapse-btn')) return;
                 e.preventDefault();
                 setExplicitPosition();
                 isDragging = true;
