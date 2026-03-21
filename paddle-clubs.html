@@ -723,8 +723,11 @@
                     <button class="mode-btn active" id="modeLocation" onclick="setSearchMode('location')">📍 Location</button>
                     <button class="mode-btn" id="modeClub" onclick="setSearchMode('club')">🛶 Club</button>
                 </div>
-                <div class="search-input-wrap">
-                    <input type="text" id="clubSearch" class="search-box" placeholder="Search by city, state, zip, or country..." autocomplete="off">
+                <div class="search-input-wrap" id="locationSearchWrap">
+                    <input type="text" id="clubSearch" class="search-box" placeholder="Search by city, state, zip, or country...">
+                </div>
+                <div class="search-input-wrap" id="clubSearchWrap" style="display:none;">
+                    <input type="text" id="clubNameSearch" class="search-box" placeholder="Type club name..." autocomplete="off">
                     <div class="club-suggestions" id="clubSuggestions"></div>
                 </div>
             </div>
@@ -778,6 +781,7 @@
             });
 
             initSearchBox();
+            initClubSearch();
             loadClubs();
         }
 
@@ -789,22 +793,21 @@
             searchModeIsClub = (mode === 'club');
             document.getElementById('modeLocation').classList.toggle('active', !searchModeIsClub);
             document.getElementById('modeClub').classList.toggle('active', searchModeIsClub);
-            const input = document.getElementById('clubSearch');
-            input.value = '';
+            document.getElementById('locationSearchWrap').style.display = searchModeIsClub ? 'none' : 'block';
+            document.getElementById('clubSearchWrap').style.display = searchModeIsClub ? 'block' : 'none';
+            document.getElementById('clubSearch').value = '';
+            document.getElementById('clubNameSearch').value = '';
             document.getElementById('clubSuggestions').classList.remove('open');
-            if (searchModeIsClub) {
-                input.placeholder = 'Type club name...';
-                document.querySelectorAll('.pac-container').forEach(el => el.style.display = 'none');
-            } else {
-                input.placeholder = 'Search by city, state, zip, or country...';
-                initSearchBox();
-            }
             // Reset to all clubs
             filteredClubs = currentCraftFilter
                 ? allClubs.filter(c => c.ct && c.ct.includes(currentCraftFilter))
                 : [...allClubs];
             plotMarkers(filteredClubs);
-            input.focus();
+            if (searchModeIsClub) {
+                document.getElementById('clubNameSearch').focus();
+            } else {
+                document.getElementById('clubSearch').focus();
+            }
         }
 
         function initSearchBox() {
@@ -819,32 +822,13 @@
             input.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    const q = input.value.trim();
-                    if (searchModeIsClub) {
-                        clubNameSearch(q);
-                    } else {
-                        setTimeout(() => textSearch(q), 300);
-                    }
+                    setTimeout(() => textSearch(input.value.trim()), 300);
                 }
             });
 
-            // Clear button restores all clubs; club mode shows suggestions
+            // Clear search restores all clubs
             input.addEventListener('input', () => {
-                if (searchModeIsClub) {
-                    document.querySelectorAll('.pac-container').forEach(el => el.style.display = 'none');
-                    const q = input.value.trim().toLowerCase();
-                    if (q.length >= 2) {
-                        showClubSuggestions(q);
-                    } else {
-                        document.getElementById('clubSuggestions').classList.remove('open');
-                        if (!q) {
-                            filteredClubs = currentCraftFilter
-                                ? allClubs.filter(c => c.ct && c.ct.includes(currentCraftFilter))
-                                : [...allClubs];
-                            plotMarkers(filteredClubs);
-                        }
-                    }
-                } else if (!input.value.trim()) {
+                if (!input.value.trim()) {
                     filteredClubs = currentCraftFilter
                         ? allClubs.filter(c => c.ct && c.ct.includes(currentCraftFilter))
                         : [...allClubs];
@@ -892,6 +876,35 @@
                 } else {
                     map.setCenter(place.geometry.location);
                     map.setZoom(10);
+                }
+            });
+        }
+
+        function initClubSearch() {
+            const input = document.getElementById('clubNameSearch');
+            input.addEventListener('input', () => {
+                const q = input.value.trim().toLowerCase();
+                if (q.length >= 2) {
+                    showClubSuggestions(q);
+                } else {
+                    document.getElementById('clubSuggestions').classList.remove('open');
+                    if (!q) {
+                        filteredClubs = currentCraftFilter
+                            ? allClubs.filter(c => c.ct && c.ct.includes(currentCraftFilter))
+                            : [...allClubs];
+                        plotMarkers(filteredClubs);
+                    }
+                }
+            });
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (sugHighlight >= 0) {
+                        selectClubSuggestion(sugHighlight);
+                    } else {
+                        clubNameSearch(input.value.trim());
+                        document.getElementById('clubSuggestions').classList.remove('open');
+                    }
                 }
             });
         }
@@ -1014,7 +1027,7 @@
             const club = box._matches && box._matches[idx];
             if (!club) return;
             box.classList.remove('open');
-            document.getElementById('clubSearch').value = club.n;
+            document.getElementById('clubNameSearch').value = club.n;
 
             // Zoom to the club and open its panel
             if (club.la && club.lo) {
@@ -1029,8 +1042,9 @@
             }, 200);
         }
 
-        // Arrow key navigation for suggestions
+        // Arrow key navigation for club suggestions
         document.addEventListener('keydown', (e) => {
+            if (document.activeElement !== document.getElementById('clubNameSearch')) return;
             const box = document.getElementById('clubSuggestions');
             if (!box.classList.contains('open') || !box._matches) return;
             const items = box.querySelectorAll('.club-sug-item');
@@ -1044,9 +1058,6 @@
                 sugHighlight = Math.max(sugHighlight - 1, 0);
                 items.forEach((el, i) => el.classList.toggle('selected', i === sugHighlight));
                 items[sugHighlight]?.scrollIntoView({ block: 'nearest' });
-            } else if (e.key === 'Enter' && sugHighlight >= 0) {
-                e.preventDefault();
-                selectClubSuggestion(sugHighlight);
             }
         });
 
