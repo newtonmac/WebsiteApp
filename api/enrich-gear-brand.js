@@ -32,10 +32,10 @@ module.exports = async (req, res) => {
         || html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["'](.*?)["']/i);
       if (descMatch) result.description = descMatch[1].trim().slice(0, 500);
 
-      // Logo: use Google favicon service (reliable, always works)
+      // Logo: use DuckDuckGo favicon (more reliable than Google)
       try {
         const urlObj = new URL(website);
-        result.logo_url = `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=128`;
+        result.logo_url = `https://icons.duckduckgo.com/ip3/${urlObj.hostname}.ico`;
       } catch(e) {}
 
       // Email
