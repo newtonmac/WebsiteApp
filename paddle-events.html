@@ -274,7 +274,8 @@
         <a href="paddlepoint.html" class="nav-btn accent">Home</a>
         <a href="paddle-conditions.html" class="nav-btn">Water Conditions</a>
         <a href="paddle-weather.html" class="nav-btn">Weather</a>
-        <a href="paddle-clubs.html" class="nav-btn">Clubs</a>
+        <a href="paddle-clubs.html" class="nav-btn">Paddle Clubs</a>
+        <a href="paddle-events.html" class="nav-btn">Events</a>
         <a href="paddle-gear.html" class="nav-btn">Gear</a>
     </div>
 </div>
@@ -437,8 +438,17 @@
         <a href="paddle-clubs.html" style="color:#6b7280;text-decoration:none;font-size:12px;">Paddle Clubs</a>
         <a href="paddle-gear.html" style="color:#6b7280;text-decoration:none;font-size:12px;">Gear</a>
     </div>
-    <div style="color:#9ca3af;font-size:10px;">&copy; 2026 PaddlePoint. All rights reserved.</div>
+    <div style="color:#9ca3af;font-size:10px;">&copy; 2026 PaddlePoint. All rights reserved. &bull; <span onclick="toggleStats()" style="cursor:pointer;text-decoration:underline;">Stats</span></div>
 </footer>
+<script>
+const COUNTER_API='https://visitor-counter.newtonmac.workers.dev';
+try{fetch(`${COUNTER_API}/visit?page=events`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({referrer:document.referrer})}).catch(()=>{});}catch(e){}
+async function toggleStats(){
+  try{const r=await fetch(`${COUNTER_API}/stats?page=events`);const d=await r.json();
+  const w=d.days?d.days.reduce((s,dy)=>s+dy.uniqueVisitors,0):0;
+  alert(`Events Page Stats\n\nAll-time: ${d.total||0} visitors\nLast 7 days: ${w}\nToday: ${d.days&&d.days.length?d.days[d.days.length-1].uniqueVisitors:0}`);}catch(e){alert('Stats unavailable');}
+}
+</script>
 
 </body>
 </html>
