@@ -290,7 +290,7 @@
             background: #1a1d28;
             border: 1px solid #2d3040;
             border-radius: 0 0 10px 10px;
-            max-height: 260px;
+            max-height: 400px;
             overflow-y: auto;
             z-index: 20;
             box-shadow: 0 8px 24px rgba(0,0,0,0.5);
@@ -1004,12 +1004,14 @@
             const matches = allClubs.filter(c => {
                 if (currentCraftFilter && (!c.ct || !c.ct.includes(currentCraftFilter))) return false;
                 return c.n && c.n.toLowerCase().includes(q);
-            }).slice(0, 15);
+            });
+            const total = matches.length;
+            const shown = matches.slice(0, 50);
 
             const box = document.getElementById('clubSuggestions');
-            if (!matches.length) { box.classList.remove('open'); return; }
+            if (!total) { box.classList.remove('open'); return; }
             sugHighlight = -1;
-            box.innerHTML = matches.map((c, i) => {
+            box.innerHTML = shown.map((c, i) => {
                 const loc = [c.ci, c.sa || c.st, c.co].filter(Boolean).join(', ');
                 const craft = (c.ct || '').split(',').map(t => LABELS[t.trim()] || t.trim()).filter(Boolean).join(', ');
                 return `<div class="club-sug-item" data-idx="${i}" onclick="selectClubSuggestion(${i})">
@@ -1018,7 +1020,10 @@
                     ${craft ? `<span class="sug-craft">${craft}</span>` : ''}
                 </div>`;
             }).join('');
-            box._matches = matches;
+            if (total > 50) {
+                box.innerHTML += `<div style="padding:8px 14px;color:#8b8fa3;font-size:12px;text-align:center;border-top:1px solid #2d3040;">Showing 50 of ${total} matches — type more to narrow</div>`;
+            }
+            box._matches = shown;
             box.classList.add('open');
         }
 
