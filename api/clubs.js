@@ -18,7 +18,7 @@ let cachedData = null;
 
 function loadData() {
   if (cachedData) return cachedData;
-  const filePath = path.join(process.cwd(), 'data', 'clubs-data.json');
+  const filePath = path.join(__dirname, '_clubs-data.json');
   cachedData = fs.readFileSync(filePath, 'utf8');
   return cachedData;
 }

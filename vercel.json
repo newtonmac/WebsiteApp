@@ -1,10 +1,6 @@
 {
   "rewrites": [
     {
-      "source": "/data/:path*",
-      "destination": "/404.html"
-    },
-    {
       "source": "/clubs-data.json",
       "destination": "/404.html"
     }
