@@ -144,15 +144,20 @@ body { font-family:'Inter',sans-serif; background:#f8fafc; color:#1e293b; }
 <div class="detail-overlay" id="detailOverlay" onclick="if(event.target===this)closeDetail()">
     <div class="detail-modal">
         <div class="detail-header">
-            <h2 id="detailName"></h2>
-            <span class="detail-country" id="detailCountry"></span>
-            <span class="detail-ioc" id="detailIOC"></span>
+            <div style="display:flex;align-items:center;gap:16px;">
+                <img id="detailLogo" src="" style="width:56px;height:56px;border-radius:10px;object-fit:contain;background:#f1f5f9;display:none;">
+                <div>
+                    <h2 id="detailName"></h2>
+                    <span class="detail-country" id="detailCountry"></span>
+                    <span class="detail-ioc" id="detailIOC"></span>
+                </div>
+            </div>
         </div>
         <div class="detail-body" id="detailBody"></div>
         <div class="detail-actions">
             <button class="detail-close" onclick="closeDetail()">Close</button>
             <div style="display:flex;gap:8px;">
-                <a class="detail-icf" id="detailICFLink" href="#" target="_blank">View on ICF →</a>
+                <a class="detail-icf" id="detailWebLink" href="#" target="_blank" style="display:none;">🌐 Visit Website →</a>
                 <button class="detail-edit" id="detailEditBtn" onclick="openEditFromDetail()">✏️ Edit</button>
             </div>
         </div>
@@ -291,6 +296,12 @@ function showDetail(id) {
     document.getElementById('detailName').textContent = f.name;
     document.getElementById('detailCountry').textContent = f.country || f.continent || '';
     document.getElementById('detailIOC').textContent = f.ioc_code || '';
+    // Logo
+    const logo = document.getElementById('detailLogo');
+    if (f.logo_url) { logo.src = f.logo_url; logo.style.display = ''; } else { logo.style.display = 'none'; }
+    // Website link
+    const webLink = document.getElementById('detailWebLink');
+    if (f.website) { webLink.href = f.website; webLink.style.display = ''; } else { webLink.style.display = 'none'; }
     const link = (url, text) => url ? `<a href="${url}" target="_blank">${text || url}</a>` : '—';
     const rows = [
         ['Type', {national:'National Federation',continental:'Continental Association',international:'International Federation'}[f.federation_type] || f.federation_type],
@@ -303,15 +314,13 @@ function showDetail(id) {
         ['President', f.president],
         ['Founded', f.founded_year],
         ['Members', f.member_count],
-        ['Facebook', f.facebook_url ? link(f.facebook_url, 'Facebook Page') : null],
-        ['Instagram', f.instagram_url ? link(f.instagram_url, 'Instagram Profile') : null],
+        ['Facebook', f.facebook_url ? link(f.facebook_url, '📘 Facebook Page') : null],
+        ['Instagram', f.instagram_url ? link(f.instagram_url, '📸 Instagram Profile') : null],
         ['Description', f.description],
     ].filter(r => r[1]);
     document.getElementById('detailBody').innerHTML = rows.map(r =>
         `<div class="detail-row"><span class="detail-label">${r[0]}</span><span class="detail-value">${r[1]}</span></div>`
     ).join('') || '<p style="color:#94a3b8;padding:12px 0;">No additional details yet. Click Edit to add information.</p>';
-    document.getElementById('detailICFLink').href = f.icf_url || '#';
-    document.getElementById('detailICFLink').style.display = f.icf_url ? '' : 'none';
     document.getElementById('detailEditBtn').style.display = isAdmin ? '' : 'none';
     document.getElementById('detailOverlay').classList.add('open');
 }
