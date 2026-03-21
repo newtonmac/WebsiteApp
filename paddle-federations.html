@@ -56,6 +56,39 @@ body { font-family:'Inter',sans-serif; background:#f8fafc; color:#1e293b; }
 .footer-links a { color:#6b7280; text-decoration:none; font-size:12px; cursor:pointer; }
 .footer-links a:hover { color:#06b6d4; }
 @media(max-width:600px) { .search-input{width:100%;} .fed-grid{grid-template-columns:1fr;} }
+/* Detail Modal */
+.detail-overlay { position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s; }
+.detail-overlay.open { opacity:1;pointer-events:auto; }
+.detail-modal { background:#fff;border-radius:20px;max-width:600px;width:92%;max-height:85vh;overflow-y:auto;padding:0;box-shadow:0 20px 60px rgba(0,0,0,.2); }
+.detail-header { padding:24px 24px 16px;border-bottom:1px solid #e2e8f0; }
+.detail-header h2 { font-size:20px;font-weight:800;color:#0c4a6e;margin-bottom:2px; }
+.detail-header .detail-country { font-size:14px;color:#64748b; }
+.detail-header .detail-ioc { display:inline-block;font-size:11px;font-weight:800;color:#fff;background:#0ea5e9;border-radius:6px;padding:3px 8px;margin-left:8px; }
+.detail-body { padding:16px 24px 24px; }
+.detail-row { display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:13px; }
+.detail-row:last-child { border:none; }
+.detail-label { color:#94a3b8;min-width:110px;font-weight:600; }
+.detail-value { color:#1e293b;flex:1;word-break:break-word; }
+.detail-value a { color:#0ea5e9;text-decoration:none; }
+.detail-value a:hover { text-decoration:underline; }
+.detail-actions { display:flex;gap:8px;padding:16px 24px;border-top:1px solid #e2e8f0;justify-content:space-between; }
+.detail-close { padding:8px 20px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;color:#64748b;cursor:pointer;font-size:13px;font-weight:600; }
+.detail-edit { padding:8px 20px;border-radius:8px;border:none;background:#8b5cf6;color:#fff;cursor:pointer;font-size:13px;font-weight:600;display:none; }
+.detail-icf { padding:8px 20px;border-radius:8px;border:1px solid #0ea5e9;background:#fff;color:#0ea5e9;cursor:pointer;font-size:13px;font-weight:600;text-decoration:none; }
+/* Edit Modal */
+.edit-overlay { position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s; }
+.edit-overlay.open { opacity:1;pointer-events:auto; }
+.edit-modal { background:#1a1b23;border-radius:16px;max-width:640px;width:92%;max-height:85vh;overflow-y:auto;padding:24px;color:#e1e4e8; }
+.edit-modal h2 { font-size:18px;color:#e1e4e8;margin-bottom:16px; }
+.edit-modal label { display:block;font-size:12px;color:#8b8fa3;margin-bottom:4px;margin-top:10px; }
+.edit-modal input,.edit-modal textarea,.edit-modal select { width:100%;background:#0f1117;border:1px solid #2d3040;color:#e1e4e8;padding:8px 12px;border-radius:6px;font-size:13px; }
+.edit-modal textarea { min-height:60px; }
+.edit-row { display:grid;grid-template-columns:1fr 1fr;gap:10px; }
+.edit-actions { display:flex;gap:8px;margin-top:16px;justify-content:flex-end; }
+.edit-actions button { padding:8px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none; }
+.btn-save { background:#22c55e;color:#fff; }
+.btn-delete { background:#ef4444;color:#fff; }
+.btn-cancel-edit { background:#374151;color:#e1e4e8; }
 </style>
 
 <!-- NAV -->
@@ -85,23 +118,7 @@ body { font-family:'Inter',sans-serif; background:#f8fafc; color:#1e293b; }
 <!-- CONTINENTAL ASSOCIATIONS -->
 <div class="continental-section">
     <div class="section-label">🌍 Continental Associations</div>
-    <div class="continental-grid">
-        <a href="https://www.canoe-europe.org/" target="_blank" class="continental-card">
-            <h3>🇪🇺 European Canoe Association</h3><p>45 member countries · canoe-europe.org</p>
-        </a>
-        <a href="https://copaconline.com/" target="_blank" class="continental-card">
-            <h3>🌎 Pan American Canoe Federation</h3><p>31 member countries · copaconline.com</p>
-        </a>
-        <a href="https://asiacanoe.wixsite.com/asian-canoe" target="_blank" class="continental-card">
-            <h3>🌏 Asian Canoe Confederation</h3><p>38 member countries · asiacanoe</p>
-        </a>
-        <a href="https://paddlinginafrica.com/" target="_blank" class="continental-card">
-            <h3>🌍 Confederation of African Canoeing</h3><p>39 member countries · paddlinginafrica.com</p>
-        </a>
-        <a href="https://www.canoeicf.com/oceania-canoe-association-0" target="_blank" class="continental-card">
-            <h3>🏝️ Oceania Canoe Association</h3><p>14 member countries · via ICF</p>
-        </a>
-    </div>
+    <div class="continental-grid" id="continentalGrid"></div>
 </div>
 
 <!-- SEARCH & FILTER -->
@@ -117,10 +134,80 @@ body { font-family:'Inter',sans-serif; background:#f8fafc; color:#1e293b; }
         <option value="Oceania">Oceania (14)</option>
     </select>
     <span class="count-badge" id="fedCount">176</span>
+    <span id="adminToggle" onclick="toggleAdmin()" style="cursor:pointer;font-size:16px;margin-left:auto;opacity:0.4;" title="Admin login">🔒</span>
 </div>
 
 <!-- FEDERATION CARDS -->
 <div class="fed-grid" id="fedGrid"></div>
+
+<!-- DETAIL MODAL -->
+<div class="detail-overlay" id="detailOverlay" onclick="if(event.target===this)closeDetail()">
+    <div class="detail-modal">
+        <div class="detail-header">
+            <h2 id="detailName"></h2>
+            <span class="detail-country" id="detailCountry"></span>
+            <span class="detail-ioc" id="detailIOC"></span>
+        </div>
+        <div class="detail-body" id="detailBody"></div>
+        <div class="detail-actions">
+            <button class="detail-close" onclick="closeDetail()">Close</button>
+            <div style="display:flex;gap:8px;">
+                <a class="detail-icf" id="detailICFLink" href="#" target="_blank">View on ICF →</a>
+                <button class="detail-edit" id="detailEditBtn" onclick="openEditFromDetail()">✏️ Edit</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="edit-overlay" id="editOverlay" onclick="if(event.target===this)closeEdit()">
+    <div class="edit-modal">
+        <h2 id="editTitle">Edit Federation</h2>
+        <input type="hidden" id="edit_id">
+        <div class="edit-row">
+            <div><label>Name *</label><input id="edit_name"></div>
+            <div><label>IOC Code</label><input id="edit_ioc_code" maxlength="10"></div>
+        </div>
+        <div class="edit-row">
+            <div><label>Country</label><input id="edit_country"></div>
+            <div><label>Continent</label>
+                <select id="edit_continent"><option value="">—</option><option>Europe</option><option>Americas</option><option>Asia</option><option>Africa</option><option>Oceania</option><option>International</option></select>
+            </div>
+        </div>
+        <div class="edit-row">
+            <div><label>Type</label>
+                <select id="edit_federation_type"><option value="national">National</option><option value="continental">Continental</option><option value="international">International</option></select>
+            </div>
+            <div><label>Founded Year</label><input id="edit_founded_year"></div>
+        </div>
+        <div class="edit-row">
+            <div><label>Website</label><input id="edit_website" placeholder="https://..."></div>
+            <div><label>Email</label><input id="edit_email"></div>
+        </div>
+        <div class="edit-row">
+            <div><label>Phone</label><input id="edit_phone"></div>
+            <div><label>President</label><input id="edit_president"></div>
+        </div>
+        <div class="edit-row">
+            <div><label>Facebook</label><input id="edit_facebook_url" placeholder="https://facebook.com/..."></div>
+            <div><label>Instagram</label><input id="edit_instagram_url" placeholder="https://instagram.com/..."></div>
+        </div>
+        <label>Address</label><input id="edit_address">
+        <div class="edit-row">
+            <div><label>City</label><input id="edit_city"></div>
+            <div><label>State / Region</label><input id="edit_state"></div>
+        </div>
+        <label>Sports / Disciplines</label><input id="edit_sports" placeholder="kayak, canoe, SUP, dragon boat...">
+        <label>Description</label><textarea id="edit_description"></textarea>
+        <label>Member Count</label><input id="edit_member_count">
+        <label>ICF Profile URL</label><input id="edit_icf_url">
+        <div class="edit-actions">
+            <button class="btn-delete" id="editDeleteBtn" onclick="deleteFederation()">🗑️ Delete</button>
+            <button class="btn-cancel-edit" onclick="closeEdit()">Cancel</button>
+            <button class="btn-save" onclick="saveFederation()">💾 Save</button>
+        </div>
+    </div>
+</div>
 
 <!-- FOOTER -->
 <footer class="site-footer">
@@ -141,22 +228,40 @@ body { font-family:'Inter',sans-serif; background:#f8fafc; color:#1e293b; }
 
 <script>
 let allFeds = [];
-const CONTINENT_COLORS = {europe:'',africa:'africa',asia:'asia',americas:'americas',oceania:'oceania',other:''};
+let isAdmin = false;
+let currentFed = null;
+const ADMIN_PASS = 'paddle2026';
+const CONTINENT_COLORS = {europe:'',africa:'africa',asia:'asia',americas:'americas',oceania:'oceania',other:'',international:''};
 
 async function loadFederations() {
     try {
-        const res = await fetch('federations.json');
+        const res = await fetch('/api/federations', {headers:{'X-API-Token':'pp-clubs-7742-v1'}});
         allFeds = await res.json();
+        renderContinentals();
         filterFeds();
     } catch(e) { document.getElementById('fedGrid').innerHTML = '<p style="color:red;padding:20px;">Error loading federations</p>'; }
+}
+
+function renderContinentals() {
+    const icons = {Europe:'🇪🇺',Americas:'🌎',Asia:'🌏',Africa:'🌍',Oceania:'🏝️',International:'🌐'};
+    const cont = allFeds.filter(f => f.federation_type === 'continental' || f.federation_type === 'international');
+    document.getElementById('continentalGrid').innerHTML = cont.map(f => {
+        const icon = icons[f.continent] || '🏛️';
+        const site = (f.website||'').replace(/^https?:\/\/(www\.)?/,'').replace(/\/$/,'');
+        return `<div class="continental-card" onclick="showDetail(${f.id})" style="cursor:pointer;">
+            <h3>${icon} ${f.name}</h3><p>${f.member_count||'—'} member countries${site ? ' · '+site : ''}</p>
+        </div>`;
+    }).join('');
 }
 
 function filterFeds() {
     const q = document.getElementById('searchInput').value.toLowerCase();
     const continent = document.getElementById('filterContinent').value;
+    const type = document.getElementById('filterType') ? document.getElementById('filterType').value : '';
     const filtered = allFeds.filter(f => {
+        if (f.federation_type === 'continental' || f.federation_type === 'international') return false; // shown separately
         if (continent && f.continent !== continent) return false;
-        if (q && !f.country.toLowerCase().includes(q) && !f.name.toLowerCase().includes(q) && !f.ioc_code.toLowerCase().includes(q)) return false;
+        if (q && !(f.country||'').toLowerCase().includes(q) && !f.name.toLowerCase().includes(q) && !(f.ioc_code||'').toLowerCase().includes(q)) return false;
         return true;
     });
     document.getElementById('fedCount').textContent = filtered.length;
@@ -167,16 +272,109 @@ function renderFeds(feds) {
     const grid = document.getElementById('fedGrid');
     grid.innerHTML = feds.map(f => {
         const cls = CONTINENT_COLORS[(f.continent||'').toLowerCase()] || '';
-        return `<a href="${f.icf_url}" target="_blank" class="fed-card">
-            <span class="fed-ioc ${cls}">${f.ioc_code}</span>
+        return `<div class="fed-card" onclick="showDetail(${f.id})" style="cursor:pointer;">
+            <span class="fed-ioc ${cls}">${f.ioc_code||'?'}</span>
             <div class="fed-info">
-                <div class="fed-country">${f.country}</div>
+                <div class="fed-country">${f.country||'—'}</div>
                 <div class="fed-name">${f.name}</div>
             </div>
             <span class="fed-arrow">→</span>
-        </a>`;
+        </div>`;
     }).join('');
 }
+
+
+function showDetail(id) {
+    const f = allFeds.find(x => x.id === id);
+    if (!f) return;
+    currentFed = f;
+    document.getElementById('detailName').textContent = f.name;
+    document.getElementById('detailCountry').textContent = f.country || f.continent || '';
+    document.getElementById('detailIOC').textContent = f.ioc_code || '';
+    const link = (url, text) => url ? `<a href="${url}" target="_blank">${text || url}</a>` : '—';
+    const rows = [
+        ['Type', {national:'National Federation',continental:'Continental Association',international:'International Federation'}[f.federation_type] || f.federation_type],
+        ['Continent', f.continent],
+        ['Website', f.website ? `<a href="${f.website}" target="_blank">${f.website.replace(/^https?:\/\/(www\.)?/,'')}</a>` : null],
+        ['Email', f.email ? `<a href="mailto:${f.email}">${f.email}</a>` : null],
+        ['Phone', f.phone],
+        ['Address', [f.address, f.city, f.state].filter(Boolean).join(', ') || null],
+        ['Sports', f.sports],
+        ['President', f.president],
+        ['Founded', f.founded_year],
+        ['Members', f.member_count],
+        ['Facebook', f.facebook_url ? link(f.facebook_url, 'Facebook Page') : null],
+        ['Instagram', f.instagram_url ? link(f.instagram_url, 'Instagram Profile') : null],
+        ['Description', f.description],
+    ].filter(r => r[1]);
+    document.getElementById('detailBody').innerHTML = rows.map(r =>
+        `<div class="detail-row"><span class="detail-label">${r[0]}</span><span class="detail-value">${r[1]}</span></div>`
+    ).join('') || '<p style="color:#94a3b8;padding:12px 0;">No additional details yet. Click Edit to add information.</p>';
+    document.getElementById('detailICFLink').href = f.icf_url || '#';
+    document.getElementById('detailICFLink').style.display = f.icf_url ? '' : 'none';
+    document.getElementById('detailEditBtn').style.display = isAdmin ? '' : 'none';
+    document.getElementById('detailOverlay').classList.add('open');
+}
+function closeDetail() { document.getElementById('detailOverlay').classList.remove('open'); }
+
+function openEditFromDetail() {
+    closeDetail();
+    const f = currentFed;
+    if (!f) return;
+    document.getElementById('editTitle').textContent = `Edit: ${f.name}`;
+    const fields = ['id','name','ioc_code','country','continent','federation_type','website','email','phone',
+        'address','city','state','sports','facebook_url','instagram_url','description','founded_year','member_count','president','icf_url'];
+    fields.forEach(k => {
+        const el = document.getElementById('edit_' + k);
+        if (el) el.value = f[k] || '';
+    });
+    document.getElementById('editDeleteBtn').style.display = f.id ? '' : 'none';
+    document.getElementById('editOverlay').classList.add('open');
+}
+function closeEdit() { document.getElementById('editOverlay').classList.remove('open'); }
+
+async function saveFederation() {
+    const fields = ['id','name','ioc_code','country','continent','federation_type','website','email','phone',
+        'address','city','state','sports','facebook_url','instagram_url','description','founded_year','member_count','president','icf_url'];
+    const data = {};
+    fields.forEach(k => { const el = document.getElementById('edit_'+k); if(el) data[k] = el.value; });
+    if (data.id) data.id = parseInt(data.id);
+    try {
+        const res = await fetch('/api/save-federation', {
+            method:'POST', headers:{'Content-Type':'application/json','X-API-Token':'pp-clubs-7742-v1'},
+            body:JSON.stringify(data)
+        });
+        const result = await res.json();
+        if (result.error) { alert(result.error); return; }
+        closeEdit();
+        loadFederations();
+    } catch(e) { alert('Save failed: '+e.message); }
+}
+
+async function deleteFederation() {
+    const id = document.getElementById('edit_id').value;
+    if (!id || !confirm('Delete this federation?')) return;
+    try {
+        await fetch('/api/save-federation', {
+            method:'DELETE', headers:{'Content-Type':'application/json','X-API-Token':'pp-clubs-7742-v1'},
+            body:JSON.stringify({id:parseInt(id)})
+        });
+        closeEdit();
+        loadFederations();
+    } catch(e) { alert('Delete failed'); }
+}
+
+// Admin toggle
+function toggleAdmin() {
+    if (isAdmin) { isAdmin = false; document.getElementById('adminToggle').textContent = '🔒'; return; }
+    const pass = prompt('Admin password:');
+    if (pass === ADMIN_PASS) { isAdmin = true; document.getElementById('adminToggle').textContent = '🔓 Admin'; }
+    else if (pass) alert('Wrong password');
+}
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeDetail(); closeEdit(); }
+});
 
 loadFederations();
 
