@@ -28,6 +28,24 @@ document.body.insertAdjacentHTML('beforeend',`
 <h2 class="updates-title">Updates &amp; Roadmap</h2>
 <p class="pp-subtitle">What we've shipped and what's coming next</p>
 <div id="updatesContent"><div class="updates-empty">Loading...</div></div>
+</div></div>
+
+<div class="pp-modal-overlay" id="dataSourcesModal" onclick="if(event.target===this)closeDataSourcesModal()">
+<div class="pp-modal" onclick="event.stopPropagation()" style="max-width:560px;">
+<button class="pp-modal-close" onclick="closeDataSourcesModal()">&times;</button>
+<h2 style="background:linear-gradient(90deg,#0ea5e9,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">📡 Data Sources</h2>
+<p class="pp-subtitle">Every data point is sourced from reputable, publicly available resources. We publish and link to every source so you can always verify the information.</p>
+<div class="coming-next" style="margin-bottom:12px;"><h3 style="font-size:14px;">🌊 Weather &amp; Marine</h3>
+<p><a href="https://weather.google.com" target="_blank" style="color:#60a5fa;">Google Weather</a> · <a href="https://open-meteo.com" target="_blank" style="color:#60a5fa;">Open-Meteo</a> · <a href="https://www.weather.gov" target="_blank" style="color:#60a5fa;">NWS (weather.gov)</a><br><span style="color:#6b7080;font-size:12px;">Triple-source verification for temperature, wind, humidity, visibility, pressure</span></p></div>
+<div class="coming-next" style="margin-bottom:12px;"><h3 style="font-size:14px;">🌡️ Tides &amp; Water Temperature</h3>
+<p><a href="https://tidesandcurrents.noaa.gov" target="_blank" style="color:#60a5fa;">NOAA CO-OPS</a> · <a href="https://open-meteo.com/en/docs/marine-weather-api" target="_blank" style="color:#60a5fa;">Open-Meteo Marine</a><br><span style="color:#6b7080;font-size:12px;">Real station readings cross-referenced with satellite sea surface temperature</span></p></div>
+<div class="coming-next" style="margin-bottom:12px;"><h3 style="font-size:14px;">💧 Water Quality &amp; Safety</h3>
+<p><a href="https://www.waterboards.ca.gov" target="_blank" style="color:#60a5fa;">CA State Water Board</a> · <a href="https://www.theswimguide.org" target="_blank" style="color:#60a5fa;">Swim Guide</a> · <a href="https://habsos.noaa.gov" target="_blank" style="color:#60a5fa;">NOAA HABSOS</a> · <a href="https://fhab.sfei.org" target="_blank" style="color:#60a5fa;">CA FHAB (SFEI)</a><br><span style="color:#6b7080;font-size:12px;">Beach advisories, bacteria levels, harmful algal bloom monitoring</span></p></div>
+<div class="coming-next" style="margin-bottom:12px;"><h3 style="font-size:14px;">🌬️ Air Quality &amp; River Flow</h3>
+<p><a href="https://open-meteo.com/en/docs/air-quality-api" target="_blank" style="color:#60a5fa;">Open-Meteo AQ</a> · <a href="https://www.airnow.gov" target="_blank" style="color:#60a5fa;">EPA AirNow</a> · <a href="https://waterservices.usgs.gov" target="_blank" style="color:#60a5fa;">USGS Water Services</a><br><span style="color:#6b7080;font-size:12px;">AQI, river flow rates, stream conditions for inland paddlers</span></p></div>
+<div class="coming-next" style="margin-bottom:12px;"><h3 style="font-size:14px;">⚠️ Alerts &amp; Coastal Access</h3>
+<p><a href="https://www.weather.gov" target="_blank" style="color:#60a5fa;">National Weather Service</a> · <a href="https://www.coastal.ca.gov/YourCoast/" target="_blank" style="color:#60a5fa;">CA Coastal Commission</a><br><span style="color:#6b7080;font-size:12px;">Active weather warnings and public beach access points</span></p></div>
+<div style="background:rgba(245,158,11,0.1);border-left:3px solid #f59e0b;border-radius:0 10px 10px 0;padding:12px 16px;"><p style="font-size:13px;color:#8b8fa3;margin:0;"><strong style="color:#e1e4e8;">🚀 Growing with Local Data</strong><br>As PaddlePoint expands, we're integrating localized resources from municipalities, counties, and regional authorities. If your local agency publishes paddling-relevant data, <a href="mailto:nwtjml@gmail.com" style="color:#60a5fa;">let us know</a>.</p></div>
 </div></div>`);
 }
 
@@ -36,6 +54,8 @@ window.openSuggestModal=function(){document.getElementById('suggestModal').class
 window.closeSuggestModal=function(e){if(e&&e.target!==e.currentTarget)return;document.getElementById('suggestModal').classList.remove('open');};
 window.openUpdatesModal=function(){document.getElementById('updatesModal').classList.add('open');if(!updatesLoaded)loadUpdates();};
 window.closeUpdatesModal=function(e){if(e&&e.target!==e.currentTarget)return;document.getElementById('updatesModal').classList.remove('open');};
+window.openDataSourcesModal=function(){document.getElementById('dataSourcesModal').classList.add('open');};
+window.closeDataSourcesModal=function(e){if(e&&e.target!==e.currentTarget)return;document.getElementById('dataSourcesModal').classList.remove('open');};
 
 window.submitSuggestion=async function(e){
 e.preventDefault();
@@ -115,5 +135,6 @@ document.addEventListener('keydown',function(e){
 if(e.key==='Escape'){
 var s=document.getElementById('suggestModal');if(s&&s.classList.contains('open'))closeSuggestModal();
 var u=document.getElementById('updatesModal');if(u&&u.classList.contains('open'))closeUpdatesModal();
+var d=document.getElementById('dataSourcesModal');if(d&&d.classList.contains('open'))closeDataSourcesModal();
 }});
 })();
