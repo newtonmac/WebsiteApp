@@ -387,10 +387,22 @@ async function runScrape() {
     const checked = [...document.querySelectorAll('.source-card input:checked')].map(el => parseInt(el.dataset.idx));
     if (!checked.length) { log.innerHTML = '<span class="log-err">No sources selected</span>'; btn.disabled = false; return; }
     
-    status.textContent = `Scraping ${checked.length} sources...`;
+    status.textContent = `Scraping ${checked.length} sources (8s delay between each)...`;
     let totalInserted = 0;
+    const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
-    for (const idx of checked) {
+    for (let ci = 0; ci < checked.length; ci++) {
+        const idx = checked[ci];
+
+        // Wait 8 seconds between sources to avoid getting blocked
+        if (ci > 0) {
+            const wait = 8;
+            for (let s = wait; s > 0; s--) {
+                status.textContent = `Waiting ${s}s before next source... (${ci}/${checked.length} done)`;
+                await delay(1000);
+            }
+        }
+
         const src = SOURCES[idx];
         const statusEl = document.getElementById('srcStatus' + idx);
         statusEl.textContent = '⏳';
