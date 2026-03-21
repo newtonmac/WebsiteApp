@@ -185,7 +185,9 @@
     async function loadData() {
         document.getElementById('statsBar').textContent = 'Loading clubs...';
         try {
-            const res = await fetch('clubs-data.json');
+            const res = await fetch('/api/clubs', {
+                headers: { 'X-API-Token': 'pp-clubs-7742-v1' }
+            });
             allClubs = await res.json();
             // Add index for tracking
             allClubs.forEach((c, i) => c._idx = i);

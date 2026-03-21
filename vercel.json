@@ -1,4 +1,22 @@
 {
+  "rewrites": [
+    {
+      "source": "/data/:path*",
+      "destination": "/404.html"
+    },
+    {
+      "source": "/clubs-data.json",
+      "destination": "/404.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/clubs",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+      ]
+    }
+  ],
   "redirects": [
     {
       "source": "/",

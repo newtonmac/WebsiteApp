@@ -885,7 +885,9 @@
 
         async function loadClubs() {
             try {
-                const res = await fetch('clubs-data.json');
+                const res = await fetch('/api/clubs', {
+                    headers: { 'X-API-Token': 'pp-clubs-7742-v1' }
+                });
                 allClubs = await res.json();
             } catch (e) {
                 console.warn('Clubs data not available:', e.message);
