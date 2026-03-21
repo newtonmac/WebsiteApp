@@ -477,25 +477,6 @@
         <!-- Brand Cards (from DB) -->
         <div class="gear-grid" id="brandGrid"></div>
 
-<!-- BRAND DETAIL POPUP -->
-<div id="brandDetailOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;" onclick="if(event.target===this)closeBrandDetail()">
-    <div style="background:#fff;border-radius:20px;max-width:560px;width:92%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2);">
-        <div style="padding:24px 24px 16px;border-bottom:1px solid #e2e8f0;">
-            <div style="display:flex;align-items:center;gap:14px;">
-                <img id="bdLogo" src="" style="width:56px;height:56px;border-radius:10px;object-fit:contain;background:#f1f5f9;display:none;" referrerpolicy="no-referrer" onerror="this.style.display='none'">
-                <div>
-                    <h2 id="bdName" style="font-size:20px;font-weight:800;color:#0c4a6e;"></h2>
-                    <div id="bdCountry" style="font-size:13px;color:#64748b;"></div>
-                </div>
-            </div>
-        </div>
-        <div id="bdBody" style="padding:16px 24px 24px;"></div>
-        <div style="padding:16px 24px;border-top:1px solid #e2e8f0;display:flex;gap:8px;justify-content:space-between;">
-            <button onclick="closeBrandDetail()" style="padding:8px 20px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;color:#64748b;cursor:pointer;font-size:13px;font-weight:600;">Close</button>
-            <a id="bdWebLink" href="#" target="_blank" style="padding:8px 20px;border-radius:8px;border:1px solid #0ea5e9;background:#fff;color:#0ea5e9;cursor:pointer;font-size:13px;font-weight:600;text-decoration:none;display:none;">🌐 Visit Website →</a>
-        </div>
-    </div>
-</div>
 
 <footer style="text-align:center;padding:20px 16px 28px;border-top:1px solid #e5e7eb;margin-top:24px;">
     <div style="display:flex;justify-content:center;flex-wrap:wrap;gap:6px 16px;margin-bottom:10px;">
@@ -511,96 +492,92 @@
 <script>
 const COUNTER_API='https://visitor-counter.newtonmac.workers.dev';
 try{fetch(`${COUNTER_API}/visit?page=gear`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({referrer:document.referrer})}).catch(()=>{});}catch(e){}
-async function toggleStats(){
-  try{const r=await fetch(`${COUNTER_API}/stats?page=gear`);const d=await r.json();
-  const w=d.days?d.days.reduce((s,dy)=>s+dy.uniqueVisitors,0):0;
-  alert(`Gear Page Stats\n\nAll-time: ${d.total||0} visitors\nLast 7 days: ${w}\nToday: ${d.days&&d.days.length?d.days[d.days.length-1].uniqueVisitors:0}`);}catch(e){alert('Stats unavailable');}
+async function toggleStats(){try{const r=await fetch(`${COUNTER_API}/stats?page=gear`);const d=await r.json();const w=d.days?d.days.reduce((s,dy)=>s+dy.uniqueVisitors,0):0;alert(`Gear Stats\nAll-time: ${d.total||0}\nLast 7 days: ${w}`);}catch(e){alert('Stats unavailable');}}
+
+const IC_IG='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E1306C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1.5" fill="#E1306C" stroke="none"/></svg>';
+const IC_FB='<svg width="14" height="14" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>';
+const IC_WEB='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>';
+
+let allBrands=[], currentCatFilter='';
+
+async function loadBrands(){
+    try{const res=await fetch('/api/gear-brands',{headers:{'X-API-Token':'pp-clubs-7742-v1'}});allBrands=await res.json();renderBrands();}
+    catch(e){document.getElementById('brandGrid').innerHTML='<p style="color:red;">Error loading brands</p>';}
 }
 
-// ============ BRAND DATA ============
-let allBrands = [], currentCat = '';
-
-async function loadBrands() {
-    try {
-        const res = await fetch('/api/gear-brands', {headers:{'X-API-Token':'pp-clubs-7742-v1'}});
-        allBrands = await res.json();
-        renderBrands();
-    } catch(e) { document.getElementById('brandGrid').innerHTML = '<p style="color:red;">Error loading brands</p>'; }
-}
-
-function filterCat(el, cat) {
-    currentCat = cat;
-    document.querySelectorAll('.discipline-tab').forEach(t => t.classList.remove('active'));
+function filterCat(el,cat){
+    currentCatFilter=cat;
+    document.querySelectorAll('#catTabs .discipline-tab').forEach(t=>t.classList.remove('active'));
     el.classList.add('active');
     renderBrands();
 }
 
-function renderBrands() {
-    const q = (document.getElementById('brandSearch').value || '').toLowerCase();
-    const filtered = allBrands.filter(b => {
-        if (currentCat && !(b.categories||'').toLowerCase().includes(currentCat.toLowerCase())) return false;
-        if (q && !b.name.toLowerCase().includes(q) && !(b.country||'').toLowerCase().includes(q) && !(b.categories||'').toLowerCase().includes(q)) return false;
+function renderBrands(){
+    const q=(document.getElementById('brandSearch')||{}).value?.toLowerCase()||'';
+    const filtered=allBrands.filter(b=>{
+        if(currentCatFilter&&!(b.categories||'').toLowerCase().includes(currentCatFilter.toLowerCase())) return false;
+        if(q&&!b.name.toLowerCase().includes(q)&&!(b.country||'').toLowerCase().includes(q)&&!(b.categories||'').toLowerCase().includes(q)) return false;
         return true;
     });
-    document.getElementById('brandCount').textContent = filtered.length;
-    const grid = document.getElementById('brandGrid');
-    const tierColors = {budget:'#22c55e',mid:'#f59e0b',premium:'#8b5cf6',luxury:'#ec4899'};
-    grid.innerHTML = filtered.map(b => {
-        const cats = (b.categories||'').split(',').map(c => `<span style="display:inline-block;background:#f1f5f9;color:#475569;padding:2px 8px;border-radius:6px;font-size:10px;margin:1px;">${c.trim()}</span>`).join('');
-        const tier = b.price_tier ? `<span style="color:${tierColors[b.price_tier]||'#6b7280'};font-size:10px;font-weight:700;text-transform:uppercase;">${b.price_tier}</span>` : '';
-        const logo = b.logo_url ? `<img src="${b.logo_url}" style="width:48px;height:48px;border-radius:10px;object-fit:contain;background:#f8fafc;" referrerpolicy="no-referrer" onerror="this.outerHTML='<div style=\\'width:48px;height:48px;border-radius:10px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:20px;\\'>🎯</div>'">` : '<div style="width:48px;height:48px;border-radius:10px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:20px;">🎯</div>';
-        const social = [(b.instagram_url?'<a href="'+b.instagram_url+'" target="_blank" onclick="event.stopPropagation()" style="text-decoration:none;">📸</a>':''), (b.facebook_url?'<a href="'+b.facebook_url+'" target="_blank" onclick="event.stopPropagation()" style="text-decoration:none;">📘</a>':'')].filter(Boolean).join(' ');
-        return `<div class="gear-card" onclick="showBrandDetail(${b.id})" style="cursor:pointer;padding:16px;display:flex;gap:12px;align-items:flex-start;" data-category="all" data-discipline="all">
-            ${logo}
+    document.getElementById('brandCount').textContent=filtered.length;
+    const grid=document.getElementById('brandGrid');
+    grid.innerHTML=filtered.map(b=>{
+        const cats=(b.categories||'').split(',').map(c=>`<span style="display:inline-block;background:#f0f9ff;color:#0369a1;padding:2px 8px;border-radius:6px;font-size:10px;margin:1px;">${c.trim()}</span>`).join('');
+        const logo=b.logo_url?`<img src="${b.logo_url}" style="width:40px;height:40px;border-radius:8px;object-fit:contain;" referrerpolicy="no-referrer" onerror="this.style.display='none'">`:'';
+        const country=b.country?`<div style="font-size:11px;color:#94a3b8;">${b.country}</div>`:'';
+        const socials=[];
+        if(b.website) socials.push(`<a href="${b.website}" target="_blank" onclick="event.stopPropagation()" title="Website">${IC_WEB}</a>`);
+        if(b.instagram_url) socials.push(`<a href="${b.instagram_url}" target="_blank" onclick="event.stopPropagation()" title="Instagram">${IC_IG}</a>`);
+        if(b.facebook_url) socials.push(`<a href="${b.facebook_url}" target="_blank" onclick="event.stopPropagation()" title="Facebook">${IC_FB}</a>`);
+        return `<div class="gear-card" onclick="showBrandDetail(${b.id})" style="cursor:pointer;display:flex;align-items:center;gap:12px;padding:16px;">
+            <div style="flex-shrink:0;width:40px;height:40px;display:flex;align-items:center;justify-content:center;">${logo}</div>
             <div style="flex:1;min-width:0;">
-                <div style="font-size:15px;font-weight:700;color:#1e293b;">${b.name}</div>
-                <div style="font-size:12px;color:#64748b;margin:2px 0;">${b.country||''} ${tier}</div>
+                <div class="gear-name" style="font-size:14px;font-weight:700;">${b.name}</div>
+                ${country}
                 <div style="margin-top:4px;">${cats}</div>
             </div>
-            <div style="display:flex;flex-direction:column;gap:4px;align-items:center;">${social}</div>
+            <div style="display:flex;flex-direction:column;gap:6px;align-items:center;">${socials.join('')}</div>
+            <span style="color:#cbd5e1;font-size:18px;flex-shrink:0;">→</span>
         </div>`;
     }).join('');
 }
-</script>
-<script>
-function showBrandDetail(id) {
-    const b = allBrands.find(x => x.id === id);
-    if (!b) return;
-    document.getElementById('bdName').textContent = b.name;
-    document.getElementById('bdCountry').textContent = [b.country, b.city].filter(Boolean).join(', ');
-    const logo = document.getElementById('bdLogo');
-    if (b.logo_url) { logo.src = b.logo_url; logo.style.display = ''; } else { logo.style.display = 'none'; }
-    const webLink = document.getElementById('bdWebLink');
-    if (b.website) { webLink.href = b.website; webLink.style.display = ''; } else { webLink.style.display = 'none'; }
-    const link = (url, text) => url ? `<a href="${url}" target="_blank" style="color:#0ea5e9;text-decoration:none;">${text}</a>` : null;
-    const tierColors = {budget:'#22c55e',mid:'#f59e0b',premium:'#8b5cf6',luxury:'#ec4899'};
-    const rows = [
-        ['Categories', (b.categories||'').split(',').map(c=>`<span style="display:inline-block;background:#f1f5f9;padding:3px 10px;border-radius:8px;font-size:12px;margin:2px;">${c.trim()}</span>`).join('')],
-        ['Price Tier', b.price_tier ? `<span style="color:${tierColors[b.price_tier]};font-weight:700;text-transform:capitalize;">${b.price_tier}</span>` : null],
-        ['Website', b.website ? link(b.website, b.website.replace(/^https?:\/\/(www\.)?/,'').replace(/\/$/,'')) : null],
-        ['Email', b.email ? `<a href="mailto:${b.email}" style="color:#0ea5e9;text-decoration:none;">${b.email}</a>` : null],
-        ['Phone', b.phone],
-        ['Address', [b.address, b.city, b.country].filter(Boolean).join(', ') || null],
-        ['Founded', b.year_founded],
-        ['Popular Products', b.popular_products ? `<div style="line-height:1.6;">${b.popular_products}</div>` : null],
-        ['Facebook', b.facebook_url ? link(b.facebook_url, '📘 Facebook Page') : null],
-        ['Instagram', b.instagram_url ? link(b.instagram_url, '📸 Instagram Profile') : null],
-        ['YouTube', b.youtube_url ? link(b.youtube_url, '🎬 YouTube Channel') : null],
-        ['Description', b.description ? `<div style="line-height:1.5;">${b.description}</div>` : null],
-    ].filter(r => r[1]);
-    document.getElementById('bdBody').innerHTML = rows.map(r =>
-        `<div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:13px;">
-            <span style="color:#94a3b8;min-width:110px;font-weight:600;">${r[0]}</span>
-            <span style="color:#1e293b;flex:1;word-break:break-word;">${r[1]}</span></div>`
-    ).join('') || '<p style="color:#94a3b8;padding:12px 0;">No details yet. Details will be added as we enrich each brand.</p>';
-    const ov = document.getElementById('brandDetailOverlay');
-    ov.style.display = 'flex';
+
+function showBrandDetail(id){
+    const b=allBrands.find(x=>x.id===id);if(!b)return;
+    document.getElementById('bdName').textContent=b.name;
+    document.getElementById('bdCountry').textContent=[b.country,b.city].filter(Boolean).join(', ');
+    const logo=document.getElementById('bdLogo');
+    if(b.logo_url){logo.src=b.logo_url;logo.style.display='';}else{logo.style.display='none';}
+    const webLink=document.getElementById('bdWebLink');
+    if(b.website){webLink.href=b.website;webLink.style.display='';}else{webLink.style.display='none';}
+    const link=(url,text)=>url?`<a href="${url}" target="_blank" style="color:#0ea5e9;text-decoration:none;">${text}</a>`:'';
+    const row=(label,val)=>val?`<div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:13px;">
+        <span style="color:#94a3b8;min-width:110px;font-weight:600;">${label}</span>
+        <span style="color:#1e293b;flex:1;word-break:break-word;">${val}</span></div>`:'';
+    const cats=(b.categories||'').split(',').map(c=>`<span style="display:inline-block;background:#f0f9ff;color:#0369a1;padding:2px 8px;border-radius:6px;font-size:11px;margin:1px;">${c.trim()}</span>`).join(' ');
+    // Build popup with description first, then products, then details
+    let html = '';
+    if(b.description) html += `<div style="font-size:13px;color:#475569;line-height:1.6;padding:12px 0;border-bottom:1px solid #f1f5f9;">${b.description}</div>`;
+    if(b.popular_products) html += row('Product Lineup', `<div style="line-height:1.8;">${b.popular_products.split(',').map(p=>`<span style="display:inline-block;background:#fef3c7;color:#92400e;padding:2px 10px;border-radius:8px;font-size:12px;margin:2px;font-weight:500;">${p.trim()}</span>`).join('')}</div>`);
+    html += row('Categories', cats);
+    html += row('Website', b.website ? link(b.website, b.website.replace(/^https?:\/\/(www\.)?/,'').replace(/\/$/,'')) : '');
+    html += row('Email', b.email ? `<a href="mailto:${b.email}" style="color:#0ea5e9;text-decoration:none;">${b.email}</a>` : '');
+    html += row('Phone', b.phone);
+    html += row('Address', [b.address,b.city,b.country].filter(Boolean).join(', ') || '');
+    // Social row with real icons
+    const socialLinks = [];
+    if(b.facebook_url) socialLinks.push(`<a href="${b.facebook_url}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;color:#1877F2;text-decoration:none;font-size:13px;">${IC_FB} Facebook</a>`);
+    if(b.instagram_url) socialLinks.push(`<a href="${b.instagram_url}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;color:#E1306C;text-decoration:none;font-size:13px;">${IC_IG} Instagram</a>`);
+    if(b.youtube_url) socialLinks.push(`<a href="${b.youtube_url}" target="_blank" style="color:#FF0000;text-decoration:none;font-size:13px;">▶ YouTube</a>`);
+    if(socialLinks.length) html += row('Social', socialLinks.join('&nbsp;&nbsp;&nbsp;'));
+    document.getElementById('bdBody').innerHTML = html || '<p style="color:#94a3b8;padding:12px 0;">No details yet.</p>';
+    document.getElementById('brandOverlay').style.display='flex';
 }
-function closeBrandDetail() { document.getElementById('brandDetailOverlay').style.display = 'none'; }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeBrandDetail(); });
+
+function closeBrandDetail(){document.getElementById('brandOverlay').style.display='none';}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeBrandDetail();});
 loadBrands();
 </script>
-<!-- BRAND DETAIL POPUP -->
 <div id="brandOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;" onclick="if(event.target===this)closeBrandDetail()">
     <div style="background:#fff;border-radius:20px;max-width:560px;width:92%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2);">
         <div style="padding:24px 24px 16px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:16px;">
@@ -616,79 +593,6 @@ loadBrands();
     </div>
 </div>
 
-<script>
-let allBrands=[], currentCatFilter='';
-
-async function loadBrands(){
-    try{
-        const res=await fetch('/api/gear-brands',{headers:{'X-API-Token':'pp-clubs-7742-v1'}});
-        allBrands=await res.json();
-        renderBrands();
-    }catch(e){document.getElementById('brandGrid').innerHTML='<p style="color:red;">Error loading brands</p>';}
-}
-
-function filterCat(el, cat){
-    document.querySelectorAll('#catTabs .discipline-tab').forEach(t=>t.classList.remove('active'));
-    el.classList.add('active');
-    currentCatFilter=cat;
-    renderBrands();
-}
-
-function renderBrands(){
-    const q=(document.getElementById('brandSearch')||{}).value?.toLowerCase()||'';
-    const filtered=allBrands.filter(b=>{
-        if(currentCatFilter&&!(b.categories||'').toLowerCase().includes(currentCatFilter.toLowerCase())) return false;
-        if(q&&!b.name.toLowerCase().includes(q)&&!(b.country||'').toLowerCase().includes(q)&&!(b.categories||'').toLowerCase().includes(q)) return false;
-        return true;
-    });
-    document.getElementById('brandCount').textContent=filtered.length;
-    const grid=document.getElementById('brandGrid');
-    grid.innerHTML=filtered.map(b=>{
-        const cats=(b.categories||'').split(',').map(c=>'<span style="display:inline-block;background:#f0f9ff;color:#0369a1;padding:2px 8px;border-radius:6px;font-size:10px;margin:1px;">'+c.trim()+'</span>').join('');
-        const logo=b.logo_url?`<img src="${b.logo_url}" style="width:40px;height:40px;border-radius:8px;object-fit:contain;" referrerpolicy="no-referrer" onerror="this.style.display='none'">`:'';
-        const country=b.country?`<div style="font-size:11px;color:#94a3b8;">${b.country}</div>`:'';
-        return `<div class="gear-card" onclick="showBrandDetail(${b.id})" style="cursor:pointer;display:flex;align-items:center;gap:12px;padding:16px;">
-            <div style="flex-shrink:0;width:40px;height:40px;display:flex;align-items:center;justify-content:center;">${logo}</div>
-            <div style="flex:1;min-width:0;">
-                <div class="gear-name" style="font-size:14px;font-weight:700;">${b.name}</div>
-                ${country}
-                <div style="margin-top:4px;">${cats}</div>
-            </div>
-            <span style="color:#cbd5e1;font-size:18px;flex-shrink:0;">→</span>
-        </div>`;
-    }).join('');
-}
-
-function showBrandDetail(id){
-    const b=allBrands.find(x=>x.id===id);if(!b)return;
-    document.getElementById('bdName').textContent=b.name;
-    document.getElementById('bdCountry').textContent=[b.country,b.city].filter(Boolean).join(', ');
-    const logo=document.getElementById('bdLogo');
-    if(b.logo_url){logo.src=b.logo_url;logo.style.display='';}else{logo.style.display='none';}
-    const webLink=document.getElementById('bdWebLink');
-    if(b.website){webLink.href=b.website;webLink.style.display='';}else{webLink.style.display='none';}
-    const link=(url,text)=>url?`<a href="${url}" target="_blank" style="color:#0ea5e9;text-decoration:none;">${text}</a>`:'';
-    const row=(label,val)=>val?`<div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:13px;"><span style="color:#94a3b8;min-width:110px;font-weight:600;">${label}</span><span style="color:#1e293b;flex:1;word-break:break-word;">${val}</span></div>`:'';
-    const cats=(b.categories||'').split(',').map(c=>'<span style="display:inline-block;background:#f0f9ff;color:#0369a1;padding:2px 8px;border-radius:6px;font-size:11px;margin:1px;">'+c.trim()+'</span>').join(' ');
-    document.getElementById('bdBody').innerHTML=[
-        row('Categories',cats),
-        row('Website',b.website?link(b.website,b.website.replace(/^https?:\/\/(www\.)?/,'')):''),
-        row('Email',b.email?link('mailto:'+b.email,b.email):''),
-        row('Phone',b.phone),
-        row('Address',[b.address,b.city].filter(Boolean).join(', ')),
-        row('Popular Products',b.popular_products),
-        row('Description',b.description),
-        row('Facebook',b.facebook_url?link(b.facebook_url,'📘 Facebook Page'):''),
-        row('Instagram',b.instagram_url?link(b.instagram_url,'📸 Instagram Profile'):''),
-        row('YouTube',b.youtube_url?link(b.youtube_url,'🎬 YouTube Channel'):''),
-    ].filter(Boolean).join('')||'<p style="color:#94a3b8;padding:12px 0;">No additional details yet.</p>';
-    const ov=document.getElementById('brandOverlay');
-    ov.style.display='flex';
-}
-function closeBrandDetail(){document.getElementById('brandOverlay').style.display='none';}
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeBrandDetail();});
-loadBrands();
-</script>
 <script src="pp-shared.js"></script>
 
 </body>
