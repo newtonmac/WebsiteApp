@@ -39,7 +39,7 @@ const UPDATES_API='https://updates.newtonmac.workers.dev';
             + '<a href="paddle-weather.html">⛅ Weather & Tides</a>'
             + '<a href="paddle-clubs.html">🛶 Paddle Clubs</a>'
             + '<a href="paddle-events.html">🏁 Events</a>'
-            + '<a href="paddle-gear.html">🎯 Gear & Reviews</a>'
+            + '<a href="paddle-gear.html">🎯 Gear</a>'
             + '<a href="paddle-federations.html">🏛️ Federations</a>'
             + '<div class="pp-mobile-divider"></div>'
             + '<span onclick="document.getElementById(\'ppMobileMenu\').classList.remove(\'open\');openSuggestModal()">💬 Feedback</span>'
@@ -191,8 +191,8 @@ const shipped=`
 <p>Each spot will show which craft types locals use there — surfskis, outrigger canoes, SUPs, K1s — so you know what works for the conditions.</p>
 <p class="cn-label">"Claim Your Club" Feature</p>
 <p>Club owners can claim their listing, update info, add photos, and manage their presence in the directory.</p>
-<p class="cn-label">Gear Reviews &amp; Recommendations</p>
-<p>Community-driven gear reviews organized by craft type, with comparison tools and buying guides.</p>
+<p class="cn-label">Gear Directory</p>
+<p>Equipment directory organized by craft type, with buyer's guides and brand listings for all paddle disciplines.</p>
 </div>`;
 
 const statusLabels={planned:'Planned',in_progress:'In Progress',completed:'Shipped'};
