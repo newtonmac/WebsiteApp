@@ -1006,7 +1006,7 @@
                 return c.n && c.n.toLowerCase().includes(q);
             });
             const total = matches.length;
-            const shown = matches.slice(0, 50);
+            const shown = matches;
 
             const box = document.getElementById('clubSuggestions');
             if (!total) { box.classList.remove('open'); return; }
@@ -1020,9 +1020,6 @@
                     ${craft ? `<span class="sug-craft">${craft}</span>` : ''}
                 </div>`;
             }).join('');
-            if (total > 50) {
-                box.innerHTML += `<div style="padding:8px 14px;color:#8b8fa3;font-size:12px;text-align:center;border-top:1px solid #2d3040;">Showing 50 of ${total} matches — type more to narrow</div>`;
-            }
             box._matches = shown;
             box.classList.add('open');
         }
