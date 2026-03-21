@@ -335,7 +335,7 @@
     }
 
     function closeModal() { document.getElementById('editModal').classList.remove('open'); }
-    function saveClub() {
+    async function saveClub() {
         const idx = parseInt(document.getElementById('editIdx').value);
         const club = allClubs.find(c => c._idx === idx);
         if (!club) return;
@@ -347,23 +347,59 @@
                 else club[f] = val;
             }
         });
+
+        // Save to Cloud SQL
+        try {
+            const payload = { ...club };
+            delete payload._idx;
+            const res = await fetch('/api/save-club', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-API-Token': 'pp-clubs-7742-v1' },
+                body: JSON.stringify(payload)
+            });
+            const result = await res.json();
+            if (result.error) throw new Error(result.error);
+            if (result.id && !club.id) club.id = result.id;
+        } catch (e) {
+            showToast('DB save failed: ' + e.message, true);
+            return;
+        }
+
         if (!changes.some(c => c._idx === idx)) changes.push(club);
         closeModal();
         renderTable();
         updateStats();
-        showToast('Club saved ✓');
+        showToast('Club saved to database ✓');
     }
 
-    function deleteClub() {
+    async function deleteClub() {
         const idx = parseInt(document.getElementById('editIdx').value);
-        if (!confirm('Delete this club permanently?')) return;
-        deleted.push(allClubs.find(c => c._idx === idx));
+        const club = allClubs.find(c => c._idx === idx);
+        if (!confirm('Delete this club permanently from the database?')) return;
+
+        // Delete from Cloud SQL
+        if (club && club.id) {
+            try {
+                const res = await fetch('/api/save-club', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json', 'X-API-Token': 'pp-clubs-7742-v1' },
+                    body: JSON.stringify({ id: club.id })
+                });
+                const result = await res.json();
+                if (result.error) throw new Error(result.error);
+            } catch (e) {
+                showToast('DB delete failed: ' + e.message, true);
+                return;
+            }
+        }
+
+        deleted.push(club);
         allClubs = allClubs.filter(c => c._idx !== idx);
         filtered = filtered.filter(c => c._idx !== idx);
         closeModal();
         renderTable();
         updateStats();
-        showToast('Club deleted', true);
+        showToast('Club deleted from database', true);
     }
     function exportChanges() {
         if (changes.length === 0 && deleted.length === 0) {
@@ -442,7 +478,18 @@
             const club = await res.json();
             if (club.error) throw new Error(club.error);
 
-            // Add to allClubs
+            // Save to Cloud SQL
+            status.innerHTML = '⏳ Saving to database...';
+            const saveRes = await fetch('/api/save-club', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-API-Token': 'pp-clubs-7742-v1' },
+                body: JSON.stringify(club)
+            });
+            const saveResult = await saveRes.json();
+            if (saveResult.error) throw new Error(saveResult.error);
+            club.id = saveResult.id;
+
+            // Add to local list
             club._idx = allClubs.length > 0 ? Math.max(...allClubs.map(c => c._idx)) + 1 : 0;
             allClubs.push(club);
             changes.push(club);

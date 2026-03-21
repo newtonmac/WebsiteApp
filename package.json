@@ -1,0 +1,7 @@
+{
+  "name": "paddlepoint-website",
+  "private": true,
+  "dependencies": {
+    "mysql2": "^3.11.0"
+  }
+}
