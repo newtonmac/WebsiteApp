@@ -732,6 +732,24 @@
                 fields: ['geometry', 'name', 'formatted_address', 'address_components']
             });
 
+            // Text-based search fallback on Enter key
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    setTimeout(() => textSearch(input.value.trim()), 300);
+                }
+            });
+
+            // Clear button restores all
+            input.addEventListener('input', () => {
+                if (!input.value.trim()) {
+                    filteredClubs = currentCraftFilter
+                        ? allClubs.filter(c => c.ct && c.ct.includes(currentCraftFilter))
+                        : [...allClubs];
+                    plotMarkers(filteredClubs);
+                }
+            });
+
             autocomplete.addListener('place_changed', () => {
                 const place = autocomplete.getPlace();
                 if (!place.geometry || !place.geometry.location) return;
@@ -771,28 +789,69 @@
 
         function filterByLocation(country, state, city) {
             filteredClubs = allClubs.filter(club => {
-                // Apply craft filter first
                 if (currentCraftFilter && (!club.ct || !club.ct.includes(currentCraftFilter))) return false;
 
-                // If city search, match city
+                // If city search, match city or club name
                 if (city) {
-                    return (club.ci && club.ci.toLowerCase() === city.toLowerCase()) ||
-                           (club.n && club.n.toLowerCase().includes(city.toLowerCase()));
+                    const cl = city.toLowerCase();
+                    return (club.ci && club.ci.toLowerCase() === cl) ||
+                           (club.ci && club.ci.toLowerCase().includes(cl)) ||
+                           (club.n && club.n.toLowerCase().includes(cl));
                 }
-                // If state search, match state
+                // If state search, match full name, abbreviation, or country name
                 if (state && !city) {
-                    return (club.st && club.st.toLowerCase() === state.toLowerCase()) ||
-                           (club.co && club.co.toLowerCase() === state.toLowerCase());
+                    const sl = state.toLowerCase();
+                    return (club.st && club.st.toLowerCase() === sl) ||
+                           (club.sa && club.sa.toLowerCase() === sl) ||
+                           (club.co && club.co.toLowerCase() === sl);
                 }
-                // If country search, match country
+                // If country search, match ISO code or full name
                 if (country && !state && !city) {
-                    return club.co && (club.co.toUpperCase() === country.toUpperCase() ||
-                           club.co.toLowerCase().includes(country.toLowerCase()));
+                    const cu = country.toUpperCase();
+                    return (club.cc && club.cc.toUpperCase() === cu) ||
+                           (club.co && club.co.toUpperCase() === cu);
                 }
                 return true;
             });
 
+            // If no results from place search, try proximity to map center
+            if (filteredClubs.length === 0 && allClubs.length > 0) {
+                const center = map.getCenter();
+                if (center) {
+                    const lat = center.lat(), lng = center.lng();
+                    filteredClubs = allClubs.filter(club => {
+                        if (currentCraftFilter && (!club.ct || !club.ct.includes(currentCraftFilter))) return false;
+                        if (!club.la || !club.lo) return false;
+                        const d = Math.sqrt(Math.pow(club.la - lat, 2) + Math.pow(club.lo - lng, 2));
+                        return d < 2; // ~200km radius
+                    });
+                }
+            }
+
             plotMarkers(filteredClubs);
+        }
+
+        function textSearch(query) {
+            if (!query) return;
+            const q = query.toLowerCase();
+            filteredClubs = allClubs.filter(club => {
+                if (currentCraftFilter && (!club.ct || !club.ct.includes(currentCraftFilter))) return false;
+                return (club.n && club.n.toLowerCase().includes(q)) ||
+                       (club.ci && club.ci.toLowerCase().includes(q)) ||
+                       (club.st && club.st.toLowerCase().includes(q)) ||
+                       (club.sa && club.sa.toLowerCase() === q) ||
+                       (club.co && club.co.toLowerCase().includes(q)) ||
+                       (club.cc && club.cc.toLowerCase() === q) ||
+                       (club.ct && club.ct.toLowerCase().includes(q)) ||
+                       (club.fe && club.fe.toLowerCase().includes(q)) ||
+                       (club.d && club.d.toLowerCase().includes(q));
+            });
+            plotMarkers(filteredClubs);
+            if (filteredClubs.length > 0) {
+                const bounds = new google.maps.LatLngBounds();
+                filteredClubs.forEach(c => { if (c.la && c.lo) bounds.extend({ lat: c.la, lng: c.lo }); });
+                map.fitBounds(bounds);
+            }
         }
 
         function applyFilters() {

@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PaddlePoint — Club Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f1117; color: #e1e4e8; min-height: 100vh; }
+        .header { background: #1a1d28; border-bottom: 1px solid #2d3040; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; }
+        .header h1 { font-size: 20px; background: linear-gradient(90deg, #06b6d4, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .header .stats { color: #8b8fa3; font-size: 13px; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .search-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+        .search-bar input, .search-bar select { background: #1a1d28; border: 1px solid #2d3040; color: #e1e4e8; padding: 10px 14px; border-radius: 8px; font-size: 14px; }
+        .search-bar input { flex: 1; min-width: 200px; }
+        .search-bar select { min-width: 140px; }
+        .search-bar button { background: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; }
+        .search-bar button:hover { background: #2563eb; }
+        .search-bar .btn-green { background: #22c55e; }
+        .search-bar .btn-green:hover { background: #16a34a; }
+        .results-info { color: #8b8fa3; font-size: 13px; margin-bottom: 12px; }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { background: #1a1d28; color: #8b8fa3; padding: 8px 10px; text-align: left; position: sticky; top: 0; border-bottom: 2px solid #2d3040; white-space: nowrap; cursor: pointer; user-select: none; }
+        th:hover { color: #e1e4e8; }
+        td { padding: 6px 10px; border-bottom: 1px solid #1e2130; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        tr:hover { background: #1a1d28; }
+        tr.selected { background: #1e3a5f; }
+        td a { color: #60a5fa; text-decoration: none; }
+        td a:hover { text-decoration: underline; }
+        .rating { color: #fbbf24; }
+        .tag { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 11px; background: rgba(6,182,212,0.15); color: #22d3ee; margin: 1px; }
+        /* Edit modal */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; overflow-y: auto; }
+        .modal-overlay.open { display: flex; align-items: flex-start; justify-content: center; padding: 40px 20px; }
+        .modal { background: #1a1d28; border: 1px solid #2d3040; border-radius: 16px; padding: 24px; width: 100%; max-width: 700px; }
+        .modal h2 { font-size: 18px; color: #22d3ee; margin-bottom: 16px; }
+        .modal label { display: block; font-size: 12px; color: #8b8fa3; margin: 8px 0 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .modal input, .modal textarea, .modal select { width: 100%; background: #0f1117; border: 1px solid #2d3040; color: #e1e4e8; padding: 8px 12px; border-radius: 6px; font-size: 13px; font-family: inherit; }
+        .modal textarea { min-height: 80px; resize: vertical; }
+        .modal .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .modal .actions { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+        .modal .actions button { padding: 10px 24px; border-radius: 8px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; }
+        .btn-save { background: #22c55e; color: white; }
+        .btn-save:hover { background: #16a34a; }
+        .btn-cancel { background: #374151; color: #e1e4e8; }
+        .btn-delete { background: #ef4444; color: white; }
+        .btn-delete:hover { background: #dc2626; }
+        .toast { position: fixed; bottom: 20px; right: 20px; background: #22c55e; color: white; padding: 12px 24px; border-radius: 10px; font-weight: 600; z-index: 2000; display: none; }
+        .toast.error { background: #ef4444; }
+        .pagination { display: flex; gap: 8px; align-items: center; justify-content: center; margin-top: 16px; }
+        .pagination button { background: #1a1d28; border: 1px solid #2d3040; color: #e1e4e8; padding: 6px 14px; border-radius: 6px; cursor: pointer; }
+        .pagination button:hover { background: #2d3040; }
+        .pagination button.active { background: #3b82f6; border-color: #3b82f6; }
+        .pagination span { color: #8b8fa3; font-size: 13px; }
+        .login-box { max-width: 400px; margin: 100px auto; background: #1a1d28; padding: 30px; border-radius: 16px; border: 1px solid #2d3040; }
+        .login-box h2 { text-align: center; margin-bottom: 20px; color: #22d3ee; }
+        .login-box input { width: 100%; margin-bottom: 12px; }
+        .login-box button { width: 100%; }
+    </style>
+</head>
+<body>
+    <!-- Login -->
+    <div id="loginView" class="login-box">
+        <h2>🔐 PaddlePoint Admin</h2>
+        <input type="password" id="adminPass" placeholder="Admin password" onkeydown="if(event.key==='Enter')doLogin()">
+        <button class="search-bar" style="width:100%;background:#3b82f6;color:white;border:none;padding:10px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;" onclick="doLogin()">Log In</button>
+    </div>
+
+    <!-- Main admin UI (hidden until login) -->
+    <div id="adminView" style="display:none;">
+        <div class="header">
+            <div>
+                <h1>🛶 PaddlePoint Club Admin</h1>
+            </div>
+            <div class="stats" id="statsBar">Loading...</div>
+        </div>
+        <div class="container">
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="Search by name, city, state, country, craft type..." onkeydown="if(event.key==='Enter')doSearch()">
+                <select id="filterCountry"><option value="">All Countries</option></select>
+                <select id="filterCraft"><option value="">All Crafts</option></select>
+                <select id="filterClass"><option value="">All Types</option><option value="club">Club</option><option value="school">School</option><option value="unverified">Unverified</option></select>
+                <button onclick="doSearch()">🔍 Search</button>
+                <button onclick="resetSearch()">↺ Reset</button>
+                <button class="btn-green" onclick="exportChanges()">📥 Export Changes</button>
+                <button class="btn-green" onclick="regenerateJSON()">🔄 Rebuild JSON</button>
+            </div>
+            <div class="results-info" id="resultsInfo"></div>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr>
+                        <th onclick="sortBy('n')">#</th>
+                        <th onclick="sortBy('n')">Name ↕</th>
+                        <th onclick="sortBy('ci')">City ↕</th>
+                        <th onclick="sortBy('st')">State ↕</th>
+                        <th onclick="sortBy('co')">Country ↕</th>
+                        <th onclick="sortBy('ct')">Craft Types ↕</th>
+                        <th onclick="sortBy('gr')">Rating ↕</th>
+                        <th>Website</th>
+                        <th>Actions</th>
+                    </tr></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+            <div class="pagination" id="pagination"></div>
+        </div>
+    </div>
+    <!-- Edit Modal -->
+    <div class="modal-overlay" id="editModal">
+        <div class="modal">
+            <h2 id="modalTitle">Edit Club</h2>
+            <input type="hidden" id="editIdx">
+            <div class="row">
+                <div><label>Club Name</label><input id="ed_n"></div>
+                <div><label>Classification</label><select id="ed_cl"><option value="club">Club</option><option value="school">School</option><option value="unverified">Unverified</option></select></div>
+            </div>
+            <div class="row">
+                <div><label>Address</label><input id="ed_a"></div>
+                <div><label>City</label><input id="ed_ci"></div>
+            </div>
+            <div class="row">
+                <div><label>State</label><input id="ed_st"></div>
+                <div><label>Country</label><input id="ed_co"></div>
+            </div>
+            <div class="row">
+                <div><label>Latitude</label><input id="ed_la" type="number" step="any"></div>
+                <div><label>Longitude</label><input id="ed_lo" type="number" step="any"></div>
+            </div>
+            <div class="row">
+                <div><label>Phone</label><input id="ed_p"></div>
+                <div><label>Email</label><input id="ed_e"></div>
+            </div>
+            <div><label>Website</label><input id="ed_w"></div>
+            <div><label>Description</label><textarea id="ed_d"></textarea></div>
+            <div class="row">
+                <div><label>Craft Types (comma-sep)</label><input id="ed_ct" placeholder="kayak,canoe,sup"></div>
+                <div><label>Disciplines</label><input id="ed_di"></div>
+            </div>
+            <div class="row">
+                <div><label>Federation</label><input id="ed_fe"></div>
+                <div><label>Season</label><input id="ed_se" placeholder="year-round"></div>
+            </div>
+            <div class="row">
+                <div><label>Facebook URL</label><input id="ed_fb"></div>
+                <div><label>Instagram URL</label><input id="ed_ig"></div>
+            </div>
+            <div class="row">
+                <div><label>Google Rating</label><input id="ed_gr" type="number" step="0.1" min="0" max="5"></div>
+                <div><label>Google Reviews</label><input id="ed_gc" type="number"></div>
+            </div>
+            <div class="row">
+                <div><label>Youth Program</label><select id="ed_yp"><option value="">Unknown</option><option value="True">Yes</option><option value="False">No</option></select></div>
+                <div><label>Masters Program</label><select id="ed_mp"><option value="">Unknown</option><option value="True">Yes</option><option value="False">No</option></select></div>
+            </div>
+            <div class="row">
+                <div><label>Offers Lessons</label><select id="ed_ol"><option value="">Unknown</option><option value="True">Yes</option><option value="False">No</option></select></div>
+                <div><label>Activity Level</label><input id="ed_al"></div>
+            </div>
+            <div class="actions">
+                <button class="btn-delete" onclick="deleteClub()">🗑 Delete</button>
+                <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+                <button class="btn-save" onclick="saveClub()">💾 Save</button>
+            </div>
+        </div>
+    </div>
+    <div class="toast" id="toast"></div>
+    <script>
+    const ADMIN_PASS = 'paddle2026';
+    const PER_PAGE = 50;
+    let allClubs = [], filtered = [], changes = [], deleted = [];
+    let currentPage = 0, sortCol = 'n', sortAsc = true;
+
+    function doLogin() {
+        if (document.getElementById('adminPass').value === ADMIN_PASS) {
+            document.getElementById('loginView').style.display = 'none';
+            document.getElementById('adminView').style.display = 'block';
+            loadData();
+        } else {
+            alert('Wrong password');
+        }
+    }
+
+    async function loadData() {
+        document.getElementById('statsBar').textContent = 'Loading clubs...';
+        try {
+            const res = await fetch('clubs-data.json');
+            allClubs = await res.json();
+            // Add index for tracking
+            allClubs.forEach((c, i) => c._idx = i);
+        } catch (e) {
+            allClubs = [];
+        }
+        buildFilters();
+        filtered = [...allClubs];
+        currentPage = 0;
+        renderTable();
+        updateStats();
+    }
+    function buildFilters() {
+        const countries = new Set(), crafts = new Set();
+        allClubs.forEach(c => {
+            if (c.co) countries.add(c.co);
+            if (c.ct) c.ct.split(',').forEach(t => { t = t.trim(); if (t) crafts.add(t); });
+        });
+        const cs = document.getElementById('filterCountry');
+        [...countries].sort().forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; cs.appendChild(o); });
+        const cf = document.getElementById('filterCraft');
+        [...crafts].sort().forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c.replace(/_/g,' '); cf.appendChild(o); });
+    }
+
+    function updateStats() {
+        const total = allClubs.length;
+        const countries = new Set(allClubs.map(c => c.co).filter(Boolean)).size;
+        const mods = changes.length;
+        const dels = deleted.length;
+        let s = `${total} clubs | ${countries} countries`;
+        if (mods) s += ` | <span style="color:#fbbf24;">${mods} modified</span>`;
+        if (dels) s += ` | <span style="color:#ef4444;">${dels} deleted</span>`;
+        document.getElementById('statsBar').innerHTML = s;
+    }
+
+    function doSearch() {
+        const q = document.getElementById('searchInput').value.toLowerCase().trim();
+        const co = document.getElementById('filterCountry').value;
+        const ct = document.getElementById('filterCraft').value;
+        const cl = document.getElementById('filterClass').value;
+        filtered = allClubs.filter(c => {
+            if (co && c.co !== co) return false;
+            if (ct && (!c.ct || !c.ct.includes(ct))) return false;
+            if (cl && c.cl !== cl) return false;
+            if (q) {
+                return (c.n && c.n.toLowerCase().includes(q)) || (c.ci && c.ci.toLowerCase().includes(q)) ||
+                       (c.st && c.st.toLowerCase().includes(q)) || (c.co && c.co.toLowerCase().includes(q)) ||
+                       (c.ct && c.ct.toLowerCase().includes(q)) || (c.d && c.d.toLowerCase().includes(q)) ||
+                       (c.fe && c.fe.toLowerCase().includes(q)) || (c.sa && c.sa.toLowerCase() === q);
+            }
+            return true;
+        });
+        currentPage = 0;
+        renderTable();
+    }
+    function resetSearch() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('filterCountry').value = '';
+        document.getElementById('filterCraft').value = '';
+        document.getElementById('filterClass').value = '';
+        filtered = [...allClubs];
+        currentPage = 0;
+        renderTable();
+    }
+
+    function sortBy(col) {
+        if (sortCol === col) sortAsc = !sortAsc;
+        else { sortCol = col; sortAsc = true; }
+        filtered.sort((a, b) => {
+            const va = (a[col] || '').toString().toLowerCase();
+            const vb = (b[col] || '').toString().toLowerCase();
+            if (col === 'gr' || col === 'gc') return sortAsc ? (parseFloat(va)||0) - (parseFloat(vb)||0) : (parseFloat(vb)||0) - (parseFloat(va)||0);
+            return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+        });
+        renderTable();
+    }
+
+    function renderTable() {
+        const start = currentPage * PER_PAGE;
+        const page = filtered.slice(start, start + PER_PAGE);
+        const tbody = document.getElementById('tableBody');
+        document.getElementById('resultsInfo').textContent = `Showing ${start+1}-${Math.min(start+PER_PAGE, filtered.length)} of ${filtered.length} clubs`;
+        tbody.innerHTML = page.map((c, i) => {
+            const modified = changes.some(ch => ch._idx === c._idx);
+            const crafts = (c.ct || '').split(',').filter(Boolean).map(t => `<span class="tag">${t.replace(/_/g,' ')}</span>`).join('');
+            const rating = c.gr ? `<span class="rating">${parseFloat(c.gr).toFixed(1)} ⭐</span>` : '';
+            const web = c.w ? `<a href="${c.w}" target="_blank" title="${c.w}">${c.w.replace(/^https?:\/\/(www\.)?/,'').substring(0,25)}</a>` : '';
+            return `<tr class="${modified ? 'selected' : ''}" ondblclick="editClub(${c._idx})">
+                <td>${start+i+1}</td>
+                <td title="${c.n||''}">${c.n||''}</td>
+                <td>${c.ci||''}</td>
+                <td>${c.sa||c.st||''}</td>
+                <td>${c.co||''}</td>
+                <td>${crafts}</td>
+                <td>${rating}</td>
+                <td>${web}</td>
+                <td><button onclick="editClub(${c._idx})" style="background:#3b82f6;color:white;border:none;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:12px;">Edit</button></td>
+            </tr>`;
+        }).join('');
+        renderPagination();
+    }
+    function renderPagination() {
+        const total = Math.ceil(filtered.length / PER_PAGE);
+        const pg = document.getElementById('pagination');
+        if (total <= 1) { pg.innerHTML = ''; return; }
+        let html = `<button onclick="goPage(0)" ${currentPage===0?'disabled':''}>« First</button>`;
+        html += `<button onclick="goPage(${currentPage-1})" ${currentPage===0?'disabled':''}>‹ Prev</button>`;
+        html += `<span>Page ${currentPage+1} of ${total}</span>`;
+        html += `<button onclick="goPage(${currentPage+1})" ${currentPage>=total-1?'disabled':''}>Next ›</button>`;
+        html += `<button onclick="goPage(${total-1})" ${currentPage>=total-1?'disabled':''}>Last »</button>`;
+        pg.innerHTML = html;
+    }
+    function goPage(p) { currentPage = Math.max(0, Math.min(p, Math.ceil(filtered.length/PER_PAGE)-1)); renderTable(); window.scrollTo(0,0); }
+
+    const FIELDS = ['n','cl','a','ci','st','co','la','lo','p','e','w','d','ct','di','fe','se','fb','ig','gr','gc','yp','mp','ol','al'];
+
+    function editClub(idx) {
+        const club = allClubs.find(c => c._idx === idx);
+        if (!club) return;
+        document.getElementById('editIdx').value = idx;
+        document.getElementById('modalTitle').textContent = 'Edit: ' + (club.n || 'Club');
+        FIELDS.forEach(f => {
+            const el = document.getElementById('ed_' + f);
+            if (el) el.value = club[f] || '';
+        });
+        document.getElementById('editModal').classList.add('open');
+    }
+
+    function closeModal() { document.getElementById('editModal').classList.remove('open'); }
+    function saveClub() {
+        const idx = parseInt(document.getElementById('editIdx').value);
+        const club = allClubs.find(c => c._idx === idx);
+        if (!club) return;
+        FIELDS.forEach(f => {
+            const el = document.getElementById('ed_' + f);
+            if (el) {
+                const val = el.value.trim();
+                if (f === 'la' || f === 'lo') club[f] = val ? parseFloat(val) : '';
+                else club[f] = val;
+            }
+        });
+        if (!changes.some(c => c._idx === idx)) changes.push(club);
+        closeModal();
+        renderTable();
+        updateStats();
+        showToast('Club saved ✓');
+    }
+
+    function deleteClub() {
+        const idx = parseInt(document.getElementById('editIdx').value);
+        if (!confirm('Delete this club permanently?')) return;
+        deleted.push(allClubs.find(c => c._idx === idx));
+        allClubs = allClubs.filter(c => c._idx !== idx);
+        filtered = filtered.filter(c => c._idx !== idx);
+        closeModal();
+        renderTable();
+        updateStats();
+        showToast('Club deleted', true);
+    }
+    function exportChanges() {
+        if (changes.length === 0 && deleted.length === 0) {
+            showToast('No changes to export', true);
+            return;
+        }
+        let report = `PaddlePoint Admin Export — ${new Date().toISOString()}\n`;
+        report += `Modified: ${changes.length} | Deleted: ${deleted.length}\n\n`;
+        if (changes.length) {
+            report += '=== MODIFIED CLUBS ===\n';
+            changes.forEach(c => { report += `${c.n} | ${c.ci}, ${c.co} | crafts: ${c.ct}\n`; });
+        }
+        if (deleted.length) {
+            report += '\n=== DELETED CLUBS ===\n';
+            deleted.forEach(c => { report += `${c.n} | ${c.ci}, ${c.co}\n`; });
+        }
+        const blob = new Blob([report], { type: 'text/plain' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `paddlepoint-changes-${Date.now()}.txt`;
+        a.click();
+        showToast('Changes exported');
+    }
+
+    function regenerateJSON() {
+        if (!confirm('Regenerate clubs-data.json with all current edits? This will download a new JSON file you can deploy.')) return;
+        // Strip internal tracking fields
+        const clean = allClubs.map(c => {
+            const out = {};
+            for (const [k,v] of Object.entries(c)) {
+                if (k === '_idx') continue;
+                if (v && v !== 'None' && v !== 'False') out[k] = v;
+            }
+            return out;
+        });
+        const json = JSON.stringify(clean);
+        const blob = new Blob([json], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'clubs-data.json';
+        a.click();
+        showToast(`Exported ${clean.length} clubs as JSON`);
+    }
+    function showToast(msg, isError) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = 'toast' + (isError ? ' error' : '');
+        t.style.display = 'block';
+        setTimeout(() => { t.style.display = 'none'; }, 3000);
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeModal();
+    });
+    </script>
+</body>
+</html>
