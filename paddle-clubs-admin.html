@@ -86,6 +86,7 @@
                 <button onclick="resetSearch()">↺ Reset</button>
                 <button class="btn-green" onclick="exportChanges()">📥 Export Changes</button>
                 <button class="btn-green" onclick="regenerateJSON()">🔄 Rebuild JSON</button>
+                <button style="background:#8b5cf6;color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;" onclick="showAddClub()">➕ Add Club</button>
             </div>
             <div class="results-info" id="resultsInfo"></div>
             <div class="table-wrap">
@@ -166,6 +167,23 @@
         </div>
     </div>
     <div class="toast" id="toast"></div>
+
+    <!-- Add Club Modal -->
+    <div class="modal-overlay" id="addModal">
+        <div class="modal" style="max-width:500px;">
+            <h2>➕ Add New Club</h2>
+            <p style="color:#8b8fa3;font-size:13px;margin-bottom:16px;">Enter the club name and website. We'll auto-fetch address, phone, email, Google rating, craft types, and social media.</p>
+            <label>Club Name *</label>
+            <input id="add_name" placeholder="e.g. San Diego Canoe Kayak Team">
+            <label>Website URL</label>
+            <input id="add_website" placeholder="e.g. https://www.sdckt.net">
+            <div id="addStatus" style="margin-top:12px;font-size:13px;color:#8b8fa3;display:none;"></div>
+            <div class="actions">
+                <button class="btn-cancel" onclick="closeAddModal()">Cancel</button>
+                <button id="addFetchBtn" style="background:#8b5cf6;color:white;border:none;padding:10px 24px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;" onclick="fetchAndAddClub()">🔍 Fetch & Add</button>
+            </div>
+        </div>
+    </div>
     <script>
     const ADMIN_PASS = 'paddle2026';
     const PER_PAGE = 50;
@@ -389,6 +407,72 @@
         a.click();
         showToast(`Exported ${clean.length} clubs as JSON`);
     }
+    function showAddClub() {
+        document.getElementById('add_name').value = '';
+        document.getElementById('add_website').value = '';
+        document.getElementById('addStatus').style.display = 'none';
+        document.getElementById('addFetchBtn').disabled = false;
+        document.getElementById('addModal').classList.add('open');
+        document.getElementById('add_name').focus();
+    }
+
+    function closeAddModal() {
+        document.getElementById('addModal').classList.remove('open');
+    }
+
+    async function fetchAndAddClub() {
+        const name = document.getElementById('add_name').value.trim();
+        const website = document.getElementById('add_website').value.trim();
+        if (!name) { alert('Club name is required'); return; }
+
+        const status = document.getElementById('addStatus');
+        const btn = document.getElementById('addFetchBtn');
+        status.style.display = 'block';
+        status.style.color = '#22d3ee';
+        status.innerHTML = '⏳ Fetching website + Google data...';
+        btn.disabled = true;
+        btn.textContent = '⏳ Fetching...';
+
+        try {
+            const res = await fetch('/api/enrich-club', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-API-Token': 'pp-clubs-7742-v1' },
+                body: JSON.stringify({ name, website })
+            });
+            const club = await res.json();
+            if (club.error) throw new Error(club.error);
+
+            // Add to allClubs
+            club._idx = allClubs.length > 0 ? Math.max(...allClubs.map(c => c._idx)) + 1 : 0;
+            allClubs.push(club);
+            changes.push(club);
+            filtered = [...allClubs];
+
+            closeAddModal();
+            renderTable();
+            updateStats();
+
+            // Open the edit modal so user can review/tweak
+            editClub(club._idx);
+
+            const found = [];
+            if (club.a) found.push('address');
+            if (club.p) found.push('phone');
+            if (club.e) found.push('email');
+            if (club.gr) found.push('rating ' + club.gr + '⭐');
+            if (club.ct) found.push('crafts: ' + club.ct);
+            if (club.fb) found.push('Facebook');
+            if (club.ig) found.push('Instagram');
+            showToast('Club added! Found: ' + (found.length ? found.join(', ') : 'basic info only'));
+
+        } catch (e) {
+            status.style.color = '#ef4444';
+            status.innerHTML = '❌ Error: ' + e.message;
+            btn.disabled = false;
+            btn.textContent = '🔍 Fetch & Add';
+        }
+    }
+
     function showToast(msg, isError) {
         const t = document.getElementById('toast');
         t.textContent = msg;
