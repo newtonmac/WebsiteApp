@@ -27,10 +27,14 @@ module.exports = async (req, res) => {
   if (token !== API_TOKEN) return res.status(403).json({ error: 'Access denied' });
 
   try {
-    const { name, website } = req.body || {};
+    const { name, website, facebook, instagram } = req.body || {};
     if (!name) return res.status(400).json({ error: 'Club name required' });
 
     const result = { n: name, w: website || '' };
+
+    // Pre-set user-provided social URLs
+    if (facebook) result.fb = facebook;
+    if (instagram) result.ig = instagram;
 
     // 1. SCRAPE WEBSITE — extract email, phone, social links, description
     if (website) {
@@ -50,15 +54,15 @@ module.exports = async (req, res) => {
           // Extract phone numbers
           const phones = html.match(/(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g);
           if (phones) result.p = phones[0];
-          // Facebook (skip tracking pixels and short paths)
+          // Facebook (skip tracking pixels and short paths) — only if user didn't provide
           const fbMatches = html.match(/https?:\/\/(?:www\.)?facebook\.com\/[a-zA-Z0-9._\-]{3,}\/?/g);
-          if (fbMatches) {
+          if (fbMatches && !result.fb) {
             const fbGood = fbMatches.filter(u => !u.includes('/tr') && !u.includes('/sharer') && !u.includes('/plugins') && !u.includes('/dialog'));
             if (fbGood.length) result.fb = fbGood[0];
           }
-          // Instagram
+          // Instagram — only if user didn't provide
           const ig = html.match(/https?:\/\/(?:www\.)?instagram\.com\/[a-zA-Z0-9._]+\/?/);
-          if (ig) result.ig = ig[0];
+          if (ig && !result.ig) result.ig = ig[0];
           // Extract description from meta tags
           const metaDesc = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i);
           if (metaDesc) result.d = metaDesc[1].substring(0, 400);

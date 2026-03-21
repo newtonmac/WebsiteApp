@@ -81,12 +81,12 @@
                 <input type="text" id="searchInput" placeholder="Search by name, city, state, country, craft type..." onkeydown="if(event.key==='Enter')doSearch()">
                 <select id="filterCountry"><option value="">All Countries</option></select>
                 <select id="filterCraft"><option value="">All Crafts</option></select>
-                <select id="filterClass"><option value="">All Types</option><option value="club">Club</option><option value="school">School</option><option value="unverified">Unverified</option></select>
+                <select id="filterClass"><option value="">All Types</option><option value="club">Club</option><option value="organization">Organization</option><option value="school">School</option><option value="unverified">Unverified</option></select>
                 <button onclick="doSearch()">🔍 Search</button>
                 <button onclick="resetSearch()">↺ Reset</button>
                 <button class="btn-green" onclick="exportChanges()">📥 Export Changes</button>
                 <button class="btn-green" onclick="regenerateJSON()">🔄 Rebuild JSON</button>
-                <button style="background:#8b5cf6;color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;" onclick="showAddClub()">➕ Add Club</button>
+                <button style="background:#8b5cf6;color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;" onclick="showAddClub()">➕ Add Club / Org</button>
             </div>
             <div class="results-info" id="resultsInfo"></div>
             <div class="table-wrap">
@@ -115,7 +115,7 @@
             <input type="hidden" id="editIdx">
             <div class="row">
                 <div><label>Club Name</label><input id="ed_n"></div>
-                <div><label>Classification</label><select id="ed_cl"><option value="club">Club</option><option value="school">School</option><option value="unverified">Unverified</option></select></div>
+                <div><label>Classification</label><select id="ed_cl"><option value="club">Club</option><option value="organization">Organization / Federation</option><option value="school">School</option><option value="unverified">Unverified</option></select></div>
             </div>
             <div class="row">
                 <div><label>Address</label><input id="ed_a"></div>
@@ -171,12 +171,22 @@
     <!-- Add Club Modal -->
     <div class="modal-overlay" id="addModal">
         <div class="modal" style="max-width:500px;">
-            <h2>➕ Add New Club</h2>
-            <p style="color:#8b8fa3;font-size:13px;margin-bottom:16px;">Enter the club name and website. We'll auto-fetch address, phone, email, Google rating, craft types, and social media.</p>
-            <label>Club Name *</label>
-            <input id="add_name" placeholder="e.g. San Diego Canoe Kayak Team">
+            <h2>➕ Add Club or Organization</h2>
+            <p style="color:#8b8fa3;font-size:13px;margin-bottom:16px;">Enter the name and any available info. We'll auto-fetch address, phone, email, Google rating, craft types, and social media.</p>
+            <label>Type</label>
+            <select id="add_classification" style="width:100%;background:#0f1117;border:1px solid #2d3040;color:#e1e4e8;padding:8px 12px;border-radius:6px;font-size:13px;margin-bottom:8px;">
+                <option value="club">🛶 Club</option>
+                <option value="organization">🏛️ Organization / Federation</option>
+                <option value="school">🎓 School / Academy</option>
+            </select>
+            <label>Name *</label>
+            <input id="add_name" placeholder="e.g. San Diego Canoe Kayak Team or American Canoe Association">
             <label>Website URL</label>
             <input id="add_website" placeholder="e.g. https://www.sdckt.net">
+            <div class="row" style="margin-top:8px;">
+                <div><label>Facebook Page</label><input id="add_facebook" placeholder="e.g. https://facebook.com/sdckt"></div>
+                <div><label>Instagram Profile</label><input id="add_instagram" placeholder="e.g. https://instagram.com/sdckt"></div>
+            </div>
             <div id="addStatus" style="margin-top:12px;font-size:13px;color:#8b8fa3;display:none;"></div>
             <div class="actions">
                 <button class="btn-cancel" onclick="closeAddModal()">Cancel</button>
@@ -449,8 +459,12 @@
     function showAddClub() {
         document.getElementById('add_name').value = '';
         document.getElementById('add_website').value = '';
+        document.getElementById('add_facebook').value = '';
+        document.getElementById('add_instagram').value = '';
+        document.getElementById('add_classification').value = 'club';
         document.getElementById('addStatus').style.display = 'none';
         document.getElementById('addFetchBtn').disabled = false;
+        document.getElementById('addFetchBtn').textContent = '🔍 Fetch & Add';
         document.getElementById('addModal').classList.add('open');
         document.getElementById('add_name').focus();
     }
@@ -462,7 +476,10 @@
     async function fetchAndAddClub() {
         const name = document.getElementById('add_name').value.trim();
         const website = document.getElementById('add_website').value.trim();
-        if (!name) { alert('Club name is required'); return; }
+        const facebook = document.getElementById('add_facebook').value.trim();
+        const instagram = document.getElementById('add_instagram').value.trim();
+        const classification = document.getElementById('add_classification').value;
+        if (!name) { alert('Name is required'); return; }
 
         const status = document.getElementById('addStatus');
         const btn = document.getElementById('addFetchBtn');
@@ -476,10 +493,15 @@
             const res = await fetch('/api/enrich-club', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-API-Token': 'pp-clubs-7742-v1' },
-                body: JSON.stringify({ name, website })
+                body: JSON.stringify({ name, website, facebook, instagram })
             });
             const club = await res.json();
             if (club.error) throw new Error(club.error);
+
+            // Override with user-provided values
+            club.cl = classification;
+            if (facebook && !club.fb) club.fb = facebook;
+            if (instagram && !club.ig) club.ig = instagram;
 
             // Save to Cloud SQL
             status.innerHTML = '⏳ Saving to database...';
