@@ -80,10 +80,23 @@ Return ONLY the JSON array, nothing else.` }]
       });
 
       const data = await aiRes.json();
+      // Debug: log response structure
+      const blockTypes = (data.content || []).map(b => b.type);
+      console.log(`[${src.name}] stop_reason=${data.stop_reason}, blocks=${JSON.stringify(blockTypes)}, model=${data.model||'?'}`);
+      if (data.error) { console.log(`[${src.name}] API error:`, JSON.stringify(data.error)); }
       // Collect ALL text blocks (web_search responses have tool_use + tool_result + text)
       const textBlocks = (data.content || []).filter(b => b.type === 'text').map(b => b.text);
       const fullText = textBlocks.join('\n');
-      if (!fullText.trim()) { results.push({ source: src.name, status: 'no_text', events: [] }); continue; }
+      if (!fullText.trim()) {
+        // Try tool_result blocks as fallback
+        const toolResults = (data.content || []).filter(b => b.type === 'tool_result').map(b => typeof b.content === 'string' ? b.content : JSON.stringify(b.content));
+        const fallbackText = toolResults.join('\n');
+        if (fallbackText.trim()) {
+          console.log(`[${src.name}] Using tool_result fallback, length=${fallbackText.length}`);
+        }
+        results.push({ source: src.name, status: fullText.trim() ? 'ok' : 'no_text', events: [], debug: blockTypes });
+        continue;
+      }
 
       // Parse JSON from response
       let events = [];
