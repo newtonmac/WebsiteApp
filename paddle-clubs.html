@@ -688,14 +688,14 @@
             <h3 id="panelTitle"></h3>
             <div class="club-meta" id="panelMeta"></div>
             <div class="club-tags" id="panelTags"></div>
-            <div class="club-orgs" id="panelOrgs"></div>
+            <div class="club-desc" id="panelDesc" style="font-size:12px;color:#c9cdd5;line-height:1.4;margin-bottom:8px;max-height:80px;overflow-y:auto;"></div>
+            <div class="club-contact" id="panelContact" style="font-size:12px;color:#c9cdd5;margin-bottom:8px;"></div>
             <div class="club-links" id="panelLinks"></div>
             <div class="club-score" id="panelScores"></div>
         </div>
     </div>
 
     <script>
-        const CLUBS_API = 'https://paddle-clubs-api-455381395334.us-west1.run.app';
         let map, markers = [], allClubs = [], filteredClubs = [];
         let currentCraftFilter = '';
 
@@ -754,8 +754,8 @@
                 if (filteredClubs.length > 0) {
                     const bounds = new google.maps.LatLngBounds();
                     filteredClubs.forEach(c => {
-                        if (c.latitude && c.longitude) {
-                            bounds.extend({ lat: parseFloat(c.latitude), lng: parseFloat(c.longitude) });
+                        if (c.la && c.lo) {
+                            bounds.extend({ lat: c.la, lng: c.lo });
                         }
                     });
                     map.fitBounds(bounds);
@@ -772,20 +772,22 @@
         function filterByLocation(country, state, city) {
             filteredClubs = allClubs.filter(club => {
                 // Apply craft filter first
-                if (currentCraftFilter && club.craft_display_name !== currentCraftFilter) return false;
+                if (currentCraftFilter && (!club.ct || !club.ct.includes(currentCraftFilter))) return false;
 
                 // If city search, match city
                 if (city) {
-                    return (club.city && club.city.toLowerCase() === city.toLowerCase()) ||
-                           (club.area_name && club.area_name.toLowerCase().includes(city.toLowerCase()));
+                    return (club.ci && club.ci.toLowerCase() === city.toLowerCase()) ||
+                           (club.n && club.n.toLowerCase().includes(city.toLowerCase()));
                 }
-                // If state search, match region
+                // If state search, match state
                 if (state && !city) {
-                    return club.region_name && club.region_name.toLowerCase() === state.toLowerCase();
+                    return (club.st && club.st.toLowerCase() === state.toLowerCase()) ||
+                           (club.co && club.co.toLowerCase() === state.toLowerCase());
                 }
-                // If country search, match country code
+                // If country search, match country
                 if (country && !state && !city) {
-                    return club.country_code && club.country_code.toUpperCase() === country.toUpperCase();
+                    return club.co && (club.co.toUpperCase() === country.toUpperCase() ||
+                           club.co.toLowerCase().includes(country.toLowerCase()));
                 }
                 return true;
             });
@@ -795,17 +797,15 @@
 
         function applyFilters() {
             currentCraftFilter = document.getElementById('craftFilter').value;
-            // Re-apply: if there's a search active, re-filter; otherwise show all matching craft
             const input = document.getElementById('clubSearch');
             if (input.value.trim()) {
-                // Trigger the autocomplete place_changed won't work, so we filter from current state
                 filteredClubs = allClubs.filter(club => {
-                    if (currentCraftFilter && club.craft_display_name !== currentCraftFilter) return false;
+                    if (currentCraftFilter && (!club.ct || !club.ct.includes(currentCraftFilter))) return false;
                     return true;
                 });
             } else {
                 filteredClubs = currentCraftFilter
-                    ? allClubs.filter(c => c.craft_display_name === currentCraftFilter)
+                    ? allClubs.filter(c => c.ct && c.ct.includes(currentCraftFilter))
                     : [...allClubs];
             }
             plotMarkers(filteredClubs);
@@ -815,8 +815,8 @@
                 const bounds = new google.maps.LatLngBounds();
                 let hasCoords = false;
                 filteredClubs.forEach(c => {
-                    if (c.latitude && c.longitude) {
-                        bounds.extend({ lat: parseFloat(c.latitude), lng: parseFloat(c.longitude) });
+                    if (c.la && c.lo) {
+                        bounds.extend({ lat: c.la, lng: c.lo });
                         hasCoords = true;
                     }
                 });
@@ -826,10 +826,10 @@
 
         async function loadClubs() {
             try {
-                const res = await fetch(CLUBS_API + '/clubs');
+                const res = await fetch('clubs-data.json');
                 allClubs = await res.json();
             } catch (e) {
-                console.warn('Clubs API not available yet:', e.message);
+                console.warn('Clubs data not available:', e.message);
                 allClubs = [];
             }
 
@@ -848,12 +848,17 @@
 
         function buildCraftFilter() {
             const crafts = new Set();
-            allClubs.forEach(c => { if (c.craft_display_name) crafts.add(c.craft_display_name); });
+            allClubs.forEach(c => {
+                if (c.ct) c.ct.split(',').forEach(t => { t = t.trim(); if (t) crafts.add(t); });
+            });
+            const LABELS = {kayak:'Kayak',canoe:'Canoe',rowing:'Rowing',sup:'SUP',dragon_boat:'Dragon Boat',
+                outrigger:'Outrigger',sea_kayak:'Sea Kayak',surfski:'Surfski',whitewater_kayak:'Whitewater',
+                sprint_kayak:'Sprint Kayak',canoe_polo:'Canoe Polo',prone_paddle:'Prone Paddle'};
             const select = document.getElementById('craftFilter');
             [...crafts].sort().forEach(craft => {
                 const opt = document.createElement('option');
                 opt.value = craft;
-                opt.textContent = craft;
+                opt.textContent = LABELS[craft] || craft.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
                 select.appendChild(opt);
             });
         }
@@ -889,13 +894,13 @@
             const iconLarge = makeMarkerIconLarge();
 
             clubs.forEach(club => {
-                if (!club.latitude || !club.longitude) return;
+                if (!club.la || !club.lo) return;
 
                 const marker = new google.maps.Marker({
-                    position: { lat: parseFloat(club.latitude), lng: parseFloat(club.longitude) },
+                    position: { lat: club.la, lng: club.lo },
                     map: map,
                     icon: icon,
-                    title: club.area_name || club.city,
+                    title: club.n,
                     optimized: true,
                 });
 
@@ -927,66 +932,87 @@
 
         function showClubPanel(club) {
             const panel = document.getElementById('clubPanel');
-            document.getElementById('panelTitle').textContent = club.area_name || club.city || 'Unknown Area';
+            document.getElementById('panelTitle').textContent = club.n || 'Unknown Club';
 
-            const parts = [club.city, club.region_name, club.country_code].filter(Boolean);
+            // Location line
+            const parts = [club.ci, club.st, club.co].filter(Boolean);
             document.getElementById('panelMeta').textContent = parts.join(', ');
 
-            // Tags
+            // Tags — craft types + classification
             const tagsEl = document.getElementById('panelTags');
             tagsEl.innerHTML = '';
-            if (club.craft_display_name) addTag(tagsEl, club.craft_display_name, '');
-            if (club.primary_discipline_name) addTag(tagsEl, club.primary_discipline_name, 'green');
-            if (club.water_type) addTag(tagsEl, club.water_type, 'amber');
-            if (club.exposure) addTag(tagsEl, club.exposure, '');
-            if (club.best_for_tags) {
-                club.best_for_tags.split(';').forEach(t => addTag(tagsEl, t.trim(), 'green'));
+            const LABELS = {kayak:'Kayak',canoe:'Canoe',rowing:'Rowing',sup:'SUP',dragon_boat:'Dragon Boat',
+                outrigger:'Outrigger',sea_kayak:'Sea Kayak',surfski:'Surfski',whitewater_kayak:'Whitewater',
+                sprint_kayak:'Sprint Kayak',canoe_polo:'Canoe Polo',prone_paddle:'Prone Paddle'};
+            if (club.ct) {
+                club.ct.split(',').forEach(t => {
+                    t = t.trim();
+                    if (t) addTag(tagsEl, LABELS[t] || t.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()), '');
+                });
             }
+            if (club.cl === 'school') addTag(tagsEl, 'School', 'amber');
+            if (club.yp === 'True') addTag(tagsEl, 'Youth Program', 'green');
+            if (club.mp === 'True') addTag(tagsEl, 'Masters', 'green');
+            if (club.ol === 'True') addTag(tagsEl, 'Lessons', 'green');
+            if (club.se) addTag(tagsEl, club.se, '');
 
-            // Organizations
-            const orgsEl = document.getElementById('panelOrgs');
-            if (club.top_organization_names) {
-                const orgs = club.top_organization_names.split(';').map(o => o.trim()).filter(Boolean);
-                orgsEl.innerHTML = '<strong>Organizations</strong><br>' + orgs.join('<br>');
-            } else {
-                orgsEl.innerHTML = '';
-            }
+            // Description
+            const descEl = document.getElementById('panelDesc');
+            descEl.textContent = club.d || '';
+            descEl.style.display = club.d ? 'block' : 'none';
 
-            // Links
+            // Contact info
+            const contactEl = document.getElementById('panelContact');
+            let contactHtml = '';
+            if (club.a) contactHtml += `<div style="margin-bottom:3px;">📍 ${club.a}</div>`;
+            if (club.p) contactHtml += `<div style="margin-bottom:3px;">📞 <a href="tel:${club.p}" style="color:#60a5fa;text-decoration:none;">${club.p}</a></div>`;
+            if (club.e) contactHtml += `<div style="margin-bottom:3px;">✉️ <a href="mailto:${club.e}" style="color:#60a5fa;text-decoration:none;">${club.e}</a></div>`;
+            if (club.fe) contactHtml += `<div style="margin-bottom:3px;font-size:11px;color:#8b8fa3;">🏛️ ${club.fe}</div>`;
+            contactEl.innerHTML = contactHtml;
+
+            // Links — website, social, Google Maps
             const linksEl = document.getElementById('panelLinks');
             linksEl.innerHTML = '';
-            if (club.top_public_urls) {
-                const urls = club.top_public_urls.split(';').map(u => u.trim()).filter(Boolean);
-                if (urls.length) {
-                    linksEl.innerHTML = '<strong style="color:#e1e4e8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">Links</strong><br>';
-                    urls.forEach(url => {
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.target = '_blank';
-                        a.rel = 'noopener';
-                        a.textContent = url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '');
-                        linksEl.appendChild(a);
-                    });
-                }
+            if (club.w) {
+                const a = document.createElement('a');
+                a.href = club.w; a.target = '_blank'; a.rel = 'noopener';
+                a.textContent = '🌐 ' + club.w.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '');
+                linksEl.appendChild(a);
+            }
+            if (club.fb) {
+                const a = document.createElement('a');
+                a.href = club.fb; a.target = '_blank'; a.rel = 'noopener';
+                a.textContent = '📘 Facebook';
+                linksEl.appendChild(a);
+            }
+            if (club.ig) {
+                const a = document.createElement('a');
+                a.href = club.ig; a.target = '_blank'; a.rel = 'noopener';
+                a.textContent = '📷 Instagram';
+                linksEl.appendChild(a);
+            }
+            if (club.gm) {
+                const a = document.createElement('a');
+                a.href = club.gm; a.target = '_blank'; a.rel = 'noopener';
+                a.textContent = '📍 Google Maps';
+                linksEl.appendChild(a);
             }
 
-            // Scores
+            // Scores — Google rating + review count
             const scoresEl = document.getElementById('panelScores');
             scoresEl.innerHTML = '';
-            [
-                { val: club.fit_score, lbl: 'Fit' },
-                { val: club.beginner_fit, lbl: 'Beginner' },
-                { val: club.touring_fit, lbl: 'Touring' },
-                { val: club.training_fit, lbl: 'Training' },
-                { val: club.downwind_fit, lbl: 'Downwind' },
-                { val: club.evidence_score, lbl: 'Evidence' },
-            ].forEach(s => {
-                if (s.val === null || s.val === undefined || s.val === '') return;
+            if (club.gr) {
                 const div = document.createElement('div');
                 div.className = 'club-score-item';
-                div.innerHTML = `<div class="val">${parseFloat(s.val).toFixed(1)}</div><div class="lbl">${s.lbl}</div>`;
+                div.innerHTML = `<div class="val">${parseFloat(club.gr).toFixed(1)} ⭐</div><div class="lbl">Rating</div>`;
                 scoresEl.appendChild(div);
-            });
+            }
+            if (club.gc) {
+                const div = document.createElement('div');
+                div.className = 'club-score-item';
+                div.innerHTML = `<div class="val">${parseInt(club.gc)}</div><div class="lbl">Reviews</div>`;
+                scoresEl.appendChild(div);
+            }
 
             panel.classList.add('open');
         }
@@ -1117,7 +1143,7 @@
             <button class="dev-modal-close" onclick="closeDevModal()">&times;</button>
             <h2>&#127758; The World's Largest Paddling Club Directory</h2>
             <div class="dev-subtitle">
-                Find your next club, your next crew, your next adventure. We're building the most comprehensive paddling database on the planet &mdash; <strong style="color:#fbbf24;">9,000+ clubs</strong> across <strong style="color:#fbbf24;">50+ countries</strong> and growing.
+                Find your next club, your next crew, your next adventure. We're building the most comprehensive paddling database on the planet &mdash; <strong style="color:#fbbf24;">7,700+ clubs</strong> across <strong style="color:#fbbf24;">77 countries</strong> and growing.
             </div>
 
             <div class="dev-section">
