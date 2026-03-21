@@ -477,33 +477,6 @@
         <!-- Brand Cards (from DB) -->
         <div class="gear-grid" id="brandGrid"></div>
 
-        <!-- Buyer's Guide Section -->
-        <h2 class="section-title">Buyer's Guides</h2>
-        <div class="guides-grid">
-
-            <div class="guide-card">
-                <div class="guide-icon">📏</div>
-                <div class="guide-title">How to Choose a SUP Paddle</div>
-                <p class="guide-desc">Learn how blade size, shaft material, and paddle length affect your stroke efficiency and comfort on the water.</p>
-                <a href="https://www.google.com/search?q=how+to+choose+SUP+paddle+size+guide" target="_blank" class="guide-link">Read Guide &rarr;</a>
-            </div>
-
-            <div class="guide-card">
-                <div class="guide-icon">🛶</div>
-                <div class="guide-title">Outrigger Canoe Buyer's Guide</div>
-                <p class="guide-desc">From OC-1 to OC-6, understand hull shapes, materials, and rigging options to find the right canoe for your goals.</p>
-                <a href="https://www.google.com/search?q=outrigger+canoe+buying+guide+OC1+OC6" target="_blank" class="guide-link">Read Guide &rarr;</a>
-            </div>
-
-            <div class="guide-card">
-                <div class="guide-icon">🔒</div>
-                <div class="guide-title">Essential Safety Gear</div>
-                <p class="guide-desc">A checklist of must-have safety equipment for open-water paddling, including PFDs, leashes, lights, and communication devices.</p>
-                <a href="https://www.google.com/search?q=essential+safety+gear+open+water+paddling+checklist+PFD" target="_blank" class="guide-link">Read Guide &rarr;</a>
-            </div>
-
-        </div>
-
 <!-- BRAND DETAIL POPUP -->
 <div id="brandDetailOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;" onclick="if(event.target===this)closeBrandDetail()">
     <div style="background:#fff;border-radius:20px;max-width:560px;width:92%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2);">
@@ -672,15 +645,16 @@ function renderBrands(){
     const grid=document.getElementById('brandGrid');
     grid.innerHTML=filtered.map(b=>{
         const cats=(b.categories||'').split(',').map(c=>'<span style="display:inline-block;background:#f0f9ff;color:#0369a1;padding:2px 8px;border-radius:6px;font-size:10px;margin:1px;">'+c.trim()+'</span>').join('');
-        const logo=b.logo_url?`<img src="${b.logo_url}" style="width:48px;height:48px;border-radius:10px;object-fit:contain;background:#f1f5f9;" referrerpolicy="no-referrer" onerror="this.outerHTML='<div style=\\'font-size:32px;\\'>🏭</div>'">`:'<div style="font-size:32px;">🏭</div>';
+        const logo=b.logo_url?`<img src="${b.logo_url}" style="width:40px;height:40px;border-radius:8px;object-fit:contain;" referrerpolicy="no-referrer" onerror="this.style.display='none'">`:'';
         const country=b.country?`<div style="font-size:11px;color:#94a3b8;">${b.country}</div>`:'';
-        const social=[(b.website?'🌐':''), (b.instagram_url?'📸':''), (b.facebook_url?'📘':'')].filter(Boolean).join(' ');
-        return `<div class="gear-card" onclick="showBrandDetail(${b.id})" style="cursor:pointer;text-align:center;padding:20px 16px;">
-            ${logo}
-            <div class="gear-name" style="margin-top:8px;">${b.name}</div>
-            ${country}
-            <div style="margin-top:6px;">${cats}</div>
-            <div style="margin-top:6px;font-size:12px;color:#94a3b8;">${social}</div>
+        return `<div class="gear-card" onclick="showBrandDetail(${b.id})" style="cursor:pointer;display:flex;align-items:center;gap:12px;padding:16px;">
+            <div style="flex-shrink:0;width:40px;height:40px;display:flex;align-items:center;justify-content:center;">${logo}</div>
+            <div style="flex:1;min-width:0;">
+                <div class="gear-name" style="font-size:14px;font-weight:700;">${b.name}</div>
+                ${country}
+                <div style="margin-top:4px;">${cats}</div>
+            </div>
+            <span style="color:#cbd5e1;font-size:18px;flex-shrink:0;">→</span>
         </div>`;
     }).join('');
 }

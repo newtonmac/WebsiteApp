@@ -118,6 +118,7 @@ tr.selected{background:#1e2040}
         <label>Description</label><textarea id="ed_description" placeholder="Brand story, specialties, what they're known for..."></textarea>
         <div class="actions">
             <button class="btn-delete" id="deleteBtn" onclick="deleteBrand()">🗑️ Delete</button>
+            <button style="background:#0ea5e9;color:#fff;border:none;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;" id="enrichBtn" onclick="enrichBrand()">🔍 Enrich from Website</button>
             <button class="btn-cancel" onclick="closeEdit()">Cancel</button>
             <button class="btn-save" onclick="saveBrand()">💾 Save</button>
         </div>
@@ -236,6 +237,34 @@ async function deleteBrand(){
 }
 
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+
+async function enrichBrand(){
+    const website=document.getElementById('ed_website').value.trim();
+    const name=document.getElementById('ed_name').value.trim();
+    if(!website){alert('Website URL required to enrich');return;}
+    const btn=document.getElementById('enrichBtn');
+    btn.disabled=true;btn.textContent='⏳ Enriching...';
+    try{
+        const res=await fetch('/api/enrich-gear-brand',{method:'POST',
+            headers:{'Content-Type':'application/json','X-API-Token':'pp-clubs-7742-v1'},
+            body:JSON.stringify({name,website,
+                facebook_url:document.getElementById('ed_facebook_url').value,
+                instagram_url:document.getElementById('ed_instagram_url').value})});
+        const data=await res.json();
+        if(data.error){alert(data.error);return;}
+        // Fill in empty fields only
+        const fillIf=(id,val)=>{const el=document.getElementById(id);if(el&&!el.value&&val)el.value=val;};
+        fillIf('ed_description',data.description);
+        fillIf('ed_logo_url',data.logo_url);
+        fillIf('ed_email',data.email);
+        fillIf('ed_phone',data.phone);
+        fillIf('ed_facebook_url',data.facebook_url);
+        fillIf('ed_instagram_url',data.instagram_url);
+        fillIf('ed_youtube_url',data.youtube_url);
+        showToast('Enriched! Review and save.');
+    }catch(e){alert('Enrich failed: '+e.message);}
+    finally{btn.disabled=false;btn.textContent='🔍 Enrich from Website';}
+}
 document.getElementById('editModal').addEventListener('click',e=>{if(e.target.classList.contains('modal-overlay'))closeEdit();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeEdit();});
 </script>
