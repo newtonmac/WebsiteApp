@@ -681,8 +681,7 @@
 
         /* Data Sources */
         .data-sources {
-            display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px;
-            padding-top: 12px; border-top: 1px solid #f3f4f6;
+            display: none; /* Hidden inline — shown via ℹ️ popup instead */
         }
         .data-source-tag {
             font-size: 10px; color: #6b7280; background: #f3f4f6;
@@ -690,6 +689,25 @@
             text-decoration: none; transition: background 0.2s;
         }
         a.data-source-tag:hover { background: #e5e7eb; color: #3b82f6; }
+
+        .src-info-btn {
+            display:inline-flex;align-items:center;justify-content:center;
+            width:20px;height:20px;border-radius:50%;background:#e0f2fe;
+            color:#0284c7;font-size:11px;font-weight:700;cursor:pointer;
+            border:none;margin-left:8px;vertical-align:middle;flex-shrink:0;
+        }
+        .src-info-btn:hover { background:#bae6fd; }
+        .src-popup {
+            display:none;position:absolute;top:calc(100% + 4px);right:0;
+            background:#fff;border:1px solid #e2e8f0;border-radius:12px;
+            box-shadow:0 8px 24px rgba(0,0,0,.12);padding:14px 16px;z-index:100;
+            font-size:12px;color:#475569;line-height:1.8;min-width:240px;max-width:320px;
+        }
+        .src-popup.open { display:block; }
+        .src-popup-title { font-weight:700;color:#1e293b;margin-bottom:4px;font-size:13px; }
+        .src-popup a { color:#0284c7;text-decoration:none; }
+        .src-popup a:hover { text-decoration:underline; }
+        .card-header { position:relative; }
 
         /* Responsive */
         @media (max-width: 600px) {
@@ -825,6 +843,11 @@
                 <div class="condition-sub" id="heatStress">--</div>
             </div>
         </div>
+        <div class="data-sources">
+            <a href="https://weather.google.com" target="_blank" class="data-source-tag">Google Weather</a>
+            <a href="https://open-meteo.com" target="_blank" class="data-source-tag">Open-Meteo</a>
+            <a href="https://www.weather.gov" target="_blank" class="data-source-tag">NWS</a>
+        </div>
     </div>
 
     <!-- Sunrise / Sunset -->
@@ -874,6 +897,10 @@
     <div class="card">
         <div class="card-header"><span class="card-header-icon">&#x1F30A;</span>Tide Chart</div>
         <div class="tide-chart-area">Tide data will appear here</div>
+        <div class="data-sources">
+            <a href="https://tidesandcurrents.noaa.gov" target="_blank" class="data-source-tag">NOAA CO-OPS</a>
+            <a href="https://open-meteo.com/en/docs/marine-weather-api" target="_blank" class="data-source-tag">Open-Meteo Marine</a>
+        </div>
     </div>
 
     <!-- Hourly Forecast -->
@@ -940,6 +967,11 @@
                 <div class="hour-temp">--&deg;</div>
                 <div class="hour-wind">-- mph</div>
             </div>
+        </div>
+        <div class="data-sources">
+            <a href="https://weather.google.com" target="_blank" class="data-source-tag">Google Weather</a>
+            <a href="https://open-meteo.com" target="_blank" class="data-source-tag">Open-Meteo</a>
+            <a href="https://www.weather.gov" target="_blank" class="data-source-tag">NWS</a>
         </div>
     </div>
 
@@ -2960,6 +2992,48 @@ async function toggleStats(){
 }
 </script>
 
+<script>
+// Auto-generate ℹ️ source info buttons from data-sources divs
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.data-sources').forEach(ds => {
+        const card = ds.closest('.card');
+        if (!card) return;
+        const header = card.querySelector('.card-header');
+        if (!header) return;
+        const links = ds.querySelectorAll('a.data-source-tag');
+        if (!links.length) return;
+        // Build popup content
+        const items = [...links].map(a => 
+            `<div><a href="${a.href}" target="_blank">${a.textContent} ↗</a></div>`
+        ).join('');
+        // Create ℹ️ button
+        const btn = document.createElement('button');
+        btn.className = 'src-info-btn';
+        btn.textContent = 'ℹ';
+        btn.title = 'Data sources';
+        // Create popup
+        const popup = document.createElement('div');
+        popup.className = 'src-popup';
+        popup.innerHTML = `<div class="src-popup-title">Data Sources</div>${items}`;
+        btn.addEventListener('click', e => {
+            e.stopPropagation();
+            document.querySelectorAll('.src-popup.open').forEach(p => { if (p !== popup) p.classList.remove('open'); });
+            popup.classList.toggle('open');
+        });
+        header.style.display = 'flex';
+        header.style.alignItems = 'center';
+        header.style.justifyContent = 'space-between';
+        const wrapper = document.createElement('span');
+        wrapper.style.position = 'relative';
+        wrapper.appendChild(btn);
+        wrapper.appendChild(popup);
+        header.appendChild(wrapper);
+    });
+    document.addEventListener('click', () => {
+        document.querySelectorAll('.src-popup.open').forEach(p => p.classList.remove('open'));
+    });
+});
+</script>
 <script src="pp-shared.js"></script>
 </body>
 </html>
