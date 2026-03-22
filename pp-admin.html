@@ -55,6 +55,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#0f1117;color:#e1e4e8;m
         <button class="tab active" onclick="switchTab(this,'clubs')">🛶 Clubs <span class="badge" id="badgeClubs">—</span></button>
         <button class="tab" onclick="switchTab(this,'events')">🏁 Events <span class="badge" id="badgeEvents">—</span></button>
         <button class="tab" onclick="switchTab(this,'gear')">🎯 Gear <span class="badge" id="badgeGear">—</span></button>
+        <button class="tab" onclick="switchTab(this,'traffic')">📊 Traffic</button>
         <div class="topbar-right">
             <a href="paddlepoint.html">← Back to Site</a>
         </div>
@@ -63,6 +64,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#0f1117;color:#e1e4e8;m
         <div class="panel active" id="panel-clubs"><iframe id="frame-clubs"></iframe></div>
         <div class="panel" id="panel-events"><iframe id="frame-events"></iframe></div>
         <div class="panel" id="panel-gear"><iframe id="frame-gear"></iframe></div>
+        <div class="panel" id="panel-traffic"><iframe id="frame-traffic"></iframe></div>
     </div>
 </div>
 
@@ -71,7 +73,8 @@ const PASS='paddle2026';
 const PAGES={
     clubs:'paddle-clubs-admin.html',
     events:'paddle-events-admin.html',
-    gear:'paddle-gear-admin.html'
+    gear:'paddle-gear-admin.html',
+    traffic:'paddle-traffic.html'
 };
 const loaded={};
 
