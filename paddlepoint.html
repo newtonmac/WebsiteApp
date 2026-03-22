@@ -6,6 +6,12 @@
     <title>PaddlePoint — Paddle Conditions, Clubs & Events</title>
     <link rel="stylesheet" href="pp-shared.css">
     <meta name="description" content="Real-time paddle conditions, weather, clubs, events, and gear for SUP, kayak, outrigger, and canoe paddlers.">
+    <meta property="og:title" content="PaddlePoint — Paddle Club & Conditions Hub">
+    <meta property="og:description" content="7,700+ paddle clubs, real-time water conditions, events, and gear for SUP, kayak, outrigger, and canoe paddlers worldwide.">
+    <meta property="og:image" content="https://paddlepoint.org/paddlepoint.jpg">
+    <meta property="og:url" content="https://paddlepoint.org">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
     <link rel="preconnect" href="https://visitor-counter.newtonmac.workers.dev" crossorigin>
     <link rel="preload" href="paddle-pin.svg" as="image">
     <!-- Leaflet loaded on demand when Stats clicked -->
@@ -173,99 +179,6 @@
             box-shadow: 0 8px 24px rgba(14,122,107,0.3);
         }
 
-        /* === SECTIONS GRID === */
-        .sections {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 64px 24px;
-        }
-
-        .sections-heading {
-            text-align: center;
-            margin-bottom: 48px;
-        }
-
-        .sections-heading h2 {
-            font-size: 28px;
-            font-weight: 700;
-            color: #1a1a2e;
-            letter-spacing: -0.02em;
-        }
-
-        .sections-heading p {
-            color: #6b7280;
-            margin-top: 8px;
-            font-size: 16px;
-        }
-
-        .sections-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 24px;
-        }
-
-        .section-card {
-            display: flex;
-            flex-direction: column;
-            background: #ffffff;
-            border: 1px solid #e5e7eb;
-            border-radius: 14px;
-            overflow: hidden;
-            text-decoration: none;
-            color: #1a1a2e;
-            transition: all 0.3s ease;
-        }
-
-        .section-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 40px rgba(0,0,0,0.08);
-            border-color: var(--card-accent, #0e7a6b);
-        }
-
-        .section-card-img {
-            width: 100%;
-            height: 180px;
-            background: #f7f8fa;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .section-card-icon {
-            font-size: 60px;
-            transition: transform 0.25s ease;
-        }
-
-        .section-card:hover .section-card-icon {
-            transform: scale(1.12);
-        }
-
-        .section-card-body {
-            padding: 24px;
-        }
-
-        .section-card-body h3 {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: #1a1a2e;
-        }
-
-        .section-card-body p {
-            font-size: 14px;
-            color: #6b7280;
-            line-height: 1.6;
-        }
-
-        .section-card-tag {
-            display: inline-block;
-            font-size: 12px;
-            font-weight: 500;
-            padding: 4px 10px;
-            border-radius: 20px;
-            margin-top: 12px;
-        }
-
         /* === FOOTER === */
         .footer {
             text-align: center;
@@ -359,8 +272,6 @@
             .header h1 { font-size: 28px; }
 
             .hero { height: 380px; }
-
-            .sections-grid { grid-template-columns: 1fr; }
         }
 
         @media (max-width: 480px) {
@@ -616,7 +527,7 @@
 
     <!-- HERO -->
     <section class="hero">
-        <img src="paddlepoint.jpg" alt="Outrigger paddlers on Mission Bay" class="hero-img">
+        <img src="paddlepoint.jpg" alt="Outrigger paddlers on Mission Bay" class="hero-img" fetchpriority="high" decoding="async">
         <div class="hero-overlay">
             <h1 class="hero-title">Know Before You Paddle</h1>
             <p class="hero-subtitle">Real-time water conditions, weather, tides, clubs, and events for SUP, kayak, outrigger & canoe paddlers.</p>
