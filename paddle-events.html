@@ -158,6 +158,7 @@ body { background: #f8fafc; color: #1e293b; font-family: 'DM Sans', -apple-syste
     <p>Races, regattas, festivals &amp; championships worldwide</p>
     <p style="color:rgba(255,255,255,0.5);font-size:12px;margin-top:6px;">Free community resource — open data, no account required</p>
     <div class="events-count" id="eventsCount">Loading...</div>
+    <div id="lastUpdated" style="color:rgba(255,255,255,0.4);font-size:11px;margin-top:4px;"></div>
 </div>
 
 <!-- Controls -->
@@ -266,6 +267,16 @@ async function loadEvents() {
         populateCountryFilter();
         applyFilters();
         document.getElementById('eventsCount').textContent = `${allEvents.length} events`;
+        // Show last updated based on most recent created_at/updated_at
+        try {
+            const dates = allEvents.map(e => new Date(e.updated_at || e.created_at)).filter(d => !isNaN(d));
+            if (dates.length) {
+                const latest = new Date(Math.max(...dates));
+                const ago = Math.floor((Date.now() - latest) / 86400000);
+                const label = ago === 0 ? 'today' : ago === 1 ? 'yesterday' : `${ago} days ago`;
+                document.getElementById('lastUpdated').textContent = `Last updated: ${latest.toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'})} (${label})`;
+            }
+        } catch(e) {}
     } catch (e) {
         document.getElementById('eventsGrid').innerHTML = '<div class="empty-state"><h3>Failed to load events</h3><p>' + e.message + '</p></div>';
     }
