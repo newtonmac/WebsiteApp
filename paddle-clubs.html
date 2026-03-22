@@ -467,6 +467,50 @@
         }
         .count-badge strong { color: #22d3ee; margin-right: 4px; }
 
+        /* Club List Panel */
+        .club-list-panel {
+            display: none;
+            position: absolute;
+            top: 0; right: 0;
+            width: 380px;
+            height: 100%;
+            background: rgba(15, 17, 23, 0.95);
+            backdrop-filter: blur(12px);
+            border-left: 1px solid #2d3040;
+            z-index: 50;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .club-list-panel.open { display: flex; }
+        .club-list-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 16px;
+            border-bottom: 1px solid #2d3040;
+            flex-shrink: 0;
+        }
+        .club-list-header h3 { font-size: 15px; color: #e1e4e8; font-weight: 700; }
+        .club-list-header .close-btn {
+            background: none; border: none; color: #6b7080; font-size: 20px; cursor: pointer; padding: 0 4px;
+        }
+        .club-list-header .close-btn:hover { color: #e1e4e8; }
+        .club-list-body { flex: 1; overflow-y: auto; }
+        .club-list-item {
+            display: flex; align-items: flex-start; gap: 10px;
+            padding: 12px 16px;
+            border-bottom: 1px solid #1a1d28;
+            cursor: pointer;
+            transition: background .15s;
+        }
+        .club-list-item:hover { background: #1a1d28; }
+        .club-list-item .cli-num { color: #6b7080; font-size: 11px; min-width: 24px; padding-top: 2px; }
+        .club-list-item .cli-name { font-size: 13px; font-weight: 600; color: #e1e4e8; }
+        .club-list-item .cli-loc { font-size: 11px; color: #6b7080; margin-top: 2px; }
+        .club-list-item .cli-crafts { margin-top: 4px; }
+        .club-list-item .cli-tag { display: inline-block; background: #252836; color: #8b8fa3; padding: 1px 6px; border-radius: 4px; font-size: 10px; margin: 1px; }
+        @media (max-width: 640px) {
+            .club-list-panel { width: 100%; }
+        }
+
         @media (max-width: 700px) {
             .header-logo { width: 60px; height: 60px; }
             .header h1 { font-size: 28px; }
@@ -734,11 +778,20 @@
                 <select id="craftFilter" class="craft-select" onchange="applyFilters()">
                     <option value="">All Craft Types</option>
                 </select>
-                <div class="count-badge" id="resultsCount"><strong id="countNum">0</strong> clubs</div>
+                <div class="count-badge" id="resultsCount" onclick="toggleClubList()" style="cursor:pointer;" title="Click to view club list"><strong id="countNum">0</strong> clubs</div>
             </div>
             <div class="controls-collapse-btn" id="collapseBtn" onclick="toggleSearchCollapse()" title="Collapse search">&#x2715;</div>
         </div>
         <div id="map"></div>
+
+        <!-- Club List Side Panel -->
+        <div class="club-list-panel" id="clubListPanel">
+            <div class="club-list-header">
+                <h3><span id="clubListCount">0</span> Clubs Found</h3>
+                <button class="close-btn" onclick="toggleClubList()">&times;</button>
+            </div>
+            <div class="club-list-body" id="clubListBody"></div>
+        </div>
 
         <!-- Club detail panel -->
         <div class="club-panel" id="clubPanel">
@@ -1208,6 +1261,58 @@
                 count = markers.length;
             }
             document.getElementById('countNum').textContent = count;
+            // Refresh list if panel is open
+            if (document.getElementById('clubListPanel').classList.contains('open')) renderClubList();
+        }
+
+        function toggleClubList() {
+            const panel = document.getElementById('clubListPanel');
+            panel.classList.toggle('open');
+            if (panel.classList.contains('open')) renderClubList();
+        }
+
+        function renderClubList() {
+            const bounds = map.getBounds();
+            const visible = [];
+            markers.forEach((m, i) => {
+                if (!bounds || bounds.contains(m.getPosition())) {
+                    visible.push(m._clubData);
+                }
+            });
+            document.getElementById('clubListCount').textContent = visible.length;
+            const body = document.getElementById('clubListBody');
+            if (visible.length === 0) {
+                body.innerHTML = '<div style="padding:20px;color:#6b7080;text-align:center;">No clubs in current view</div>';
+                return;
+            }
+            body.innerHTML = visible.slice(0, 200).map((c, i) => {
+                const loc = [c.ci, c.st].filter(Boolean).join(', ');
+                const crafts = (c.ct || '').split(',').filter(Boolean).map(t => `<span class="cli-tag">${t.trim()}</span>`).join('');
+                const rating = c.gr ? `<span style="color:#fbbf24;font-size:11px;margin-left:6px;">${c.gr} ★</span>` : '';
+                return `<div class="club-list-item" onclick="focusClub(${i},'${(c.n||'').replace(/'/g,"\\'")}')">
+                    <span class="cli-num">${i + 1}</span>
+                    <div>
+                        <div class="cli-name">${c.n || 'Unknown'}${rating}</div>
+                        <div class="cli-loc">${loc || c.co || ''}</div>
+                        ${crafts ? '<div class="cli-crafts">' + crafts + '</div>' : ''}
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function focusClub(idx, name) {
+            // Find the marker and open its panel
+            const bounds = map.getBounds();
+            const visible = [];
+            markers.forEach(m => {
+                if (!bounds || bounds.contains(m.getPosition())) visible.push(m);
+            });
+            if (visible[idx]) {
+                const m = visible[idx];
+                map.panTo(m.getPosition());
+                map.setZoom(Math.max(map.getZoom(), 12));
+                showClubPanel(m._clubData);
+            }
         }
 
         function showClubPanel(club) {
