@@ -97,6 +97,12 @@ tr:hover{background:#1a1d28}
             <table id="todayTable"><thead><tr><th>Page</th><th>Visitors</th><th>Top City</th></tr></thead><tbody></tbody></table>
         </div>
     </div>
+
+    <!-- Traffic Sources -->
+    <div class="section" style="margin-top:16px;">
+        <h3>🔗 Traffic Sources <span style="font-size:12px;color:#6b7080;font-weight:400;">— where visitors came from (last 7 days)</span></h3>
+        <div id="referrerSection" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px;">Loading...</div>
+    </div>
 </div>
 </div>
 
@@ -202,6 +208,52 @@ async function loadTraffic(){
         const topCity=todayData?Object.entries(todayData.cities||{}).sort((a,b)=>b[1]-a[1])[0]:null;
         return `<tr><td><span class="dot" style="background:${PAGE_COLORS[p]}"></span>${PAGE_NAMES[p]}</td><td style="font-weight:700;color:#06b6d4;">${visitors}</td><td style="color:#8b8fa3;">${topCity?topCity[0].split(',')[0]:'—'}</td></tr>`;
     }).sort((a,b)=>0).join('');
+
+    // Traffic Sources (referrers)
+    const REF_API='https://visitor-counter.newtonmac.workers.dev/stats/referrers';
+    const refPages=['paddlepoint','conditions','clubs','weather','events','gear','federations'];
+    const refNames={paddlepoint:'Home',conditions:'Water Conditions',clubs:'Paddle Clubs',weather:'Weather',events:'Events',gear:'Gear',federations:'Federations'};
+    const allRefs={};
+    await Promise.all(refPages.map(async p=>{
+        try{const r=await fetch(`${REF_API}?page=${p}`);allRefs[p]=await r.json();}catch(e){allRefs[p]={totals:{}};}
+    }));
+    // Aggregate all referrers across pages (external only)
+    const extTotals={};
+    const perPage={};
+    for(const p of refPages){
+        const refs=allRefs[p].totals||{};
+        perPage[p]=refs;
+        for(const [src,cnt] of Object.entries(refs)){
+            if(src==='paddlepoint.org') continue;
+            extTotals[src]=(extTotals[src]||0)+cnt;
+        }
+    }
+    const srcColors={'Direct':'#fbbf24','google.com':'#34d399','com.google.android.googlequicksearchbox':'#34d399','facebook.com':'#60a5fa','m.facebook.com':'#60a5fa','lm.facebook.com':'#60a5fa','com.reddit.frontpage':'#f97316','reddit.com':'#f97316','twitter.com':'#38bdf8','x.com':'#38bdf8','instagram.com':'#e879f9','youtube.com':'#ef4444'};
+    const topSources=Object.entries(extTotals).sort((a,b)=>b[1]-a[1]);
+    const maxSrc=topSources.length?topSources[0][1]:1;
+    let refHTML='<div>';
+    refHTML+='<h4 style="font-size:13px;color:#8b8fa3;margin-bottom:10px;">All External Sources</h4>';
+    if(topSources.length===0) refHTML+='<div style="color:#6b7080;font-size:13px;padding:12px;">No external referrers yet</div>';
+    else refHTML+=topSources.map(([src,cnt])=>{
+        const color=srcColors[src]||'#a78bfa';
+        const label=src.replace('com.google.android.googlequicksearchbox','Google App').replace('com.reddit.frontpage','Reddit App').replace('m.facebook.com','Facebook Mobile').replace('lm.facebook.com','Facebook Link');
+        return `<div class="chart-bar"><div class="bar-label" style="width:160px;font-size:12px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:6px;"></span>${label}</div><div class="bar-track"><div class="bar-fill" style="width:${(cnt/maxSrc)*100}%;background:${color}"></div></div><div class="bar-val">${cnt}</div></div>`;
+    }).join('');
+    refHTML+='</div>';
+    // Per-page breakdown
+    refHTML+='<div>';
+    refHTML+='<h4 style="font-size:13px;color:#8b8fa3;margin-bottom:10px;">Sources by Page</h4>';
+    refHTML+='<table style="width:100%;font-size:12px;border-collapse:collapse;">';
+    refHTML+='<tr style="border-bottom:1px solid #2d3040;"><th style="text-align:left;padding:6px 8px;color:#6b7080;">Page</th><th style="text-align:left;padding:6px 8px;color:#6b7080;">Top Source</th><th style="text-align:right;padding:6px 8px;color:#6b7080;">Visits</th></tr>';
+    for(const p of refPages){
+        const refs=Object.entries(perPage[p]||{}).filter(([s])=>s!=='paddlepoint.org').sort((a,b)=>b[1]-a[1]);
+        const top=refs[0];
+        const color=top?srcColors[top[0]]||'#a78bfa':'transparent';
+        const label=top?top[0].replace('com.google.android.googlequicksearchbox','Google App').replace('com.reddit.frontpage','Reddit App').replace('m.facebook.com','FB Mobile').replace('lm.facebook.com','FB Link'):'—';
+        refHTML+=`<tr style="border-bottom:1px solid #1a1d28;"><td style="padding:6px 8px;color:#e1e4e8;">${refNames[p]}</td><td style="padding:6px 8px;"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${color};margin-right:4px;"></span>${label}</td><td style="padding:6px 8px;text-align:right;color:#06b6d4;font-weight:600;">${top?top[1]:'0'}</td></tr>`;
+    }
+    refHTML+='</table></div>';
+    document.getElementById('referrerSection').innerHTML=refHTML;
 }
 
 function kpi(val,label,sub){
