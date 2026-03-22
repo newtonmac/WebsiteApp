@@ -71,8 +71,7 @@ module.exports = async (req, res) => {
     // Fetch from Cloud SQL
     const sql = mode === 'map'
       ? `SELECT id,name,city,state,country,lat,lng,craft_types,classification,
-         google_rating,google_review_count,website,phone,email,facebook_url,instagram_url,
-         google_maps_url,photo_url,has_youth_program,has_masters_program,offers_lessons
+         google_rating,website,phone,email,facebook_url,instagram_url
          FROM clubs ORDER BY id`
       : 'SELECT * FROM clubs ORDER BY id';
     const rows = await query(sql);
