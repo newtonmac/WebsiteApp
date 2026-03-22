@@ -81,7 +81,7 @@
                 <input type="text" id="searchInput" placeholder="Search by name, city, state, country, craft type..." onkeydown="if(event.key==='Enter')doSearch()">
                 <select id="filterCountry"><option value="">All Countries</option></select>
                 <select id="filterCraft"><option value="">All Crafts</option></select>
-                <select id="filterClass"><option value="">All Types</option><option value="club">Club</option><option value="organization">Organization</option><option value="school">School</option><option value="unverified">Unverified</option></select>
+                <select id="filterClass"><option value="">All Types</option><option value="club">Club</option><option value="federation">Federation</option><option value="association">Association</option><option value="organization">Organization</option><option value="school">School</option><option value="unverified">Unverified</option></select>
                 <button onclick="doSearch()">🔍 Search</button>
                 <button onclick="resetSearch()">↺ Reset</button>
                 <button class="btn-green" onclick="exportChanges()">📥 Export Changes</button>
@@ -115,7 +115,7 @@
             <input type="hidden" id="editIdx">
             <div class="row">
                 <div><label>Club Name</label><input id="ed_n"></div>
-                <div><label>Classification</label><select id="ed_cl"><option value="club">Club</option><option value="organization">Organization / Federation</option><option value="school">School</option><option value="unverified">Unverified</option></select></div>
+                <div><label>Classification</label><select id="ed_cl"><option value="club">Club</option><option value="federation">Federation</option><option value="association">Association</option><option value="organization">Organization</option><option value="school">School</option><option value="unverified">Unverified</option></select></div>
             </div>
             <div class="row">
                 <div><label>Address</label><input id="ed_a"></div>
@@ -178,7 +178,9 @@
             <label>Type</label>
             <select id="add_classification" style="width:100%;background:#0f1117;border:1px solid #2d3040;color:#e1e4e8;padding:8px 12px;border-radius:6px;font-size:13px;margin-bottom:8px;">
                 <option value="club">🛶 Club</option>
-                <option value="organization">🏛️ Organization / Federation</option>
+                <option value="federation">🏛️ Federation</option>
+                <option value="association">🤝 Association</option>
+                <option value="organization">🏢 Organization</option>
                 <option value="school">🎓 School / Academy</option>
             </select>
             <label>Name *</label>
