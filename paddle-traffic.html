@@ -106,6 +106,12 @@ tr:hover{background:#1a1d28}
         <h3>🔗 Traffic Sources <span style="font-size:12px;color:#6b7080;font-weight:400;">— where visitors came from (last 7 days)</span></h3>
         <div id="referrerSection" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px;">Loading...</div>
     </div>
+
+    <!-- Visitor Map -->
+    <div class="section" style="margin-top:16px;">
+        <h3>🗺️ Visitor Map <span style="font-size:12px;color:#6b7080;font-weight:400;">— last 7 days</span></h3>
+        <div id="visitorMap" style="width:100%;height:400px;border-radius:12px;overflow:hidden;border:1px solid #2d3040;margin-top:12px;background:#1a1d28;"></div>
+    </div>
 </div>
 </div>
 
@@ -259,6 +265,10 @@ async function loadTraffic(){
     }
     refHTML+='</table></div>';
     document.getElementById('referrerSection').innerHTML=refHTML;
+
+    // Visitor Map
+    renderVisitorMap(allData);
+
     if(btn){btn.disabled=false;btn.textContent='↻ Refresh';}
 }
 
@@ -267,6 +277,78 @@ function refreshTraffic(){loadTraffic();}
 function kpi(val,label,sub){
     return `<div class="kpi"><div class="num">${val}</div><div class="label">${label}</div><div class="sub">${sub}</div></div>`;
 }
+
+let visitorMapInstance = null;
+function renderVisitorMap(allData) {
+    if (typeof google === 'undefined' || !google.maps) {
+        document.getElementById('visitorMap').innerHTML = '<div style="padding:40px;text-align:center;color:#6b7080;">Loading map...</div>';
+        setTimeout(() => renderVisitorMap(allData), 1000);
+        return;
+    }
+    // Aggregate all coords across all pages
+    const allCoords = {};
+    for (const p of Object.keys(allData)) {
+        const days = allData[p].days || [];
+        for (const day of days) {
+            const coords = day.coords || {};
+            const cities = day.cities || {};
+            for (const [city, ll] of Object.entries(coords)) {
+                if (!allCoords[city]) allCoords[city] = { lat: ll.lat, lng: ll.lng, count: 0 };
+                allCoords[city].count += (cities[city] || 1);
+            }
+        }
+    }
+    const points = Object.entries(allCoords);
+    if (points.length === 0) {
+        document.getElementById('visitorMap').innerHTML = '<div style="padding:40px;text-align:center;color:#6b7080;">No location data yet</div>';
+        return;
+    }
+    if (!visitorMapInstance) {
+        visitorMapInstance = new google.maps.Map(document.getElementById('visitorMap'), {
+            center: { lat: 30, lng: -40 },
+            zoom: 2,
+            mapTypeId: 'hybrid',
+            disableDefaultUI: true,
+            zoomControl: true,
+            styles: [
+                { elementType: 'geometry', stylers: [{ color: '#1a1d28' }] },
+                { elementType: 'labels.text.stroke', stylers: [{ color: '#1a1d28' }] },
+                { elementType: 'labels.text.fill', stylers: [{ color: '#6b7080' }] },
+                { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0c4a6e' }] },
+            ]
+        });
+    }
+    // Clear old markers
+    if (visitorMapInstance._markers) visitorMapInstance._markers.forEach(m => m.setMap(null));
+    visitorMapInstance._markers = [];
+    const bounds = new google.maps.LatLngBounds();
+    const maxCount = Math.max(...points.map(([, d]) => d.count), 1);
+    points.forEach(([city, data]) => {
+        const scale = 8 + (data.count / maxCount) * 20;
+        const marker = new google.maps.Marker({
+            position: { lat: data.lat, lng: data.lng },
+            map: visitorMapInstance,
+            title: `${city.split(',')[0]}: ${data.count} visitors`,
+            icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: scale,
+                fillColor: '#06b6d4',
+                fillOpacity: 0.6,
+                strokeColor: '#22d3ee',
+                strokeWeight: 1,
+            }
+        });
+        const info = new google.maps.InfoWindow({
+            content: `<div style="color:#000;font-size:13px;padding:4px;"><strong>${city.split(',')[0]}</strong><br>${data.count} visitor${data.count > 1 ? 's' : ''}</div>`
+        });
+        marker.addListener('click', () => info.open(visitorMapInstance, marker));
+        visitorMapInstance._markers.push(marker);
+        bounds.extend(marker.getPosition());
+    });
+    if (points.length > 1) visitorMapInstance.fitBounds(bounds, 40);
+    else { visitorMapInstance.setCenter({ lat: points[0][1].lat, lng: points[0][1].lng }); visitorMapInstance.setZoom(5); }
+}
 </script>
+<script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAR81pUTUz5ON7ZBuoouTh2RTHyECr6yvg"></script>
 </body>
 </html>
