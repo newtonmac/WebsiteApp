@@ -1206,7 +1206,11 @@
             });
             const LABELS = {kayak:'Kayak',canoe:'Canoe',rowing:'Rowing',sup:'SUP',dragon_boat:'Dragon Boat',
                 outrigger:'Outrigger',sea_kayak:'Sea Kayak',surfski:'Surfski',whitewater_kayak:'Whitewater',
-                sprint_kayak:'Sprint Kayak',canoe_polo:'Canoe Polo',prone_paddle:'Prone Paddle'};
+                sprint_kayak:'Sprint Kayak',canoe_polo:'Canoe Polo',prone_paddle:'Prone Paddle',
+                'sprint kayak':'Sprint Kayak','canoe polo':'Canoe Polo','prone paddle':'Prone Paddle',
+                'sea kayak':'Sea Kayak','dragon boat':'Dragon Boat',sup:'SUP',surfski:'Surfski',
+                C1:'C1',K1:'K1',canoe:'Canoe',kayak:'Kayak',rowing:'Rowing',
+                outrigger:'Outrigger',marathon:'Marathon',whitewater:'Whitewater'};
             const select = document.getElementById('craftFilter');
             [...crafts].sort().forEach(craft => {
                 const opt = document.createElement('option');
@@ -1384,7 +1388,11 @@
             tagsEl.innerHTML = '';
             const LABELS = {kayak:'Kayak',canoe:'Canoe',rowing:'Rowing',sup:'SUP',dragon_boat:'Dragon Boat',
                 outrigger:'Outrigger',sea_kayak:'Sea Kayak',surfski:'Surfski',whitewater_kayak:'Whitewater',
-                sprint_kayak:'Sprint Kayak',canoe_polo:'Canoe Polo',prone_paddle:'Prone Paddle'};
+                sprint_kayak:'Sprint Kayak',canoe_polo:'Canoe Polo',prone_paddle:'Prone Paddle',
+                'sprint kayak':'Sprint Kayak','canoe polo':'Canoe Polo','prone paddle':'Prone Paddle',
+                'sea kayak':'Sea Kayak','dragon boat':'Dragon Boat',sup:'SUP',surfski:'Surfski',
+                C1:'C1',K1:'K1',canoe:'Canoe',kayak:'Kayak',rowing:'Rowing',
+                outrigger:'Outrigger',marathon:'Marathon',whitewater:'Whitewater'};
             if (club.ct) {
                 club.ct.split(',').forEach(t => {
                     t = t.trim();
