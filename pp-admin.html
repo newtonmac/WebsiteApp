@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PaddlePoint — Admin</title>
+<link rel="icon" type="image/svg+xml" href="paddle-pin.svg">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',system-ui,sans-serif;background:#0f1117;color:#e1e4e8;min-height:100vh;display:flex;flex-direction:column}
+.login{display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px}
+.login h1{font-size:28px;font-weight:800;background:linear-gradient(90deg,#06b6d4,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.login p{color:#6b7080;font-size:13px}
+.login input{background:#1a1d28;border:1px solid #2d3040;color:#e1e4e8;padding:12px 18px;border-radius:10px;font-size:15px;width:260px;text-align:center}
+.login button{background:linear-gradient(135deg,#06b6d4,#8b5cf6);color:#fff;border:none;padding:12px 32px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:transform .15s}
+.login button:hover{transform:scale(1.03)}
+</style>
+</head>
+<body>
+<style>
+#adminPanel{display:none;height:100vh;flex-direction:column}
+.topbar{display:flex;align-items:center;background:#1a1d28;border-bottom:1px solid #2d3040;padding:0 20px;height:52px;gap:6px;flex-shrink:0}
+.topbar h1{font-size:18px;font-weight:800;background:linear-gradient(90deg,#06b6d4,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-right:24px}
+.tab{padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:#6b7080;border:none;background:transparent;transition:all .2s}
+.tab:hover{color:#e1e4e8;background:#252836}
+.tab.active{color:#fff;background:#252836;box-shadow:inset 0 -2px 0 #06b6d4}
+.tab .badge{display:inline-block;background:#2d3040;color:#8b8fa3;font-size:10px;padding:1px 7px;border-radius:10px;margin-left:6px;font-weight:700}
+.tab.active .badge{background:#06b6d4;color:#fff}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.topbar-right a{color:#6b7080;text-decoration:none;font-size:12px;transition:color .2s}
+.topbar-right a:hover{color:#e1e4e8}
+.content{flex:1;overflow:hidden}
+.content iframe{width:100%;height:100%;border:none;background:#0f1117}
+.panel{display:none;height:100%}
+.panel.active{display:block}
+@media(max-width:640px){
+    .tab{padding:8px 12px;font-size:12px}
+    .tab .badge{display:none}
+    .topbar h1{font-size:15px;margin-right:12px}
+}
+</style>
+
+<!-- LOGIN -->
+<div class="login" id="loginView">
+    <h1>🎯 PaddlePoint Admin</h1>
+    <p>Manage clubs, events, gear brands & federations</p>
+    <input type="password" id="passInput" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">Login</button>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="adminPanel">
+    <div class="topbar">
+        <h1>🎯 Admin</h1>
+        <button class="tab active" onclick="switchTab(this,'clubs')">🛶 Clubs <span class="badge" id="badgeClubs">—</span></button>
+        <button class="tab" onclick="switchTab(this,'events')">🏁 Events <span class="badge" id="badgeEvents">—</span></button>
+        <button class="tab" onclick="switchTab(this,'gear')">🎯 Gear <span class="badge" id="badgeGear">—</span></button>
+        <button class="tab" onclick="switchTab(this,'federations')">🏛️ Federations <span class="badge" id="badgeFeds">—</span></button>
+        <div class="topbar-right">
+            <a href="paddlepoint.html">← Back to Site</a>
+        </div>
+    </div>
+    <div class="content">
+        <div class="panel active" id="panel-clubs"><iframe id="frame-clubs"></iframe></div>
+        <div class="panel" id="panel-events"><iframe id="frame-events"></iframe></div>
+        <div class="panel" id="panel-gear"><iframe id="frame-gear"></iframe></div>
+        <div class="panel" id="panel-federations"><iframe id="frame-federations"></iframe></div>
+    </div>
+</div>
+
+<script>
+const PASS='paddle2026';
+const PAGES={
+    clubs:'paddle-clubs-admin.html',
+    events:'paddle-events-admin.html',
+    gear:'paddle-gear-admin.html',
+    federations:'paddle-federations.html'
+};
+const loaded={};
+
+function doLogin(){
+    if(document.getElementById('passInput').value===PASS){
+        document.getElementById('loginView').style.display='none';
+        const panel=document.getElementById('adminPanel');
+        panel.style.display='flex';
+        // Load first tab and fetch counts
+        loadTab('clubs');
+        fetchCounts();
+    } else alert('Wrong password');
+}
+
+function switchTab(btn, name){
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    document.getElementById('panel-'+name).classList.add('active');
+    loadTab(name);
+}
+
+function loadTab(name){
+    if(loaded[name]) return;
+    loaded[name]=true;
+    const frame=document.getElementById('frame-'+name);
+    // For federations, go directly (admin is built into the page via lock icon)
+    if(name==='federations'){
+        frame.src=PAGES[name];
+        return;
+    }
+    // For others, use autologin param so they skip the login screen
+    frame.src=PAGES[name]+'?autologin=1';
+}
+
+async function fetchCounts(){
+    const token='pp-clubs-7742-v1';
+    const h={headers:{'X-API-Token':token}};
+    try{
+        const [c,e,g,f]=await Promise.all([
+            fetch('/api/clubs',h).then(r=>r.json()).then(d=>d.length).catch(()=>'?'),
+            fetch('/api/events',h).then(r=>r.json()).then(d=>d.length).catch(()=>'?'),
+            fetch('/api/gear-brands',h).then(r=>r.json()).then(d=>d.length).catch(()=>'?'),
+            fetch('/api/federations',h).then(r=>r.json()).then(d=>d.length).catch(()=>'?'),
+        ]);
+        document.getElementById('badgeClubs').textContent=c.toLocaleString();
+        document.getElementById('badgeEvents').textContent=e;
+        document.getElementById('badgeGear').textContent=g;
+        document.getElementById('badgeFeds').textContent=f;
+    }catch(e){}
+}
+
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('loginView').style.display!=='none')doLogin();});
+</script>
+</body>
+</html>

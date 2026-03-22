@@ -211,6 +211,7 @@
             alert('Wrong password');
         }
     }
+    if(new URLSearchParams(location.search).get('autologin')==='1'){document.getElementById('adminPass').value=ADMIN_PASS;doLogin();}
 
     async function loadData() {
         document.getElementById('statsBar').textContent = 'Loading clubs...';
