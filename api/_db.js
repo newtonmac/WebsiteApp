@@ -2,15 +2,18 @@
 const mysql = require('mysql2/promise');
 
 const DB_CONFIG = {
-  host: '34.83.208.2',
+  host: process.env.DB_HOST || '34.83.208.2',
   port: 3306,
-  user: 'paddle',
-  password: '@#Tecate31@#Tecate31@#',
-  database: 'paddlepoint',
+  user: process.env.DB_USER || 'paddle',
+  password: process.env.DB_PASS || '@#Tecate31@#Tecate31@#',
+  database: process.env.DB_NAME || 'paddlepoint',
   charset: 'utf8mb4',
   connectTimeout: 10000,
   waitForConnections: true,
   connectionLimit: 5,
+  ssl: {
+    rejectUnauthorized: false  // Enables SSL without requiring client certs
+  },
 };
 
 let pool = null;
