@@ -31,6 +31,36 @@ const FIELD_MAP = {
   gr:'google_rating', gc:'google_review_count', gm:'google_maps_url',
 };
 
+// Canonical craft type names (lowercase key → stored value)
+const CRAFT_NORM = {
+  'c1':'C1','k1':'K1','canoe':'canoe','kayak':'kayak','sup':'sup',
+  'surfski':'surfski','surski':'surfski','outrigger':'outrigger',
+  'rowing':'rowing','marathon':'marathon','whitewater':'whitewater',
+  'dragon boat':'dragon boat','dragon_boat':'dragon boat','dragonboat':'dragon boat',
+  'sprint kayak':'sprint kayak','sprint_kayak':'sprint kayak',
+  'sea kayak':'sea kayak','sea_kayak':'sea kayak',
+  'canoe polo':'canoe polo','canoe_polo':'canoe polo',
+  'prone paddle':'prone paddle','prone_paddle':'prone paddle',
+  'whitewater kayak':'whitewater','whitewater_kayak':'whitewater',
+  'ocean racing':'ocean racing',
+};
+
+function normalizeCraftTypes(raw) {
+  if (!raw) return null;
+  const types = raw.split(',').map(t => {
+    t = t.trim().toLowerCase();
+    return CRAFT_NORM[t] || t.replace(/_/g, ' ');
+  });
+  // Deduplicate (case-insensitive)
+  const seen = new Set();
+  const unique = [];
+  types.forEach(t => {
+    const key = t.toLowerCase();
+    if (key && !seen.has(key)) { seen.add(key); unique.push(t); }
+  });
+  return unique.join(', ') || null;
+}
+
 function mapToDb(data) {
   const row = {};
   for (const [k, v] of Object.entries(data)) {
@@ -45,6 +75,10 @@ function mapToDb(data) {
       row[col] = parseInt(v) || null;
     } else {
       row[col] = String(v).trim();
+    }
+    // Normalize craft_types after setting
+    if (col === 'craft_types' && row[col]) {
+      row[col] = normalizeCraftTypes(row[col]);
     }
   }
   return row;
