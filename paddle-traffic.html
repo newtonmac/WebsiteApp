@@ -60,7 +60,10 @@ tr:hover{background:#1a1d28}
 <div id="dashboard" style="display:none;">
 <div class="header">
     <h1>📊 PaddlePoint Traffic</h1>
-    <div class="stats" id="headerStats">Loading...</div>
+    <div style="display:flex;align-items:center;gap:12px;">
+        <div class="stats" id="headerStats">Loading...</div>
+        <button onclick="refreshTraffic()" id="refreshBtn" style="background:#0ea5e9;color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap;">↻ Refresh</button>
+    </div>
 </div>
 <div class="container">
     <!-- KPI Cards -->
@@ -124,6 +127,8 @@ function doLogin(){
 if(new URLSearchParams(location.search).get('autologin')==='1'){document.getElementById('passInput').value=PASS;doLogin();}
 
 async function loadTraffic(){
+    const btn=document.getElementById('refreshBtn');
+    if(btn){btn.disabled=true;btn.textContent='⏳ Loading...';}
     const results = await Promise.all(PAGES.map(p=>
         fetch(`${API}?page=${p}`).then(r=>r.json()).catch(()=>({total:0,days:[]}))
     ));
@@ -254,7 +259,10 @@ async function loadTraffic(){
     }
     refHTML+='</table></div>';
     document.getElementById('referrerSection').innerHTML=refHTML;
+    if(btn){btn.disabled=false;btn.textContent='↻ Refresh';}
 }
+
+function refreshTraffic(){loadTraffic();}
 
 function kpi(val,label,sub){
     return `<div class="kpi"><div class="num">${val}</div><div class="label">${label}</div><div class="sub">${sub}</div></div>`;
