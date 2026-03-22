@@ -466,28 +466,41 @@
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
         }
         .count-badge strong { color: #22d3ee; margin-right: 4px; }
+        .count-badge.pulse {
+            animation: badgePulse 1.5s ease-in-out infinite;
+        }
+        @keyframes badgePulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(34,211,238,0.5); }
+            50% { box-shadow: 0 0 0 8px rgba(34,211,238,0); }
+        }
 
-        /* Club List Panel */
+        /* Club List Panel - Floating Draggable */
         .club-list-panel {
             display: none;
             position: absolute;
-            top: 0; right: 0;
-            width: 380px;
-            height: 100%;
+            top: 60px; right: 16px;
+            width: 360px;
+            max-height: calc(100% - 80px);
             background: rgba(15, 17, 23, 0.95);
             backdrop-filter: blur(12px);
-            border-left: 1px solid #2d3040;
+            border: 1px solid #2d3040;
+            border-radius: 14px;
             z-index: 50;
             flex-direction: column;
             overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            resize: both;
         }
         .club-list-panel.open { display: flex; }
         .club-list-header {
             display: flex; align-items: center; justify-content: space-between;
-            padding: 14px 16px;
+            padding: 10px 16px;
             border-bottom: 1px solid #2d3040;
             flex-shrink: 0;
+            cursor: grab;
+            user-select: none;
         }
+        .club-list-header:active { cursor: grabbing; }
         .club-list-header h3 { font-size: 15px; color: #e1e4e8; font-weight: 700; }
         .club-list-header .close-btn {
             background: none; border: none; color: #6b7080; font-size: 20px; cursor: pointer; padding: 0 4px;
@@ -508,7 +521,7 @@
         .club-list-item .cli-crafts { margin-top: 4px; }
         .club-list-item .cli-tag { display: inline-block; background: #252836; color: #8b8fa3; padding: 1px 6px; border-radius: 4px; font-size: 10px; margin: 1px; }
         @media (max-width: 640px) {
-            .club-list-panel { width: 100%; }
+            .club-list-panel { width: calc(100% - 32px); left: 16px; right: 16px; }
         }
 
         @media (max-width: 700px) {
@@ -824,6 +837,12 @@
                 ],
                 disableDefaultUI: true,
                 zoomControl: true,
+                mapTypeControl: true,
+                mapTypeControlOptions: {
+                    style: google.maps.MapTypeControlStyle.DEFAULT,
+                    position: google.maps.ControlPosition.BOTTOM_LEFT,
+                    mapTypeIds: ['roadmap', 'satellite', 'hybrid', 'terrain']
+                },
                 clickableIcons: false,
             });
 
@@ -1261,6 +1280,11 @@
                 count = markers.length;
             }
             document.getElementById('countNum').textContent = count;
+            // Pulse the badge to draw attention
+            const badge = document.getElementById('resultsCount');
+            if (count > 0 && !document.getElementById('clubListPanel').classList.contains('open')) {
+                badge.classList.add('pulse');
+            }
             // Refresh list if panel is open
             if (document.getElementById('clubListPanel').classList.contains('open')) renderClubList();
         }
@@ -1268,6 +1292,7 @@
         function toggleClubList() {
             const panel = document.getElementById('clubListPanel');
             panel.classList.toggle('open');
+            document.getElementById('resultsCount').classList.remove('pulse');
             if (panel.classList.contains('open')) renderClubList();
         }
 
@@ -1279,13 +1304,19 @@
                     visible.push(m._clubData);
                 }
             });
+            const MAX_LIST = 110;
+            const capped = visible.length > MAX_LIST;
             document.getElementById('clubListCount').textContent = visible.length;
             const body = document.getElementById('clubListBody');
             if (visible.length === 0) {
                 body.innerHTML = '<div style="padding:20px;color:#6b7080;text-align:center;">No clubs in current view</div>';
                 return;
             }
-            body.innerHTML = visible.slice(0, 200).map((c, i) => {
+            let header = '';
+            if (capped) {
+                header = `<div style="padding:8px 16px;background:#1a1d28;color:#fbbf24;font-size:11px;border-bottom:1px solid #2d3040;">Showing ${MAX_LIST} of ${visible.length} — zoom in to see all</div>`;
+            }
+            body.innerHTML = header + visible.slice(0, MAX_LIST).map((c, i) => {
                 const loc = [c.ci, c.st].filter(Boolean).join(', ');
                 const crafts = (c.ct || '').split(',').filter(Boolean).map(t => `<span class="cli-tag">${t.trim()}</span>`).join('');
                 const rating = c.gr ? `<span style="color:#fbbf24;font-size:11px;margin-left:6px;">${c.gr} ★</span>` : '';
@@ -1301,7 +1332,6 @@
         }
 
         function focusClub(idx, name) {
-            // Find the marker and open its panel
             const bounds = map.getBounds();
             const visible = [];
             markers.forEach(m => {
@@ -1314,6 +1344,32 @@
                 showClubPanel(m._clubData);
             }
         }
+
+        // Drag support for floating panel
+        (function() {
+            const panel = document.getElementById('clubListPanel');
+            const header = panel.querySelector('.club-list-header');
+            let dragging = false, startX, startY, origX, origY;
+            header.addEventListener('mousedown', e => {
+                if (e.target.tagName === 'BUTTON') return;
+                dragging = true;
+                startX = e.clientX; startY = e.clientY;
+                const rect = panel.getBoundingClientRect();
+                const parent = panel.offsetParent.getBoundingClientRect();
+                origX = rect.left - parent.left;
+                origY = rect.top - parent.top;
+                panel.style.right = 'auto';
+                panel.style.left = origX + 'px';
+                panel.style.top = origY + 'px';
+            });
+            document.addEventListener('mousemove', e => {
+                if (!dragging) return;
+                e.preventDefault();
+                panel.style.left = (origX + e.clientX - startX) + 'px';
+                panel.style.top = (origY + e.clientY - startY) + 'px';
+            });
+            document.addEventListener('mouseup', () => { dragging = false; });
+        })();
 
         function showClubPanel(club) {
             const panel = document.getElementById('clubPanel');
