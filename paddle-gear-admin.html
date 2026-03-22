@@ -8,10 +8,9 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Inter',system-ui,sans-serif;background:#0f1117;color:#e1e4e8;min-height:100vh}
-.header{display:flex;align-items:center;padding:16px 24px;border-bottom:1px solid #1e2030;gap:16px;flex-wrap:wrap}
-.header h1{font-size:20px;font-weight:700;color:#e1e4e8}
-.header .badge{background:#8b5cf6;color:#fff;font-size:11px;padding:3px 10px;border-radius:12px;font-weight:700}
-.header .back{color:#60a5fa;text-decoration:none;font-size:13px;margin-left:auto}
+.header{display:flex;align-items:center;padding:16px 24px;border-bottom:1px solid #1e2030;justify-content:space-between}
+.header h1{font-size:20px;font-weight:700;background:linear-gradient(90deg,#06b6d4,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.stats{color:#8b8fa3;font-size:13px}
 #loginView{display:flex;align-items:center;justify-content:center;height:80vh}
 #loginView div{text-align:center}
 #loginView input{background:#1a1d28;border:1px solid #2d3040;color:#e1e4e8;padding:10px 16px;border-radius:8px;font-size:14px;width:220px;margin:12px 0}
@@ -22,10 +21,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:#0f1117;color:#e1e4e8;m
 <body>
 <style>
 .toolbar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
-.toolbar input,.toolbar select{background:#1a1d28;border:1px solid #2d3040;color:#e1e4e8;padding:8px 12px;border-radius:8px;font-size:13px}
-.toolbar input{width:240px}
+.toolbar input,.toolbar select{background:#1a1d28;border:1px solid #2d3040;color:#e1e4e8;padding:10px 14px;border-radius:8px;font-size:14px}
 .toolbar select{min-width:140px}
-#statsBar{color:#6b7080;font-size:13px;margin-left:auto}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th{text-align:left;padding:10px 12px;color:#8b8fa3;font-weight:600;border-bottom:1px solid #1e2030;cursor:pointer;white-space:nowrap;user-select:none}
 th:hover{color:#e1e4e8}
@@ -60,9 +57,8 @@ tr.selected{background:#1e2040}
 </style>
 
 <div class="header">
-    <h1>🎯 Gear Admin</h1>
-    <span class="badge" id="countBadge">0</span>
-    <a href="paddle-gear.html" class="back">← Back to Gear</a>
+    <div><h1>🎯 PaddlePoint Gear Admin</h1></div>
+    <div class="stats" id="statsBar">Loading...</div>
 </div>
 
 <div id="loginView">
@@ -75,23 +71,31 @@ tr.selected{background:#1e2040}
 </div>
 
 <div id="adminView">
+    <div class="container" style="max-width:1400px;margin:0 auto;padding:20px;">
     <div class="toolbar">
-        <input type="text" id="searchInput" placeholder="Search brands..." oninput="applyFilters()">
+        <input type="text" id="searchInput" placeholder="Search by name, country, category..." oninput="applyFilters()" style="flex:1;min-width:200px;">
         <select id="filterCat" onchange="applyFilters()"><option value="">All Categories</option>
             <option>SUP</option><option>surfski</option><option>sprint kayak</option><option>canoe</option>
             <option>outrigger</option><option>va'a</option><option>kayak</option><option>paddles</option><option>PFD</option><option>ocean racing</option>
         </select>
+        <button onclick="applyFilters()" style="background:#0ea5e9;color:#fff;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;">🔍 Search</button>
+        <button onclick="document.getElementById('searchInput').value='';document.getElementById('filterCat').value='';applyFilters()" style="background:#374151;color:#e1e4e8;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;">↺ Reset</button>
         <button class="btn-add" onclick="showAdd()">➕ Add Brand</button>
-        <span id="statsBar"></span>
     </div>
+    <div id="resultsInfo" style="color:#6b7080;font-size:13px;margin-bottom:8px;"></div>
+    <div style="overflow-x:auto;">
     <table><thead><tr>
-        <th onclick="sortBy('name')">Brand ↕</th>
-        <th onclick="sortBy('categories')">Categories ↕</th>
+        <th style="width:40px">#</th>
+        <th onclick="sortBy('name')">Name ↕</th>
         <th onclick="sortBy('country')">Country ↕</th>
+        <th onclick="sortBy('categories')">Categories ↕</th>
         <th>Website</th>
         <th>Social</th>
+        <th style="width:80px">Actions</th>
     </tr></thead><tbody id="tableBody"></tbody></table>
+    </div>
     <div class="pagination"><button onclick="prevPage()" id="btnPrev">← Prev</button><span id="pageInfo"></span><button onclick="nextPage()" id="btnNext">Next →</button></div>
+    </div>
 </div>
 
 <!-- EDIT / ADD MODAL -->
@@ -178,19 +182,21 @@ function nextPage(){if((currentPage+1)*PER_PAGE<filtered.length){currentPage++;r
 function renderTable(){
     const start=currentPage*PER_PAGE,end=Math.min(start+PER_PAGE,filtered.length);
     const page=filtered.slice(start,end);
-    document.getElementById('countBadge').textContent=allBrands.length;
-    document.getElementById('statsBar').textContent=`Showing ${start+1}-${end} of ${filtered.length}`;
+    document.getElementById('statsBar').textContent=`${allBrands.length} brands`;
+    document.getElementById('resultsInfo').textContent=`Showing ${start+1}-${end} of ${filtered.length} brands`;
     document.getElementById('pageInfo').textContent=`Page ${currentPage+1} of ${Math.ceil(filtered.length/PER_PAGE)||1}`;
     document.getElementById('btnPrev').disabled=currentPage===0;
     document.getElementById('btnNext').disabled=end>=filtered.length;
     const tbody=document.getElementById('tableBody');
-    tbody.innerHTML=page.map(b=>{
+    tbody.innerHTML=page.map((b,i)=>{
         const cats=(b.categories||'').split(',').map(c=>`<span class="cat-tag">${c.trim()}</span>`).join('');
         const web=b.website?`<a href="${b.website}" target="_blank" class="link">${b.website.replace(/^https?:\/\/(www\.)?/,'').slice(0,25)}</a>`:'—';
         const social=[(b.instagram_url?'📸':''), (b.facebook_url?'📘':''), (b.youtube_url?'🎬':'')].filter(Boolean).join(' ')||'—';
-        return `<tr onclick="editBrand(${b.id})" style="cursor:pointer">
-            <td><strong>${b.name}</strong></td><td>${cats}</td><td>${b.country||'—'}</td>
-            <td>${web}</td><td>${social}</td></tr>`;
+        return `<tr>
+            <td style="color:#6b7080;">${start+i+1}</td>
+            <td><strong>${b.name}</strong></td><td>${b.country||'—'}</td>
+            <td>${cats}</td><td>${web}</td><td>${social}</td>
+            <td><button onclick="editBrand(${b.id})" style="background:#0ea5e9;color:#fff;border:none;padding:4px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">Edit</button></td></tr>`;
     }).join('');
 }
 
