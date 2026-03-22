@@ -6,7 +6,9 @@
     <title>PaddlePoint — Paddle Conditions, Clubs & Events</title>
     <link rel="stylesheet" href="pp-shared.css">
     <meta name="description" content="Real-time paddle conditions, weather, clubs, events, and gear for SUP, kayak, outrigger, and canoe paddlers.">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="preconnect" href="https://visitor-counter.newtonmac.workers.dev" crossorigin>
+    <link rel="preload" href="paddle-pin.svg" as="image">
+    <!-- Leaflet loaded on demand when Stats clicked -->
     <style>
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -1069,9 +1071,23 @@
         }
 
         let statsMap = null;
+        let leafletLoaded = false;
+        function loadLeaflet(callback) {
+            if (window.L) { callback(); return; }
+            if (leafletLoaded) { setTimeout(() => loadLeaflet(callback), 200); return; }
+            leafletLoaded = true;
+            const css = document.createElement('link');
+            css.rel = 'stylesheet'; css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+            document.head.appendChild(css);
+            const js = document.createElement('script');
+            js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+            js.onload = callback;
+            document.head.appendChild(js);
+        }
         function initStatsMap(coords) {
             const container = document.getElementById('statsMapContainer');
-            if (!container || !window.L) return;
+            if (!container) return;
+            if (!window.L) { loadLeaflet(() => initStatsMap(coords)); return; }
 
             const entries = Object.entries(coords);
             if (entries.length === 0) return;
@@ -1116,22 +1132,16 @@
             statsMap.fitBounds(bounds, { padding: [30, 30], maxZoom: 10 });
         }
     </script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet loaded dynamically when Stats clicked -->
 <script>
-// Live stats
+// Live stats — lightweight count API (no full data fetch)
 (async function(){
     try{
-        const [clubsRes, eventsRes] = await Promise.all([
-            fetch('/api/clubs',{headers:{'X-API-Token':'pp-clubs-7742-v1'}}).then(r=>r.json()).catch(()=>[]),
-            fetch('/api/events',{headers:{'X-API-Token':'pp-clubs-7742-v1'}}).then(r=>r.json()).catch(()=>[])
-        ]);
-        const countries = new Set();
-        clubsRes.forEach(c=>{if(c.co)countries.add(c.co);});
-        eventsRes.forEach(e=>{if(e.country)countries.add(e.country);});
+        const data = await fetch('/api/counts').then(r=>r.json());
         const animate = (el,target)=>{let n=0;const step=Math.max(1,Math.floor(target/30));const iv=setInterval(()=>{n=Math.min(n+step,target);el.textContent=n.toLocaleString();if(n>=target)clearInterval(iv);},30);};
-        animate(document.getElementById('statClubs'),clubsRes.length);
-        animate(document.getElementById('statCountries'),countries.size);
-        animate(document.getElementById('statEvents'),eventsRes.length);
+        animate(document.getElementById('statClubs'), data.clubs || 0);
+        animate(document.getElementById('statCountries'), data.countries || 0);
+        animate(document.getElementById('statEvents'), data.events || 0);
     }catch(e){}
 })();
 </script>
