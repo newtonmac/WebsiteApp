@@ -55,7 +55,6 @@ body{font-family:'Inter',system-ui,sans-serif;background:#0f1117;color:#e1e4e8;m
         <button class="tab active" onclick="switchTab(this,'clubs')">🛶 Clubs <span class="badge" id="badgeClubs">—</span></button>
         <button class="tab" onclick="switchTab(this,'events')">🏁 Events <span class="badge" id="badgeEvents">—</span></button>
         <button class="tab" onclick="switchTab(this,'gear')">🎯 Gear <span class="badge" id="badgeGear">—</span></button>
-        <button class="tab" onclick="switchTab(this,'federations')">🏛️ Federations <span class="badge" id="badgeFeds">—</span></button>
         <div class="topbar-right">
             <a href="paddlepoint.html">← Back to Site</a>
         </div>
@@ -64,7 +63,6 @@ body{font-family:'Inter',system-ui,sans-serif;background:#0f1117;color:#e1e4e8;m
         <div class="panel active" id="panel-clubs"><iframe id="frame-clubs"></iframe></div>
         <div class="panel" id="panel-events"><iframe id="frame-events"></iframe></div>
         <div class="panel" id="panel-gear"><iframe id="frame-gear"></iframe></div>
-        <div class="panel" id="panel-federations"><iframe id="frame-federations"></iframe></div>
     </div>
 </div>
 
@@ -73,8 +71,7 @@ const PASS='paddle2026';
 const PAGES={
     clubs:'paddle-clubs-admin.html',
     events:'paddle-events-admin.html',
-    gear:'paddle-gear-admin.html',
-    federations:'paddle-federations.html'
+    gear:'paddle-gear-admin.html'
 };
 const loaded={};
 
@@ -101,12 +98,6 @@ function loadTab(name){
     if(loaded[name]) return;
     loaded[name]=true;
     const frame=document.getElementById('frame-'+name);
-    // For federations, go directly (admin is built into the page via lock icon)
-    if(name==='federations'){
-        frame.src=PAGES[name];
-        return;
-    }
-    // For others, use autologin param so they skip the login screen
     frame.src=PAGES[name]+'?autologin=1';
 }
 
@@ -114,16 +105,14 @@ async function fetchCounts(){
     const token='pp-clubs-7742-v1';
     const h={headers:{'X-API-Token':token}};
     try{
-        const [c,e,g,f]=await Promise.all([
+        const [c,e,g]=await Promise.all([
             fetch('/api/clubs',h).then(r=>r.json()).then(d=>d.length).catch(()=>'?'),
             fetch('/api/events',h).then(r=>r.json()).then(d=>d.length).catch(()=>'?'),
             fetch('/api/gear-brands',h).then(r=>r.json()).then(d=>d.length).catch(()=>'?'),
-            fetch('/api/federations',h).then(r=>r.json()).then(d=>d.length).catch(()=>'?'),
         ]);
         document.getElementById('badgeClubs').textContent=c.toLocaleString();
         document.getElementById('badgeEvents').textContent=e;
         document.getElementById('badgeGear').textContent=g;
-        document.getElementById('badgeFeds').textContent=f;
     }catch(e){}
 }
 
