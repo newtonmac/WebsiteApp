@@ -57,16 +57,25 @@ module.exports = async (req, res) => {
 
   try {
     // Check cache
-    if (!forceRefresh && cachedData && (Date.now() - cacheTime) < CACHE_TTL) {
+    const mode = req.query.mode || 'full';
+    const cacheKey = mode === 'map' ? 'map' : 'full';
+    
+    if (!forceRefresh && cachedData && cachedData[cacheKey] && (Date.now() - cacheTime) < CACHE_TTL) {
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('X-Cache', 'HIT');
-      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('Cache-Control', mode === 'map' ? 'public, max-age=300' : 'no-store');
       res.setHeader('X-Robots-Tag', 'noindex, nofollow');
-      return res.status(200).send(cachedData);
+      return res.status(200).send(cachedData[cacheKey]);
     }
 
     // Fetch from Cloud SQL
-    const rows = await query('SELECT * FROM clubs ORDER BY id');
+    const sql = mode === 'map'
+      ? `SELECT id,name,city,state,country,lat,lng,craft_types,classification,
+         google_rating,google_review_count,website,phone,email,facebook_url,instagram_url,
+         google_maps_url,photo_url,has_youth_program,has_masters_program,offers_lessons
+         FROM clubs ORDER BY id`
+      : 'SELECT * FROM clubs ORDER BY id';
+    const rows = await query(sql);
     const clubs = rows.map(r => {
       const c = {};
       if (r.id) c.id = r.id;
@@ -105,12 +114,13 @@ module.exports = async (req, res) => {
     });
 
     const json = JSON.stringify(clubs);
-    cachedData = json;
+    if (!cachedData) cachedData = {};
+    cachedData[cacheKey] = json;
     cacheTime = Date.now();
 
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('X-Cache', 'MISS');
-    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Cache-Control', mode === 'map' ? 'public, max-age=300' : 'no-store');
     res.setHeader('X-Robots-Tag', 'noindex, nofollow');
     return res.status(200).send(json);
   } catch (err) {

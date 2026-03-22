@@ -19,7 +19,7 @@ module.exports = async (req, res) => {
   try {
     const rows = await query('SELECT * FROM events ORDER BY start_date ASC');
     res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Cache-Control', 'public, max-age=300');
     return res.status(200).json(rows);
   } catch (err) {
     return res.status(500).json({ error: err.message });

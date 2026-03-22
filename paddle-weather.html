@@ -11,6 +11,13 @@
     <link rel="dns-prefetch" href="https://api.coastal.ca.gov">
     <link rel="dns-prefetch" href="https://fhab-api.sfei.org">
     <link rel="preconnect" href="https://maps.googleapis.com" crossorigin>
+        <meta name="description" content="Weather, tides, marine forecast, water temperature, and safety conditions for paddlers. Triple-source data from Google, Open-Meteo, and NWS.">
+    <meta property="og:title" content="PaddlePoint — Weather & Tides">
+    <meta property="og:description" content="Weather, tides, marine forecast, water temperature, and safety conditions for paddlers. Triple-source data from Google, Open-Meteo, and NWS.">
+    <meta property="og:image" content="https://paddlepoint.org/paddlepoint.jpg">
+    <meta property="og:url" content="https://paddlepoint.org/paddle-weather.html">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -1834,7 +1841,8 @@
                             wtSourceText = 'NOAA CO-OPS';
                             wtStationText = `${tideStation.name} (${tideDist.toFixed(0)} mi)`;
                         }
-                    } catch (e) { console.log('NOAA water temp unavailable:', e); }
+                    } catch (e) {
+}
                 }
 
                 // Fallback: Open-Meteo SST from marine API
@@ -1918,8 +1926,7 @@
             showStatus(`Showing data for ${locationName}`, '#10b981');
 
         } catch (err) {
-            console.error('Weather fetch error:', err);
-            showStatus('Error loading weather data. Please try again.', '#ef4444');
+showStatus('Error loading weather data. Please try again.', '#ef4444');
             searchInput.style.borderColor = '#ef4444';
         }
     }
@@ -2023,8 +2030,7 @@
             drawTideChart(chartArea, tideData.predictions, `${station.name} (${dist.toFixed(0)} mi away)`);
 
         } catch (err) {
-            console.error('Tide error:', err);
-            chartArea.innerHTML = '<div style="color:#9ca3af;font-size:13px;">Could not load tide data</div>';
+chartArea.innerHTML = '<div style="color:#9ca3af;font-size:13px;">Could not load tide data</div>';
         }
     }
 
@@ -2215,8 +2221,7 @@
             });
             container.innerHTML = html;
         } catch (err) {
-            console.error('NWS error:', err);
-            container.innerHTML = '<div class="alert-empty">Could not load NWS alerts</div>';
+container.innerHTML = '<div class="alert-empty">Could not load NWS alerts</div>';
         }
     }
 
@@ -2279,8 +2284,7 @@
             container.innerHTML = html;
             sourcesRow.style.display = 'flex';
         } catch (err) {
-            console.error('Water quality error:', err);
-            container.innerHTML = '<div class="alert-empty">Could not load water quality data</div>';
+container.innerHTML = '<div class="alert-empty">Could not load water quality data</div>';
         }
     }
 
@@ -2340,8 +2344,7 @@
 
             container.innerHTML = html;
         } catch (err) {
-            console.error('HAB error:', err);
-            container.innerHTML = '<div class="alert-empty">Could not load HAB data</div>';
+container.innerHTML = '<div class="alert-empty">Could not load HAB data</div>';
         }
     }
 
@@ -2429,8 +2432,7 @@
             });
             container.innerHTML = html;
         } catch (err) {
-            console.error('Coastal access error:', err);
-            container.innerHTML = '<div class="alert-empty">Could not load coastal access data</div>';
+container.innerHTML = '<div class="alert-empty">Could not load coastal access data</div>';
         }
     }
 
@@ -2750,8 +2752,7 @@
             document.getElementById('aqiNo2').textContent = data.current.nitrogen_dioxide != null ? `${data.current.nitrogen_dioxide.toFixed(1)} \u00B5g/m\u00B3` : '--';
             document.getElementById('aqiUV').textContent = data.current.uv_index != null ? data.current.uv_index.toFixed(1) : '--';
         } catch (err) {
-            console.error('AQI error:', err);
-        }
+}
     }
 
     // ======== Cold Water Immersion Risk ========
@@ -2935,8 +2936,7 @@
             });
             container.innerHTML = html;
         } catch (err) {
-            console.error('River flow error:', err);
-            card.style.display = 'none';
+card.style.display = 'none';
         }
     }
 
