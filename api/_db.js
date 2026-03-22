@@ -5,7 +5,7 @@ const DB_CONFIG = {
   host: process.env.DB_HOST || '34.83.208.2',
   port: 3306,
   user: process.env.DB_USER || 'paddle',
-  password: process.env.DB_PASS,
+  password: process.env.DB_PASS || '@#Tecate31@#Tecate31@#',
   database: process.env.DB_NAME || 'paddlepoint',
   charset: 'utf8mb4',
   connectTimeout: 10000,
