@@ -78,6 +78,8 @@ document.body.insertAdjacentHTML('beforeend',`
 <div class="pp-form-group" id="fldLocation" style="display:none;"><label>Location / Region</label><input type="text" id="suggestLocation" placeholder="e.g. San Diego County, CA"></div>
 <div class="pp-form-group" id="fldUrl" style="display:none;"><label>Website / URL</label><input type="text" id="suggestUrl" placeholder="https://..."></div>
 <div class="pp-form-group"><label id="lblDesc">Description</label><textarea id="suggestDesc"></textarea></div>
+<div class="pp-form-group" id="fldEmail"><label>Your Email (optional)</label><input type="email" id="suggestEmail" placeholder="In case we have follow-up questions"><p style="font-size:11px;color:#6b7080;margin-top:4px;">We may need to reach out to better understand your suggestion and narrow down the details.</p></div>
+<div class="pp-form-group" id="fldNotify" style="display:flex;align-items:flex-start;gap:8px;"><input type="checkbox" id="suggestNotify" style="margin-top:3px;accent-color:#22c55e;width:16px;height:16px;cursor:pointer;"><label for="suggestNotify" style="cursor:pointer;font-size:12px;color:#8b8fa3;line-height:1.4;">Notify me by email when this feature is implemented so I can check it out and give more feedback</label></div>
 <button type="submit" class="pp-submit-btn" id="suggestSubmitBtn">Send Feedback</button>
 <div class="pp-form-msg" id="suggestMsg"></div>
 </form></div></div>
@@ -119,14 +121,15 @@ var fldClub=document.getElementById('fldClub'),fldCraft=document.getElementById(
 var fldLoc=document.getElementById('fldLocation'),fldUrl=document.getElementById('fldUrl');
 var lblTitle=document.getElementById('lblTitle'),lblDesc=document.getElementById('lblDesc');
 var titleInput=document.getElementById('suggestTitle'),descInput=document.getElementById('suggestDesc');
+var fldNotify=document.getElementById('fldNotify');
 // Reset
-fldClub.style.display='';fldCraft.style.display='';fldLoc.style.display='none';fldUrl.style.display='none';
+fldClub.style.display='';fldCraft.style.display='';fldLoc.style.display='none';fldUrl.style.display='none';fldNotify.style.display='flex';
 if(t==='feature'){lblTitle.textContent='Your Idea *';titleInput.placeholder='e.g. Add surf forecast overlay';lblDesc.textContent='Description';descInput.placeholder='What should it do? How would it help paddlers?';}
-else if(t==='bug'){lblTitle.textContent='What went wrong? *';titleInput.placeholder='e.g. Tide chart not loading for Santa Cruz';lblDesc.textContent='Steps to reproduce';descInput.placeholder='What were you doing when the issue occurred? What device/browser?';fldClub.style.display='none';fldCraft.style.display='none';}
+else if(t==='bug'){lblTitle.textContent='What went wrong? *';titleInput.placeholder='e.g. Tide chart not loading for Santa Cruz';lblDesc.textContent='Steps to reproduce';descInput.placeholder='What were you doing when the issue occurred? What device/browser?';fldClub.style.display='none';fldCraft.style.display='none';fldNotify.style.display='none';}
 else if(t==='club'){lblTitle.textContent='Club Name *';titleInput.placeholder='e.g. Mission Bay Outrigger Club';lblDesc.textContent='Additional info';descInput.placeholder='Location, website, craft types, anything that helps us add it';fldCraft.style.display='';fldLoc.style.display='';fldUrl.style.display='';}
 else if(t==='event'){lblTitle.textContent='Event Name *';titleInput.placeholder='e.g. Pacific Coast Paddle Classic 2026';lblDesc.textContent='Event details';descInput.placeholder='Date, location, sports, registration link';fldClub.style.display='none';fldCraft.style.display='';fldLoc.style.display='';fldUrl.style.display='';}
 else if(t==='datasource'){lblTitle.textContent='Data Source Name *';titleInput.placeholder='e.g. San Diego County beach water quality reports';lblDesc.textContent='What data does it provide?';descInput.placeholder='What type of data? (water quality, river flow, beach conditions, etc.) How often is it updated?';fldClub.style.display='none';fldCraft.style.display='none';fldLoc.style.display='';fldUrl.style.display='';}
-else{lblTitle.textContent='Subject *';titleInput.placeholder='What\'s on your mind?';lblDesc.textContent='Your feedback';descInput.placeholder='Tell us anything — what you like, what could be better, ideas for the community';fldClub.style.display='none';fldCraft.style.display='none';}
+else{lblTitle.textContent='Subject *';titleInput.placeholder='What\'s on your mind?';lblDesc.textContent='Your feedback';descInput.placeholder='Tell us anything — what you like, what could be better, ideas for the community';fldClub.style.display='none';fldCraft.style.display='none';fldNotify.style.display='none';}
 };
 window.openUpdatesModal=function(){document.getElementById('updatesModal').classList.add('open');if(!updatesLoaded)loadUpdates();};
 window.closeUpdatesModal=function(e){if(e&&e.target!==e.currentTarget)return;document.getElementById('updatesModal').classList.remove('open');};
@@ -144,10 +147,17 @@ const res=await fetch(SUGGEST_API+'/suggest',{method:'POST',headers:{'Content-Ty
 body:JSON.stringify({type:document.getElementById('suggestType').value,name:document.getElementById('suggestName').value||'Anonymous',
 title:document.getElementById('suggestTitle').value,club:document.getElementById('suggestClub').value,
 craft:document.getElementById('suggestCraft').value,description:document.getElementById('suggestDesc').value,
+email:document.getElementById('suggestEmail').value||'',notify:document.getElementById('suggestNotify').checked,
 location:document.getElementById('suggestLocation').value||'',url:document.getElementById('suggestUrl').value||'',page:page})});
 if(res.ok){msg.style.color='#22c55e';
 var typeLabels={feature:'Feature idea submitted!',bug:'Bug report received — we\'ll look into it.',club:'Club submission received — we\'ll add it soon!',event:'Event submission received — thanks!',datasource:'Data source suggestion received!',general:'Thanks for your feedback!'};
-msg.textContent=typeLabels[document.getElementById('suggestType').value]||'Thank you!';
+var baseMsg=typeLabels[document.getElementById('suggestType').value]||'Thank you!';
+var email=document.getElementById('suggestEmail').value;
+var notify=document.getElementById('suggestNotify').checked;
+if(email&&notify)baseMsg+=' We\'ll follow up and notify you when implemented.';
+else if(email)baseMsg+=' We may reach out with questions.';
+else if(notify)baseMsg+=' Leave an email next time to get notified!';
+msg.textContent=baseMsg;
 document.getElementById('suggestForm').reset();}
 else{throw new Error('Failed');}
 }catch(err){msg.style.color='#ef4444';msg.textContent='Something went wrong. Please try again.';}
