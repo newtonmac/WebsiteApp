@@ -420,6 +420,6 @@ async function toggleStats(){
     alert(`Federations Page Stats\n\nAll-time: ${d.total||0} visitors\nLast 7 days: ${w}\nToday: ${d.days&&d.days.length?d.days[d.days.length-1].uniqueVisitors:0}`);}catch(e){alert('Stats unavailable');}
 }
 </script>
-<script src="pp-shared.js"></script>
+<script src="pp-shared.js" defer></script>
 </body>
 </html>
