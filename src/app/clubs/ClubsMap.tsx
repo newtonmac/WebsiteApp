@@ -51,13 +51,24 @@ export function ClubsMap({ totalClubs, totalCountries, craftTypes }: Props) {
 
   // ─── Load Google Maps API ───
   useEffect(() => {
-    if ((window as any).google?.maps) { initMap(); return; }
+    // If already loaded, init immediately
+    if ((window as any).google?.maps) {
+      initMap();
+      return;
+    }
+    // If script already in DOM (e.g. from previous navigation), wait for it
+    if (document.querySelector('script[src*="maps.googleapis.com"]')) {
+      const poll = setInterval(() => {
+        if ((window as any).google?.maps) { clearInterval(poll); initMap(); }
+      }, 100);
+      return () => clearInterval(poll);
+    }
+    // Load fresh
+    (window as any).__initMap = () => initMap();
     const script = document.createElement('script');
     script.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}&libraries=places&callback=__initMap`;
     script.async = true; script.defer = true;
-    (window as any).__initMap = () => initMap();
     document.head.appendChild(script);
-    return () => { delete (window as any).__initMap; };
   }, []);
 
   // ─── Fetch clubs ───
