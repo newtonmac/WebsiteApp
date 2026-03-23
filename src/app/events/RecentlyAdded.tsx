@@ -28,7 +28,9 @@ export function RecentlyAdded({ events, count }: { events: RecentEvent[]; count:
             <div className="flex-1 overflow-y-auto">
               {events.map((ev, i) => {
                 const loc = [ev.city, ev.state, ev.country].filter(Boolean).join(', ');
-                const date = new Date(ev.start_date + 'T00:00:00');
+                const dateRaw = String(ev.start_date).split('T')[0]; // handle both YYYY-MM-DD and ISO strings
+                const [y, m, d] = dateRaw.split('-').map(Number);
+                const date = new Date(y, m - 1, d);
                 const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                 return (
                   <div key={i} className="flex items-start gap-3 px-5 py-2.5 border-b border-slate-800 hover:bg-slate-800/50">
