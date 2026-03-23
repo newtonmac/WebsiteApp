@@ -5,6 +5,8 @@ const UPDATES_API='https://updates.newtonmac.workers.dev';
 
 // ============ MOBILE HAMBURGER NAV (auto-injected on all pages) ============
 (function injectMobileNav(){
+    // Skip on Next.js pages — they have their own responsive nav
+    if (document.querySelector('header.sticky')) return;
     // Find the nav container (different class on each page)
     var navContainer = document.querySelector('.header-right, .nav-btns, .header-nav');
     var topBar = document.querySelector('.header, .top-bar, .page-header-bar');
