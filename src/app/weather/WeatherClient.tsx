@@ -13,65 +13,69 @@ export function WeatherClient() {
       try {
         const resp = await fetch('/_legacy/paddle-weather.html');
         const html = await resp.text();
-
-        // Parse the HTML
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
 
-        // Extract styles
-        const styles = doc.querySelectorAll('style');
-        styles.forEach(style => {
-          const s = document.createElement('style');
-          s.textContent = style.textContent;
-          document.head.appendChild(s);
+        // Extract styles but strip header/footer/body rules to avoid conflicts
+        doc.querySelectorAll('style').forEach(style => {
+          let css = style.textContent || '';
+          css = css.replace(/\.header\s*\{[^}]*\}/g, '');
+          css = css.replace(/\.header[^{]*\{[^}]*\}/g, '');
+          css = css.replace(/\.back-btn[^{]*\{[^}]*\}/g, '');
+          css = css.replace(/\.subtitle[^{]*\{[^}]*\}/g, '');
+          css = css.replace(/\.header-left[^{]*\{[^}]*\}/g, '');
+          css = css.replace(/\.header-right[^{]*\{[^}]*\}/g, '');
+          css = css.replace(/\.header-logo[^{]*\{[^}]*\}/g, '');
+          css = css.replace(/\.footer[^{]*\{[^}]*\}/g, '');
+          css = css.replace(/body\s*\{[^}]*\}/g, '');
+          css = css.replace(/html\s*\{[^}]*\}/g, '');
+          css = css.replace(/\*\s*\{[^}]*box-sizing[^}]*\}/g, '');
+          if (css.trim()) {
+            const s = document.createElement('style');
+            s.setAttribute('data-legacy', 'weather');
+            s.textContent = css;
+            document.head.appendChild(s);
+          }
         });
 
-        // Extract main content (remove old header and footer)
+        // Remove old header, footer, nav, pp-shared
         const body = doc.body;
-        const oldHeader = body.querySelector('.header');
-        if (oldHeader) oldHeader.remove();
-        const oldFooter = body.querySelector('footer');
-        if (oldFooter) oldFooter.remove();
+        body.querySelectorAll('.header, footer, script[src*="pp-shared"]').forEach(el => el.remove());
 
-        // Remove old pp-shared.js script tags (layout handles this)
-        body.querySelectorAll('script[src*="pp-shared"]').forEach(s => s.remove());
-
-        // Inject the content HTML (without scripts)
+        // Inject the main content
         if (containerRef.current) {
-          // Get all non-script content
           const content = body.querySelector('.main-content') || body;
           containerRef.current.innerHTML = content.innerHTML;
         }
 
-        // Extract and execute inline scripts in order
-        const scripts = body.querySelectorAll('script:not([src])');
-        scripts.forEach(script => {
-          if (script.textContent && script.textContent.trim()) {
+        // Execute inline scripts in order
+        body.querySelectorAll('script:not([src])').forEach(script => {
+          if (script.textContent?.trim()) {
             const s = document.createElement('script');
             s.textContent = script.textContent;
             document.body.appendChild(s);
           }
         });
 
-        // Load Google Maps (external script with callback)
-        const mapsScripts = doc.querySelectorAll('script[src*="maps.googleapis"]');
-        mapsScripts.forEach(script => {
-          const src = script.getAttribute('src');
-          if (src && !document.querySelector(`script[src*="maps.googleapis"]`)) {
-            const s = document.createElement('script');
-            s.src = src;
-            s.async = true;
-            s.defer = true;
-            document.head.appendChild(s);
-          }
-        });
-
+        // Load Google Maps
+        const mapsScript = doc.querySelector('script[src*="maps.googleapis"]');
+        if (mapsScript && !document.querySelector('script[src*="maps.googleapis"]')) {
+          const s = document.createElement('script');
+          s.src = mapsScript.getAttribute('src') || '';
+          s.async = true;
+          s.defer = true;
+          document.head.appendChild(s);
+        }
       } catch (err) {
         console.error('Failed to load weather content:', err);
       }
     }
 
     loadContent();
+
+    return () => {
+      document.querySelectorAll('style[data-legacy="weather"]').forEach(s => s.remove());
+    };
   }, [loaded]);
 
   return (

@@ -16,24 +16,37 @@ export function ConditionsClient() {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
 
-        // Extract and inject styles
+        // Extract styles but scope them to avoid leaking into Next.js header
         doc.querySelectorAll('style').forEach(style => {
-          const s = document.createElement('style');
-          s.textContent = style.textContent;
-          document.head.appendChild(s);
+          let css = style.textContent || '';
+          // Remove header/nav CSS rules that would conflict with Next.js layout
+          css = css.replace(/\.header\s*\{[^}]*\}/g, '');
+          css = css.replace(/\.header[^{]*\{[^}]*\}/g, '');
+          css = css.replace(/\.back-btn[^{]*\{[^}]*\}/g, '');
+          css = css.replace(/\.subtitle[^{]*\{[^}]*\}/g, '');
+          css = css.replace(/\.header-left[^{]*\{[^}]*\}/g, '');
+          css = css.replace(/\.header-right[^{]*\{[^}]*\}/g, '');
+          css = css.replace(/\.header-logo[^{]*\{[^}]*\}/g, '');
+          css = css.replace(/\.site-footer[^{]*\{[^}]*\}/g, '');
+          css = css.replace(/\.footer[^{]*\{[^}]*\}/g, '');
+          // Remove body reset rules that fight Next.js
+          css = css.replace(/body\s*\{[^}]*\}/g, '');
+          css = css.replace(/html\s*\{[^}]*\}/g, '');
+          css = css.replace(/\*\s*\{[^}]*box-sizing[^}]*\}/g, '');
+          if (css.trim()) {
+            const s = document.createElement('style');
+            s.setAttribute('data-legacy', 'conditions');
+            s.textContent = css;
+            document.head.appendChild(s);
+          }
         });
 
-        // Remove old header, footer, pp-shared script
+        // Remove old header, footer, nav, pp-shared
         const body = doc.body;
-        const oldHeader = body.querySelector('.header');
-        if (oldHeader) oldHeader.remove();
-        const oldFooter = body.querySelector('.site-footer');
-        if (oldFooter) oldFooter.remove();
-        body.querySelectorAll('script[src*="pp-shared"]').forEach(s => s.remove());
+        body.querySelectorAll('.header, .site-footer, footer, script[src*="pp-shared"]').forEach(el => el.remove());
 
-        // Inject content
+        // Inject content (everything except scripts)
         if (containerRef.current) {
-          // Clone everything except script tags
           const contentDiv = document.createElement('div');
           Array.from(body.children).forEach(child => {
             if (child.tagName !== 'SCRIPT') {
@@ -67,6 +80,11 @@ export function ConditionsClient() {
     }
 
     loadContent();
+
+    // Cleanup injected styles on unmount
+    return () => {
+      document.querySelectorAll('style[data-legacy="conditions"]').forEach(s => s.remove());
+    };
   }, [loaded]);
 
   return (
