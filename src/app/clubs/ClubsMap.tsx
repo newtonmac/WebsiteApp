@@ -27,6 +27,7 @@ export function ClubsMap({ totalClubs, totalCountries, craftTypes }: Props) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
+  const locationInputRef = useRef<HTMLInputElement>(null);
   const [clubs, setClubs] = useState<Club[]>([]);
   const [selected, setSelected] = useState<Club | null>(null);
   const [craftFilter, setCraftFilter] = useState('');
@@ -70,6 +71,24 @@ export function ClubsMap({ totalClubs, totalCountries, craftTypes }: Props) {
 
     // Update visible count on bounds change
     map.addListener('idle', () => updateVisibleCount());
+
+    // Setup Google Places Autocomplete on location input
+    if (locationInputRef.current) {
+      const ac = new google.maps.places.Autocomplete(locationInputRef.current, {
+        types: ['(regions)'],
+        fields: ['geometry', 'name', 'address_components'],
+      });
+      ac.addListener('place_changed', () => {
+        const place = ac.getPlace();
+        if (!place.geometry?.location) return;
+        if (place.geometry.viewport) {
+          map.fitBounds(place.geometry.viewport);
+        } else {
+          map.setCenter(place.geometry.location);
+          map.setZoom(10);
+        }
+      });
+    }
   }, []);
 
   // Create/update markers when clubs or filter changes
@@ -151,9 +170,15 @@ export function ClubsMap({ totalClubs, totalCountries, craftTypes }: Props) {
         </div>
 
         <form onSubmit={handleLocationSearch} className="flex-1 min-w-[200px]">
-          <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-            placeholder={searchMode === 'location' ? 'Search by city, state, zip, or country...' : 'Search club name...'}
-            className="w-full px-4 py-2 bg-white rounded-lg shadow-md text-sm outline-none" />
+          {searchMode === 'location' ? (
+            <input ref={locationInputRef} type="text"
+              placeholder="Search by city, state, zip, or country..."
+              className="w-full px-4 py-2 bg-white rounded-lg shadow-md text-sm outline-none" />
+          ) : (
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Search club name..."
+              className="w-full px-4 py-2 bg-white rounded-lg shadow-md text-sm outline-none" />
+          )}
         </form>
 
         <select value={craftFilter} onChange={e => setCraftFilter(e.target.value)}
@@ -164,10 +189,17 @@ export function ClubsMap({ totalClubs, totalCountries, craftTypes }: Props) {
           ))}
         </select>
 
-        <span className="bg-slate-800 text-white text-sm font-bold px-3 py-2 rounded-lg shadow-md">
-          {visibleCount} clubs
+        <span className="bg-slate-800 text-white text-sm font-bold px-3 py-2 rounded-lg shadow-md animate-[badgePulse_1.5s_ease-in-out_infinite]">
+          <span className="text-cyan-400">{visibleCount}</span> clubs
         </span>
       </div>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes badgePulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(34,211,238,0.5); }
+          50% { box-shadow: 0 0 0 8px rgba(34,211,238,0); }
+        }
+      `}} />
 
       {/* Map */}
       <div ref={mapRef} className="w-full h-full" />
