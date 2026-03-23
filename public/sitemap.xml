@@ -1,37 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://paddlepoint.org/paddlepoint.html</loc>
+    <loc>https://paddlepoint.org/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://paddlepoint.org/paddle-conditions.html</loc>
+    <loc>https://paddlepoint.org/conditions</loc>
     <changefreq>hourly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://paddlepoint.org/paddle-weather.html</loc>
+    <loc>https://paddlepoint.org/weather</loc>
     <changefreq>hourly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://paddlepoint.org/paddle-clubs.html</loc>
+    <loc>https://paddlepoint.org/clubs</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://paddlepoint.org/paddle-events.html</loc>
+    <loc>https://paddlepoint.org/events</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://paddlepoint.org/paddle-gear.html</loc>
+    <loc>https://paddlepoint.org/gear</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://paddlepoint.org/paddle-federations.html</loc>
+    <loc>https://paddlepoint.org/federations</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
