@@ -1,8 +1,7 @@
 import type { Metadata } from 'next';
 import Script from 'next/script';
 import './globals.css';
-import { Header } from '@/components/Header';
-import { Footer } from '@/components/Footer';
+import { SiteShell } from '@/components/SiteShell';
 
 export const metadata: Metadata = {
   title: { default: 'PaddlePoint', template: '%s — PaddlePoint' },
@@ -29,9 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="stylesheet" href="/pp-shared.css" />
       </head>
       <body className="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-1">{children}</main>
-        <Footer />
+        <SiteShell>{children}</SiteShell>
         <Script src="/pp-shared.js" strategy="afterInteractive" />
       </body>
     </html>
