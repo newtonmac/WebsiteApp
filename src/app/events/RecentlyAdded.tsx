@@ -28,19 +28,21 @@ export function RecentlyAdded({ events, count }: { events: RecentEvent[]; count:
             <div className="flex-1 overflow-y-auto">
               {events.map((ev, i) => {
                 const loc = [ev.city, ev.state, ev.country].filter(Boolean).join(', ');
-                const dateRaw = String(ev.start_date).split('T')[0]; // handle both YYYY-MM-DD and ISO strings
+                const dateRaw = String(ev.start_date).split('T')[0];
                 const [y, m, d] = dateRaw.split('-').map(Number);
                 const date = new Date(y, m - 1, d);
-                const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                const mon = date.toLocaleDateString('en-US', { month: 'short' });
+                const day = date.getDate();
                 return (
-                  <div key={i} className="flex items-start gap-3 px-5 py-2.5 border-b border-slate-800 hover:bg-slate-800/50">
-                    <span className="text-slate-500 text-[10px] min-w-[20px] pt-1 text-right">{i + 1}</span>
+                  <div key={i} className="flex items-center gap-3 px-4 py-2 border-b border-slate-800/60 hover:bg-slate-800/40 transition-colors">
+                    <span className="text-slate-600 text-[11px] w-5 text-right shrink-0">{i + 1}</span>
+                    <div className="w-[52px] shrink-0 text-center bg-slate-800 rounded-lg py-1">
+                      <div className="text-emerald-400 text-[10px] font-semibold uppercase leading-tight">{mon}</div>
+                      <div className="text-white text-sm font-bold leading-tight">{day}</div>
+                    </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs font-medium text-white truncate">{ev.name}</div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[10px] text-emerald-400">{dateStr}</span>
-                        {loc && <span className="text-[10px] text-slate-400 truncate">{loc}</span>}
-                      </div>
+                      <div className="text-[13px] font-medium text-white leading-snug">{ev.name}</div>
+                      {loc && <div className="text-[11px] text-slate-400 mt-0.5 truncate">📍 {loc}</div>}
                     </div>
                   </div>
                 );
