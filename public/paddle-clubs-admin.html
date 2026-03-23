@@ -204,16 +204,28 @@
     let allClubs = [], filtered = [], changes = [], deleted = [];
     let currentPage = 0, sortCol = 'n', sortAsc = true;
 
-    function doLogin() {
-        if (document.getElementById('adminPass').value === ADMIN_PASS) {
-            document.getElementById('loginView').style.display = 'none';
-            document.getElementById('adminView').style.display = 'block';
-            loadData();
-        } else {
-            alert('Wrong password');
-        }
+    async function doLogin() {
+        const pass = document.getElementById('adminPass').value;
+        try {
+            const res = await fetch('/api/admin/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ password: pass })
+            });
+            if (res.ok) {
+                document.getElementById('loginView').style.display = 'none';
+                document.getElementById('adminView').style.display = 'block';
+                loadData();
+            } else alert('Wrong password');
+        } catch (e) { alert('Login failed: ' + e.message); }
     }
-    if(new URLSearchParams(location.search).get('autologin')==='1'){document.getElementById('adminPass').value=ADMIN_PASS;doLogin();}
+    (async function() {
+        try {
+            const r = await fetch('/api/admin/session', { credentials: 'include' });
+            if (r.ok) { document.getElementById('adminPass').value = '••••'; doLogin(); }
+        } catch(e) {}
+    })();
 
     async function loadData() {
         document.getElementById('statsBar').textContent = 'Loading clubs...';
@@ -368,6 +380,7 @@
             const res = await fetch('/api/enrich-club', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-API-Token': 'pp-clubs-7742-v1' },
+                credentials: 'include',
                 body: JSON.stringify({ name, website, facebook, instagram })
             });
             const data = await res.json();
@@ -422,6 +435,7 @@
             const res = await fetch('/api/save-club', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-API-Token': 'pp-clubs-7742-v1' },
+                credentials: 'include',
                 body: JSON.stringify(payload)
             });
             const result = await res.json();
@@ -452,6 +466,7 @@
                 const res = await fetch('/api/save-club', {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json', 'X-API-Token': 'pp-clubs-7742-v1' },
+                    credentials: 'include',
                     body: JSON.stringify({ id: club.id })
                 });
                 const result = await res.json();
@@ -550,6 +565,7 @@
             const res = await fetch('/api/enrich-club', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-API-Token': 'pp-clubs-7742-v1' },
+                credentials: 'include',
                 body: JSON.stringify({ name, website, facebook, instagram })
             });
             const club = await res.json();
@@ -565,6 +581,7 @@
             const saveRes = await fetch('/api/save-club', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-API-Token': 'pp-clubs-7742-v1' },
+                credentials: 'include',
                 body: JSON.stringify(club)
             });
             const saveResult = await saveRes.json();

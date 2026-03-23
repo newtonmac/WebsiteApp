@@ -3,6 +3,7 @@
 // POST /api/enrich-club { name, website }
 
 const API_TOKEN = 'pp-clubs-7742-v1';
+const { requireAdmin } = require('./_auth');
 const GOOGLE_API_KEY = 'AIzaSyAR81pUTUz5ON7ZBuoouTh2RTHyECr6yvg';
 
 const ALLOWED_ORIGINS = [
@@ -19,12 +20,14 @@ module.exports = async (req, res) => {
   }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-API-Token');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
-  // Auth
+  // Auth — accept API token OR session cookie
   const token = req.headers['x-api-token'];
-  if (token !== API_TOKEN) return res.status(403).json({ error: 'Access denied' });
+  const session = requireAdmin(req);
+  if (token !== API_TOKEN && !session.valid) return res.status(403).json({ error: 'Access denied' });
 
   try {
     const { name, website, facebook, instagram } = req.body || {};

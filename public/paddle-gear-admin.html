@@ -139,14 +139,15 @@ tr.selected{background:#1e2040}
 const ADMIN_PASS='paddle2026',PER_PAGE=50;
 let allBrands=[],filtered=[],currentPage=0,sortCol='name',sortAsc=true;
 
-function doLogin(){
-    if(document.getElementById('adminPass').value===ADMIN_PASS){
-        document.getElementById('loginView').style.display='none';
-        document.getElementById('adminView').style.display='block';
-        loadData();
-    } else alert('Wrong password');
+async function doLogin(){
+    const pass=document.getElementById('adminPass').value;
+    try{
+        const res=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({password:pass})});
+        if(res.ok){document.getElementById('loginView').style.display='none';document.getElementById('adminView').style.display='block';loadData();}
+        else alert('Wrong password');
+    }catch(e){alert('Login failed: '+e.message);}
 }
-if(new URLSearchParams(location.search).get('autologin')==='1'){document.getElementById('adminPass').value=ADMIN_PASS;doLogin();}
+(async function(){try{const r=await fetch('/api/admin/session',{credentials:'include'});if(r.ok){document.getElementById('adminPass').value='••••';doLogin();}}catch(e){}})();
 
 async function loadData(){
     document.getElementById('statsBar').textContent='Loading...';
@@ -267,6 +268,7 @@ async function saveBrand(){
     try{
         const res=await fetch('/api/save-gear-brand',{method:'POST',
             headers:{'Content-Type':'application/json','X-API-Token':'pp-clubs-7742-v1'},
+            credentials: 'include',
             body:JSON.stringify(data)});
         const r=await res.json();
         if(r.error){alert(r.error);return;}
@@ -281,6 +283,7 @@ async function deleteBrand(){
     try{
         await fetch('/api/save-gear-brand',{method:'DELETE',
             headers:{'Content-Type':'application/json','X-API-Token':'pp-clubs-7742-v1'},
+            credentials: 'include',
             body:JSON.stringify({id:parseInt(id)})});
         closeEdit();showToast('Brand deleted');loadData();
     }catch(e){alert('Delete failed');}
@@ -297,6 +300,7 @@ async function enrichBrand(){
     try{
         const res=await fetch('/api/enrich-gear-brand',{method:'POST',
             headers:{'Content-Type':'application/json','X-API-Token':'pp-clubs-7742-v1'},
+            credentials: 'include',
             body:JSON.stringify({name,website,
                 facebook_url:document.getElementById('ed_facebook_url').value,
                 instagram_url:document.getElementById('ed_instagram_url').value})});

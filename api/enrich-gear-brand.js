@@ -1,4 +1,5 @@
 const { query } = require('./_db');
+const { requireAdmin } = require('./_auth');
 const API_TOKEN = 'pp-clubs-7742-v1';
 const ALLOWED_ORIGINS = ['https://paddlepoint.org','https://jmlsd.org','http://localhost'];
 
@@ -9,9 +10,11 @@ module.exports = async (req, res) => {
   }
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,X-API-Token');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   if (req.method === 'OPTIONS') return res.status(200).end();
   const token = req.headers['x-api-token'];
-  if (token !== API_TOKEN) return res.status(403).json({ error: 'Access denied' });
+  const session = requireAdmin(req);
+  if (token !== API_TOKEN && !session.valid) return res.status(403).json({ error: 'Access denied' });
 
   const { name, website, facebook_url, instagram_url } = req.body || {};
   if (!name) return res.status(400).json({ error: 'Brand name required' });

@@ -1,5 +1,6 @@
 // Vercel Serverless: AI-powered event scraper using Anthropic API + web_search
 const { query } = require('./_db');
+const { requireAdmin } = require('./_auth');
 const API_TOKEN = 'pp-clubs-7742-v1';
 
 const SOURCES = [
@@ -38,8 +39,10 @@ module.exports = async (req, res) => {
   if (origin) res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-API-Token');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   if (req.method === 'OPTIONS') return res.status(204).end();
-  if (req.headers['x-api-token'] !== API_TOKEN) return res.status(403).json({ error: 'Access denied' });
+  const session = requireAdmin(req);
+  if (req.headers['x-api-token'] !== API_TOKEN && !session.valid) return res.status(403).json({ error: 'Access denied' });
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
   const { sourceIndex } = req.body || {};

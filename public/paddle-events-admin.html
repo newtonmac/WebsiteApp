@@ -222,19 +222,34 @@
     let allEvents = [], filtered = [], currentPage = 0, perPage = 50;
     let sortField = 'start_date', sortDir = 1;
 
-    function doLogin() {
-        if (document.getElementById('adminPass').value === 'paddle2026') {
-            document.getElementById('loginView').style.display = 'none';
-            document.getElementById('adminView').style.display = 'block';
-            loadEvents();
-            renderSources();
-        } else alert('Wrong password');
+    async function doLogin() {
+        const pass = document.getElementById('adminPass').value;
+        try {
+            const res = await fetch('/api/admin/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ password: pass })
+            });
+            if (res.ok) {
+                document.getElementById('loginView').style.display = 'none';
+                document.getElementById('adminView').style.display = 'block';
+                loadEvents();
+                renderSources();
+            } else alert('Wrong password');
+        } catch (e) { alert('Login failed: ' + e.message); }
     }
-    if(new URLSearchParams(location.search).get('autologin')==='1'){document.getElementById('adminPass').value='paddle2026';doLogin();}
+    // Auto-login check via session cookie
+    (async function() {
+        try {
+            const r = await fetch('/api/admin/session', { credentials: 'include' });
+            if (r.ok) { document.getElementById('adminPass').value = '••••'; doLogin(); }
+        } catch(e) {}
+    })();
 
     async function loadEvents() {
         try {
-            const res = await fetch('/api/events?refresh=1', { headers: { 'X-API-Token': API_TOKEN } });
+            const res = await fetch('/api/events?refresh=1', { headers: { 'X-API-Token': API_TOKEN }, credentials: 'include' });
             allEvents = await res.json();
             doSearch();
             updateStats();
@@ -369,6 +384,7 @@
             const res = await fetch('/api/save-event', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-API-Token': API_TOKEN },
+                credentials: 'include',
                 body: JSON.stringify(data)
             });
             const result = await res.json();
@@ -386,6 +402,7 @@
             const res = await fetch('/api/save-event', {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json', 'X-API-Token': API_TOKEN },
+                credentials: 'include',
                 body: JSON.stringify({ id: parseInt(id) })
             });
             const result = await res.json();
@@ -443,6 +460,7 @@
                 const res = await fetch('/api/scrape-events', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-API-Token': API_TOKEN },
+                    credentials: 'include',
                     body: JSON.stringify({ sourceIndex: idx })
                 });
                 const data = await res.json();

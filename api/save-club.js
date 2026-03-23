@@ -1,6 +1,7 @@
 // Vercel Serverless: Save club to Cloud SQL
 // POST /api/save-club { club data } — inserts or updates a club
 const { query } = require('./_db');
+const { requireAdmin } = require('./_auth');
 
 const API_TOKEN = 'pp-clubs-7742-v1';
 const ALLOWED_ORIGINS = [
@@ -94,7 +95,8 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(204).end();
 
   const token = req.headers['x-api-token'];
-  if (token !== API_TOKEN) return res.status(403).json({ error: 'Access denied' });
+  const session = requireAdmin(req);
+  if (token !== API_TOKEN && !session.valid) return res.status(403).json({ error: 'Access denied' });
 
   try {
     // DELETE a club

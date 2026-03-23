@@ -82,16 +82,21 @@ const PAGES={
 };
 const loaded={};
 
-function doLogin(){
-    if(document.getElementById('passInput').value===PASS){
-        document.getElementById('loginView').style.display='none';
-        const panel=document.getElementById('adminPanel');
-        panel.style.display='flex';
-        // Load first tab and fetch counts
-        loadTab('clubs');
-        fetchCounts();
-    } else alert('Wrong password');
+async function doLogin(){
+    const pass=document.getElementById('passInput').value;
+    try{
+        const res=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({password:pass})});
+        if(res.ok){
+            document.getElementById('loginView').style.display='none';
+            const panel=document.getElementById('adminPanel');
+            panel.style.display='flex';
+            loadTab('clubs');
+            fetchCounts();
+        } else alert('Wrong password');
+    }catch(e){alert('Login failed: '+e.message);}
 }
+// Auto-login via session cookie
+(async function(){try{const r=await fetch('/api/admin/session',{credentials:'include'});if(r.ok){document.getElementById('passInput').value='••••';doLogin();}}catch(e){}})();
 
 function switchTab(btn, name){
     document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
@@ -106,7 +111,7 @@ function loadTab(name){
     loaded[name]=true;
     if(name==='analytics'){loadAnalytics();return;}
     const frame=document.getElementById('frame-'+name);
-    frame.src=PAGES[name]+'?autologin=1';
+    frame.src=PAGES[name];
 }
 
 async function loadAnalytics(){
