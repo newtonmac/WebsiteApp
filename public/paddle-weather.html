@@ -1,0 +1,3045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title>PaddlePoint - Weather & Tides</title>
+    <link rel="canonical" href="https://paddlepoint.org/paddle-weather.html">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="stylesheet" href="pp-shared.css">
+    <link rel="dns-prefetch" href="https://api.weather.gov">
+    <link rel="dns-prefetch" href="https://gis.ncdc.noaa.gov">
+    <link rel="dns-prefetch" href="https://data.ca.gov">
+    <link rel="dns-prefetch" href="https://api.coastal.ca.gov">
+    <link rel="dns-prefetch" href="https://fhab-api.sfei.org">
+    <link rel="preconnect" href="https://maps.googleapis.com" crossorigin>
+        <meta name="description" content="Weather, tides, marine forecast, water temperature, and safety conditions for paddlers. Triple-source data from Google, Open-Meteo, and NWS.">
+    <meta property="og:title" content="PaddlePoint — Weather & Tides">
+    <meta property="og:description" content="Weather, tides, marine forecast, water temperature, and safety conditions for paddlers. Triple-source data from Google, Open-Meteo, and NWS.">
+    <meta property="og:image" content="https://paddlepoint.org/paddlepoint.jpg">
+    <meta property="og:url" content="https://paddlepoint.org/paddle-weather.html">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html { overflow-x: hidden; width: 100%; max-width: 100vw; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #ffffff;
+            color: #1a1a2e;
+            min-height: 100vh;
+            -webkit-text-size-adjust: 100%;
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(12px);
+            padding: 14px 16px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-left { display: flex; align-items: center; gap: 10px; }
+
+        .header-logo {
+            width: 90px;
+            height: 90px;
+            border-radius: 10px;
+            object-fit: contain;
+        }
+
+        .header h1 {
+            font-size: 40px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #06b6d4, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header .subtitle { color: #6b7280; font-size: 12px; margin-top: 2px; }
+
+        .header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+        .back-btn {
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            user-select: none;
+            border: none;
+            white-space: nowrap;
+            background: transparent;
+            color: #4b5563;
+            text-decoration: none;
+        }
+        .back-btn:hover {
+            background: #f3f4f6;
+        }
+        .back-btn.accent {
+            background: #0e7a6b;
+            color: #ffffff;
+        }
+
+        .main-content {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 24px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .card {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .card-header {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #1a1a2e;
+        }
+
+        .card-header-icon {
+            margin-right: 8px;
+        }
+
+        /* Location Search */
+        .search-wrapper {
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 14px 16px 14px 44px;
+            background: #f7f8fa;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            color: #1a1a2e;
+            font-size: 15px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+        .search-input::placeholder { color: #9ca3af; }
+        .search-input:focus { border-color: #3b82f6; }
+
+        /* Google Places autocomplete dropdown styling */
+        .pac-container { border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 4px 20px rgba(0,0,0,0.1); margin-top: 4px; font-family: inherit; }
+        .pac-item { padding: 8px 14px; font-size: 14px; border-top: 1px solid #f3f4f6; cursor: pointer; }
+        .pac-item:hover { background: #f7f8fa; }
+        .pac-item-query { font-weight: 600; color: #1a1a2e; }
+
+        .search-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            font-size: 18px;
+            pointer-events: none;
+        }
+
+        /* Current Conditions */
+        .conditions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+        }
+
+        .condition-item {
+            background: #f7f8fa;
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .condition-label {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .condition-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+
+        .condition-unit {
+            font-size: 13px;
+            color: #6b7280;
+            font-weight: 400;
+        }
+
+        /* Tide Chart Placeholder */
+        .tide-chart-area {
+            height: 250px;
+            background: #f7f8fa;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9ca3af;
+            font-size: 14px;
+        }
+
+        /* Hourly Forecast */
+        .hourly-scroll {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .hourly-scroll::-webkit-scrollbar { height: 6px; }
+        .hourly-scroll::-webkit-scrollbar-track { background: transparent; }
+        .hourly-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+
+        .hour-block {
+            flex: 0 0 80px;
+            background: #f7f8fa;
+            border-radius: 12px;
+            padding: 14px 8px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .hour-time {
+            font-size: 12px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .hour-icon {
+            font-size: 22px;
+        }
+
+        .hour-temp {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a2e;
+        }
+
+        .hour-wind {
+            font-size: 11px;
+            color: #6b7280;
+        }
+
+        /* Multi-Day Forecast */
+        .forecast-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .forecast-row {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr 1fr 1fr 1fr;
+            align-items: center;
+            background: #f7f8fa;
+            border-radius: 12px;
+            padding: 14px 16px;
+            gap: 8px;
+        }
+
+        .forecast-day {
+            font-weight: 600;
+            font-size: 14px;
+            color: #1a1a2e;
+        }
+
+        .forecast-cell {
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .forecast-cell-label {
+            font-size: 10px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-bottom: 2px;
+        }
+
+        .forecast-cell-value {
+            font-weight: 500;
+        }
+
+        .forecast-header {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr 1fr 1fr 1fr;
+            padding: 0 16px 4px;
+            gap: 8px;
+        }
+
+        .forecast-header span {
+            text-align: center;
+            font-size: 11px;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .forecast-header span:first-child { text-align: left; }
+
+        /* Source tags for dual-source comparison */
+        .source-tag {
+            display: inline-block;
+            font-size: 9px;
+            font-weight: 600;
+            padding: 1px 5px;
+            border-radius: 3px;
+            letter-spacing: 0.3px;
+            vertical-align: middle;
+            margin-left: 4px;
+        }
+        .source-om { background: #dbeafe; color: #2563eb; }
+        .source-gw { background: #fef3c7; color: #d97706; }
+        .source-nws { background: #dcfce7; color: #16a34a; }
+
+        /* Condition sub-value (e.g. gusts, feels like) */
+        .condition-sub {
+            font-size: 11px;
+            color: #6b7280;
+            margin-top: 3px;
+        }
+
+        /* UV color coding */
+        .uv-low { color: #10b981; }
+        .uv-moderate { color: #f59e0b; }
+        .uv-high { color: #ef4444; }
+        .uv-extreme { color: #7c3aed; }
+
+        /* Sun Times Card */
+        .sun-times {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .sun-time-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #f7f8fa;
+            border-radius: 12px;
+            padding: 14px 20px;
+            flex: 1;
+            min-width: 140px;
+            justify-content: center;
+        }
+        .sun-time-icon { font-size: 28px; }
+        .sun-time-info { text-align: left; }
+        .sun-time-label { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
+        .sun-time-value { font-size: 18px; font-weight: 600; color: #1a1a2e; }
+
+        /* Rain probability badge in hourly */
+        .hour-rain {
+            font-size: 10px;
+            color: #3b82f6;
+            font-weight: 500;
+        }
+
+        /* Map */
+        .weather-map {
+            height: 300px;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        /* South swell warning */
+        .swell-warning {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #92400e;
+            margin-top: 10px;
+        }
+
+        /* Water Temperature */
+        .water-temp-content {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .water-temp-main {
+            text-align: center;
+        }
+
+        .water-temp-value {
+            font-size: 48px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .water-temp-label {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        .water-temp-trend {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        /* River flow card */
+        .river-flow-list { display: flex; flex-direction: column; gap: 8px; }
+        .river-flow-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 16px; background: #f7f8fa; border-radius: 12px; font-size: 13px;
+        }
+        .river-flow-icon { font-size: 20px; }
+        .river-flow-name { font-weight: 500; color: #1a1a2e; }
+        .river-flow-value { font-size: 12px; color: #6b7280; margin-top: 2px; }
+        .river-flow-dist { font-size: 11px; color: #9ca3af; flex: 0 0 auto; text-align: right; }
+
+        .trend-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: #f7f8fa;
+            border-radius: 8px;
+            font-size: 13px;
+        }
+
+        .trend-label { color: #6b7280; }
+        .trend-value { font-weight: 500; }
+
+        /* Alert Items */
+        .alert-list { display: flex; flex-direction: column; gap: 10px; }
+        .alert-item {
+            padding: 14px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .alert-item.warning { background: #fef3c7; border-left: 4px solid #f59e0b; }
+        .alert-item.watch { background: #fff7ed; border-left: 4px solid #fb923c; }
+        .alert-item.advisory { background: #ecfdf5; border-left: 4px solid #10b981; }
+        .alert-item.severe { background: #fef2f2; border-left: 4px solid #ef4444; }
+        .alert-title { font-weight: 600; margin-bottom: 4px; color: #1a1a2e; }
+        .alert-meta { font-size: 11px; color: #6b7280; margin-top: 6px; }
+        .alert-empty { color: #9ca3af; font-size: 13px; text-align: center; padding: 20px; background: #f7f8fa; border-radius: 12px; }
+
+        /* Water Quality Items */
+        .wq-list { display: flex; flex-direction: column; gap: 8px; }
+        .wq-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: #f7f8fa;
+            border-radius: 12px;
+            font-size: 13px;
+        }
+        .wq-badge {
+            flex: 0 0 auto;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            color: #fff;
+        }
+        .wq-badge.open { background: #10b981; }
+        .wq-badge.advisory { background: #f59e0b; }
+        .wq-badge.closed { background: #ef4444; }
+        .wq-name { font-weight: 500; color: #1a1a2e; flex: 1; }
+        .wq-detail { font-size: 11px; color: #6b7280; }
+        .wq-source-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+        .wq-source-link {
+            font-size: 11px; color: #3b82f6; text-decoration: none;
+            padding: 4px 8px; background: #eff6ff; border-radius: 6px;
+        }
+        .wq-source-link:hover { background: #dbeafe; }
+
+        /* HAB Items */
+        .hab-list { display: flex; flex-direction: column; gap: 8px; }
+        .hab-item {
+            padding: 12px 16px;
+            background: #f7f8fa;
+            border-radius: 12px;
+            font-size: 13px;
+        }
+        .hab-item.danger { background: #fef2f2; border-left: 4px solid #ef4444; }
+        .hab-item.caution { background: #fffbeb; border-left: 4px solid #f59e0b; }
+        .hab-item.clear { background: #f0fdf4; border-left: 4px solid #10b981; }
+        .hab-species { font-weight: 600; color: #1a1a2e; }
+        .hab-count { font-size: 12px; color: #6b7280; margin-top: 2px; }
+        .hab-date { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+
+        /* Coastal Access Items */
+        .access-list { display: flex; flex-direction: column; gap: 8px; }
+        .access-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 16px; background: #f7f8fa; border-radius: 12px; font-size: 13px;
+        }
+        .access-icon { font-size: 20px; flex: 0 0 auto; }
+        .access-name { font-weight: 500; color: #1a1a2e; }
+        .access-features { font-size: 11px; color: #6b7280; margin-top: 2px; }
+        .access-dist { font-size: 11px; color: #9ca3af; flex: 0 0 auto; text-align: right; }
+
+        /* Unit Toggle */
+        .unit-toggle {
+            display: flex;
+            gap: 4px;
+            background: #f3f4f6;
+            border-radius: 8px;
+            padding: 3px;
+            font-size: 12px;
+        }
+        .unit-toggle-btn {
+            padding: 5px 12px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            font-family: inherit;
+            color: #6b7280;
+            background: transparent;
+            transition: all 0.2s;
+        }
+        .unit-toggle-btn.active {
+            background: #fff;
+            color: #1a1a2e;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        /* GPS Button */
+        .gps-btn {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #f7f8fa;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 8px 10px;
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 1;
+            color: #3b82f6;
+            transition: all 0.2s;
+        }
+        .gps-btn:hover { background: #eff6ff; border-color: #3b82f6; }
+        .gps-btn.loading { animation: pulse 1s ease-in-out infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+        /* Wind / Wave Chart */
+        .chart-area {
+            height: 200px;
+            background: #f7f8fa;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9ca3af;
+            font-size: 14px;
+        }
+
+        /* Cloud Cover Timeline */
+        .cloud-timeline {
+            display: flex;
+            gap: 2px;
+            align-items: flex-end;
+            height: 60px;
+            padding: 0 4px;
+        }
+        .cloud-bar {
+            flex: 1;
+            border-radius: 3px 3px 0 0;
+            min-width: 8px;
+            position: relative;
+            transition: background 0.2s;
+        }
+        .cloud-bar-label {
+            position: absolute;
+            bottom: -18px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 9px;
+            color: #9ca3af;
+            white-space: nowrap;
+        }
+        .cloud-timeline-wrap {
+            margin-bottom: 20px;
+        }
+
+        /* AQI card */
+        .aqi-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 12px;
+            align-items: center;
+        }
+        .aqi-score {
+            font-size: 48px;
+            font-weight: 700;
+            text-align: center;
+            min-width: 80px;
+        }
+        .aqi-good { color: #10b981; }
+        .aqi-moderate { color: #f59e0b; }
+        .aqi-unhealthy-sensitive { color: #f97316; }
+        .aqi-unhealthy { color: #ef4444; }
+        .aqi-very-unhealthy { color: #7c3aed; }
+        .aqi-hazardous { color: #991b1b; }
+        .aqi-details { display: flex; flex-direction: column; gap: 6px; }
+        .aqi-detail-row {
+            display: flex; justify-content: space-between;
+            padding: 6px 10px; background: #f7f8fa; border-radius: 6px; font-size: 12px;
+        }
+        .aqi-label-text { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+        .aqi-label-sub { font-size: 12px; color: #6b7280; }
+
+        /* Cold Water Risk */
+        .cold-water-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 16px;
+            align-items: center;
+        }
+        .cold-water-gauge {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            border: 6px solid;
+        }
+        .cold-water-gauge.low { border-color: #10b981; }
+        .cold-water-gauge.moderate { border-color: #f59e0b; }
+        .cold-water-gauge.high { border-color: #f97316; }
+        .cold-water-gauge.extreme { border-color: #ef4444; }
+        .cold-water-temp { font-size: 24px; font-weight: 700; }
+        .cold-water-label { font-size: 10px; color: #6b7280; }
+        .cold-water-details { display: flex; flex-direction: column; gap: 6px; }
+
+        /* Beaufort badge */
+        .beaufort-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: #f3f4f6;
+            color: #6b7280;
+            margin-top: 2px;
+        }
+
+        /* Golden hour items */
+        .golden-hour-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+        .golden-hour-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #fffbeb;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 12px;
+            flex: 1;
+            min-width: 120px;
+        }
+        .golden-hour-item.blue {
+            background: #eff6ff;
+        }
+
+        /* Data Sources */
+        .data-sources {
+            display: none; /* Hidden inline — shown via ℹ️ popup instead */
+        }
+        .data-source-tag {
+            font-size: 10px; color: #6b7280; background: #f3f4f6;
+            padding: 3px 8px; border-radius: 4px; letter-spacing: 0.3px;
+            text-decoration: none; transition: background 0.2s;
+        }
+        a.data-source-tag:hover { background: #e5e7eb; color: #3b82f6; }
+
+        .src-info-btn {
+            display:inline-flex;align-items:center;justify-content:center;
+            width:20px;height:20px;border-radius:50%;background:#e0f2fe;
+            color:#0284c7;font-size:11px;font-weight:700;cursor:pointer;
+            border:none;margin-left:8px;vertical-align:middle;flex-shrink:0;
+        }
+        .src-info-btn:hover { background:#bae6fd; }
+        .src-popup {
+            display:none;position:absolute;top:calc(100% + 4px);right:0;
+            background:#fff;border:1px solid #e2e8f0;border-radius:12px;
+            box-shadow:0 8px 24px rgba(0,0,0,.12);padding:14px 16px;z-index:100;
+            font-size:12px;color:#475569;line-height:1.8;min-width:240px;max-width:320px;
+        }
+        .src-popup.open { display:block; }
+        .src-popup-title { font-weight:700;color:#1e293b;margin-bottom:4px;font-size:13px; }
+        .src-popup a { color:#0284c7;text-decoration:none; }
+        .src-popup a:hover { text-decoration:underline; }
+        .card-header { position:relative; }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .header { padding: 10px 12px; }
+            .header-logo { width: 50px; height: 50px; }
+            .header h1 { font-size: 22px; }
+
+            .main-content { padding: 16px 10px; gap: 14px; }
+            .card { padding: 16px; border-radius: 12px; }
+
+            .conditions-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+            .condition-item { padding: 12px; }
+            .condition-value { font-size: 20px; }
+
+            .tide-chart-area { height: 180px; }
+
+            .forecast-row { grid-template-columns: 1fr 1fr 1fr; padding: 10px 12px; }
+            .forecast-row .forecast-cell:nth-child(5) { display: none; }
+            .forecast-header { grid-template-columns: 1fr 1fr 1fr; }
+            .forecast-header span:nth-child(5) { display: none; }
+
+            .water-temp-content { flex-direction: column; gap: 16px; }
+            .water-temp-value { font-size: 36px; }
+
+            .sun-times { flex-direction: column; }
+            .sun-time-item { min-width: unset; }
+
+            .weather-map { height: 220px; }
+
+            .chart-area { height: 160px; }
+
+            .aqi-grid { grid-template-columns: 1fr; }
+            .cold-water-grid { grid-template-columns: 1fr; justify-items: center; }
+
+            .golden-hour-row { flex-direction: column; }
+
+            .alert-item { font-size: 12px; }
+            .wq-item { flex-wrap: wrap; }
+            .access-item { flex-wrap: wrap; }
+        }
+        /* Mobile: bump tiny fonts for readability */
+        @media (max-width: 600px) {
+            .cold-water-label { font-size: 11px !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="header-left">
+        <img src="paddle-pin.svg" alt="PaddlePoint Logo" class="header-logo" width="48" height="62">
+        <div>
+            <h1>PaddlePoint</h1>
+            <div class="subtitle">Weather &amp; Tides · Free community resource</div>
+        </div>
+    </div>
+    <div class="header-right">
+        <a href="paddlepoint.html" class="back-btn accent">Home</a>
+        <a href="paddle-conditions.html" class="back-btn">Water Conditions</a>
+        <a href="paddle-weather.html" class="back-btn">Weather</a>
+        <a href="paddle-clubs.html" class="back-btn">Paddle Clubs</a>
+        <a href="paddle-events.html" class="back-btn">Events</a>
+        <a href="paddle-gear.html" class="back-btn">Gear</a>
+        <a href="paddle-federations.html" class="back-btn">Federations</a>
+        <span class="back-btn" onclick="openSuggestModal()" style="cursor:pointer;">Feedback</span>
+        <span class="back-btn" onclick="openUpdatesModal()" style="cursor:pointer;">Updates</span>
+    </div>
+</div>
+
+<div class="main-content">
+
+    <!-- Location Search -->
+    <div class="card">
+        <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+            <span><span class="card-header-icon">&#x1F4CD;</span>Location Search</span>
+            <div class="unit-toggle" id="unitToggle">
+                <button class="unit-toggle-btn active" data-unit="imperial" onclick="setUnits('imperial')">&#x1F1FA;&#x1F1F8; &deg;F / mph</button>
+                <button class="unit-toggle-btn" data-unit="metric" onclick="setUnits('metric')">&#x1F30D; &deg;C / km/h</button>
+            </div>
+        </div>
+        <div class="search-wrapper">
+            <span class="search-icon">&#x1F50D;</span>
+            <input type="text" class="search-input" placeholder="Enter a paddle location (e.g. Mission Bay, San Diego)" id="locationInput" style="padding-right:50px;">
+            <button class="gps-btn" id="gpsBtn" onclick="useGPSLocation()" title="Use my location">&#x1F4CD;</button>
+        </div>
+        <div id="searchStatus" style="margin-top:8px;font-size:12px;color:#9ca3af;display:none;"></div>
+    </div>
+
+    <!-- Current Conditions -->
+    <div class="card">
+        <div class="card-header"><span class="card-header-icon">&#x26C5;</span>Current Conditions</div>
+        <div class="conditions-grid">
+            <div class="condition-item" id="condTemp">
+                <div class="condition-label">Temperature</div>
+                <div class="condition-value">-- <span class="condition-unit">&deg;F</span></div>
+                <div class="condition-sub" id="feelsLike">Feels like --</div>
+            </div>
+            <div class="condition-item" id="condWind">
+                <div class="condition-label">Wind</div>
+                <div class="condition-value">-- <span class="condition-unit">mph</span></div>
+                <div class="condition-sub" id="windDir">Dir: --</div>
+                <div class="condition-sub" id="windGusts">Gusts: --</div>
+            </div>
+            <div class="condition-item" id="condHumidity">
+                <div class="condition-label">Humidity</div>
+                <div class="condition-value">-- <span class="condition-unit">%</span></div>
+                <div class="condition-sub"></div>
+            </div>
+            <div class="condition-item" id="condUV">
+                <div class="condition-label">UV Index</div>
+                <div class="condition-value">--</div>
+                <div class="condition-sub"></div>
+            </div>
+            <div class="condition-item" id="condVis">
+                <div class="condition-label">Visibility</div>
+                <div class="condition-value">-- <span class="condition-unit">mi</span></div>
+                <div class="condition-sub"></div>
+            </div>
+            <div class="condition-item" id="condPressure">
+                <div class="condition-label">Pressure</div>
+                <div class="condition-value">-- <span class="condition-unit">hPa</span></div>
+                <div class="condition-sub"></div>
+            </div>
+            <div class="condition-item" id="condRain">
+                <div class="condition-label">Rain Chance</div>
+                <div class="condition-value">-- <span class="condition-unit">%</span></div>
+                <div class="condition-sub" id="thunderChance">Thunder: --</div>
+            </div>
+            <div class="condition-item" id="condDewpoint">
+                <div class="condition-label">Dew Point</div>
+                <div class="condition-value">-- <span class="condition-unit">&deg;F</span></div>
+                <div class="condition-sub"></div>
+            </div>
+            <div class="condition-item" id="condWetBulb">
+                <div class="condition-label">Wet Bulb</div>
+                <div class="condition-value">-- <span class="condition-unit">&deg;F</span></div>
+                <div class="condition-sub" id="heatStress">--</div>
+            </div>
+        </div>
+        <div class="data-sources">
+            <a href="https://weather.google.com" target="_blank" class="data-source-tag">Google Weather</a>
+            <a href="https://open-meteo.com" target="_blank" class="data-source-tag">Open-Meteo</a>
+            <a href="https://www.weather.gov" target="_blank" class="data-source-tag">NWS</a>
+        </div>
+    </div>
+
+    <!-- Sunrise / Sunset -->
+    <div class="card" id="sunCard">
+        <div class="card-header"><span class="card-header-icon">&#x1F305;</span>Sun &amp; Daylight</div>
+        <div class="sun-times" id="sunTimes">
+            <div class="sun-time-item">
+                <div class="sun-time-icon">&#x1F305;</div>
+                <div class="sun-time-info">
+                    <div class="sun-time-label">Sunrise</div>
+                    <div class="sun-time-value" id="sunriseTime">--</div>
+                </div>
+            </div>
+            <div class="sun-time-item">
+                <div class="sun-time-icon">&#x1F307;</div>
+                <div class="sun-time-info">
+                    <div class="sun-time-label">Sunset</div>
+                    <div class="sun-time-value" id="sunsetTime">--</div>
+                </div>
+            </div>
+            <div class="sun-time-item">
+                <div class="sun-time-icon">&#x2600;&#xFE0F;</div>
+                <div class="sun-time-info">
+                    <div class="sun-time-label">Daylight</div>
+                    <div class="sun-time-value" id="daylightHours">--</div>
+                </div>
+            </div>
+        </div>
+        <div class="golden-hour-row" id="goldenHourRow" style="display:none;"></div>
+        <div class="data-sources">
+            <a href="https://weather.google.com" target="_blank" class="data-source-tag">Google Weather</a>
+            <a href="https://open-meteo.com" target="_blank" class="data-source-tag">Open-Meteo</a>
+            <a href="https://www.weather.gov" target="_blank" class="data-source-tag">NWS</a>
+        </div>
+    </div>
+
+    <!-- Location Map -->
+    <div class="card" id="mapCard" style="display:none;">
+        <div class="card-header"><span class="card-header-icon">&#x1F5FA;&#xFE0F;</span>Location</div>
+        <div id="weatherMap" class="weather-map"></div>
+        <div class="data-sources">
+            <a href="https://maps.google.com" target="_blank" class="data-source-tag">Google Maps</a>
+        </div>
+    </div>
+
+    <!-- Tide Chart -->
+    <div class="card">
+        <div class="card-header"><span class="card-header-icon">&#x1F30A;</span>Tide Chart</div>
+        <div class="tide-chart-area">Tide data will appear here</div>
+        <div class="data-sources">
+            <a href="https://tidesandcurrents.noaa.gov" target="_blank" class="data-source-tag">NOAA CO-OPS</a>
+            <a href="https://open-meteo.com/en/docs/marine-weather-api" target="_blank" class="data-source-tag">Open-Meteo Marine</a>
+        </div>
+    </div>
+
+    <!-- Hourly Forecast -->
+    <div class="card">
+        <div class="card-header"><span class="card-header-icon">&#x1F553;</span>Hourly Forecast</div>
+        <div class="hourly-scroll">
+            <div class="hour-block">
+                <div class="hour-time">Now</div>
+                <div class="hour-icon">&#x26C5;</div>
+                <div class="hour-temp">--&deg;</div>
+                <div class="hour-wind">-- mph</div>
+            </div>
+            <div class="hour-block">
+                <div class="hour-time">1 PM</div>
+                <div class="hour-icon">&#x2600;&#xFE0F;</div>
+                <div class="hour-temp">--&deg;</div>
+                <div class="hour-wind">-- mph</div>
+            </div>
+            <div class="hour-block">
+                <div class="hour-time">2 PM</div>
+                <div class="hour-icon">&#x2600;&#xFE0F;</div>
+                <div class="hour-temp">--&deg;</div>
+                <div class="hour-wind">-- mph</div>
+            </div>
+            <div class="hour-block">
+                <div class="hour-time">3 PM</div>
+                <div class="hour-icon">&#x26C5;</div>
+                <div class="hour-temp">--&deg;</div>
+                <div class="hour-wind">-- mph</div>
+            </div>
+            <div class="hour-block">
+                <div class="hour-time">4 PM</div>
+                <div class="hour-icon">&#x26C5;</div>
+                <div class="hour-temp">--&deg;</div>
+                <div class="hour-wind">-- mph</div>
+            </div>
+            <div class="hour-block">
+                <div class="hour-time">5 PM</div>
+                <div class="hour-icon">&#x1F324;&#xFE0F;</div>
+                <div class="hour-temp">--&deg;</div>
+                <div class="hour-wind">-- mph</div>
+            </div>
+            <div class="hour-block">
+                <div class="hour-time">6 PM</div>
+                <div class="hour-icon">&#x1F305;</div>
+                <div class="hour-temp">--&deg;</div>
+                <div class="hour-wind">-- mph</div>
+            </div>
+            <div class="hour-block">
+                <div class="hour-time">7 PM</div>
+                <div class="hour-icon">&#x1F319;</div>
+                <div class="hour-temp">--&deg;</div>
+                <div class="hour-wind">-- mph</div>
+            </div>
+            <div class="hour-block">
+                <div class="hour-time">8 PM</div>
+                <div class="hour-icon">&#x1F319;</div>
+                <div class="hour-temp">--&deg;</div>
+                <div class="hour-wind">-- mph</div>
+            </div>
+            <div class="hour-block">
+                <div class="hour-time">9 PM</div>
+                <div class="hour-icon">&#x1F319;</div>
+                <div class="hour-temp">--&deg;</div>
+                <div class="hour-wind">-- mph</div>
+            </div>
+        </div>
+        <div class="data-sources">
+            <a href="https://weather.google.com" target="_blank" class="data-source-tag">Google Weather</a>
+            <a href="https://open-meteo.com" target="_blank" class="data-source-tag">Open-Meteo</a>
+            <a href="https://www.weather.gov" target="_blank" class="data-source-tag">NWS</a>
+        </div>
+    </div>
+
+    <!-- Multi-Day Marine Forecast -->
+    <div class="card">
+        <div class="card-header"><span class="card-header-icon">&#x1F4C5;</span>5-Day Marine Forecast</div>
+        <div class="forecast-header">
+            <span>Day</span>
+            <span>High / Low</span>
+            <span>Wind</span>
+            <span>Swell</span>
+            <span>Conditions</span>
+        </div>
+        <div class="forecast-grid">
+            <div class="forecast-row">
+                <div class="forecast-day">Monday</div>
+                <div class="forecast-cell">
+                    <div class="forecast-cell-value">--&deg; / --&deg;</div>
+                </div>
+                <div class="forecast-cell">
+                    <div class="forecast-cell-value">-- mph</div>
+                </div>
+                <div class="forecast-cell">
+                    <div class="forecast-cell-value">-- ft</div>
+                </div>
+                <div class="forecast-cell">
+                    <div class="forecast-cell-value">--</div>
+                </div>
+            </div>
+            <div class="forecast-row">
+                <div class="forecast-day">Tuesday</div>
+                <div class="forecast-cell">
+                    <div class="forecast-cell-value">--&deg; / --&deg;</div>
+                </div>
+                <div class="forecast-cell">
+                    <div class="forecast-cell-value">-- mph</div>
+                </div>
+                <div class="forecast-cell">
+                    <div class="forecast-cell-value">-- ft</div>
+                </div>
+                <div class="forecast-cell">
+                    <div class="forecast-cell-value">--</div>
+                </div>
+            </div>
+            <div class="forecast-row">
+                <div class="forecast-day">Wednesday</div>
+                <div class="forecast-cell">
+                    <div class="forecast-cell-value">--&deg; / --&deg;</div>
+                </div>
+                <div class="forecast-cell">
+                    <div class="forecast-cell-value">-- mph</div>
+                </div>
+                <div class="forecast-cell">
+                    <div class="forecast-cell-value">-- ft</div>
+                </div>
+                <div class="forecast-cell">
+                    <div class="forecast-cell-value">--</div>
+                </div>
+            </div>
+            <div class="forecast-row">
+                <div class="forecast-day">Thursday</div>
+                <div class="forecast-cell">
+                    <div class="forecast-cell-value">--&deg; / --&deg;</div>
+                </div>
+                <div class="forecast-cell">
+                    <div class="forecast-cell-value">-- mph</div>
+                </div>
+                <div class="forecast-cell">
+                    <div class="forecast-cell-value">-- ft</div>
+                </div>
+                <div class="forecast-cell">
+                    <div class="forecast-cell-value">--</div>
+                </div>
+            </div>
+            <div class="forecast-row">
+                <div class="forecast-day">Friday</div>
+                <div class="forecast-cell">
+                    <div class="forecast-cell-value">--&deg; / --&deg;</div>
+                </div>
+                <div class="forecast-cell">
+                    <div class="forecast-cell-value">-- mph</div>
+                </div>
+                <div class="forecast-cell">
+                    <div class="forecast-cell-value">-- ft</div>
+                </div>
+                <div class="forecast-cell">
+                    <div class="forecast-cell-value">--</div>
+                </div>
+            </div>
+        </div>
+        <div class="data-sources">
+            <a href="https://open-meteo.com" target="_blank" class="data-source-tag">Open-Meteo</a>
+            <a href="https://open-meteo.com/en/docs/marine-weather-api" target="_blank" class="data-source-tag">Open-Meteo Marine</a>
+            <a href="https://www.weather.gov" target="_blank" class="data-source-tag">NWS Forecast</a>
+        </div>
+    </div>
+
+    <!-- Water Temperature -->
+    <div class="card" id="waterTempCard">
+        <div class="card-header"><span class="card-header-icon">&#x1F321;&#xFE0F;</span>Water Temperature</div>
+        <div class="water-temp-content">
+            <div class="water-temp-main">
+                <div class="water-temp-value" id="waterTempValue">--</div>
+                <div class="water-temp-label" id="waterTempLabel">Water Temp (&deg;F)</div>
+            </div>
+            <div class="water-temp-trend" id="waterTempTrend">
+                <div class="trend-row">
+                    <span class="trend-label">Source</span>
+                    <span class="trend-value" id="waterTempSource">--</span>
+                </div>
+                <div class="trend-row">
+                    <span class="trend-label">Station</span>
+                    <span class="trend-value" id="waterTempStation">--</span>
+                </div>
+            </div>
+        </div>
+        <div class="data-sources">
+            <a href="https://tidesandcurrents.noaa.gov" target="_blank" class="data-source-tag">NOAA CO-OPS</a>
+            <a href="https://open-meteo.com/en/docs/marine-weather-api" target="_blank" class="data-source-tag">Open-Meteo Marine</a>
+        </div>
+    </div>
+
+    <!-- Marine Conditions -->
+    <div class="card" id="marineCard">
+        <div class="card-header"><span class="card-header-icon">&#x1F30A;</span>Marine Conditions</div>
+        <div class="water-temp-content">
+            <div class="water-temp-main">
+                <div class="water-temp-value">--</div>
+                <div class="water-temp-label">Current Wave Height (ft)</div>
+            </div>
+            <div class="water-temp-trend">
+                <div class="trend-row">
+                    <span class="trend-label">Wave Period</span>
+                    <span class="trend-value">--</span>
+                </div>
+                <div class="trend-row">
+                    <span class="trend-label">Wave Direction</span>
+                    <span class="trend-value">--</span>
+                </div>
+                <div class="trend-row">
+                    <span class="trend-label">Swell Height</span>
+                    <span class="trend-value" id="swellHeight">--</span>
+                </div>
+                <div class="trend-row">
+                    <span class="trend-label">Swell Direction</span>
+                    <span class="trend-value" id="swellDir">--</span>
+                </div>
+                <div class="trend-row">
+                    <span class="trend-label">Current Velocity</span>
+                    <span class="trend-value">--</span>
+                </div>
+                <div class="trend-row">
+                    <span class="trend-label">Current Direction</span>
+                    <span class="trend-value">--</span>
+                </div>
+            </div>
+        </div>
+        <div id="swellWarning" class="swell-warning" style="display:none;">
+            <span>&#x26A0;&#xFE0F;</span>
+            <span><strong>South Swell Detected</strong> — Southerly swell can push contaminated transboundary water northward along the coast. Use extra caution near border areas.</span>
+        </div>
+        <div class="data-sources">
+            <a href="https://open-meteo.com/en/docs/marine-weather-api" target="_blank" class="data-source-tag">Open-Meteo Marine</a>
+        </div>
+    </div>
+
+    <!-- Wind Trend Chart -->
+    <div class="card" id="windChartCard">
+        <div class="card-header"><span class="card-header-icon">&#x1F4A8;</span>24-Hour Wind Forecast</div>
+        <div class="chart-area" id="windChartArea">Wind trend will appear here</div>
+        <div class="data-sources">
+            <a href="https://open-meteo.com" target="_blank" class="data-source-tag">Open-Meteo</a>
+            <a href="https://www.weather.gov" target="_blank" class="data-source-tag">NWS</a>
+        </div>
+    </div>
+
+    <!-- Wave Height Forecast Chart -->
+    <div class="card" id="waveChartCard">
+        <div class="card-header"><span class="card-header-icon">&#x1F30A;</span>48-Hour Wave Forecast</div>
+        <div class="chart-area" id="waveChartArea">Wave forecast will appear here</div>
+        <div class="data-sources">
+            <a href="https://open-meteo.com/en/docs/marine-weather-api" target="_blank" class="data-source-tag">Open-Meteo Marine</a>
+        </div>
+    </div>
+
+    <!-- Cloud Cover Timeline -->
+    <div class="card" id="cloudCoverCard">
+        <div class="card-header"><span class="card-header-icon">&#x2601;&#xFE0F;</span>Cloud Cover (Next 24h)</div>
+        <div class="cloud-timeline-wrap">
+            <div class="cloud-timeline" id="cloudTimeline"></div>
+        </div>
+        <div class="data-sources">
+            <a href="https://open-meteo.com" target="_blank" class="data-source-tag">Open-Meteo</a>
+            <a href="https://www.weather.gov" target="_blank" class="data-source-tag">NWS</a>
+        </div>
+    </div>
+
+    <!-- Air Quality Index -->
+    <div class="card" id="aqiCard">
+        <div class="card-header"><span class="card-header-icon">&#x1F32C;&#xFE0F;</span>Air Quality</div>
+        <div class="aqi-grid" id="aqiContent">
+            <div>
+                <div class="aqi-score" id="aqiScore">--</div>
+                <div style="text-align:center;">
+                    <div class="aqi-label-text" id="aqiLevel">--</div>
+                    <div class="aqi-label-sub">US AQI</div>
+                </div>
+            </div>
+            <div class="aqi-details" id="aqiDetails">
+                <div class="aqi-detail-row"><span>PM2.5</span><span id="aqiPm25">--</span></div>
+                <div class="aqi-detail-row"><span>PM10</span><span id="aqiPm10">--</span></div>
+                <div class="aqi-detail-row"><span>Ozone (O&#x2083;)</span><span id="aqiOzone">--</span></div>
+                <div class="aqi-detail-row"><span>NO&#x2082;</span><span id="aqiNo2">--</span></div>
+                <div class="aqi-detail-row"><span>UV Index</span><span id="aqiUV">--</span></div>
+            </div>
+        </div>
+        <div class="data-sources">
+            <a href="https://open-meteo.com/en/docs/air-quality-api" target="_blank" class="data-source-tag">Open-Meteo Air Quality</a>
+            <a href="https://www.airnow.gov" target="_blank" class="data-source-tag">EPA AirNow</a>
+        </div>
+    </div>
+
+    <!-- Cold Water Immersion Risk -->
+    <div class="card" id="coldWaterCard" style="display:none;">
+        <div class="card-header"><span class="card-header-icon">&#x1F9CA;</span>Cold Water Safety</div>
+        <div class="cold-water-grid" id="coldWaterContent">
+            <div class="cold-water-gauge low" id="coldWaterGauge">
+                <div class="cold-water-temp" id="coldWaterTemp">--</div>
+                <div class="cold-water-label">Water &deg;F</div>
+            </div>
+            <div class="cold-water-details" id="coldWaterDetails">
+                <div class="trend-row"><span class="trend-label">Risk Level</span><span class="trend-value" id="coldRiskLevel">--</span></div>
+                <div class="trend-row"><span class="trend-label">Survival Time</span><span class="trend-value" id="coldSurvival">--</span></div>
+                <div class="trend-row"><span class="trend-label">Exhaustion Time</span><span class="trend-value" id="coldExhaustion">--</span></div>
+                <div class="trend-row"><span class="trend-label">Recommended Gear</span><span class="trend-value" id="coldGear">--</span></div>
+            </div>
+        </div>
+        <div class="data-sources">
+            <a href="https://www.uscgboating.org/recreational-boaters/cold-water-survival.php" target="_blank" class="data-source-tag">USCG Cold Water Safety</a>
+        </div>
+    </div>
+
+    <!-- River Flow / Stream Gauge -->
+    <div class="card" id="riverFlowCard" style="display:none;">
+        <div class="card-header"><span class="card-header-icon">&#x1F4A7;</span>Nearby River &amp; Stream Flow</div>
+        <div class="river-flow-list" id="riverFlowList">
+            <div class="alert-empty">Search a location to check river flow data</div>
+        </div>
+        <div class="data-sources">
+            <a href="https://waterservices.usgs.gov" target="_blank" class="data-source-tag">USGS Water Services</a>
+        </div>
+    </div>
+
+    <!-- NWS Weather Alerts -->
+    <div class="card" id="alertsCard">
+        <div class="card-header"><span class="card-header-icon">&#x26A0;&#xFE0F;</span>Weather Alerts</div>
+        <div class="alert-list" id="alertList">
+            <div class="alert-empty">Search a location to check active weather alerts</div>
+        </div>
+        <div class="data-sources">
+            <a href="https://www.weather.gov" target="_blank" class="data-source-tag">NWS (weather.gov)</a>
+        </div>
+    </div>
+
+    <!-- Water Quality -->
+    <div class="card" id="wqCard">
+        <div class="card-header"><span class="card-header-icon">&#x1F9EA;</span>Beach Water Quality</div>
+        <div class="wq-list" id="wqList">
+            <div class="alert-empty">Search a location to check water quality advisories</div>
+        </div>
+        <div class="wq-source-row" id="wqSources" style="display:none;">
+            <a href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank" class="wq-source-link">CA Water Quality</a>
+            <a href="https://www.theswimguide.org/find" target="_blank" class="wq-source-link">Swim Guide</a>
+        </div>
+        <div class="data-sources">
+            <a href="https://www.waterboards.ca.gov/water_issues/programs/beaches/" target="_blank" class="data-source-tag">CA State Water Board</a>
+            <a href="https://www.theswimguide.org" target="_blank" class="data-source-tag">Swim Guide</a>
+        </div>
+    </div>
+
+    <!-- Harmful Algal Blooms -->
+    <div class="card" id="habCard">
+        <div class="card-header"><span class="card-header-icon">&#x1F9EC;</span>Harmful Algal Blooms</div>
+        <div class="hab-list" id="habList">
+            <div class="alert-empty">Search a location to check HAB status</div>
+        </div>
+        <div class="data-sources">
+            <a href="https://habsos.noaa.gov" target="_blank" class="data-source-tag">NOAA HABSOS</a>
+            <a href="https://fhab.sfei.org" target="_blank" class="data-source-tag">CA FHAB (SFEI)</a>
+        </div>
+    </div>
+
+    <!-- Coastal Access Points -->
+    <div class="card" id="accessCard">
+        <div class="card-header"><span class="card-header-icon">&#x1F3D6;&#xFE0F;</span>Nearby Coastal Access</div>
+        <div class="access-list" id="accessList">
+            <div class="alert-empty">Search a location to find nearby beach access points</div>
+        </div>
+        <div class="data-sources">
+            <a href="https://www.coastal.ca.gov/YourCoast/" target="_blank" class="data-source-tag">CA Coastal Commission</a>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const GOOGLE_API_KEY = 'AIzaSyAR81pUTUz5ON7ZBuoouTh2RTHyECr6yvg';
+    const searchInput = document.getElementById('locationInput');
+    const searchStatus = document.getElementById('searchStatus');
+
+    // ======== Unit system ========
+    let currentUnits = 'imperial'; // 'imperial' or 'metric'
+    let lastLat = null, lastLon = null, lastLocationName = null;
+
+    function setUnits(unit) {
+        currentUnits = unit;
+        document.querySelectorAll('.unit-toggle-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.unit === unit);
+        });
+        // Re-fetch if we have a location
+        if (lastLat != null) fetchAllData(lastLat, lastLon, lastLocationName);
+    }
+
+    // ======== GPS Location ========
+    function useGPSLocation() {
+        const btn = document.getElementById('gpsBtn');
+        if (!navigator.geolocation) {
+            showStatus('Geolocation not supported by your browser.', '#ef4444');
+            return;
+        }
+        btn.classList.add('loading');
+        showStatus('Getting your location...', '#3b82f6');
+        navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+                btn.classList.remove('loading');
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                // Reverse geocode for name
+                try {
+                    const geocoder = new google.maps.Geocoder();
+                    const result = await new Promise((resolve, reject) => {
+                        geocoder.geocode({ location: { lat, lng: lon } }, (results, status) => {
+                            if (status === 'OK' && results.length > 0) resolve(results[0]);
+                            else reject(new Error('Geocode failed'));
+                        });
+                    });
+                    searchInput.value = result.formatted_address;
+                    fetchAllData(lat, lon, result.formatted_address);
+                } catch {
+                    searchInput.value = `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+                    fetchAllData(lat, lon, searchInput.value);
+                }
+            },
+            (err) => {
+                btn.classList.remove('loading');
+                showStatus('Could not get your location. Please allow location access.', '#ef4444');
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+    }
+
+    function showStatus(msg, color) {
+        searchStatus.style.display = 'block';
+        searchStatus.style.color = color || '#9ca3af';
+        searchStatus.textContent = msg;
+    }
+
+    function windDirection(deg) {
+        const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+        return dirs[Math.round(deg / 22.5) % 16];
+    }
+
+    function weatherIcon(code, isNight) {
+        if (code === 0) return isNight ? '\u{1F319}' : '\u{2600}\u{FE0F}';
+        if (code <= 3) return isNight ? '\u{1F319}' : '\u{26C5}';
+        if (code <= 48) return '\u{1F32B}\u{FE0F}';
+        if (code <= 57) return '\u{1F327}\u{FE0F}';
+        if (code <= 67) return '\u{1F327}\u{FE0F}';
+        if (code <= 77) return '\u{2744}\u{FE0F}';
+        if (code <= 82) return '\u{1F327}\u{FE0F}';
+        if (code <= 86) return '\u{1F328}\u{FE0F}';
+        if (code <= 99) return '\u{26A1}';
+        return '\u{26C5}';
+    }
+
+    function weatherDesc(code) {
+        if (code === 0) return 'Clear';
+        if (code <= 3) return 'Partly Cloudy';
+        if (code <= 48) return 'Foggy';
+        if (code <= 57) return 'Drizzle';
+        if (code <= 67) return 'Rain';
+        if (code <= 77) return 'Snow';
+        if (code <= 82) return 'Showers';
+        if (code <= 86) return 'Snow Showers';
+        if (code <= 99) return 'Thunderstorm';
+        return 'Cloudy';
+    }
+
+    // ======== Google Places Autocomplete (initialized after Maps JS loads) ========
+    function initWeatherPage() {
+        const autocomplete = new google.maps.places.Autocomplete(searchInput, {
+            types: ['geocode', 'establishment'],
+        });
+
+        autocomplete.addListener('place_changed', () => {
+            const place = autocomplete.getPlace();
+            if (!place.geometry) {
+                showStatus('Please select a location from the dropdown.', '#ef4444');
+                return;
+            }
+            const lat = place.geometry.location.lat();
+            const lon = place.geometry.location.lng();
+            const name = place.formatted_address || place.name || searchInput.value;
+            fetchAllData(lat, lon, name);
+        });
+
+        // Also support Enter key with manual geocoding fallback
+        searchInput.addEventListener('keydown', async (e) => {
+            if (e.key !== 'Enter') return;
+            // Small delay to let autocomplete fire first
+            setTimeout(async () => {
+                const query = searchInput.value.trim();
+                if (!query) return;
+                // If autocomplete already handled it, skip
+                if (searchStatus.textContent.startsWith('Loading')) return;
+
+                showStatus('Searching...', '#3b82f6');
+                try {
+                    const geocoder = new google.maps.Geocoder();
+                    const result = await new Promise((resolve, reject) => {
+                        geocoder.geocode({ address: query }, (results, status) => {
+                            if (status === 'OK' && results.length > 0) resolve(results[0]);
+                            else reject(new Error('Location not found'));
+                        });
+                    });
+                    const lat = result.geometry.location.lat();
+                    const lon = result.geometry.location.lng();
+                    searchInput.value = result.formatted_address;
+                    fetchAllData(lat, lon, result.formatted_address);
+                } catch {
+                    showStatus('Location not found. Try a different search.', '#ef4444');
+                    searchInput.style.borderColor = '#ef4444';
+                }
+            }, 300);
+        });
+    }
+
+    // ======== Main data fetcher ========
+    async function fetchAllData(lat, lon, locationName) {
+        lastLat = lat; lastLon = lon; lastLocationName = locationName;
+        searchInput.style.borderColor = '#3b82f6';
+        showStatus('Loading weather data...', '#3b82f6');
+
+        // Unit helpers
+        const isMetric = currentUnits === 'metric';
+        const tempUnit = isMetric ? '\u00B0C' : '\u00B0F';
+        const speedUnit = isMetric ? 'km/h' : 'mph';
+        const distUnit = isMetric ? 'km' : 'mi';
+        const toDispTemp = (f) => isMetric ? Math.round((f - 32) * 5 / 9) : Math.round(f);
+        const toDispSpeed = (mph) => isMetric ? Math.round(mph * 1.60934) : Math.round(mph);
+        const toDispDist = (mi) => isMetric ? (mi * 1.60934).toFixed(1) : mi.toFixed(1);
+        const toDispHeight = (ft) => isMetric ? (ft * 0.3048).toFixed(1) : ft;
+        const heightUnit = isMetric ? 'm' : 'ft';
+
+        try {
+            // Fetch Google Weather, Open-Meteo, Marine, NWS obs + forecast — all in parallel
+            const nwsHeaders = {'User-Agent':'PaddlePoint paddlepoint.org','Accept':'application/json'};
+            const nwsPointP = fetch(`https://api.weather.gov/points/${lat.toFixed(4)},${lon.toFixed(4)}`,{headers:nwsHeaders})
+                .then(r=>r.ok?r.json():null).catch(()=>null);
+
+            const [googleCurrent, googleHourly, openMeteo, marine, nwsPoint] = await Promise.all([
+                fetch(`https://weather.googleapis.com/v1/currentConditions:lookup?key=${GOOGLE_API_KEY}&location.latitude=${lat}&location.longitude=${lon}`)
+                    .then(r => r.ok ? r.json() : null).catch(() => null),
+                fetch(`https://weather.googleapis.com/v1/forecast/hours:lookup?key=${GOOGLE_API_KEY}&location.latitude=${lat}&location.longitude=${lon}&hours=12`)
+                    .then(r => r.ok ? r.json() : null).catch(() => null),
+                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index,visibility,weather_code,is_day,surface_pressure,dew_point_2m,precipitation&hourly=temperature_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation_probability,weather_code,is_day,cloud_cover&daily=weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_gusts_10m_max,precipitation_probability_max,sunrise,sunset&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=6`)
+                    .then(r => r.json()),
+                fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&current=wave_height,wave_period,wave_direction,ocean_current_velocity,ocean_current_direction,swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature&hourly=wave_height,wave_period,swell_wave_height&daily=wave_height_max,wave_period_max,swell_wave_height_max&timezone=auto&forecast_days=6`)
+                    .then(r => r.ok ? r.json() : null).catch(() => null),
+                nwsPointP
+            ]);
+
+            // NWS chained fetches (obs + forecast) — in parallel after point lookup
+            let nwsObs = null, nwsForecast = null;
+            if (nwsPoint && nwsPoint.properties) {
+                const np = nwsPoint.properties;
+                const [obsRes, fcRes] = await Promise.all([
+                    fetch(np.observationStations, {headers:nwsHeaders})
+                        .then(r=>r.ok?r.json():null)
+                        .then(stns => stns&&stns.features&&stns.features[0] ?
+                            fetch(`https://api.weather.gov/stations/${stns.features[0].properties.stationIdentifier}/observations/latest`,{headers:nwsHeaders}).then(r=>r.ok?r.json():null) : null)
+                        .catch(()=>null),
+                    fetch(np.forecast, {headers:nwsHeaders}).then(r=>r.ok?r.json():null).catch(()=>null)
+                ]);
+                nwsObs = obsRes;
+                nwsForecast = fcRes;
+            }
+
+            // ======== Parse NWS observation data ========
+            let nws = null;
+            if (nwsObs && nwsObs.properties) {
+                const p = nwsObs.properties;
+                const cToF = (c) => c!=null ? Math.round(c*9/5+32) : null;
+                const msToMph = (ms) => ms!=null ? Math.round(ms*2.237) : null;
+                nws = {
+                    station: p.station ? p.station.split('/').pop() : '',
+                    desc: p.textDescription || '',
+                    tempF: cToF(p.temperature&&p.temperature.value),
+                    feelsF: cToF(p.windChill&&p.windChill.value!=null ? p.windChill.value : p.heatIndex&&p.heatIndex.value),
+                    dewF: cToF(p.dewpoint&&p.dewpoint.value),
+                    humidity: p.relativeHumidity&&p.relativeHumidity.value!=null ? Math.round(p.relativeHumidity.value) : null,
+                    windMph: msToMph(p.windSpeed&&p.windSpeed.value),
+                    gustMph: msToMph(p.windGust&&p.windGust.value),
+                    windDeg: p.windDirection&&p.windDirection.value!=null ? Math.round(p.windDirection.value) : null,
+                    pressHpa: p.barometricPressure&&p.barometricPressure.value!=null ? Math.round(p.barometricPressure.value/100) : null,
+                    visMi: p.visibility&&p.visibility.value!=null ? Math.round(p.visibility.value/1609.34*10)/10 : null,
+                };
+            }
+
+            // ======== Parse NWS text forecast periods ========
+            const nwsPeriods = nwsForecast&&nwsForecast.properties&&nwsForecast.properties.periods ? nwsForecast.properties.periods : [];
+
+            // ======== Parse Open-Meteo Marine SST ========
+            const marineSST = marine&&marine.current&&marine.current.sea_surface_temperature!=null
+                ? Math.round(marine.current.sea_surface_temperature*9/5+32) : null;
+
+            // ======== Current Conditions (dual-source: Google + Open-Meteo) ========
+            const cur = openMeteo.current;
+            const gc = googleCurrent;
+
+            // Helper: get Google temp in F
+            function gTempF(t) {
+                if (!t) return null;
+                return t.unit === 'FAHRENHEIT' ? Math.round(t.degrees) : Math.round(t.degrees * 9/5 + 32);
+            }
+
+            // Helper: UV color class
+            function uvClass(uv) {
+                if (uv >= 11) return 'uv-extreme';
+                if (uv >= 8) return 'uv-high';
+                if (uv >= 3) return 'uv-moderate';
+                return 'uv-low';
+            }
+
+            // Temperature (with feels like — triple source)
+            {
+                const el = document.getElementById('condTemp');
+                const omTemp = Math.round(cur.temperature_2m);
+                const gTemp = gc ? gTempF(gc.temperature) : null;
+                const nwsTemp = nws ? nws.tempF : null;
+                const primary = gTemp || nwsTemp || omTemp;
+                el.querySelector('.condition-value').innerHTML = `${toDispTemp(primary)} <span class="condition-unit">${tempUnit}</span>`;
+                const sources = [];
+                if (gTemp!=null) sources.push(`<span class="source-tag source-gw">G</span>${toDispTemp(gTemp)}°`);
+                if (omTemp!=null) sources.push(`<span class="source-tag source-om">OM</span>${toDispTemp(omTemp)}°`);
+                if (nwsTemp!=null) sources.push(`<span class="source-tag source-nws">NWS</span>${toDispTemp(nwsTemp)}°`);
+                el.querySelector('.condition-sub').innerHTML = `Feels ${toDispTemp(Math.round(cur.apparent_temperature))}° · ${sources.join(' ')}`;
+            }
+
+            // Wind (triple source)
+            {
+                const el = document.getElementById('condWind');
+                const omWind = Math.round(cur.wind_speed_10m);
+                const omGusts = cur.wind_gusts_10m != null ? Math.round(cur.wind_gusts_10m) : null;
+                const gWind = gc && gc.wind && gc.wind.speed ? Math.round(gc.wind.speed.value * 0.621371) : null;
+                const gDir = gc && gc.wind && gc.wind.direction ? windDirection(gc.wind.direction.degrees) : null;
+                const gGust = gc && gc.wind && gc.wind.gust ? Math.round(gc.wind.gust.value * 0.621371) : null;
+                const nwsWind = nws ? nws.windMph : null;
+                const nwsGust = nws ? nws.gustMph : null;
+                const nwsDir = nws && nws.windDeg != null ? windDirection(nws.windDeg) : null;
+                const primary = gWind || nwsWind || omWind;
+                const dir = gDir || nwsDir || windDirection(cur.wind_direction_10m);
+
+                el.querySelector('.condition-value').innerHTML = `${toDispSpeed(primary)} <span class="condition-unit">${speedUnit}</span>`;
+                const wsrc = [];
+                if (gWind!=null) wsrc.push(`<span class="source-tag source-gw">G</span>${toDispSpeed(gWind)}`);
+                if (omWind!=null) wsrc.push(`<span class="source-tag source-om">OM</span>${toDispSpeed(omWind)}`);
+                if (nwsWind!=null) wsrc.push(`<span class="source-tag source-nws">NWS</span>${toDispSpeed(nwsWind)}`);
+                document.getElementById('windDir').innerHTML = `${dir} · ${wsrc.join(' ')} ${speedUnit}`;
+                const gustVal = gGust || nwsGust || omGusts;
+                document.getElementById('windGusts').textContent = gustVal != null ? `Gusts: ${toDispSpeed(gustVal)} ${speedUnit}` : '';
+            }
+
+            // Humidity
+            {
+                const el = document.getElementById('condHumidity');
+                const omHum = cur.relative_humidity_2m;
+                const gHum = gc ? gc.relativeHumidity : null;
+                const nwsHum = nws ? nws.humidity : null;
+                const primary = gHum || nwsHum || omHum;
+                el.querySelector('.condition-value').innerHTML = `${primary} <span class="condition-unit">%</span>`;
+                const hsrc = [];
+                if (gHum!=null) hsrc.push(`<span class="source-tag source-gw">G</span>${gHum}%`);
+                if (omHum!=null) hsrc.push(`<span class="source-tag source-om">OM</span>${omHum}%`);
+                if (nwsHum!=null) hsrc.push(`<span class="source-tag source-nws">NWS</span>${nwsHum}%`);
+                el.querySelector('.condition-sub').innerHTML = hsrc.join(' ');
+            }
+
+            // UV Index (with color coding)
+            {
+                const el = document.getElementById('condUV');
+                const omUV = cur.uv_index != null ? cur.uv_index : null;
+                const gUV = gc ? gc.uvIndex : null;
+                const uv = gUV != null ? gUV : (omUV != null ? omUV.toFixed(1) : '--');
+                const uvNum = parseFloat(uv);
+                const cls = !isNaN(uvNum) ? uvClass(uvNum) : '';
+                el.querySelector('.condition-value').innerHTML = `<span class="${cls}">${uv}</span>`;
+                const usrc = [];
+                if (gUV!=null) usrc.push(`<span class="source-tag source-gw">G</span>${gUV}`);
+                if (omUV!=null) usrc.push(`<span class="source-tag source-om">OM</span>${omUV.toFixed(1)}`);
+                el.querySelector('.condition-sub').innerHTML = usrc.join(' ');
+            }
+
+            // Visibility (triple source)
+            {
+                const el = document.getElementById('condVis');
+                const gVis = gc && gc.visibility ? (gc.visibility.value * 0.000621371) : null;
+                const omVis = cur.visibility ? (cur.visibility / 1609.34) : null;
+                const nwsVis = nws ? nws.visMi : null;
+                const primary = gVis || nwsVis || omVis || 0;
+                el.querySelector('.condition-value').innerHTML = `${toDispDist(primary)} <span class="condition-unit">${distUnit}</span>`;
+                const vsrc = [];
+                if (gVis!=null) vsrc.push(`<span class="source-tag source-gw">G</span>${toDispDist(gVis)}`);
+                if (omVis!=null) vsrc.push(`<span class="source-tag source-om">OM</span>${toDispDist(omVis)}`);
+                if (nwsVis!=null) vsrc.push(`<span class="source-tag source-nws">NWS</span>${toDispDist(nwsVis)}`);
+                el.querySelector('.condition-sub').innerHTML = vsrc.join(' ') + ` ${distUnit}`;
+            }
+
+            // Pressure (triple source)
+            {
+                const el = document.getElementById('condPressure');
+                const gPres = gc && gc.airPressure ? Math.round(gc.airPressure.meanSeaLevelMillibars) : null;
+                const omPres = cur.surface_pressure ? Math.round(cur.surface_pressure) : null;
+                const nwsPres = nws ? nws.pressHpa : null;
+                const primary = gPres || nwsPres || omPres;
+                if (primary != null) {
+                    el.querySelector('.condition-value').innerHTML = `${primary} <span class="condition-unit">hPa</span>`;
+                    const psrc = [];
+                    if (gPres!=null) psrc.push(`<span class="source-tag source-gw">G</span>${gPres}`);
+                    if (omPres!=null) psrc.push(`<span class="source-tag source-om">OM</span>${omPres}`);
+                    if (nwsPres!=null) psrc.push(`<span class="source-tag source-nws">NWS</span>${nwsPres}`);
+                    el.querySelector('.condition-sub').innerHTML = psrc.join(' ') + ' hPa';
+                }
+            }
+
+            // Rain / Thunder probability
+            {
+                const el = document.getElementById('condRain');
+                let rainPct = null, thunderPct = null;
+                if (gc && gc.currentConditionsHistory && gc.currentConditionsHistory.length > 0) {
+                    // Google may have precip info
+                }
+                // Use Google hourly first hour for rain probability
+                if (googleHourly && googleHourly.forecastHours && googleHourly.forecastHours.length > 0) {
+                    const h0 = googleHourly.forecastHours[0];
+                    if (h0.precipitation && h0.precipitation.probability != null) rainPct = h0.precipitation.probability.percent;
+                    if (h0.thunderstormProbability != null) thunderPct = h0.thunderstormProbability;
+                }
+                // Fallback: Open-Meteo hourly precipitation_probability
+                if (rainPct == null && openMeteo.hourly && openMeteo.hourly.precipitation_probability) {
+                    const nowISO = new Date().toISOString().slice(0, 13);
+                    const idx = openMeteo.hourly.time.findIndex(t => t.startsWith(nowISO));
+                    if (idx >= 0) rainPct = openMeteo.hourly.precipitation_probability[idx];
+                }
+                el.querySelector('.condition-value').innerHTML = rainPct != null ? `${rainPct} <span class="condition-unit">%</span>` : `-- <span class="condition-unit">%</span>`;
+                document.getElementById('thunderChance').textContent = thunderPct != null ? `Thunder: ${thunderPct}%` : '';
+            }
+
+            // Dew Point (dual source)
+            {
+                const el = document.getElementById('condDewpoint');
+                const omDp = cur.dew_point_2m;
+                const nwsDp = nws ? nws.dewF : null;
+                const primary = nwsDp || (omDp != null ? Math.round(omDp) : null);
+                if (primary != null) {
+                    el.querySelector('.condition-value').innerHTML = `${toDispTemp(primary)} <span class="condition-unit">${tempUnit}</span>`;
+                    const dsrc = [];
+                    if (omDp!=null) dsrc.push(`<span class="source-tag source-om">OM</span>${toDispTemp(Math.round(omDp))}°`);
+                    if (nwsDp!=null) dsrc.push(`<span class="source-tag source-nws">NWS</span>${toDispTemp(nwsDp)}°`);
+                    el.querySelector('.condition-sub').innerHTML = dsrc.join(' ');
+                }
+            }
+
+            // Wet Bulb Temperature (Stull formula approximation)
+            {
+                const el = document.getElementById('condWetBulb');
+                const tC = (cur.temperature_2m - 32) * 5 / 9;
+                const rh = cur.relative_humidity_2m;
+                if (tC != null && rh != null) {
+                    const wb = tC * Math.atan(0.151977 * Math.sqrt(rh + 8.313659)) + Math.atan(tC + rh) - Math.atan(rh - 1.676331) + 0.00391838 * Math.pow(rh, 1.5) * Math.atan(0.023101 * rh) - 4.686035;
+                    const wbF = wb * 9/5 + 32;
+                    el.querySelector('.condition-value').innerHTML = `${toDispTemp(wbF)} <span class="condition-unit">${tempUnit}</span>`;
+                    let stress = 'Comfortable';
+                    if (wbF >= 95) stress = 'Extreme danger';
+                    else if (wbF >= 88) stress = 'Dangerous';
+                    else if (wbF >= 80) stress = 'Caution';
+                    else if (wbF >= 72) stress = 'Mild';
+                    document.getElementById('heatStress').textContent = stress;
+                }
+            }
+
+            // Beaufort Scale (add to wind card)
+            {
+                const windMph = cur.wind_speed_10m;
+                const bf = beaufortFromMph(windMph);
+                const bfEl = document.createElement('div');
+                bfEl.className = 'beaufort-badge';
+                bfEl.innerHTML = `B${bf.number} &bull; ${bf.desc}`;
+                const windCard = document.getElementById('condWind');
+                // Remove old badge if re-rendering
+                const oldBf = windCard.querySelector('.beaufort-badge');
+                if (oldBf) oldBf.remove();
+                windCard.appendChild(bfEl);
+            }
+
+            // ======== Hourly Forecast (prefer Google, fallback Open-Meteo) ========
+            const hourlyContainer = document.querySelector('.hourly-scroll');
+
+            if (googleHourly && googleHourly.forecastHours && googleHourly.forecastHours.length > 0) {
+                let hourlyHTML = '';
+                googleHourly.forecastHours.forEach((h, i) => {
+                    const dt = new Date(h.displayDateTime || h.interval?.startTime);
+                    const label = i === 0 ? 'Now' : dt.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
+                    const tempF = h.temperature ? Math.round(h.temperature.degrees * 9/5 + 32) : '--';
+                    const temp = h.temperature?.unit === 'FAHRENHEIT' ? Math.round(h.temperature.degrees) : tempF;
+                    const windMph = h.wind?.speed ? Math.round(h.wind.speed.value * 0.621371) : '--';
+                    const gustMph = h.wind?.gust ? Math.round(h.wind.gust.value * 0.621371) : null;
+                    const isDark = h.isDaytime === false;
+                    const icon = h.weatherCondition ? getGoogleWeatherIcon(h.weatherCondition.type, isDark) : '\u{26C5}';
+                    const rainPct = h.precipitation && h.precipitation.probability ? h.precipitation.probability.percent : null;
+                    const rainLine = rainPct != null && rainPct > 0 ? `<div class="hour-rain">\u{1F4A7} ${rainPct}%</div>` : '';
+                    const gustLine = gustMph != null ? `<div class="hour-rain">G ${gustMph}</div>` : '';
+                    hourlyHTML += `<div class="hour-block">
+                        <div class="hour-time">${label}</div>
+                        <div class="hour-icon">${icon}</div>
+                        <div class="hour-temp">${temp}&deg;</div>
+                        <div class="hour-wind">${windMph} mph</div>
+                        ${gustLine}${rainLine}
+                    </div>`;
+                });
+                hourlyContainer.innerHTML = hourlyHTML;
+            } else {
+                // Fallback: Open-Meteo hourly
+                const hourlyTimes = openMeteo.hourly.time;
+                const nowISO = new Date().toISOString().slice(0, 13);
+                let startIdx = hourlyTimes.findIndex(t => t.startsWith(nowISO));
+                if (startIdx < 0) startIdx = 0;
+
+                let hourlyHTML = '';
+                for (let i = startIdx; i < Math.min(startIdx + 12, hourlyTimes.length); i++) {
+                    const dt = new Date(hourlyTimes[i]);
+                    const label = i === startIdx ? 'Now' : dt.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
+                    const temp = Math.round(openMeteo.hourly.temperature_2m[i]);
+                    const wind = Math.round(openMeteo.hourly.wind_speed_10m[i]);
+                    const gust = openMeteo.hourly.wind_gusts_10m ? Math.round(openMeteo.hourly.wind_gusts_10m[i]) : null;
+                    const rainPct = openMeteo.hourly.precipitation_probability ? openMeteo.hourly.precipitation_probability[i] : null;
+                    const code = openMeteo.hourly.weather_code[i];
+                    const isNight = !openMeteo.hourly.is_day[i];
+                    const rainLine = rainPct != null && rainPct > 0 ? `<div class="hour-rain">\u{1F4A7} ${rainPct}%</div>` : '';
+                    const gustLine = gust != null && gust > wind ? `<div class="hour-rain">G ${gust}</div>` : '';
+                    hourlyHTML += `<div class="hour-block">
+                        <div class="hour-time">${label}</div>
+                        <div class="hour-icon">${weatherIcon(code, isNight)}</div>
+                        <div class="hour-temp">${temp}&deg;</div>
+                        <div class="hour-wind">${wind} mph</div>
+                        ${gustLine}${rainLine}
+                    </div>`;
+                }
+                hourlyContainer.innerHTML = hourlyHTML;
+            }
+
+            // ======== Sunrise / Sunset + Golden Hour ========
+            const daily = openMeteo.daily;
+            if (daily.sunrise && daily.sunset) {
+                const sunrise = new Date(daily.sunrise[0]);
+                const sunset = new Date(daily.sunset[0]);
+                const fmtTime = (d) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                document.getElementById('sunriseTime').textContent = fmtTime(sunrise);
+                document.getElementById('sunsetTime').textContent = fmtTime(sunset);
+                const daylightMs = sunset - sunrise;
+                const daylightH = Math.floor(daylightMs / 3600000);
+                const daylightM = Math.round((daylightMs % 3600000) / 60000);
+                document.getElementById('daylightHours').textContent = `${daylightH}h ${daylightM}m`;
+
+                // Golden Hour & Blue Hour
+                const goldenRow = document.getElementById('goldenHourRow');
+                goldenRow.style.display = 'flex';
+                const morningGoldenStart = sunrise;
+                const morningGoldenEnd = new Date(sunrise.getTime() + 60 * 60000); // +1hr after sunrise
+                const morningBlueStart = new Date(sunrise.getTime() - 30 * 60000); // 30m before sunrise
+                const eveningGoldenStart = new Date(sunset.getTime() - 60 * 60000); // 1hr before sunset
+                const eveningGoldenEnd = sunset;
+                const eveningBlueStart = sunset;
+                const eveningBlueEnd = new Date(sunset.getTime() + 30 * 60000); // 30m after sunset
+
+                goldenRow.innerHTML = `
+                    <div class="golden-hour-item blue"><span>\u{1F309}</span> Morning Blue: ${fmtTime(morningBlueStart)} - ${fmtTime(sunrise)}</div>
+                    <div class="golden-hour-item"><span>\u{1F31E}</span> Morning Golden: ${fmtTime(morningGoldenStart)} - ${fmtTime(morningGoldenEnd)}</div>
+                    <div class="golden-hour-item"><span>\u{1F31E}</span> Evening Golden: ${fmtTime(eveningGoldenStart)} - ${fmtTime(eveningGoldenEnd)}</div>
+                    <div class="golden-hour-item blue"><span>\u{1F309}</span> Evening Blue: ${fmtTime(eveningBlueStart)} - ${fmtTime(eveningBlueEnd)}</div>
+                `;
+            }
+
+            // ======== 5-Day Forecast (Open-Meteo daily + marine swell) ========
+            const forecastGrid = document.querySelector('.forecast-grid');
+            let forecastHTML = '';
+            for (let i = 0; i < Math.min(5, daily.time.length); i++) {
+                const dt = new Date(daily.time[i] + 'T12:00:00');
+                const dayName = i === 0 ? 'Today' : dt.toLocaleDateString('en-US', { weekday: 'long' });
+                const hi = toDispTemp(daily.temperature_2m_max[i]);
+                const lo = toDispTemp(daily.temperature_2m_min[i]);
+                const wind = toDispSpeed(daily.wind_speed_10m_max[i]);
+                const gust = daily.wind_gusts_10m_max ? toDispSpeed(daily.wind_gusts_10m_max[i]) : null;
+                const windTxt = gust && gust > wind ? `${wind} (G${gust})` : `${wind}`;
+                const rainPct = daily.precipitation_probability_max ? daily.precipitation_probability_max[i] : null;
+                const swell = marine && marine.daily && marine.daily.wave_height_max ? marine.daily.wave_height_max[i] : null;
+                const swellFt = swell != null ? (swell * 3.281) : null;
+                const swellTxt = swellFt != null ? `${toDispHeight(swellFt)} ${heightUnit}` : `-- ${heightUnit}`;
+                const desc = weatherDesc(daily.weather_code[i]);
+                const rainBadge = rainPct != null && rainPct > 0 ? ` <span style="color:#3b82f6;font-size:11px;">\u{1F4A7}${rainPct}%</span>` : '';
+                // NWS detailed text for this day
+                let nwsDetail = '';
+                if (nwsPeriods.length) {
+                    const dayStr = dt.toLocaleDateString('en-US', { weekday: 'long' });
+                    const match = nwsPeriods.find(p => p.name === dayStr || p.name === dayStr + ' Night' || (i===0 && (p.name==='Today' || p.name==='This Afternoon' || p.name==='Tonight')));
+                    if (match) nwsDetail = match.shortForecast || '';
+                }
+                const descFinal = nwsDetail || desc;
+                forecastHTML += `<div class="forecast-row">
+                    <div class="forecast-day">${dayName}</div>
+                    <div class="forecast-cell"><div class="forecast-cell-value">${hi}\u00B0 / ${lo}\u00B0</div></div>
+                    <div class="forecast-cell"><div class="forecast-cell-value">${windTxt} ${speedUnit}</div></div>
+                    <div class="forecast-cell"><div class="forecast-cell-value">${swellTxt}</div></div>
+                    <div class="forecast-cell"><div class="forecast-cell-value">${descFinal}${rainBadge}</div></div>
+                </div>`;
+            }
+            forecastGrid.innerHTML = forecastHTML;
+
+            // ======== Water Temperature card ========
+            {
+                const wtCard = document.getElementById('waterTempCard');
+                const wtValue = document.getElementById('waterTempValue');
+                const wtSource = document.getElementById('waterTempSource');
+                const wtStation = document.getElementById('waterTempStation');
+                let waterTemp = null;
+                let wtSourceText = '--';
+                let wtStationText = '--';
+
+                // Try NOAA water temperature from nearest tide station
+                const { station: tideStation, dist: tideDist } = nearestTideStation(lat, lon);
+                if (tideDist <= 100) {
+                    try {
+                        const d0 = new Date(), d1 = new Date(d0);
+                        d0.setHours(d0.getHours() - 6);
+                        const fd = d => `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+                        const wtRes = await fetch(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${fd(d0)}&end_date=${fd(d1)}&station=${tideStation.id}&product=water_temperature&units=english&time_zone=lst_ldt&format=json`);
+                        const wtData = await wtRes.json();
+                        if (wtData.data && wtData.data.length > 0) {
+                            waterTemp = parseFloat(wtData.data[wtData.data.length - 1].v);
+                            wtSourceText = 'NOAA CO-OPS';
+                            wtStationText = `${tideStation.name} (${tideDist.toFixed(0)} mi)`;
+                        }
+                    } catch (e) {
+}
+                }
+
+                // Fallback: Open-Meteo SST from marine API
+                if (waterTemp == null && marine && marine.current && marine.current.sea_surface_temperature != null) {
+                    waterTemp = Math.round(marine.current.sea_surface_temperature * 9/5 + 32);
+                    wtSourceText = 'Open-Meteo Marine (SST)';
+                    wtStationText = 'Satellite estimate';
+                }
+
+                if (waterTemp != null) {
+                    wtValue.textContent = toDispTemp(Math.round(waterTemp));
+                    document.getElementById('waterTempLabel').innerHTML = `Water Temp (${tempUnit})`;
+                    wtSource.textContent = wtSourceText;
+                    wtStation.textContent = wtStationText;
+                    // Show secondary source if available
+                    if (wtSourceText === 'NOAA CO-OPS' && marineSST != null) {
+                        wtStation.innerHTML += ` · <span class="source-tag source-om">SST</span> ${toDispTemp(marineSST)}°`;
+                    } else if (wtSourceText !== 'NOAA CO-OPS' && marineSST == null) {
+                        // already showing marine SST
+                    }
+                } else {
+                    wtValue.textContent = '--';
+                    document.getElementById('waterTempLabel').textContent = 'No water temp data available';
+                }
+            }
+
+            // ======== Marine Conditions card ========
+            const mc = document.getElementById('marineCard');
+            if (marine && marine.current) {
+                const waveH = marine.current.wave_height;
+                const wavePeriod = marine.current.wave_period;
+                const waveDir = marine.current.wave_direction;
+
+                mc.querySelector('.water-temp-value').textContent = waveH != null ? `${(waveH * 3.281).toFixed(1)}` : '--';
+
+                const trendRows = mc.querySelectorAll('.trend-value');
+                trendRows[0].textContent = wavePeriod != null ? `${wavePeriod.toFixed(1)}s` : '--';
+                trendRows[1].textContent = waveDir != null ? windDirection(waveDir) : '--';
+
+                // Swell data
+                const swellH = marine.current.swell_wave_height;
+                const swellD = marine.current.swell_wave_direction;
+                document.getElementById('swellHeight').textContent = swellH != null ? `${(swellH * 3.281).toFixed(1)} ft` : '--';
+                document.getElementById('swellDir').textContent = swellD != null ? `${windDirection(swellD)} (${Math.round(swellD)}\u00B0)` : '--';
+
+                // South swell warning (135°-225°)
+                if (swellD != null && swellD >= 135 && swellD <= 225 && swellH != null && swellH > 0.3) {
+                    document.getElementById('swellWarning').style.display = 'flex';
+                } else {
+                    document.getElementById('swellWarning').style.display = 'none';
+                }
+
+                const currentVel = marine.current.ocean_current_velocity;
+                trendRows[4].textContent = currentVel != null ? `${currentVel.toFixed(2)} m/s` : '--';
+
+                const currentDir = marine.current.ocean_current_direction;
+                trendRows[5].textContent = currentDir != null ? windDirection(currentDir) : '--';
+            }
+
+            // ======== Tide Chart (NOAA) ========
+            loadTideChart(lat, lon);
+
+            // ======== Map ========
+            initLocationMap(lat, lon, locationName);
+
+            // ======== Charts & additional data — fire in parallel ========
+            drawWindChart(openMeteo.hourly);
+            drawWaveChart(marine);
+            drawCloudCover(openMeteo.hourly);
+            loadAirQuality(lat, lon);
+            loadColdWaterRisk(marine, lat, lon);
+
+            // ======== NWS Alerts, Water Quality, HABs, Coastal Access, River Flow — fire in parallel ========
+            loadNWSAlerts(lat, lon);
+            loadWaterQuality(lat, lon);
+            loadHABData(lat, lon);
+            loadCoastalAccess(lat, lon);
+            loadRiverFlow(lat, lon);
+
+            searchInput.style.borderColor = '#10b981';
+            showStatus(`Showing data for ${locationName}`, '#10b981');
+
+        } catch (err) {
+showStatus('Error loading weather data. Please try again.', '#ef4444');
+            searchInput.style.borderColor = '#ef4444';
+        }
+    }
+
+    function getGoogleWeatherIcon(type, isDark) {
+        const map = {
+            'CLEAR': isDark ? '\u{1F319}' : '\u{2600}\u{FE0F}',
+            'MOSTLY_CLEAR': isDark ? '\u{1F319}' : '\u{1F324}\u{FE0F}',
+            'PARTLY_CLOUDY': '\u{26C5}',
+            'MOSTLY_CLOUDY': '\u{1F325}\u{FE0F}',
+            'CLOUDY': '\u{2601}\u{FE0F}',
+            'RAIN': '\u{1F327}\u{FE0F}',
+            'LIGHT_RAIN': '\u{1F326}\u{FE0F}',
+            'HEAVY_RAIN': '\u{1F327}\u{FE0F}',
+            'SNOW': '\u{1F328}\u{FE0F}',
+            'THUNDERSTORM': '\u{26A1}',
+            'FOG': '\u{1F32B}\u{FE0F}',
+            'HAZE': '\u{1F32B}\u{FE0F}',
+        };
+        return map[type] || '\u{26C5}';
+    }
+
+    // ======== NOAA Tide Chart ========
+    // Hardcoded known NOAA tide prediction stations (same as paddle-conditions)
+    const TIDE_STATIONS = [
+        { id:'9410170', name:'San Diego', lat:32.7142, lon:-117.1736 },
+        { id:'9410196', name:'Del Mar', lat:32.9567, lon:-117.2717 },
+        { id:'9410230', name:'La Jolla', lat:32.8669, lon:-117.2571 },
+        { id:'9410580', name:'Newport Beach', lat:33.6031, lon:-117.8833 },
+        { id:'9410660', name:'Los Angeles', lat:33.7200, lon:-118.2720 },
+        { id:'9410840', name:'Santa Monica', lat:34.0083, lon:-118.5000 },
+        { id:'9411340', name:'Santa Barbara', lat:34.4083, lon:-119.6850 },
+        { id:'9412110', name:'Port San Luis', lat:35.1694, lon:-120.7556 },
+        { id:'9413450', name:'Monterey', lat:36.6050, lon:-121.8880 },
+        { id:'9414290', name:'San Francisco', lat:37.8063, lon:-122.4659 },
+        { id:'9414750', name:'Alameda', lat:37.7717, lon:-122.3000 },
+        { id:'9415020', name:'Point Reyes', lat:37.9961, lon:-122.9767 },
+        { id:'1612340', name:'Honolulu', lat:21.3069, lon:-157.8583 },
+        { id:'1612480', name:'Mokuoloe', lat:21.4331, lon:-157.7900 },
+        { id:'8443970', name:'Boston', lat:42.3539, lon:-71.0503 },
+        { id:'8518750', name:'The Battery NY', lat:40.7006, lon:-74.0142 },
+        { id:'8534720', name:'Atlantic City', lat:39.3550, lon:-74.4183 },
+        { id:'8574680', name:'Baltimore', lat:39.2667, lon:-76.5783 },
+        { id:'8658120', name:'Wilmington NC', lat:34.2275, lon:-77.9536 },
+        { id:'8665530', name:'Charleston SC', lat:32.7817, lon:-79.9250 },
+        { id:'8670870', name:'Fort Pulaski GA', lat:32.0333, lon:-80.9017 },
+        { id:'8720218', name:'Mayport FL', lat:30.3967, lon:-81.4300 },
+        { id:'8723214', name:'Virginia Key FL', lat:25.7317, lon:-80.1617 },
+        { id:'8724580', name:'Key West', lat:24.5508, lon:-81.8083 },
+        { id:'8726520', name:'St Petersburg', lat:27.7606, lon:-82.6269 },
+        { id:'8729108', name:'Panama City FL', lat:30.1522, lon:-85.6669 },
+        { id:'8735180', name:'Dauphin Island AL', lat:30.2500, lon:-88.0750 },
+        { id:'8761724', name:'Grand Isle LA', lat:29.2633, lon:-89.9567 },
+        { id:'8770570', name:'Sabine Pass TX', lat:29.7283, lon:-93.8700 },
+        { id:'8771450', name:'Galveston TX', lat:29.3100, lon:-94.7933 },
+        { id:'8775870', name:'Corpus Christi TX', lat:27.5800, lon:-97.2167 },
+        { id:'9447130', name:'Seattle', lat:47.6026, lon:-122.3393 },
+        { id:'9449424', name:'Cherry Point WA', lat:48.8633, lon:-122.7583 },
+        { id:'9440910', name:'Toke Point WA', lat:46.7075, lon:-123.9669 },
+        { id:'9432780', name:'Charleston OR', lat:43.3450, lon:-124.3220 },
+        { id:'9435380', name:'South Beach OR', lat:44.6254, lon:-124.0431 },
+        { id:'9451600', name:'Sitka AK', lat:57.0517, lon:-135.3417 },
+        { id:'9455920', name:'Anchorage AK', lat:61.2381, lon:-149.8900 },
+    ];
+
+    function nearestTideStation(lat, lon) {
+        let best = TIDE_STATIONS[0], bestDist = Infinity;
+        for (const s of TIDE_STATIONS) {
+            const d = haversine(lat, lon, s.lat, s.lon);
+            if (d < bestDist) { bestDist = d; best = s; }
+        }
+        return { station: best, dist: bestDist };
+    }
+
+    async function loadTideChart(lat, lon) {
+        const chartArea = document.querySelector('.tide-chart-area');
+        chartArea.innerHTML = '<div style="color:#9ca3af;font-size:13px;">Loading tide data...</div>';
+
+        try {
+            const { station, dist } = nearestTideStation(lat, lon);
+
+            if (dist > 100) {
+                chartArea.innerHTML = '<div style="color:#9ca3af;font-size:13px;">No tide station found near this location</div>';
+                return;
+            }
+
+            const today = new Date();
+            const beginDate = today.toISOString().slice(0, 10).replace(/-/g, '');
+            const endDate = new Date(today.getTime() + 48 * 3600000).toISOString().slice(0, 10).replace(/-/g, '');
+
+            const tideRes = await fetch(
+                `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${beginDate}&end_date=${endDate}&station=${station.id}&product=predictions&datum=MLLW&time_zone=lst_ldt&interval=h&units=english&format=json`
+            );
+            const tideData = await tideRes.json();
+
+            if (!tideData.predictions || !tideData.predictions.length) {
+                chartArea.innerHTML = '<div style="color:#9ca3af;font-size:13px;">No tide predictions available</div>';
+                return;
+            }
+
+            drawTideChart(chartArea, tideData.predictions, `${station.name} (${dist.toFixed(0)} mi away)`);
+
+        } catch (err) {
+chartArea.innerHTML = '<div style="color:#9ca3af;font-size:13px;">Could not load tide data</div>';
+        }
+    }
+
+    function drawTideChart(container, predictions, stationName) {
+        const now = new Date();
+        const filtered = predictions.filter(p => {
+            const t = new Date(p.t);
+            return t >= new Date(now.getTime() - 3600000) && t <= new Date(now.getTime() + 30 * 3600000);
+        });
+
+        if (filtered.length < 3) {
+            container.innerHTML = '<div style="color:#9ca3af;font-size:13px;">Insufficient tide data</div>';
+            return;
+        }
+
+        const values = filtered.map(p => parseFloat(p.v));
+        const times = filtered.map(p => new Date(p.t));
+        const minV = Math.min(...values);
+        const maxV = Math.max(...values);
+        const range = maxV - minV || 1;
+
+        container.innerHTML = '';
+        container.style.display = 'block';
+        container.style.position = 'relative';
+
+        const canvas = document.createElement('canvas');
+        const dpr = window.devicePixelRatio || 1;
+        const w = container.clientWidth;
+        const h = container.clientHeight;
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        canvas.style.width = w + 'px';
+        canvas.style.height = h + 'px';
+        container.appendChild(canvas);
+
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+
+        const padTop = 30, padBot = 40, padLeft = 45, padRight = 20;
+        const chartW = w - padLeft - padRight;
+        const chartH = h - padTop - padBot;
+
+        ctx.fillStyle = '#f7f8fa';
+        ctx.fillRect(0, 0, w, h);
+
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillText(`Station: ${stationName}`, padLeft, 16);
+
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '10px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.textAlign = 'right';
+        for (let i = 0; i <= 4; i++) {
+            const v = minV + (range * i / 4);
+            const y = padTop + chartH - (i / 4) * chartH;
+            ctx.fillText(v.toFixed(1) + ' ft', padLeft - 6, y + 3);
+            ctx.strokeStyle = '#e5e7eb';
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(padLeft, y);
+            ctx.lineTo(padLeft + chartW, y);
+            ctx.stroke();
+        }
+
+        ctx.textAlign = 'center';
+        const step = Math.max(1, Math.floor(filtered.length / 8));
+        for (let i = 0; i < filtered.length; i += step) {
+            const x = padLeft + (i / (filtered.length - 1)) * chartW;
+            const label = times[i].toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
+            ctx.fillStyle = '#9ca3af';
+            ctx.font = '10px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx.fillText(label, x, h - padBot + 16);
+            if (times[i].getHours() === 0) {
+                ctx.fillText(times[i].toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), x, h - padBot + 28);
+            }
+        }
+
+        ctx.beginPath();
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 2.5;
+        ctx.lineJoin = 'round';
+        for (let i = 0; i < filtered.length; i++) {
+            const x = padLeft + (i / (filtered.length - 1)) * chartW;
+            const y = padTop + chartH - ((values[i] - minV) / range) * chartH;
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        ctx.lineTo(padLeft + chartW, padTop + chartH);
+        ctx.lineTo(padLeft, padTop + chartH);
+        ctx.closePath();
+        const grad = ctx.createLinearGradient(0, padTop, 0, padTop + chartH);
+        grad.addColorStop(0, 'rgba(59, 130, 246, 0.2)');
+        grad.addColorStop(1, 'rgba(59, 130, 246, 0.02)');
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // Current time marker
+        const nowMs = now.getTime();
+        const startMs = times[0].getTime();
+        const endMs = times[times.length - 1].getTime();
+        if (nowMs >= startMs && nowMs <= endMs) {
+            const frac = (nowMs - startMs) / (endMs - startMs);
+            const nowX = padLeft + frac * chartW;
+            const idx = frac * (filtered.length - 1);
+            const lo = Math.floor(idx);
+            const hi = Math.min(lo + 1, filtered.length - 1);
+            const t = idx - lo;
+            const nowV = values[lo] * (1 - t) + values[hi] * t;
+            const nowY = padTop + chartH - ((nowV - minV) / range) * chartH;
+
+            ctx.setLineDash([4, 3]);
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(nowX, padTop);
+            ctx.lineTo(nowX, padTop + chartH);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.beginPath();
+            ctx.arc(nowX, nowY, 5, 0, Math.PI * 2);
+            ctx.fillStyle = '#ef4444';
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.fillStyle = '#ef4444';
+            ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`Now: ${nowV.toFixed(1)} ft`, nowX, nowY - 10);
+        }
+
+        // High/low markers
+        for (let i = 1; i < values.length - 1; i++) {
+            const isHigh = values[i] > values[i - 1] && values[i] > values[i + 1];
+            const isLow = values[i] < values[i - 1] && values[i] < values[i + 1];
+            if (isHigh || isLow) {
+                const x = padLeft + (i / (filtered.length - 1)) * chartW;
+                const y = padTop + chartH - ((values[i] - minV) / range) * chartH;
+                ctx.beginPath();
+                ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+                ctx.fillStyle = isHigh ? '#10b981' : '#f59e0b';
+                ctx.fill();
+                ctx.font = '9px -apple-system, BlinkMacSystemFont, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${isHigh ? 'H' : 'L'} ${values[i].toFixed(1)}ft`, x, isHigh ? y - 8 : y + 14);
+            }
+        }
+    }
+
+    // ======== NWS Weather Alerts ========
+    async function loadNWSAlerts(lat, lon) {
+        const container = document.getElementById('alertList');
+        container.innerHTML = '<div class="alert-empty">Loading alerts...</div>';
+
+        try {
+            const r = await fetch(`https://api.weather.gov/alerts/active?point=${lat.toFixed(4)},${lon.toFixed(4)}`, {
+                headers: { 'User-Agent': 'PaddlePoint/1.0 (nwtjml@gmail.com)' }
+            });
+            if (!r.ok) throw new Error(`NWS: ${r.status}`);
+            const data = await r.json();
+
+            if (!data.features || data.features.length === 0) {
+                container.innerHTML = '<div class="alert-empty">No active weather alerts for this area</div>';
+                return;
+            }
+
+            let html = '';
+            data.features.slice(0, 5).forEach(f => {
+                const p = f.properties;
+                const severity = p.severity || 'Unknown';
+                let cls = 'advisory';
+                if (severity === 'Severe' || severity === 'Extreme') cls = 'severe';
+                else if (severity === 'Moderate') cls = 'warning';
+                else if (p.event && (p.event.includes('Watch') || p.event.includes('Warning'))) cls = 'watch';
+
+                const expires = p.expires ? new Date(p.expires).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
+                const headline = p.headline || p.event || 'Weather Alert';
+                const desc = p.description ? p.description.substring(0, 200).replace(/\n/g, ' ') + '...' : '';
+
+                html += `<div class="alert-item ${cls}">
+                    <div class="alert-title">${headline}</div>
+                    <div>${desc}</div>
+                    <div class="alert-meta">${severity} &bull; Expires: ${expires}</div>
+                </div>`;
+            });
+            container.innerHTML = html;
+        } catch (err) {
+container.innerHTML = '<div class="alert-empty">Could not load NWS alerts</div>';
+        }
+    }
+
+    // ======== Water Quality (CA WQ + Swim Guide) ========
+    async function loadWaterQuality(lat, lon) {
+        const container = document.getElementById('wqList');
+        const sourcesRow = document.getElementById('wqSources');
+        container.innerHTML = '<div class="alert-empty">Loading water quality data...</div>';
+
+        try {
+            // CA State Water Board Beach Advisories
+            const r = await fetch(`https://data.ca.gov/api/3/action/datastore_search?resource_id=d5cd6a23-829c-426d-a63e-689a55a3db9c&limit=100&sort=_id+desc&filters=${encodeURIComponent(JSON.stringify({ Beach_Status: 'Active' }))}`);
+
+            let advisories = [];
+            if (r.ok) {
+                const data = await r.json();
+                if (data.result && data.result.records) {
+                    const tenDaysAgo = Date.now() - 10 * 86400000;
+                    advisories = data.result.records.filter(rec => {
+                        // Filter by distance (~10 mile radius)
+                        const rlat = parseFloat(rec.Station_UpperLat || rec.Beach_UpperLat);
+                        const rlon = parseFloat(rec.Station_UpperLon || rec.Beach_UpperLon);
+                        if (!rlat || !rlon) return false;
+                        const dist = haversine(lat, lon, rlat, rlon);
+                        if (dist > 10) return false;
+                        // Filter by date (within 10 days)
+                        const advDate = new Date(rec.DateofAdvisory);
+                        if (advDate.getTime() < tenDaysAgo) return false;
+                        rec._dist = dist;
+                        return true;
+                    }).sort((a, b) => a._dist - b._dist).slice(0, 8);
+                }
+            }
+
+            if (advisories.length === 0) {
+                container.innerHTML = '<div class="alert-empty">No active beach water quality advisories nearby</div>';
+                sourcesRow.style.display = 'flex';
+                return;
+            }
+
+            let html = '';
+            advisories.forEach(rec => {
+                const type = (rec.AdvisoryType || '').toLowerCase();
+                const isClosed = type.includes('clos');
+                const badgeCls = isClosed ? 'closed' : 'advisory';
+                const badgeTxt = isClosed ? 'Closed' : 'Advisory';
+                const name = rec.Station_Name || rec.Beach_Name || 'Unknown Beach';
+                const cause = rec.AdvisoryCause || '';
+                const date = rec.DateofAdvisory ? new Date(rec.DateofAdvisory).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+                const dist = rec._dist ? `${rec._dist.toFixed(1)} mi` : '';
+
+                html += `<div class="wq-item">
+                    <span class="wq-badge ${badgeCls}">${badgeTxt}</span>
+                    <div style="flex:1">
+                        <div class="wq-name">${name}</div>
+                        <div class="wq-detail">${cause}${date ? ' &bull; ' + date : ''}${dist ? ' &bull; ' + dist : ''}</div>
+                    </div>
+                </div>`;
+            });
+            container.innerHTML = html;
+            sourcesRow.style.display = 'flex';
+        } catch (err) {
+container.innerHTML = '<div class="alert-empty">Could not load water quality data</div>';
+        }
+    }
+
+    // ======== Harmful Algal Blooms (HABSOS + CA FHAB) ========
+    async function loadHABData(lat, lon) {
+        const container = document.getElementById('habList');
+        container.innerHTML = '<div class="alert-empty">Loading HAB data...</div>';
+
+        try {
+            const [habsos, cafhab] = await Promise.all([
+                fetchHABSOS(lat, lon),
+                fetchCAFHAB(lat, lon)
+            ]);
+
+            let html = '';
+            let hasData = false;
+
+            // HABSOS results
+            if (habsos && habsos.length > 0) {
+                hasData = true;
+                habsos.forEach(rec => {
+                    const count = rec.CELLCOUNT || 0;
+                    const species = `${rec.GENUS || ''} ${rec.SPECIES || ''}`.trim() || 'Unknown';
+                    const date = rec.SAMPLE_DATE ? new Date(rec.SAMPLE_DATE).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+                    const unit = rec.CELLCOUNT_UNIT || 'cells/L';
+                    let cls = 'clear';
+                    if (count >= 100000) cls = 'danger';
+                    else if (count >= 10000) cls = 'caution';
+
+                    html += `<div class="hab-item ${cls}">
+                        <div class="hab-species">${species}</div>
+                        <div class="hab-count">Cell count: ${count.toLocaleString()} ${unit}${cls === 'danger' ? ' — Elevated levels detected' : cls === 'caution' ? ' — Moderate levels' : ''}</div>
+                        <div class="hab-date">Sampled: ${date} &bull; Source: NOAA HABSOS</div>
+                    </div>`;
+                });
+            }
+
+            // CA FHAB satellite results
+            if (cafhab != null) {
+                hasData = true;
+                let cls = 'clear';
+                let label = 'No cyanobacteria detected';
+                if (cafhab >= 100000) { cls = 'danger'; label = 'High cyanobacteria index — Avoid contact'; }
+                else if (cafhab >= 10000) { cls = 'caution'; label = 'Moderate cyanobacteria levels'; }
+                else if (cafhab > 0) { label = 'Low cyanobacteria levels detected'; }
+
+                html += `<div class="hab-item ${cls}">
+                    <div class="hab-species">Satellite HAB Detection (Sentinel-3)</div>
+                    <div class="hab-count">Cyanobacteria index: ${cafhab.toLocaleString()}${cafhab > 0 ? ' — ' + label : ''}</div>
+                    <div class="hab-date">Source: CA FHAB (SFEI)</div>
+                </div>`;
+            }
+
+            if (!hasData) {
+                html = '<div class="alert-empty">No harmful algal bloom data available for this area</div>';
+            }
+
+            container.innerHTML = html;
+        } catch (err) {
+container.innerHTML = '<div class="alert-empty">Could not load HAB data</div>';
+        }
+    }
+
+    async function fetchHABSOS(lat, lon) {
+        try {
+            const thirtyDaysAgo = Date.now() - 30 * 86400000;
+            const buf = 0.75; // ~50 miles
+            const params = new URLSearchParams({
+                where: `SAMPLE_DATE >= ${thirtyDaysAgo}`,
+                geometry: JSON.stringify({ xmin: lon - buf, ymin: lat - buf, xmax: lon + buf, ymax: lat + buf, spatialReference: { wkid: 4326 } }),
+                geometryType: 'esriGeometryEnvelope',
+                spatialRel: 'esriSpatialRelIntersects',
+                outFields: 'DESCRIPTION,LATITUDE,LONGITUDE,SAMPLE_DATE,GENUS,SPECIES,CELLCOUNT,CELLCOUNT_UNIT,CATEGORY',
+                orderByFields: 'SAMPLE_DATE DESC',
+                resultRecordCount: 10,
+                f: 'json'
+            });
+            const r = await fetch(`https://gis.ncdc.noaa.gov/arcgis/rest/services/ms/HABSOS_CellCounts/MapServer/0/query?${params}`);
+            if (!r.ok) return [];
+            const data = await r.json();
+            return (data.features || []).map(f => f.attributes);
+        } catch { return []; }
+    }
+
+    async function fetchCAFHAB(lat, lon) {
+        // Try today, yesterday, 2 days ago
+        for (let d = 0; d < 3; d++) {
+            try {
+                const dt = new Date(Date.now() - d * 86400000);
+                const dateStr = dt.toISOString().slice(0, 10).replace(/-/g, '');
+                const r = await fetch(`https://fhab-api.sfei.org/cyano/1daymax/${dateStr}/lon/${lon}/lat/${lat}/json`);
+                if (!r.ok) continue;
+                const data = await r.json();
+                if (data && data.value != null) return data.value;
+            } catch { continue; }
+        }
+        return null;
+    }
+
+    // ======== Coastal Access (CA Coastal Commission) ========
+    let cachedCoastalAccess = null;
+    async function loadCoastalAccess(lat, lon) {
+        const container = document.getElementById('accessList');
+        container.innerHTML = '<div class="alert-empty">Loading coastal access data...</div>';
+
+        try {
+            if (!cachedCoastalAccess) {
+                const r = await fetch('https://api.coastal.ca.gov/access/v1/locations');
+                if (!r.ok) throw new Error(`Coastal API: ${r.status}`);
+                cachedCoastalAccess = await r.json();
+            }
+
+            // Filter to 5-mile radius and sort by distance
+            const nearby = cachedCoastalAccess
+                .filter(p => p.LATITUDE && p.LONGITUDE)
+                .map(p => ({ ...p, _dist: haversine(lat, lon, parseFloat(p.LATITUDE), parseFloat(p.LONGITUDE)) }))
+                .filter(p => p._dist <= 5)
+                .sort((a, b) => a._dist - b._dist)
+                .slice(0, 6);
+
+            if (nearby.length === 0) {
+                container.innerHTML = '<div class="alert-empty">No CA coastal access points found within 5 miles</div>';
+                return;
+            }
+
+            let html = '';
+            nearby.forEach(p => {
+                const name = p.NameMobileWeb || p.GEOGR_AREA || 'Access Point';
+                const features = [];
+                if (p.SNDY_BEACH === 'Yes') features.push('Sandy Beach');
+                if (p.RKY_SHORE === 'Yes') features.push('Rocky Shore');
+                if (p.BOATING === 'Yes') features.push('Boating');
+                if (p.FISHING === 'Yes') features.push('Fishing');
+                if (p.RESTROOMS === 'Yes') features.push('Restrooms');
+                if (p.PARKING === 'Yes' || p.FEE === 'Yes') features.push('Parking');
+
+                html += `<div class="access-item">
+                    <div class="access-icon">${p.SNDY_BEACH === 'Yes' ? '\u{1F3D6}\u{FE0F}' : p.BOATING === 'Yes' ? '\u{1F6F6}' : '\u{1F30A}'}</div>
+                    <div style="flex:1">
+                        <div class="access-name">${name}</div>
+                        <div class="access-features">${features.join(' &bull; ') || 'Beach access'}</div>
+                    </div>
+                    <div class="access-dist">${p._dist.toFixed(1)} mi</div>
+                </div>`;
+            });
+            container.innerHTML = html;
+        } catch (err) {
+container.innerHTML = '<div class="alert-empty">Could not load coastal access data</div>';
+        }
+    }
+
+    // ======== Beaufort Scale ========
+    function beaufortFromMph(mph) {
+        const scale = [
+            { number: 0, desc: 'Calm', max: 1 },
+            { number: 1, desc: 'Light Air', max: 3 },
+            { number: 2, desc: 'Light Breeze', max: 7 },
+            { number: 3, desc: 'Gentle Breeze', max: 12 },
+            { number: 4, desc: 'Moderate Breeze', max: 18 },
+            { number: 5, desc: 'Fresh Breeze', max: 24 },
+            { number: 6, desc: 'Strong Breeze', max: 31 },
+            { number: 7, desc: 'Near Gale', max: 38 },
+            { number: 8, desc: 'Gale', max: 46 },
+            { number: 9, desc: 'Strong Gale', max: 54 },
+            { number: 10, desc: 'Storm', max: 63 },
+            { number: 11, desc: 'Violent Storm', max: 72 },
+            { number: 12, desc: 'Hurricane', max: Infinity },
+        ];
+        return scale.find(s => mph <= s.max) || scale[12];
+    }
+
+    // ======== Wind Trend Chart (Canvas) ========
+    function drawWindChart(hourlyData) {
+        const container = document.getElementById('windChartArea');
+        if (!hourlyData || !hourlyData.time) {
+            container.textContent = 'No wind data available';
+            return;
+        }
+
+        const now = new Date();
+        const times = hourlyData.time;
+        const nowISO = now.toISOString().slice(0, 13);
+        let startIdx = times.findIndex(t => t.startsWith(nowISO));
+        if (startIdx < 0) startIdx = 0;
+        const endIdx = Math.min(startIdx + 24, times.length);
+
+        const windData = [];
+        const gustData = [];
+        const labels = [];
+        for (let i = startIdx; i < endIdx; i++) {
+            windData.push(hourlyData.wind_speed_10m[i]);
+            gustData.push(hourlyData.wind_gusts_10m ? hourlyData.wind_gusts_10m[i] : null);
+            const dt = new Date(times[i]);
+            labels.push(dt.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true }));
+        }
+
+        if (windData.length < 3) { container.textContent = 'Insufficient data'; return; }
+
+        const canvas = document.createElement('canvas');
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        container.innerHTML = '';
+        container.appendChild(canvas);
+
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = container.offsetWidth * dpr;
+        canvas.height = container.offsetHeight * dpr;
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+        const W = container.offsetWidth, H = container.offsetHeight;
+
+        const pad = { top: 20, bottom: 35, left: 40, right: 15 };
+        const chartW = W - pad.left - pad.right;
+        const chartH = H - pad.top - pad.bottom;
+
+        const allVals = [...windData, ...gustData.filter(g => g != null)];
+        const maxVal = Math.max(...allVals, 1);
+        const yMax = Math.ceil(maxVal / 5) * 5;
+
+        // Grid
+        ctx.strokeStyle = '#e5e7eb';
+        ctx.lineWidth = 0.5;
+        ctx.font = '10px -apple-system, sans-serif';
+        ctx.fillStyle = '#9ca3af';
+        ctx.textAlign = 'right';
+        for (let i = 0; i <= 4; i++) {
+            const y = pad.top + chartH - (chartH * i / 4);
+            const val = Math.round(yMax * i / 4);
+            ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+            ctx.fillText(val, pad.left - 5, y + 3);
+        }
+
+        // X labels
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#9ca3af';
+        const step = Math.max(1, Math.floor(windData.length / 8));
+        for (let i = 0; i < windData.length; i += step) {
+            const x = pad.left + (i / (windData.length - 1)) * chartW;
+            ctx.fillText(labels[i], x, H - 5);
+        }
+
+        // Gust area
+        if (gustData.some(g => g != null)) {
+            ctx.beginPath();
+            gustData.forEach((g, i) => {
+                const x = pad.left + (i / (gustData.length - 1)) * chartW;
+                const y = pad.top + chartH - (chartH * (g || windData[i]) / yMax);
+                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            });
+            for (let i = windData.length - 1; i >= 0; i--) {
+                const x = pad.left + (i / (windData.length - 1)) * chartW;
+                const y = pad.top + chartH - (chartH * windData[i] / yMax);
+                ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.1)';
+            ctx.fill();
+
+            // Gust line
+            ctx.beginPath();
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+            gustData.forEach((g, i) => {
+                if (g == null) return;
+                const x = pad.left + (i / (gustData.length - 1)) * chartW;
+                const y = pad.top + chartH - (chartH * g / yMax);
+                i === 0 || gustData[i - 1] == null ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        // Wind line
+        ctx.beginPath();
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 2;
+        windData.forEach((v, i) => {
+            const x = pad.left + (i / (windData.length - 1)) * chartW;
+            const y = pad.top + chartH - (chartH * v / yMax);
+            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+
+        // Fill under wind
+        ctx.lineTo(pad.left + chartW, pad.top + chartH);
+        ctx.lineTo(pad.left, pad.top + chartH);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(59, 130, 246, 0.15)';
+        ctx.fill();
+
+        // Legend
+        ctx.font = '10px -apple-system, sans-serif';
+        ctx.fillStyle = '#3b82f6';
+        ctx.fillText('\u2501 Wind', pad.left + 30, pad.top - 5);
+        if (gustData.some(g => g != null)) {
+            ctx.fillStyle = '#ef4444';
+            ctx.fillText('--- Gusts', pad.left + 90, pad.top - 5);
+        }
+
+        // Y axis label
+        ctx.save();
+        ctx.translate(10, H / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillStyle = '#9ca3af';
+        ctx.textAlign = 'center';
+        const isMetric = currentUnits === 'metric';
+        ctx.fillText(isMetric ? 'km/h' : 'mph', 0, 0);
+        ctx.restore();
+    }
+
+    // ======== Wave Height Forecast Chart (Canvas) ========
+    function drawWaveChart(marine) {
+        const container = document.getElementById('waveChartArea');
+        if (!marine || !marine.hourly || !marine.hourly.wave_height) {
+            container.textContent = 'No wave data available';
+            return;
+        }
+
+        const now = new Date();
+        const times = marine.hourly.time;
+        const nowISO = now.toISOString().slice(0, 13);
+        let startIdx = times.findIndex(t => t.startsWith(nowISO));
+        if (startIdx < 0) startIdx = 0;
+        const endIdx = Math.min(startIdx + 48, times.length);
+
+        const waveData = [];
+        const labels = [];
+        for (let i = startIdx; i < endIdx; i++) {
+            const h = marine.hourly.wave_height[i];
+            waveData.push(h != null ? h * 3.281 : 0); // convert m -> ft
+            const dt = new Date(times[i]);
+            labels.push(dt.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true }));
+        }
+
+        if (waveData.length < 3) { container.textContent = 'Insufficient data'; return; }
+
+        const canvas = document.createElement('canvas');
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        container.innerHTML = '';
+        container.appendChild(canvas);
+
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = container.offsetWidth * dpr;
+        canvas.height = container.offsetHeight * dpr;
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+        const W = container.offsetWidth, H = container.offsetHeight;
+
+        const pad = { top: 20, bottom: 35, left: 40, right: 15 };
+        const chartW = W - pad.left - pad.right;
+        const chartH = H - pad.top - pad.bottom;
+
+        const maxVal = Math.max(...waveData, 0.5);
+        const yMax = Math.ceil(maxVal);
+
+        // Grid
+        ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 0.5;
+        ctx.font = '10px -apple-system, sans-serif';
+        ctx.fillStyle = '#9ca3af'; ctx.textAlign = 'right';
+        for (let i = 0; i <= 4; i++) {
+            const y = pad.top + chartH - (chartH * i / 4);
+            const val = (yMax * i / 4).toFixed(1);
+            ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+            ctx.fillText(val, pad.left - 5, y + 3);
+        }
+
+        // X labels
+        ctx.textAlign = 'center'; ctx.fillStyle = '#9ca3af';
+        const step = Math.max(1, Math.floor(waveData.length / 8));
+        for (let i = 0; i < waveData.length; i += step) {
+            const x = pad.left + (i / (waveData.length - 1)) * chartW;
+            ctx.fillText(labels[i], x, H - 5);
+        }
+
+        // Wave area
+        ctx.beginPath();
+        waveData.forEach((v, i) => {
+            const x = pad.left + (i / (waveData.length - 1)) * chartW;
+            const y = pad.top + chartH - (chartH * v / yMax);
+            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        });
+        ctx.strokeStyle = '#06b6d4';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Fill
+        ctx.lineTo(pad.left + chartW, pad.top + chartH);
+        ctx.lineTo(pad.left, pad.top + chartH);
+        ctx.closePath();
+        const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + chartH);
+        grad.addColorStop(0, 'rgba(6, 182, 212, 0.3)');
+        grad.addColorStop(1, 'rgba(6, 182, 212, 0.02)');
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // Y axis label
+        ctx.save();
+        ctx.translate(10, H / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillStyle = '#9ca3af'; ctx.textAlign = 'center';
+        const isMetric = currentUnits === 'metric';
+        ctx.fillText(isMetric ? 'meters' : 'ft', 0, 0);
+        ctx.restore();
+    }
+
+    // ======== Cloud Cover Timeline ========
+    function drawCloudCover(hourlyData) {
+        const container = document.getElementById('cloudTimeline');
+        if (!hourlyData || !hourlyData.cloud_cover) {
+            container.innerHTML = '<div style="color:#9ca3af;font-size:12px;">No cloud data</div>';
+            return;
+        }
+
+        const now = new Date();
+        const times = hourlyData.time;
+        const nowISO = now.toISOString().slice(0, 13);
+        let startIdx = times.findIndex(t => t.startsWith(nowISO));
+        if (startIdx < 0) startIdx = 0;
+        const endIdx = Math.min(startIdx + 24, times.length);
+
+        let html = '';
+        for (let i = startIdx; i < endIdx; i++) {
+            const cc = hourlyData.cloud_cover[i];
+            const dt = new Date(times[i]);
+            const h = (cc / 100) * 50 + 5; // min 5px, max 55px
+            const shade = Math.round(220 - (cc / 100) * 120); // lighter=clear, darker=cloudy
+            const color = `rgb(${shade}, ${shade}, ${Math.min(shade + 20, 255)})`;
+            const showLabel = (i - startIdx) % 3 === 0;
+            const label = showLabel ? `<span class="cloud-bar-label">${dt.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true })}</span>` : '';
+            html += `<div class="cloud-bar" style="height:${h}px;background:${color};" title="${cc}% cloud cover at ${dt.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true })}">${label}</div>`;
+        }
+        container.innerHTML = html;
+    }
+
+    // ======== Air Quality Index ========
+    async function loadAirQuality(lat, lon) {
+        try {
+            const res = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi,pm2_5,pm10,ozone,nitrogen_dioxide,uv_index`);
+            const data = await res.json();
+
+            if (!data.current) return;
+
+            const aqi = data.current.us_aqi;
+            const aqiEl = document.getElementById('aqiScore');
+            const levelEl = document.getElementById('aqiLevel');
+
+            let aqiClass, aqiLabel;
+            if (aqi <= 50) { aqiClass = 'aqi-good'; aqiLabel = 'Good'; }
+            else if (aqi <= 100) { aqiClass = 'aqi-moderate'; aqiLabel = 'Moderate'; }
+            else if (aqi <= 150) { aqiClass = 'aqi-unhealthy-sensitive'; aqiLabel = 'Unhealthy (Sensitive)'; }
+            else if (aqi <= 200) { aqiClass = 'aqi-unhealthy'; aqiLabel = 'Unhealthy'; }
+            else if (aqi <= 300) { aqiClass = 'aqi-very-unhealthy'; aqiLabel = 'Very Unhealthy'; }
+            else { aqiClass = 'aqi-hazardous'; aqiLabel = 'Hazardous'; }
+
+            aqiEl.textContent = aqi != null ? aqi : '--';
+            aqiEl.className = `aqi-score ${aqiClass}`;
+            levelEl.textContent = aqiLabel;
+            levelEl.className = `aqi-label-text ${aqiClass}`;
+
+            document.getElementById('aqiPm25').textContent = data.current.pm2_5 != null ? `${data.current.pm2_5.toFixed(1)} \u00B5g/m\u00B3` : '--';
+            document.getElementById('aqiPm10').textContent = data.current.pm10 != null ? `${data.current.pm10.toFixed(1)} \u00B5g/m\u00B3` : '--';
+            document.getElementById('aqiOzone').textContent = data.current.ozone != null ? `${data.current.ozone.toFixed(1)} \u00B5g/m\u00B3` : '--';
+            document.getElementById('aqiNo2').textContent = data.current.nitrogen_dioxide != null ? `${data.current.nitrogen_dioxide.toFixed(1)} \u00B5g/m\u00B3` : '--';
+            document.getElementById('aqiUV').textContent = data.current.uv_index != null ? data.current.uv_index.toFixed(1) : '--';
+        } catch (err) {
+}
+    }
+
+    // ======== Cold Water Immersion Risk ========
+    function loadColdWaterRisk(marine, lat, lon) {
+        const card = document.getElementById('coldWaterCard');
+
+        // Try to get water temp (from waterTempValue which was already populated)
+        let waterTempF = null;
+        const wtEl = document.getElementById('waterTempValue');
+        const wtVal = parseFloat(wtEl.textContent);
+        if (!isNaN(wtVal) && wtVal > 0) waterTempF = wtVal;
+
+        // Fallback: marine SST
+        if (waterTempF == null && marine && marine.current && marine.current.sea_surface_temperature != null) {
+            waterTempF = marine.current.sea_surface_temperature * 9/5 + 32;
+        }
+
+        if (waterTempF == null) {
+            card.style.display = 'none';
+            return;
+        }
+
+        card.style.display = '';
+
+        let riskLevel, riskClass, survival, exhaustion, gear;
+
+        if (waterTempF < 40) {
+            riskLevel = 'Extreme'; riskClass = 'extreme';
+            survival = '< 45 min'; exhaustion = '< 15 min';
+            gear = 'Drysuit required';
+        } else if (waterTempF < 50) {
+            riskLevel = 'High'; riskClass = 'high';
+            survival = '1 - 3 hours'; exhaustion = '15 - 30 min';
+            gear = 'Drysuit or 5mm+ wetsuit';
+        } else if (waterTempF < 60) {
+            riskLevel = 'Moderate'; riskClass = 'moderate';
+            survival = '1 - 6 hours'; exhaustion = '30 - 60 min';
+            gear = '3-4mm wetsuit';
+        } else if (waterTempF < 70) {
+            riskLevel = 'Low'; riskClass = 'low';
+            survival = '2 - 12 hours'; exhaustion = '1 - 2 hours';
+            gear = '2mm shorty or rashguard';
+        } else {
+            riskLevel = 'Minimal'; riskClass = 'low';
+            survival = '12+ hours'; exhaustion = '2+ hours';
+            gear = 'Rashguard or boardshorts';
+        }
+
+        const isMetric = currentUnits === 'metric';
+        const dispTemp = isMetric ? Math.round((waterTempF - 32) * 5 / 9) : Math.round(waterTempF);
+        const unitLabel = isMetric ? '\u00B0C' : '\u00B0F';
+
+        document.getElementById('coldWaterGauge').className = `cold-water-gauge ${riskClass}`;
+        document.getElementById('coldWaterTemp').textContent = dispTemp;
+        document.getElementById('coldWaterCard').querySelector('.cold-water-label').textContent = `Water ${unitLabel}`;
+        document.getElementById('coldRiskLevel').innerHTML = `<span style="color:${riskClass === 'extreme' ? '#ef4444' : riskClass === 'high' ? '#f97316' : riskClass === 'moderate' ? '#f59e0b' : '#10b981'};font-weight:600;">${riskLevel}</span>`;
+        document.getElementById('coldSurvival').textContent = survival;
+        document.getElementById('coldExhaustion').textContent = exhaustion;
+        document.getElementById('coldGear').textContent = gear;
+    }
+
+    // ======== Location Map ========
+    let weatherMap = null;
+    let weatherMapMarker = null;
+    let tideStationMarker = null;
+
+    function initLocationMap(lat, lon, locationName) {
+        const mapCard = document.getElementById('mapCard');
+        mapCard.style.display = '';
+        const mapEl = document.getElementById('weatherMap');
+
+        if (!weatherMap) {
+            weatherMap = new google.maps.Map(mapEl, {
+                center: { lat, lng: lon },
+                zoom: 12,
+                mapTypeId: 'terrain',
+                disableDefaultUI: true,
+                zoomControl: true,
+                mapTypeControl: true,
+                mapTypeControlOptions: { position: google.maps.ControlPosition.TOP_RIGHT },
+            });
+        } else {
+            weatherMap.setCenter({ lat, lng: lon });
+        }
+
+        if (weatherMapMarker) weatherMapMarker.setMap(null);
+        weatherMapMarker = new google.maps.Marker({
+            position: { lat, lng: lon },
+            map: weatherMap,
+            title: locationName,
+            icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 10,
+                fillColor: '#3b82f6',
+                fillOpacity: 1,
+                strokeColor: '#fff',
+                strokeWeight: 3,
+            }
+        });
+
+        // Show nearest tide station
+        const { station, dist } = nearestTideStation(lat, lon);
+        if (dist <= 100) {
+            if (tideStationMarker) tideStationMarker.setMap(null);
+            tideStationMarker = new google.maps.Marker({
+                position: { lat: station.lat, lng: station.lon },
+                map: weatherMap,
+                title: `NOAA Tide Station: ${station.name}`,
+                icon: {
+                    path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
+                    scale: 6,
+                    fillColor: '#06b6d4',
+                    fillOpacity: 1,
+                    strokeColor: '#fff',
+                    strokeWeight: 2,
+                }
+            });
+
+            const infoWindow = new google.maps.InfoWindow({
+                content: `<div style="font-size:12px;"><strong>NOAA Tide Station</strong><br>${station.name} (${station.id})<br>${dist.toFixed(1)} mi away</div>`
+            });
+            tideStationMarker.addListener('click', () => infoWindow.open(weatherMap, tideStationMarker));
+        }
+    }
+
+    // ======== USGS River Flow ========
+    async function loadRiverFlow(lat, lon) {
+        const card = document.getElementById('riverFlowCard');
+        const container = document.getElementById('riverFlowList');
+
+        try {
+            // USGS NWIS instantaneous values: parameter 00060 = discharge (cubic feet/sec)
+            const bbox = `${(lon - 0.5).toFixed(4)},${(lat - 0.5).toFixed(4)},${(lon + 0.5).toFixed(4)},${(lat + 0.5).toFixed(4)}`;
+            const res = await fetch(`https://waterservices.usgs.gov/nwis/iv/?format=json&bBox=${bbox}&parameterCd=00060&siteStatus=active`);
+            const data = await res.json();
+
+            if (!data.value || !data.value.timeSeries || data.value.timeSeries.length === 0) {
+                card.style.display = 'none';
+                return;
+            }
+
+            // Parse and sort by distance
+            const gauges = data.value.timeSeries.map(ts => {
+                const info = ts.sourceInfo;
+                const gLat = info.geoLocation.geogLocation.latitude;
+                const gLon = info.geoLocation.geogLocation.longitude;
+                const dist = haversine(lat, lon, gLat, gLon);
+                const vals = ts.values[0].value;
+                const latest = vals.length > 0 ? vals[vals.length - 1] : null;
+                return {
+                    name: info.siteName,
+                    lat: gLat,
+                    lon: gLon,
+                    dist,
+                    flow: latest ? parseFloat(latest.value) : null,
+                    time: latest ? new Date(latest.dateTime) : null,
+                };
+            }).filter(g => g.flow != null && g.flow >= 0)
+              .sort((a, b) => a.dist - b.dist)
+              .slice(0, 5);
+
+            if (gauges.length === 0) {
+                card.style.display = 'none';
+                return;
+            }
+
+            card.style.display = '';
+            let html = '';
+            gauges.forEach(g => {
+                const flowLevel = g.flow > 1000 ? 'High' : g.flow > 100 ? 'Moderate' : 'Low';
+                const flowColor = g.flow > 1000 ? '#ef4444' : g.flow > 100 ? '#f59e0b' : '#10b981';
+                const timeAgo = g.time ? timeSince(g.time) : '';
+                html += `<div class="river-flow-item">
+                    <div class="river-flow-icon">\u{1F4A7}</div>
+                    <div style="flex:1">
+                        <div class="river-flow-name">${g.name}</div>
+                        <div class="river-flow-value">${g.flow.toFixed(0)} cfs &bull; <span style="color:${flowColor};font-weight:600;">${flowLevel}</span> &bull; ${timeAgo}</div>
+                    </div>
+                    <div class="river-flow-dist">${g.dist.toFixed(1)} mi</div>
+                </div>`;
+            });
+            container.innerHTML = html;
+        } catch (err) {
+card.style.display = 'none';
+        }
+    }
+
+    function timeSince(date) {
+        const mins = Math.round((Date.now() - date) / 60000);
+        if (mins < 60) return `${mins}m ago`;
+        if (mins < 1440) return `${Math.round(mins/60)}h ago`;
+        return `${Math.round(mins/1440)}d ago`;
+    }
+
+    // ======== Haversine distance (miles) ========
+    function haversine(lat1, lon1, lat2, lon2) {
+        const R = 3958.8;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+</script>
+<script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAR81pUTUz5ON7ZBuoouTh2RTHyECr6yvg&libraries=places&callback=initWeatherPage"></script>
+
+<footer style="text-align:center;padding:20px 16px 28px;border-top:1px solid #e5e7eb;margin-top:24px;">
+    <div style="display:flex;justify-content:center;flex-wrap:wrap;gap:6px 16px;margin-bottom:10px;">
+        <a href="paddlepoint.html" style="color:#6b7280;text-decoration:none;font-size:12px;">Home</a>
+        <a href="paddle-conditions.html" style="color:#6b7280;text-decoration:none;font-size:12px;">Water Conditions</a>
+        <a href="paddle-clubs.html" style="color:#6b7280;text-decoration:none;font-size:12px;">Paddle Clubs</a>
+        <a href="paddle-events.html" style="color:#6b7280;text-decoration:none;font-size:12px;">Events</a>
+        <a href="paddle-gear.html" style="color:#6b7280;text-decoration:none;font-size:12px;">Gear</a>
+        <a href="paddle-federations.html" style="color:#6b7280;text-decoration:none;font-size:12px;">Federations</a>
+        <a onclick="openDataSourcesModal()" style="color:#6b7280;text-decoration:none;font-size:12px;cursor:pointer;">Data Sources</a>
+    </div>
+    <div style="display:flex;justify-content:center;flex-wrap:wrap;gap:4px 12px;margin-bottom:10px;">
+        <span style="color:#9ca3af;font-size:10px;font-weight:600;">Data:</span>
+        <a href="https://open-meteo.com" target="_blank" style="color:#9ca3af;text-decoration:none;font-size:10px;">Open-Meteo</a>
+        <a href="https://weather.google.com" target="_blank" style="color:#9ca3af;text-decoration:none;font-size:10px;">Google Weather</a>
+        <a href="https://tidesandcurrents.noaa.gov" target="_blank" style="color:#9ca3af;text-decoration:none;font-size:10px;">NOAA</a>
+        <a href="https://www.weather.gov" target="_blank" style="color:#9ca3af;text-decoration:none;font-size:10px;">NWS</a>
+        <a href="https://habsos.noaa.gov" target="_blank" style="color:#9ca3af;text-decoration:none;font-size:10px;">HABSOS</a>
+        <a href="https://waterservices.usgs.gov" target="_blank" style="color:#9ca3af;text-decoration:none;font-size:10px;">USGS Water</a>
+        <a href="https://data.ca.gov/dataset/beach-water-quality-postings-and-closures" target="_blank" style="color:#9ca3af;text-decoration:none;font-size:10px;">CA WQ</a>
+        <a href="https://www.coastal.ca.gov/YourCoast/" target="_blank" style="color:#9ca3af;text-decoration:none;font-size:10px;">CA Coastal</a>
+        <a href="https://www.theswimguide.org" target="_blank" style="color:#9ca3af;text-decoration:none;font-size:10px;">Swim Guide</a>
+    </div>
+    <div style="color:#9ca3af;font-size:10px;">&copy; 2026 PaddlePoint. All rights reserved. &bull; <span onclick="toggleStats()" style="cursor:pointer;text-decoration:underline;">Stats</span></div>
+</footer>
+<script>
+const COUNTER_API='https://visitor-counter.newtonmac.workers.dev';
+try{fetch(`${COUNTER_API}/visit?page=weather`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({referrer:document.referrer})}).catch(()=>{});}catch(e){}
+async function toggleStats(){
+  try{const r=await fetch(`${COUNTER_API}/stats?page=weather`);const d=await r.json();
+  const w=d.days?d.days.reduce((s,dy)=>s+dy.uniqueVisitors,0):0;
+  alert(`Weather Page Stats\n\nAll-time: ${d.total||0} visitors\nLast 7 days: ${w}\nToday: ${d.days&&d.days.length?d.days[d.days.length-1].uniqueVisitors:0}`);}catch(e){alert('Stats unavailable');}
+}
+</script>
+
+<script>
+// Auto-generate ℹ️ source info buttons from data-sources divs
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.data-sources').forEach(ds => {
+        const card = ds.closest('.card');
+        if (!card) return;
+        const header = card.querySelector('.card-header');
+        if (!header) return;
+        const links = ds.querySelectorAll('a.data-source-tag');
+        if (!links.length) return;
+        // Build popup content
+        const items = [...links].map(a => 
+            `<div><a href="${a.href}" target="_blank">${a.textContent} ↗</a></div>`
+        ).join('');
+        // Create ℹ️ button
+        const btn = document.createElement('button');
+        btn.className = 'src-info-btn';
+        btn.textContent = 'ℹ';
+        btn.title = 'Data sources';
+        // Create popup
+        const popup = document.createElement('div');
+        popup.className = 'src-popup';
+        popup.innerHTML = `<div class="src-popup-title">Data Sources</div>${items}`;
+        btn.addEventListener('click', e => {
+            e.stopPropagation();
+            document.querySelectorAll('.src-popup.open').forEach(p => { if (p !== popup) p.classList.remove('open'); });
+            popup.classList.toggle('open');
+        });
+        header.style.display = 'flex';
+        header.style.alignItems = 'center';
+        header.style.justifyContent = 'space-between';
+        const wrapper = document.createElement('span');
+        wrapper.style.position = 'relative';
+        wrapper.appendChild(btn);
+        wrapper.appendChild(popup);
+        header.appendChild(wrapper);
+    });
+    document.addEventListener('click', () => {
+        document.querySelectorAll('.src-popup.open').forEach(p => p.classList.remove('open'));
+    });
+});
+</script>
+<script src="pp-shared.js" defer></script>
+</body>
+</html>

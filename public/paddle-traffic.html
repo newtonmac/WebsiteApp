@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PaddlePoint — Traffic</title>
+<link rel="icon" type="image/svg+xml" href="paddle-pin.svg">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',system-ui,sans-serif;background:#0f1117;color:#e1e4e8;min-height:100vh}
+.header{display:flex;align-items:center;padding:16px 24px;border-bottom:1px solid #1e2030;justify-content:space-between}
+.header h1{font-size:20px;font-weight:700;background:linear-gradient(90deg,#06b6d4,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.stats{color:#8b8fa3;font-size:13px}
+.container{max-width:1400px;margin:0 auto;padding:20px}
+</style>
+</head>
+<body>
+<style>
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px}
+.kpi{background:#1a1d28;border:1px solid #2d3040;border-radius:12px;padding:16px;text-align:center}
+.kpi .num{font-size:28px;font-weight:800;color:#06b6d4}
+.kpi .label{font-size:11px;color:#6b7080;text-transform:uppercase;letter-spacing:1px;margin-top:4px}
+.kpi .sub{font-size:12px;color:#8b8fa3;margin-top:2px}
+.section{background:#1a1d28;border:1px solid #2d3040;border-radius:12px;padding:20px;margin-bottom:16px}
+.section h3{font-size:14px;color:#8b8fa3;margin-bottom:14px;text-transform:uppercase;letter-spacing:1px}
+.chart-bar{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.chart-bar .bar-label{width:120px;font-size:13px;color:#e1e4e8;text-align:right;flex-shrink:0}
+.chart-bar .bar-track{flex:1;height:24px;background:#252836;border-radius:6px;overflow:hidden;position:relative}
+.chart-bar .bar-fill{height:100%;border-radius:6px;transition:width .5s ease}
+.chart-bar .bar-val{font-size:12px;color:#8b8fa3;width:50px;text-align:right;flex-shrink:0}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:768px){.grid-2{grid-template-columns:1fr}}
+</style>
+<style>
+.day-chart{display:flex;align-items:flex-end;gap:3px;height:120px;padding:0 4px}
+.day-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.day-col .day-bar{width:100%;min-width:16px;background:linear-gradient(180deg,#06b6d4,#3b82f6);border-radius:4px 4px 0 0;transition:height .4s ease;cursor:pointer;position:relative}
+.day-col .day-bar:hover{opacity:.8}
+.day-col .day-label{font-size:9px;color:#6b7080}
+.day-col .day-val{font-size:10px;color:#8b8fa3;font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:8px 10px;color:#6b7080;font-weight:600;border-bottom:1px solid #2d3040;font-size:11px;text-transform:uppercase}
+td{padding:8px 10px;border-bottom:1px solid #1a1d28}
+tr:hover{background:#1a1d28}
+.flag{display:inline-block;width:16px;height:12px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.loading{text-align:center;padding:40px;color:#6b7080;font-size:14px}
+#loginView{display:flex;align-items:center;justify-content:center;height:80vh;flex-direction:column;gap:16px}
+#loginView input{background:#1a1d28;border:1px solid #2d3040;color:#e1e4e8;padding:12px 18px;border-radius:10px;font-size:15px;width:260px;text-align:center}
+#loginView button{background:linear-gradient(135deg,#06b6d4,#8b5cf6);color:#fff;border:none;padding:12px 32px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer}
+</style>
+
+<div id="loginView">
+    <h2 style="font-size:22px;font-weight:800;background:linear-gradient(90deg,#06b6d4,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">📊 Traffic Dashboard</h2>
+    <p style="color:#6b7080;font-size:13px;">Enter admin password to view traffic stats</p>
+    <input type="password" id="passInput" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">Login</button>
+</div>
+
+<div id="dashboard" style="display:none;">
+<div class="header">
+    <h1>📊 PaddlePoint Traffic</h1>
+    <div style="display:flex;align-items:center;gap:12px;">
+        <div class="stats" id="headerStats">Loading...</div>
+        <button onclick="refreshTraffic()" id="refreshBtn" style="background:#0ea5e9;color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap;">↻ Refresh</button>
+    </div>
+</div>
+<div class="container">
+    <!-- KPI Cards -->
+    <div class="kpi-row" id="kpiRow"></div>
+
+    <!-- Daily Chart -->
+    <div class="section">
+        <h3>Daily Visitors (Last 7 Days)</h3>
+        <div class="day-chart" id="dailyChart"></div>
+    </div>
+
+    <div class="grid-2">
+        <!-- Page Breakdown -->
+        <div class="section">
+            <h3>Page Views</h3>
+            <div id="pageBreakdown"></div>
+        </div>
+        <!-- Top Cities -->
+        <div class="section">
+            <h3>Top Visitor Cities</h3>
+            <div id="topCities"></div>
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <!-- Countries -->
+        <div class="section">
+            <h3>Top Countries</h3>
+            <div id="topCountries"></div>
+        </div>
+        <!-- Today's Live Activity -->
+        <div class="section">
+            <h3>Today's Activity by Page</h3>
+            <table id="todayTable"><thead><tr><th>Page</th><th>Visitors</th><th>Top City</th></tr></thead><tbody></tbody></table>
+        </div>
+    </div>
+
+    <!-- Traffic Sources -->
+    <div class="section" style="margin-top:16px;">
+        <h3>🔗 Traffic Sources <span style="font-size:12px;color:#6b7080;font-weight:400;">— where visitors came from (last 7 days)</span></h3>
+        <div id="referrerSection" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px;">Loading...</div>
+    </div>
+
+    <!-- Visitor Map -->
+    <div class="section" style="margin-top:16px;">
+        <h3>🗺️ Visitor Map <span style="font-size:12px;color:#6b7080;font-weight:400;">— last 7 days</span></h3>
+        <div id="visitorMap" style="width:100%;height:400px;border-radius:12px;overflow:hidden;border:1px solid #2d3040;margin-top:12px;background:#1a1d28;"></div>
+    </div>
+</div>
+</div>
+
+<script>
+const PASS='paddle2026';
+const API='https://visitor-counter.newtonmac.workers.dev/stats';
+const PAGES=['conditions','weather','clubs','events','gear','federations','home'];
+const PAGE_NAMES={conditions:'Water Conditions',weather:'Weather',clubs:'Paddle Clubs',events:'Events',gear:'Gear',federations:'Federations',home:'Home'};
+const PAGE_COLORS={conditions:'#06b6d4',weather:'#3b82f6',clubs:'#8b5cf6',events:'#f59e0b',gear:'#22c55e',federations:'#ec4899',home:'#f97316'};
+let allData={};
+
+function doLogin(){
+    if(document.getElementById('passInput').value===PASS){
+        document.getElementById('loginView').style.display='none';
+        document.getElementById('dashboard').style.display='block';
+        loadTraffic();
+    } else alert('Wrong password');
+}
+if(new URLSearchParams(location.search).get('autologin')==='1'){document.getElementById('passInput').value=PASS;doLogin();}
+
+async function loadTraffic(){
+    const btn=document.getElementById('refreshBtn');
+    if(btn){btn.disabled=true;btn.textContent='⏳ Loading...';}
+    const results = await Promise.all(PAGES.map(p=>
+        fetch(`${API}?page=${p}`).then(r=>r.json()).catch(()=>({total:0,days:[]}))
+    ));
+    PAGES.forEach((p,i)=>allData[p]=results[i]);
+
+    // Compute aggregates
+    let totalAll=0, todayAll=0, yesterdayAll=0;
+    const allCities={}, allCountries={}, dailyTotals={};
+
+    PAGES.forEach(p=>{
+        const d=allData[p];
+        totalAll+=d.total||0;
+        (d.days||[]).forEach(day=>{
+            dailyTotals[day.date]=(dailyTotals[day.date]||0)+day.uniqueVisitors;
+            Object.entries(day.cities||{}).forEach(([city,cnt])=>{
+                allCities[city]=(allCities[city]||0)+cnt;
+                const parts=city.split(', ');
+                const country=parts[parts.length-1]||'Unknown';
+                allCountries[country]=(allCountries[country]||0)+cnt;
+            });
+        });
+    });
+
+    const today=new Date().toISOString().slice(0,10);
+    const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);
+    todayAll=dailyTotals[today]||0;
+    yesterdayAll=dailyTotals[yesterday]||0;
+    const uniqueCities=Object.keys(allCities).length;
+    const uniqueCountries=Object.keys(allCountries).length;
+
+    // KPI Cards
+    document.getElementById('headerStats').textContent=`${totalAll} total visitors · ${uniqueCities} cities · ${uniqueCountries} countries`;
+    document.getElementById('kpiRow').innerHTML=[
+        kpi(todayAll,'Today','visitors'),
+        kpi(yesterdayAll,'Yesterday','visitors'),
+        kpi(totalAll,'All Time','total visitors'),
+        kpi(uniqueCities,'Cities','unique locations'),
+        kpi(uniqueCountries,'Countries','reached'),
+        kpi(PAGES.reduce((best,p)=>{const t=allData[p].total||0;return t>best.t?{p,t}:best;},{p:'',t:0}).p?PAGE_NAMES[PAGES.reduce((best,p)=>{const t=allData[p].total||0;return t>best.t?{p,t}:best;},{p:'',t:0}).p]:'—','Top Page','most visited'),
+    ].join('');
+
+    // Daily Chart (last 7 days)
+    const dates=[];
+    for(let i=6;i>=0;i--){const d=new Date(Date.now()-i*86400000);dates.push(d.toISOString().slice(0,10));}
+    const maxDay=Math.max(...dates.map(d=>dailyTotals[d]||0),1);
+    document.getElementById('dailyChart').innerHTML=dates.map(d=>{
+        const v=dailyTotals[d]||0;
+        const h=Math.max((v/maxDay)*100,2);
+        const dayName=new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short'});
+        const dateStr=new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+        return `<div class="day-col"><div class="day-val">${v}</div><div class="day-bar" style="height:${h}px" title="${dateStr}: ${v} visitors"></div><div class="day-label">${dayName}</div></div>`;
+    }).join('');
+
+    // Page Breakdown
+    const pageData=PAGES.map(p=>({name:PAGE_NAMES[p],total:allData[p].total||0,color:PAGE_COLORS[p]})).sort((a,b)=>b.total-a.total);
+    const maxPage=Math.max(...pageData.map(p=>p.total),1);
+    document.getElementById('pageBreakdown').innerHTML=pageData.map(p=>
+        `<div class="chart-bar"><div class="bar-label">${p.name}</div><div class="bar-track"><div class="bar-fill" style="width:${(p.total/maxPage)*100}%;background:${p.color}"></div></div><div class="bar-val">${p.total}</div></div>`
+    ).join('');
+
+    // Top Cities
+    const cities=Object.entries(allCities).sort((a,b)=>b[1]-a[1]).slice(0,12);
+    const maxCity=cities.length?cities[0][1]:1;
+    document.getElementById('topCities').innerHTML=cities.map(([city,cnt])=>
+        `<div class="chart-bar"><div class="bar-label" style="width:180px;font-size:12px;">${city.split(',')[0]}</div><div class="bar-track"><div class="bar-fill" style="width:${(cnt/maxCity)*100}%;background:#8b5cf6"></div></div><div class="bar-val">${cnt}</div></div>`
+    ).join('');
+
+    // Top Countries
+    const COUNTRY_NAMES={'US':'🇺🇸 United States','MX':'🇲🇽 Mexico','CA':'🇨🇦 Canada','GB':'🇬🇧 United Kingdom','AU':'🇦🇺 Australia','NZ':'🇳🇿 New Zealand','DE':'🇩🇪 Germany','FR':'🇫🇷 France','ES':'🇪🇸 Spain','JP':'🇯🇵 Japan','BR':'🇧🇷 Brazil','IN':'🇮🇳 India','SG':'🇸🇬 Singapore'};
+    const countries=Object.entries(allCountries).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    const maxCountry=countries.length?countries[0][1]:1;
+    document.getElementById('topCountries').innerHTML=countries.map(([code,cnt])=>
+        `<div class="chart-bar"><div class="bar-label" style="width:160px;font-size:12px;">${COUNTRY_NAMES[code]||code}</div><div class="bar-track"><div class="bar-fill" style="width:${(cnt/maxCountry)*100}%;background:#f59e0b"></div></div><div class="bar-val">${cnt}</div></div>`
+    ).join('');
+
+    // Today's Activity Table
+    const tbody=document.querySelector('#todayTable tbody');
+    tbody.innerHTML=PAGES.map(p=>{
+        const d=allData[p];
+        const todayData=(d.days||[]).find(dy=>dy.date===today);
+        const visitors=todayData?todayData.uniqueVisitors:0;
+        const topCity=todayData?Object.entries(todayData.cities||{}).sort((a,b)=>b[1]-a[1])[0]:null;
+        return `<tr><td><span class="dot" style="background:${PAGE_COLORS[p]}"></span>${PAGE_NAMES[p]}</td><td style="font-weight:700;color:#06b6d4;">${visitors}</td><td style="color:#8b8fa3;">${topCity?topCity[0].split(',')[0]:'—'}</td></tr>`;
+    }).sort((a,b)=>0).join('');
+
+    // Traffic Sources (referrers)
+    const REF_API='https://visitor-counter.newtonmac.workers.dev/stats/referrers';
+    const refPages=['paddlepoint','conditions','clubs','weather','events','gear','federations'];
+    const refNames={paddlepoint:'Home',conditions:'Water Conditions',clubs:'Paddle Clubs',weather:'Weather',events:'Events',gear:'Gear',federations:'Federations'};
+    const allRefs={};
+    await Promise.all(refPages.map(async p=>{
+        try{const r=await fetch(`${REF_API}?page=${p}`);allRefs[p]=await r.json();}catch(e){allRefs[p]={totals:{}};}
+    }));
+    // Aggregate all referrers across pages (external only)
+    const extTotals={};
+    const perPage={};
+    for(const p of refPages){
+        const refs=allRefs[p].totals||{};
+        perPage[p]=refs;
+        for(const [src,cnt] of Object.entries(refs)){
+            if(src==='paddlepoint.org') continue;
+            extTotals[src]=(extTotals[src]||0)+cnt;
+        }
+    }
+    const srcColors={'Direct':'#fbbf24','google.com':'#34d399','com.google.android.googlequicksearchbox':'#34d399','facebook.com':'#60a5fa','m.facebook.com':'#60a5fa','lm.facebook.com':'#60a5fa','com.reddit.frontpage':'#f97316','reddit.com':'#f97316','twitter.com':'#38bdf8','x.com':'#38bdf8','instagram.com':'#e879f9','youtube.com':'#ef4444'};
+    const topSources=Object.entries(extTotals).sort((a,b)=>b[1]-a[1]);
+    const maxSrc=topSources.length?topSources[0][1]:1;
+    let refHTML='<div>';
+    refHTML+='<h4 style="font-size:13px;color:#8b8fa3;margin-bottom:10px;">All External Sources</h4>';
+    if(topSources.length===0) refHTML+='<div style="color:#6b7080;font-size:13px;padding:12px;">No external referrers yet</div>';
+    else refHTML+=topSources.map(([src,cnt])=>{
+        const color=srcColors[src]||'#a78bfa';
+        const label=src.replace('com.google.android.googlequicksearchbox','Google App').replace('com.reddit.frontpage','Reddit App').replace('m.facebook.com','Facebook Mobile').replace('lm.facebook.com','Facebook Link');
+        return `<div class="chart-bar"><div class="bar-label" style="width:160px;font-size:12px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:6px;"></span>${label}</div><div class="bar-track"><div class="bar-fill" style="width:${(cnt/maxSrc)*100}%;background:${color}"></div></div><div class="bar-val">${cnt}</div></div>`;
+    }).join('');
+    refHTML+='</div>';
+    // Per-page breakdown
+    refHTML+='<div>';
+    refHTML+='<h4 style="font-size:13px;color:#8b8fa3;margin-bottom:10px;">Sources by Page</h4>';
+    refHTML+='<table style="width:100%;font-size:12px;border-collapse:collapse;">';
+    refHTML+='<tr style="border-bottom:1px solid #2d3040;"><th style="text-align:left;padding:6px 8px;color:#6b7080;">Page</th><th style="text-align:left;padding:6px 8px;color:#6b7080;">Top Source</th><th style="text-align:right;padding:6px 8px;color:#6b7080;">Visits</th></tr>';
+    for(const p of refPages){
+        const refs=Object.entries(perPage[p]||{}).filter(([s])=>s!=='paddlepoint.org').sort((a,b)=>b[1]-a[1]);
+        const top=refs[0];
+        const color=top?srcColors[top[0]]||'#a78bfa':'transparent';
+        const label=top?top[0].replace('com.google.android.googlequicksearchbox','Google App').replace('com.reddit.frontpage','Reddit App').replace('m.facebook.com','FB Mobile').replace('lm.facebook.com','FB Link'):'—';
+        refHTML+=`<tr style="border-bottom:1px solid #1a1d28;"><td style="padding:6px 8px;color:#e1e4e8;">${refNames[p]}</td><td style="padding:6px 8px;"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${color};margin-right:4px;"></span>${label}</td><td style="padding:6px 8px;text-align:right;color:#06b6d4;font-weight:600;">${top?top[1]:'0'}</td></tr>`;
+    }
+    refHTML+='</table></div>';
+    document.getElementById('referrerSection').innerHTML=refHTML;
+
+    // Visitor Map
+    renderVisitorMap(allData);
+
+    if(btn){btn.disabled=false;btn.textContent='↻ Refresh';}
+}
+
+function refreshTraffic(){loadTraffic();}
+
+function kpi(val,label,sub){
+    return `<div class="kpi"><div class="num">${val}</div><div class="label">${label}</div><div class="sub">${sub}</div></div>`;
+}
+
+let visitorMapInstance = null;
+function renderVisitorMap(allData) {
+    if (typeof google === 'undefined' || !google.maps) {
+        document.getElementById('visitorMap').innerHTML = '<div style="padding:40px;text-align:center;color:#6b7080;">Loading map...</div>';
+        setTimeout(() => renderVisitorMap(allData), 1000);
+        return;
+    }
+    // Aggregate all coords across all pages
+    const allCoords = {};
+    for (const p of Object.keys(allData)) {
+        const days = allData[p].days || [];
+        for (const day of days) {
+            const coords = day.coords || {};
+            const cities = day.cities || {};
+            for (const [city, ll] of Object.entries(coords)) {
+                if (!allCoords[city]) allCoords[city] = { lat: ll.lat, lng: ll.lng, count: 0 };
+                allCoords[city].count += (cities[city] || 1);
+            }
+        }
+    }
+    const points = Object.entries(allCoords);
+    if (points.length === 0) {
+        document.getElementById('visitorMap').innerHTML = '<div style="padding:40px;text-align:center;color:#6b7080;">No location data yet</div>';
+        return;
+    }
+    if (!visitorMapInstance) {
+        visitorMapInstance = new google.maps.Map(document.getElementById('visitorMap'), {
+            center: { lat: 30, lng: -40 },
+            zoom: 2,
+            mapTypeId: 'hybrid',
+            disableDefaultUI: true,
+            zoomControl: true,
+            styles: [
+                { elementType: 'geometry', stylers: [{ color: '#1a1d28' }] },
+                { elementType: 'labels.text.stroke', stylers: [{ color: '#1a1d28' }] },
+                { elementType: 'labels.text.fill', stylers: [{ color: '#6b7080' }] },
+                { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0c4a6e' }] },
+            ]
+        });
+    }
+    // Clear old markers
+    if (visitorMapInstance._markers) visitorMapInstance._markers.forEach(m => m.setMap(null));
+    visitorMapInstance._markers = [];
+    const bounds = new google.maps.LatLngBounds();
+    const maxCount = Math.max(...points.map(([, d]) => d.count), 1);
+    points.forEach(([city, data]) => {
+        const scale = 8 + (data.count / maxCount) * 20;
+        const marker = new google.maps.Marker({
+            position: { lat: data.lat, lng: data.lng },
+            map: visitorMapInstance,
+            title: `${city.split(',')[0]}: ${data.count} visitors`,
+            icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: scale,
+                fillColor: '#06b6d4',
+                fillOpacity: 0.6,
+                strokeColor: '#22d3ee',
+                strokeWeight: 1,
+            }
+        });
+        const info = new google.maps.InfoWindow({
+            content: `<div style="color:#000;font-size:13px;padding:4px;"><strong>${city.split(',')[0]}</strong><br>${data.count} visitor${data.count > 1 ? 's' : ''}</div>`
+        });
+        marker.addListener('click', () => info.open(visitorMapInstance, marker));
+        visitorMapInstance._markers.push(marker);
+        bounds.extend(marker.getPosition());
+    });
+    if (points.length > 1) visitorMapInstance.fitBounds(bounds, 40);
+    else { visitorMapInstance.setCenter({ lat: points[0][1].lat, lng: points[0][1].lng }); visitorMapInstance.setZoom(5); }
+}
+</script>
+<script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAR81pUTUz5ON7ZBuoouTh2RTHyECr6yvg"></script>
+</body>
+</html>

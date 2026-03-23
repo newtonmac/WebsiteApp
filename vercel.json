@@ -66,18 +66,6 @@
       "has": [{ "type": "host", "value": "www.evrouteplanner.org" }],
       "destination": "/ev-route-planner.html",
       "permanent": false
-    },
-    {
-      "source": "/",
-      "has": [{ "type": "host", "value": "paddlepoint.org" }],
-      "destination": "/paddlepoint.html",
-      "permanent": false
-    },
-    {
-      "source": "/",
-      "has": [{ "type": "host", "value": "www.paddlepoint.org" }],
-      "destination": "/paddlepoint.html",
-      "permanent": false
     }
   ]
 }

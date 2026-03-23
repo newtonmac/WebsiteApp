@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PaddlePoint — Events Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f1117; color: #e1e4e8; min-height: 100vh; }
+        .header { background: #1a1d28; border-bottom: 1px solid #2d3040; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; }
+        .header h1 { font-size: 20px; background: linear-gradient(90deg, #f59e0b, #ef4444); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .header .stats { color: #8b8fa3; font-size: 13px; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .search-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+        .search-bar input, .search-bar select { background: #1a1d28; border: 1px solid #2d3040; color: #e1e4e8; padding: 10px 14px; border-radius: 8px; font-size: 14px; }
+        .search-bar input { flex: 1; min-width: 200px; }
+        .search-bar select { min-width: 140px; }
+        .search-bar button { background: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; }
+        .search-bar button:hover { background: #2563eb; }
+        .search-bar .btn-green { background: #22c55e; }
+        .search-bar .btn-green:hover { background: #16a34a; }
+        .search-bar .btn-purple { background: #8b5cf6; }
+        .search-bar .btn-purple:hover { background: #7c3aed; }
+        .results-info { color: #8b8fa3; font-size: 13px; margin-bottom: 12px; }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { background: #1a1d28; color: #8b8fa3; padding: 8px 10px; text-align: left; position: sticky; top: 0; border-bottom: 2px solid #2d3040; white-space: nowrap; cursor: pointer; user-select: none; }
+        th:hover { color: #e1e4e8; }
+        td { padding: 6px 10px; border-bottom: 1px solid #1e2130; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        tr:hover { background: #1a1d28; cursor: pointer; }
+        td a { color: #60a5fa; text-decoration: none; }
+        td a:hover { text-decoration: underline; }
+        .type-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+        .dot-regatta { background: #3b82f6; } .dot-trial { background: #22c55e; } .dot-international { background: #8b5cf6; }
+        .dot-festival { background: #f59e0b; } .dot-clinic { background: #ec4899; } .dot-fun_paddle { background: #06b6d4; }
+        .tag { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 11px; background: rgba(6,182,212,0.15); color: #22d3ee; margin: 1px; }
+        .status-open { color: #22c55e; } .status-closed { color: #ef4444; } .status-upcoming { color: #f59e0b; } .status-sold_out { color: #ec4899; }
+        /* Modal */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; overflow-y: auto; }
+        .modal-overlay.open { display: flex; align-items: flex-start; justify-content: center; padding: 40px 20px; }
+        .modal { background: #1a1d28; border: 1px solid #2d3040; border-radius: 16px; padding: 24px; width: 100%; max-width: 700px; }
+        .modal h2 { font-size: 18px; color: #f59e0b; margin-bottom: 16px; }
+        .modal label { display: block; font-size: 12px; color: #8b8fa3; margin: 8px 0 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .modal input, .modal textarea, .modal select { width: 100%; background: #0f1117; border: 1px solid #2d3040; color: #e1e4e8; padding: 8px 12px; border-radius: 6px; font-size: 13px; font-family: inherit; }
+        .modal input:focus, .modal select:focus, .modal textarea:focus { border-color: #f59e0b; outline: none; }
+        .modal textarea { min-height: 80px; resize: vertical; }
+        .modal .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .modal .actions { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+        .modal .actions button { padding: 10px 24px; border-radius: 8px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; }
+        .btn-save { background: #22c55e; color: white; }
+        .btn-save:hover { background: #16a34a; }
+        .btn-cancel { background: #374151; color: #e1e4e8; }
+        .btn-delete { background: #ef4444; color: white; }
+        .btn-delete:hover { background: #dc2626; }
+        .toast { position: fixed; bottom: 20px; right: 20px; background: #22c55e; color: white; padding: 12px 24px; border-radius: 10px; font-weight: 600; z-index: 2000; display: none; }
+        .toast.error { background: #ef4444; }
+        .pagination { display: flex; gap: 8px; align-items: center; justify-content: center; margin-top: 16px; }
+        .pagination button { background: #1a1d28; border: 1px solid #2d3040; color: #e1e4e8; padding: 6px 14px; border-radius: 6px; cursor: pointer; }
+        .pagination button:hover { background: #2d3040; }
+        .pagination button.active { background: #3b82f6; border-color: #3b82f6; }
+        .pagination span { color: #8b8fa3; font-size: 13px; }
+        .login-box { max-width: 400px; margin: 100px auto; background: #1a1d28; padding: 30px; border-radius: 16px; border: 1px solid #2d3040; }
+        .login-box h2 { text-align: center; margin-bottom: 20px; color: #f59e0b; }
+        .login-box input { width: 100%; margin-bottom: 12px; background: #0f1117; border: 1px solid #2d3040; color: #e1e4e8; padding: 10px 14px; border-radius: 8px; font-size: 14px; }
+        .login-box button { width: 100%; background: #f59e0b; color: #000; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; }
+        /* Scraper */
+        .scraper-box { background: #1a1d28; border: 1px solid #2d3040; border-radius: 12px; padding: 20px; margin-top: 24px; }
+        .scraper-box h3 { font-size: 16px; color: #a78bfa; margin-bottom: 12px; }
+        .source-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; margin-bottom: 16px; }
+        .source-card { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid #2d3040; border-radius: 8px; font-size: 13px; }
+        .source-card input { margin: 0; accent-color: #f59e0b; }
+        .scrape-log { background: #0f1117; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 11px; color: #64748b; max-height: 250px; overflow-y: auto; margin-top: 12px; display: none; white-space: pre-wrap; }
+        .scrape-log.open { display: block; }
+        .log-ok { color: #22c55e; } .log-err { color: #ef4444; } .log-info { color: #3b82f6; }
+    </style>
+</head>
+<body>
+    <!-- Login -->
+    <div id="loginView" class="login-box">
+        <h2>🏁 Events Admin</h2>
+        <input type="password" id="adminPass" placeholder="Admin password" onkeydown="if(event.key==='Enter')doLogin()">
+        <button onclick="doLogin()">Log In</button>
+    </div>
+
+    <!-- Main admin UI -->
+    <div id="adminView" style="display:none;">
+        <div class="header">
+            <div><h1>🏁 PaddlePoint Events Admin</h1></div>
+            <div class="stats" id="statsBar">Loading...</div>
+        </div>
+        <div class="container">
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="Search by name, city, country, sport, organizer..." onkeydown="if(event.key==='Enter')doSearch()">
+                <select id="filterType"><option value="">All Types</option><option value="regatta">Regatta</option><option value="trial">Trial</option><option value="international">International</option><option value="festival">Festival</option><option value="clinic">Clinic</option><option value="fun_paddle">Fun Paddle</option></select>
+                <select id="filterSport"><option value="">All Sports</option><option value="kayak">Kayak</option><option value="canoe">Canoe</option><option value="sup">SUP</option><option value="outrigger">Outrigger</option><option value="dragon_boat">Dragon Boat</option><option value="surfski">Surfski</option><option value="rowing">Rowing</option></select>
+                <select id="filterLevel"><option value="">All Levels</option><option value="local">Local</option><option value="regional">Regional</option><option value="national">National</option><option value="international">International</option><option value="olympic">Olympic</option></select>
+                <button onclick="doSearch()">🔍 Search</button>
+                <button onclick="resetSearch()">↺ Reset</button>
+                <button class="btn-purple" onclick="showAddEvent()">➕ Add Event</button>
+                <a href="paddle-events.html" style="background:#374151;color:#e1e4e8;padding:10px 16px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;">← Public Page</a>
+            </div>
+            <div class="results-info" id="resultsInfo"></div>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr>
+                        <th onclick="sortBy('id')">#</th>
+                        <th onclick="sortBy('name')">Name ↕</th>
+                        <th onclick="sortBy('event_type')">Type ↕</th>
+                        <th onclick="sortBy('start_date')">Date ↕</th>
+                        <th onclick="sortBy('city')">Location ↕</th>
+                        <th>Sports</th>
+                        <th onclick="sortBy('level')">Level ↕</th>
+                        <th>Status</th>
+                        <th>Website</th>
+                        <th>Actions</th>
+                    </tr></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+            <div class="pagination" id="pagination"></div>
+
+            <!-- AI Scraper -->
+            <div class="scraper-box">
+                <h3>🤖 AI Event Scraper</h3>
+                <p style="color:#8b8fa3;font-size:13px;margin-bottom:12px;">Scrapes governing body websites using Claude AI + web search. Deduplicates by name + date.</p>
+                <div class="source-grid" id="sourceGrid"></div>
+                <div class="search-bar" style="margin-bottom:0;">
+                    <button class="btn-purple" id="scrapeBtn" onclick="runScrape()">🔍 Run Scrape</button>
+                    <span id="scrapeStatus" style="color:#8b8fa3;font-size:13px;"></span>
+                </div>
+                <div class="scrape-log" id="scrapeLog"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit/Add Modal -->
+    <div class="modal-overlay" id="editModal">
+        <div class="modal">
+            <h2 id="modalTitle">Edit Event</h2>
+            <input type="hidden" id="editId">
+            <div class="row">
+                <div><label>Event Name *</label><input id="ed_name"></div>
+                <div><label>Event Type</label><select id="ed_event_type"><option value="regatta">Regatta</option><option value="trial">Trial</option><option value="international">International</option><option value="festival">Festival</option><option value="clinic">Clinic</option><option value="fun_paddle">Fun Paddle</option></select></div>
+            </div>
+            <div class="row">
+                <div><label>Sports (comma-sep)</label><input id="ed_sports" placeholder="kayak,canoe,sup,outrigger"></div>
+                <div><label>Level</label><select id="ed_level"><option value="local">Local</option><option value="regional">Regional</option><option value="national" selected>National</option><option value="international">International</option><option value="olympic">Olympic</option></select></div>
+            </div>
+            <div class="row">
+                <div><label>Start Date</label><input type="date" id="ed_start_date"></div>
+                <div><label>End Date</label><input type="date" id="ed_end_date"></div>
+            </div>
+            <div class="row">
+                <div><label>Venue</label><input id="ed_venue"></div>
+                <div><label>City</label><input id="ed_city"></div>
+            </div>
+            <div class="row">
+                <div><label>State / Province</label><input id="ed_state"></div>
+                <div><label>Country</label><input id="ed_country" value="United States"></div>
+            </div>
+            <div class="row">
+                <div><label>Organizer</label><input id="ed_organizer"></div>
+                <div><label>Website URL</label><input id="ed_website" placeholder="https://..."></div>
+            </div>
+            <div class="row">
+                <div><label>Registration Status</label><select id="ed_registration_status"><option value="upcoming">Upcoming</option><option value="open">Open</option><option value="closed">Closed</option><option value="sold_out">Sold Out</option></select></div>
+                <div><label>Registration Deadline</label><input type="date" id="ed_registration_deadline"></div>
+            </div>
+            <div class="row">
+                <div><label>Latitude</label><input id="ed_lat" type="number" step="any"></div>
+                <div><label>Longitude</label><input id="ed_lng" type="number" step="any"></div>
+            </div>
+            <div><label>Description</label><textarea id="ed_description"></textarea></div>
+            <div class="row">
+                <div><label>Featured</label><select id="ed_featured"><option value="0">No</option><option value="1">Yes ⭐</option></select></div>
+                <div><label>Source</label><input id="ed_source" readonly style="opacity:0.6;"></div>
+            </div>
+            <div class="actions">
+                <button class="btn-delete" onclick="deleteEvent()">🗑 Delete</button>
+                <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+                <button class="btn-save" onclick="saveEvent()">💾 Save</button>
+            </div>
+        </div>
+    </div>
+    <div class="toast" id="toast"></div>
+
+<script>
+    const API_TOKEN = 'pp-clubs-7742-v1';
+    const SOURCES = [
+        // North America
+        { name: 'American Canoe Association', flag: '🇺🇸' },
+        { name: 'USA SUP', flag: '🇺🇸' },
+        { name: 'Canoe Kayak Canada', flag: '🇨🇦' },
+        { name: 'US Dragon Boat Federation', flag: '🇺🇸' },
+        { name: 'Dragon Boat Canada', flag: '🇨🇦' },
+        { name: 'USA Surfing (SUP)', flag: '🇺🇸' },
+        // International
+        { name: 'ICF', flag: '🌍' },
+        { name: 'European Canoe Association', flag: '🇪🇺' },
+        // Europe
+        { name: 'British Canoeing', flag: '🇬🇧' },
+        { name: 'French Canoe Federation (FFCK)', flag: '🇫🇷' },
+        { name: 'Deutscher Kanu-Verband', flag: '🇩🇪' },
+        { name: 'Spanish Canoe Federation', flag: '🇪🇸' },
+        { name: 'Italian Canoe Federation', flag: '🇮🇹' },
+        // Oceania
+        { name: 'Paddle Australia', flag: '🇦🇺' },
+        { name: 'Paddle New Zealand', flag: '🇳🇿' },
+        // SUP Circuits
+        { name: 'European SUP League', flag: '🏄' },
+        { name: 'TotalSUP Events', flag: '🌊' },
+        { name: 'PaddleGuru Races', flag: '🏁' },
+        // Outrigger
+        { name: 'IVF (Va\'a)', flag: '🛶' },
+        { name: 'USAORCA', flag: '🇺🇸' },
+        // Dragon Boat International
+        { name: 'IDBF', flag: '🐉' },
+    ];
+    const TYPE_LABELS = {regatta:'Regatta',trial:'Trial',international:'International',festival:'Festival',clinic:'Clinic',fun_paddle:'Fun Paddle'};
+    const FIELDS = ['name','event_type','sports','level','start_date','end_date','venue','city','state','country','organizer','website','registration_status','registration_deadline','lat','lng','description','featured','source'];
+
+    let allEvents = [], filtered = [], currentPage = 0, perPage = 50;
+    let sortField = 'start_date', sortDir = 1;
+
+    function doLogin() {
+        if (document.getElementById('adminPass').value === 'paddle2026') {
+            document.getElementById('loginView').style.display = 'none';
+            document.getElementById('adminView').style.display = 'block';
+            loadEvents();
+            renderSources();
+        } else alert('Wrong password');
+    }
+    if(new URLSearchParams(location.search).get('autologin')==='1'){document.getElementById('adminPass').value='paddle2026';doLogin();}
+
+    async function loadEvents() {
+        try {
+            const res = await fetch('/api/events?refresh=1', { headers: { 'X-API-Token': API_TOKEN } });
+            allEvents = await res.json();
+            doSearch();
+            updateStats();
+        } catch (e) { showToast('Failed to load: ' + e.message, true); }
+    }
+
+    function updateStats() {
+        const types = {};
+        allEvents.forEach(e => { types[e.event_type] = (types[e.event_type] || 0) + 1; });
+        const parts = Object.entries(types).sort((a,b) => b[1]-a[1]).map(([t,c]) => `${TYPE_LABELS[t]||t}: <strong>${c}</strong>`).join(' · ');
+        document.getElementById('statsBar').innerHTML = `Total: <strong>${allEvents.length}</strong> events · ${parts}`;
+    }
+
+    function doSearch() {
+        const q = document.getElementById('searchInput').value.toLowerCase();
+        const type = document.getElementById('filterType').value;
+        const sport = document.getElementById('filterSport').value;
+        const level = document.getElementById('filterLevel').value;
+        filtered = allEvents.filter(ev => {
+            if (type && ev.event_type !== type) return false;
+            if (sport && (!ev.sports || !ev.sports.includes(sport))) return false;
+            if (level && ev.level !== level) return false;
+            if (q) {
+                const h = [ev.name, ev.city, ev.state, ev.country, ev.organizer, ev.sports, ev.venue, ev.description].join(' ').toLowerCase();
+                if (!h.includes(q)) return false;
+            }
+            return true;
+        });
+        filtered.sort((a, b) => {
+            const av = a[sortField] || '', bv = b[sortField] || '';
+            return av < bv ? -sortDir : av > bv ? sortDir : 0;
+        });
+        currentPage = 0;
+        renderTable();
+        document.getElementById('resultsInfo').textContent = `Showing ${filtered.length} of ${allEvents.length} events`;
+    }
+
+    function resetSearch() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('filterType').value = '';
+        document.getElementById('filterSport').value = '';
+        document.getElementById('filterLevel').value = '';
+        doSearch();
+    }
+
+    function sortBy(field) {
+        if (sortField === field) sortDir *= -1;
+        else { sortField = field; sortDir = 1; }
+        doSearch();
+    }
+
+    function renderTable() {
+        const start = currentPage * perPage;
+        const page = filtered.slice(start, start + perPage);
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = page.map(ev => {
+            const loc = [ev.city, ev.state, ev.country].filter(Boolean).join(', ');
+            const dateStr = ev.start_date ? ev.start_date.substring(0, 10) : '—';
+            const sports = (ev.sports||'').split(',').filter(Boolean).map(s => `<span class="tag">${s.trim()}</span>`).join('');
+            const status = ev.registration_status || 'upcoming';
+            const web = ev.website ? `<a href="${ev.website}" target="_blank" onclick="event.stopPropagation()">🔗</a>` : '';
+            return `<tr onclick="openEdit(${ev.id})">
+                <td>${ev.id}</td>
+                <td><span class="type-dot dot-${ev.event_type}"></span>${ev.name}${ev.featured ? ' ⭐' : ''}</td>
+                <td>${TYPE_LABELS[ev.event_type] || ev.event_type}</td>
+                <td>${dateStr}</td>
+                <td>${loc}</td>
+                <td>${sports}</td>
+                <td>${ev.level || ''}</td>
+                <td><span class="status-${status}">${status.replace('_',' ')}</span></td>
+                <td>${web}</td>
+                <td><button onclick="event.stopPropagation();openEdit(${ev.id})" style="background:#3b82f6;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px;">Edit</button></td>
+            </tr>`;
+        }).join('');
+        // Pagination
+        const pages = Math.ceil(filtered.length / perPage);
+        const pag = document.getElementById('pagination');
+        if (pages <= 1) { pag.innerHTML = ''; return; }
+        let html = `<span>Page ${currentPage+1} of ${pages}</span>`;
+        for (let i = 0; i < pages; i++) {
+            html += `<button class="${i===currentPage?'active':''}" onclick="currentPage=${i};renderTable()">${i+1}</button>`;
+        }
+        pag.innerHTML = html;
+    }
+
+    function showAddEvent() {
+        document.getElementById('editId').value = '';
+        document.getElementById('modalTitle').textContent = '➕ Add New Event';
+        FIELDS.forEach(f => {
+            const el = document.getElementById('ed_' + f);
+            if (!el) return;
+            if (f === 'country') el.value = 'United States';
+            else if (f === 'event_type') el.value = 'regatta';
+            else if (f === 'level') el.value = 'national';
+            else if (f === 'registration_status') el.value = 'upcoming';
+            else if (f === 'featured') el.value = '0';
+            else el.value = '';
+        });
+        document.getElementById('editModal').classList.add('open');
+    }
+
+    function openEdit(id) {
+        const ev = allEvents.find(e => e.id === id);
+        if (!ev) return;
+        document.getElementById('editId').value = id;
+        document.getElementById('modalTitle').textContent = 'Edit Event #' + id;
+        FIELDS.forEach(f => {
+            const el = document.getElementById('ed_' + f);
+            if (!el) return;
+            if (f === 'start_date' || f === 'end_date' || f === 'registration_deadline')
+                el.value = ev[f] ? String(ev[f]).substring(0, 10) : '';
+            else if (f === 'featured') el.value = ev[f] ? '1' : '0';
+            else el.value = ev[f] || '';
+        });
+        document.getElementById('editModal').classList.add('open');
+    }
+
+    function closeModal() { document.getElementById('editModal').classList.remove('open'); }
+
+    async function saveEvent() {
+        const id = document.getElementById('editId').value;
+        const data = {};
+        if (id) data.id = parseInt(id);
+        FIELDS.forEach(f => {
+            const el = document.getElementById('ed_' + f);
+            if (!el) return;
+            if (f === 'featured') data[f] = el.value === '1';
+            else data[f] = el.value.trim() || null;
+        });
+        if (!data.name) { showToast('Event name is required', true); return; }
+        try {
+            const res = await fetch('/api/save-event', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-API-Token': API_TOKEN },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            if (result.error) throw new Error(result.error);
+            closeModal();
+            showToast(id ? 'Event updated ✓' : 'Event added ✓');
+            await loadEvents();
+        } catch (e) { showToast('Save failed: ' + e.message, true); }
+    }
+
+    async function deleteEvent() {
+        const id = document.getElementById('editId').value;
+        if (!id || !confirm('Delete this event permanently from the database?')) return;
+        try {
+            const res = await fetch('/api/save-event', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json', 'X-API-Token': API_TOKEN },
+                body: JSON.stringify({ id: parseInt(id) })
+            });
+            const result = await res.json();
+            if (result.error) throw new Error(result.error);
+            closeModal();
+            showToast('Event deleted', true);
+            await loadEvents();
+        } catch (e) { showToast('Delete failed: ' + e.message, true); }
+    }
+
+    function showToast(msg, isError) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = 'toast' + (isError ? ' error' : '');
+        t.style.display = 'block';
+        setTimeout(() => t.style.display = 'none', 3000);
+    }
+
+    // Scraper
+    function renderSources() {
+        document.getElementById('sourceGrid').innerHTML = SOURCES.map((s, i) =>
+            `<label class="source-card"><input type="checkbox" checked data-idx="${i}"> ${s.flag} ${s.name} <span id="srcSt${i}" style="margin-left:auto;font-size:11px;color:#8b8fa3;"></span></label>`
+        ).join('');
+    }
+
+    async function runScrape() {
+        const btn = document.getElementById('scrapeBtn');
+        const log = document.getElementById('scrapeLog');
+        const status = document.getElementById('scrapeStatus');
+        btn.disabled = true;
+        log.classList.add('open');
+        log.innerHTML = '';
+        const checked = [...document.querySelectorAll('.source-card input:checked')].map(el => parseInt(el.dataset.idx));
+        if (!checked.length) { log.innerHTML = '<span class="log-err">No sources selected</span>'; btn.disabled = false; return; }
+
+        status.textContent = `Scraping ${checked.length} sources (16s delay between each)...`;
+        let totalInserted = 0;
+        const delay = (ms) => new Promise(r => setTimeout(r, ms));
+
+        for (let ci = 0; ci < checked.length; ci++) {
+            const idx = checked[ci];
+            if (ci > 0) {
+                const wait = 16;
+                for (let s = wait; s > 0; s--) {
+                    status.textContent = `Waiting ${s}s before next source... (${ci}/${checked.length} done)`;
+                    await delay(1000);
+                }
+            }
+            const src = SOURCES[idx];
+            const stEl = document.getElementById('srcSt' + idx);
+            stEl.textContent = '⏳';
+            log.innerHTML += `<span class="log-info">[${new Date().toLocaleTimeString()}] Scraping ${src.name}...</span>\n`;
+            log.scrollTop = log.scrollHeight;
+            try {
+                const res = await fetch('/api/scrape-events', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-API-Token': API_TOKEN },
+                    body: JSON.stringify({ sourceIndex: idx })
+                });
+                const data = await res.json();
+                const r = data.results && data.results[0];
+                if (r && r.status === 'ok') {
+                    stEl.textContent = `✅ ${r.found} found, ${r.inserted} new`;
+                    log.innerHTML += `<span class="log-ok">[${new Date().toLocaleTimeString()}] ${src.name}: ${r.found} events found, ${r.inserted} new inserted</span>\n`;
+                    totalInserted += r.inserted;
+                } else {
+                    stEl.textContent = '⚠️';
+                    log.innerHTML += `<span class="log-err">[${new Date().toLocaleTimeString()}] ${src.name}: ${r ? r.error || r.status : 'unknown'}</span>\n`;
+                }
+            } catch (e) {
+                stEl.textContent = '❌';
+                log.innerHTML += `<span class="log-err">[${new Date().toLocaleTimeString()}] ${src.name}: ${e.message}</span>\n`;
+            }
+            log.scrollTop = log.scrollHeight;
+        }
+        status.textContent = `Done! ${totalInserted} new events added.`;
+        btn.disabled = false;
+        if (totalInserted > 0) await loadEvents();
+    }
+</script>
+</body>
+</html>

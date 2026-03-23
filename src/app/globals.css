@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+:root {
+  --pp-cyan: #0ea5e9;
+  --pp-dark: #1a1d28;
+  --pp-navy: #2d3040;
+  --pp-text: #e1e4e8;
+  --pp-muted: #8b8fa3;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  min-height: 100vh;
+}
+
+/* Smooth page transitions */
+main {
+  animation: fadeIn 0.2s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

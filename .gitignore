@@ -1,5 +1,6 @@
-.DS_Store
 *.xcuserstate
+.DS_Store
+.next
 models/*.bin
 models/*.gltf
 node_modules/
