@@ -62,7 +62,7 @@ module.exports = async (req, res) => {
 
 For each event found, return ONLY a JSON array (no markdown, no backticks) with objects containing:
 - name (string)
-- event_type: one of "regatta","trial","international","festival","clinic","fun_paddle"
+- event_type: one of "regatta","race","championship","competition","trial","international","festival","clinic","fun_paddle","workshop","conference","exhibition","training_camp","qualifier"
 - sports: comma-separated from kayak,canoe,sup,outrigger,dragon_boat,surfski,rowing,canoe_polo,prone_paddle
 - level: one of "local","regional","national","international","olympic"
 - start_date: YYYY-MM-DD format
@@ -121,18 +121,28 @@ Return ONLY the JSON array, nothing else.` }]
       }
 
       // Insert new events (skip duplicates by name + start_date)
+      const VALID_TYPES = ['regatta','trial','international','festival','clinic','fun_paddle','race','championship','competition','workshop','conference','exhibition','training_camp','qualifier'];
+      const TYPE_MAP = { 'sprint':'race', 'slalom':'race', 'marathon':'race', 'relay':'race', 'time_trial':'trial', 'time trial':'trial', 'world_cup':'international', 'world cup':'international', 'worlds':'international', 'nationals':'championship', 'national':'championship', 'camp':'training_camp', 'symposium':'conference', 'seminar':'workshop', 'demo':'exhibition', 'expo':'exhibition', 'fun':'fun_paddle', 'paddle':'fun_paddle', 'paddlefest':'festival', 'tour':'race' };
+      const VALID_LEVELS = ['local','regional','national','international','olympic'];
+      const VALID_REG = ['open','closed','upcoming','sold_out'];
       let inserted = 0;
       for (const ev of events) {
         if (!ev.name || !ev.start_date) continue;
         const existing = await query('SELECT id FROM events WHERE name = ? AND start_date = ?', [ev.name, ev.start_date]);
         if (existing.length > 0) continue;
+        const rawType = (ev.event_type || 'regatta').toLowerCase().trim();
+        const eventType = VALID_TYPES.includes(rawType) ? rawType : (TYPE_MAP[rawType] || 'regatta');
+        const rawLevel = (ev.level || 'regional').toLowerCase().trim();
+        const level = VALID_LEVELS.includes(rawLevel) ? rawLevel : 'regional';
+        const rawReg = (ev.registration_status || 'upcoming').toLowerCase().trim();
+        const regStatus = VALID_REG.includes(rawReg) ? rawReg : 'upcoming';
         const row = {
-          name: ev.name, event_type: ev.event_type || 'regatta', sports: ev.sports || '',
-          level: ev.level || 'regional', start_date: ev.start_date, end_date: ev.end_date || ev.start_date,
+          name: ev.name, event_type: eventType, sports: ev.sports || '',
+          level: level, start_date: ev.start_date, end_date: ev.end_date || ev.start_date,
           venue: ev.venue || null, city: ev.city || null, state: ev.state || null,
           country: ev.country || null, organizer: ev.organizer || src.name,
           description: ev.description || null, website: ev.website || null,
-          registration_status: ev.registration_status || 'upcoming',
+          registration_status: regStatus,
           source: src.name, source_url: src.url
         };
         const cols = Object.keys(row);

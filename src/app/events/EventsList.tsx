@@ -12,6 +12,10 @@ const TYPE_COLORS: Record<string, string> = {
   regatta: 'bg-blue-100 text-blue-700', trial: 'bg-green-100 text-green-700',
   international: 'bg-purple-100 text-purple-700', festival: 'bg-amber-100 text-amber-700',
   clinic: 'bg-cyan-100 text-cyan-700', race: 'bg-red-100 text-red-700',
+  championship: 'bg-yellow-100 text-yellow-700', competition: 'bg-orange-100 text-orange-700',
+  workshop: 'bg-teal-100 text-teal-700', conference: 'bg-indigo-100 text-indigo-700',
+  exhibition: 'bg-pink-100 text-pink-700', training_camp: 'bg-lime-100 text-lime-700',
+  qualifier: 'bg-rose-100 text-rose-700', fun_paddle: 'bg-emerald-100 text-emerald-700',
 };
 
 const LEVEL_COLORS: Record<string, string> = {
