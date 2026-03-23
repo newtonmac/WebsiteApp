@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 export function ConditionsClient() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [loaded, setLoaded] = useState(false);
+  const styleRef = useRef<HTMLStyleElement | null>(null);
 
   useEffect(() => {
     if (loaded) return;
@@ -16,47 +17,51 @@ export function ConditionsClient() {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
 
-        // Extract styles but scope them to avoid leaking into Next.js header
+        // Extract styles and scope them inside .legacy-conditions wrapper
+        let allCss = '';
         doc.querySelectorAll('style').forEach(style => {
           let css = style.textContent || '';
-          // Remove header/nav CSS rules that would conflict with Next.js layout
-          css = css.replace(/\.header\s*\{[^}]*\}/g, '');
-          css = css.replace(/\.header[^{]*\{[^}]*\}/g, '');
-          css = css.replace(/\.back-btn[^{]*\{[^}]*\}/g, '');
-          css = css.replace(/\.subtitle[^{]*\{[^}]*\}/g, '');
-          css = css.replace(/\.header-left[^{]*\{[^}]*\}/g, '');
-          css = css.replace(/\.header-right[^{]*\{[^}]*\}/g, '');
-          css = css.replace(/\.header-logo[^{]*\{[^}]*\}/g, '');
-          css = css.replace(/\.site-footer[^{]*\{[^}]*\}/g, '');
-          css = css.replace(/\.footer[^{]*\{[^}]*\}/g, '');
-          // Remove body reset rules that fight Next.js
+          // Remove rules that conflict with Next.js layout
           css = css.replace(/body\s*\{[^}]*\}/g, '');
           css = css.replace(/html\s*\{[^}]*\}/g, '');
           css = css.replace(/\*\s*\{[^}]*box-sizing[^}]*\}/g, '');
-          if (css.trim()) {
-            const s = document.createElement('style');
-            s.setAttribute('data-legacy', 'conditions');
-            s.textContent = css;
-            document.head.appendChild(s);
-          }
+          allCss += css + '\n';
         });
 
-        // Remove old header, footer, nav, pp-shared
+        // Scope all CSS rules inside .legacy-conditions to prevent leaking
+        const scopedCss = allCss.replace(
+          /([^\r\n,{}]+)(,(?=[^}]*{)|\s*\{)/g,
+          (match, selector, rest) => {
+            const s = selector.trim();
+            // Skip @media, @keyframes, @font-face etc
+            if (s.startsWith('@') || s === '' || s.startsWith('from') || s.startsWith('to') || /^\d+%$/.test(s)) return match;
+            // Skip selectors already scoped
+            if (s.includes('.legacy-conditions')) return match;
+            return `.legacy-conditions ${s}${rest}`;
+          }
+        );
+
+        // Inject scoped styles
+        const styleEl = document.createElement('style');
+        styleEl.setAttribute('data-legacy', 'conditions');
+        styleEl.textContent = scopedCss;
+        document.head.appendChild(styleEl);
+        styleRef.current = styleEl;
+
+        // Remove old header, footer, nav
         const body = doc.body;
         body.querySelectorAll('.header, .site-footer, footer, script[src*="pp-shared"]').forEach(el => el.remove());
 
-        // Inject content (everything except scripts)
+        // Inject content
         if (containerRef.current) {
           const contentDiv = document.createElement('div');
           Array.from(body.children).forEach(child => {
-            if (child.tagName !== 'SCRIPT') {
-              contentDiv.appendChild(child.cloneNode(true));
-            }
+            if (child.tagName !== 'SCRIPT') contentDiv.appendChild(child.cloneNode(true));
           });
           containerRef.current.innerHTML = contentDiv.innerHTML;
         }
 
-        // Execute inline scripts in order
+        // Execute inline scripts
         body.querySelectorAll('script:not([src])').forEach(script => {
           if (script.textContent?.trim()) {
             const s = document.createElement('script');
@@ -70,26 +75,23 @@ export function ConditionsClient() {
         if (mapsScript && !document.querySelector('script[src*="maps.googleapis"]')) {
           const s = document.createElement('script');
           s.src = mapsScript.getAttribute('src') || '';
-          s.async = true;
-          s.defer = true;
+          s.async = true; s.defer = true;
           document.head.appendChild(s);
         }
-      } catch (err) {
-        console.error('Failed to load conditions content:', err);
-      }
+      } catch (err) { console.error('Failed to load conditions:', err); }
     }
-
     loadContent();
 
-    // Cleanup injected styles on unmount
+    // Cleanup: remove scoped styles on unmount (page navigation)
     return () => {
+      if (styleRef.current) { styleRef.current.remove(); styleRef.current = null; }
       document.querySelectorAll('style[data-legacy="conditions"]').forEach(s => s.remove());
     };
   }, [loaded]);
 
   return (
-    <div ref={containerRef} className="conditions-container">
-      <div className="flex items-center justify-center py-20 text-slate-400">
+    <div ref={containerRef} className="legacy-conditions">
+      <div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:'80px 0',color:'#94a3b8'}}>
         Loading water conditions...
       </div>
     </div>

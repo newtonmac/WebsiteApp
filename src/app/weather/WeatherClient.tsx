@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 export function WeatherClient() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [loaded, setLoaded] = useState(false);
+  const styleRef = useRef<HTMLStyleElement | null>(null);
 
   useEffect(() => {
     if (loaded) return;
@@ -16,39 +17,44 @@ export function WeatherClient() {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
 
-        // Extract styles but strip header/footer/body rules to avoid conflicts
+        // Extract and scope styles inside .legacy-weather
+        let allCss = '';
         doc.querySelectorAll('style').forEach(style => {
           let css = style.textContent || '';
-          css = css.replace(/\.header\s*\{[^}]*\}/g, '');
-          css = css.replace(/\.header[^{]*\{[^}]*\}/g, '');
-          css = css.replace(/\.back-btn[^{]*\{[^}]*\}/g, '');
-          css = css.replace(/\.subtitle[^{]*\{[^}]*\}/g, '');
-          css = css.replace(/\.header-left[^{]*\{[^}]*\}/g, '');
-          css = css.replace(/\.header-right[^{]*\{[^}]*\}/g, '');
-          css = css.replace(/\.header-logo[^{]*\{[^}]*\}/g, '');
-          css = css.replace(/\.footer[^{]*\{[^}]*\}/g, '');
           css = css.replace(/body\s*\{[^}]*\}/g, '');
           css = css.replace(/html\s*\{[^}]*\}/g, '');
           css = css.replace(/\*\s*\{[^}]*box-sizing[^}]*\}/g, '');
-          if (css.trim()) {
-            const s = document.createElement('style');
-            s.setAttribute('data-legacy', 'weather');
-            s.textContent = css;
-            document.head.appendChild(s);
-          }
+          allCss += css + '\n';
         });
 
-        // Remove old header, footer, nav, pp-shared
+        // Scope all CSS rules inside .legacy-weather
+        const scopedCss = allCss.replace(
+          /([^\r\n,{}]+)(,(?=[^}]*{)|\s*\{)/g,
+          (match, selector, rest) => {
+            const s = selector.trim();
+            if (s.startsWith('@') || s === '' || s.startsWith('from') || s.startsWith('to') || /^\d+%$/.test(s)) return match;
+            if (s.includes('.legacy-weather')) return match;
+            return `.legacy-weather ${s}${rest}`;
+          }
+        );
+
+        const styleEl = document.createElement('style');
+        styleEl.setAttribute('data-legacy', 'weather');
+        styleEl.textContent = scopedCss;
+        document.head.appendChild(styleEl);
+        styleRef.current = styleEl;
+
+        // Remove old header, footer
         const body = doc.body;
         body.querySelectorAll('.header, footer, script[src*="pp-shared"]').forEach(el => el.remove());
 
-        // Inject the main content
+        // Inject main content
         if (containerRef.current) {
           const content = body.querySelector('.main-content') || body;
           containerRef.current.innerHTML = content.innerHTML;
         }
 
-        // Execute inline scripts in order
+        // Execute inline scripts
         body.querySelectorAll('script:not([src])').forEach(script => {
           if (script.textContent?.trim()) {
             const s = document.createElement('script');
@@ -62,25 +68,22 @@ export function WeatherClient() {
         if (mapsScript && !document.querySelector('script[src*="maps.googleapis"]')) {
           const s = document.createElement('script');
           s.src = mapsScript.getAttribute('src') || '';
-          s.async = true;
-          s.defer = true;
+          s.async = true; s.defer = true;
           document.head.appendChild(s);
         }
-      } catch (err) {
-        console.error('Failed to load weather content:', err);
-      }
+      } catch (err) { console.error('Failed to load weather:', err); }
     }
-
     loadContent();
 
     return () => {
+      if (styleRef.current) { styleRef.current.remove(); styleRef.current = null; }
       document.querySelectorAll('style[data-legacy="weather"]').forEach(s => s.remove());
     };
   }, [loaded]);
 
   return (
-    <div ref={containerRef} className="weather-container">
-      <div className="flex items-center justify-center py-20 text-slate-400">
+    <div ref={containerRef} className="legacy-weather">
+      <div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:'80px 0',color:'#94a3b8'}}>
         Loading weather data...
       </div>
     </div>
