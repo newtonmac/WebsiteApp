@@ -51,24 +51,22 @@ export function ClubsMap({ totalClubs, totalCountries, craftTypes }: Props) {
 
   // ─── Load Google Maps API ───
   useEffect(() => {
-    // If already loaded, init immediately
-    if ((window as any).google?.maps) {
-      initMap();
-      return;
+    function tryInit() {
+      if ((window as any).google?.maps) { initMap(); return true; }
+      return false;
     }
-    // If script already in DOM (e.g. from previous navigation), wait for it
-    if (document.querySelector('script[src*="maps.googleapis.com"]')) {
-      const poll = setInterval(() => {
-        if ((window as any).google?.maps) { clearInterval(poll); initMap(); }
-      }, 100);
-      return () => clearInterval(poll);
+    if (tryInit()) return;
+
+    // Script may already be in DOM from another page or cached
+    if (!document.querySelector('script[src*="maps.googleapis.com"]')) {
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}&libraries=places`;
+      script.async = true;
+      document.head.appendChild(script);
     }
-    // Load fresh
-    (window as any).__initMap = () => initMap();
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}&libraries=places&callback=__initMap`;
-    script.async = true; script.defer = true;
-    document.head.appendChild(script);
+    // Poll until google.maps is available
+    const poll = setInterval(() => { if (tryInit()) clearInterval(poll); }, 150);
+    return () => clearInterval(poll);
   }, []);
 
   // ─── Fetch clubs ───
@@ -427,12 +425,12 @@ export function ClubsMap({ totalClubs, totalCountries, craftTypes }: Props) {
       </div>
 
       {/* Pulse animation */}
-      <style jsx>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @keyframes badgePulse {
           0%, 100% { box-shadow: 0 0 0 0 rgba(34,211,238,0.5); }
           50% { box-shadow: 0 0 0 8px rgba(34,211,238,0); }
         }
-      `}</style>
+      `}} />
 
       {/* Map */}
       <div ref={mapRef} className="w-full h-full" />
