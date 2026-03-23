@@ -39,6 +39,7 @@ export function RecentlyAdded({ events, count }: { events: RecentEvent[]; count:
                     <div className="w-[52px] shrink-0 text-center bg-slate-800 rounded-lg py-1">
                       <div className="text-emerald-400 text-[10px] font-semibold uppercase leading-tight">{mon}</div>
                       <div className="text-white text-sm font-bold leading-tight">{day}</div>
+                      <div className="text-slate-500 text-[9px] leading-tight">{y}</div>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-[13px] font-medium text-white leading-snug">{ev.name}</div>
