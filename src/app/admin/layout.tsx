@@ -72,6 +72,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/admin/clubs', label: 'Clubs', icon: '🛶' },
     { href: '/admin/gear', label: 'Gear', icon: '🎯' },
     { href: '/admin/federations', label: 'Federations', icon: '🏛️' },
+    { href: '/admin/feedback', label: 'Feedback & Updates', icon: '💬' },
     { href: '/admin/traffic', label: 'Traffic', icon: '📊' },
   ];
 
