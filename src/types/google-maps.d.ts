@@ -4,19 +4,37 @@ declare namespace google.maps {
     panTo(latLng: any): void;
     setCenter(latLng: any): void;
     setZoom(zoom: number): void;
-    getBounds(): any;
+    getZoom(): number;
+    getBounds(): LatLngBounds | undefined;
+    fitBounds(bounds: LatLngBounds, padding?: any): void;
     addListener(event: string, handler: () => void): void;
   }
   class Marker {
     constructor(opts?: any);
     setMap(map: Map | null): void;
-    getPosition(): any;
+    getPosition(): LatLng;
     addListener(event: string, handler: () => void): void;
+  }
+  class LatLng {
+    lat(): number;
+    lng(): number;
+  }
+  class LatLngBounds {
+    constructor();
+    extend(latLng: any): LatLngBounds;
+    contains(latLng: any): boolean;
   }
   class Size { constructor(w: number, h: number); }
   class Point { constructor(x: number, y: number); }
   class Geocoder {
     geocode(req: any, cb: (results: any, status: string) => void): void;
+  }
+  namespace places {
+    class Autocomplete {
+      constructor(input: HTMLInputElement, opts?: any);
+      getPlace(): any;
+      addListener(event: string, handler: () => void): void;
+    }
   }
   namespace marker {
     class AdvancedMarkerElement { setMap(map: any): void; }

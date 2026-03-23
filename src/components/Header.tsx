@@ -43,7 +43,7 @@ export function Header() {
         <Link href="/" className="flex items-center gap-3 no-underline">
           <Image src="/paddle-pin.svg" alt="PaddlePoint" width={48} height={62} className="w-12 h-auto" priority />
           <div>
-            <h1 className="text-2xl font-bold text-emerald-500 leading-tight">PaddlePoint</h1>
+            <h1 className="text-2xl font-bold leading-tight" style={{ background: 'linear-gradient(90deg, #06b6d4, #3b82f6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>PaddlePoint</h1>
             <p className="text-xs text-slate-500">Paddle conditions, clubs &amp; events</p>
           </div>
         </Link>
@@ -56,7 +56,7 @@ export function Header() {
               href={href}
               className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors no-underline ${
                 pathname === href
-                  ? 'bg-emerald-500 text-white'
+                  ? 'bg-blue-500 text-white'
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
@@ -99,7 +99,7 @@ export function Header() {
               href={href}
               onClick={() => setMobileOpen(false)}
               className={`block py-3 px-4 rounded-lg text-sm font-medium no-underline ${
-                pathname === href ? 'bg-emerald-50 text-emerald-600' : 'text-slate-600 hover:bg-slate-50'
+                pathname === href ? 'bg-blue-50 text-blue-600' : 'text-slate-600 hover:bg-slate-50'
               }`}
             >
               {label}
