@@ -341,14 +341,19 @@
                     const cityName = (s.city && s.city !== 'Unknown') ? s.city : '';
                     const suggestedBy = cityName ? cityName + ' Paddler' : (s.name || 'A Paddler');
 
-                    return `<div class="card" id="sug-${s.id}" data-suggested-by="${escapeAttr(suggestedBy)}">
+                    return `<div class="card" id="sug-${s.id}" data-suggested-by="${escapeAttr(suggestedBy)}" data-email="${escapeAttr(s.email || '')}" data-notify="${s.notify ? 'true' : 'false'}">
                         <div class="suggestion-meta">
                             <span>From: <strong>${escapeHtml(s.name)}</strong></span>
                             ${s.club ? `<span>Club: <strong>${escapeHtml(s.club)}</strong></span>` : ''}
                             ${s.craft ? `<span>Craft: <strong>${escapeHtml(s.craft)}</strong></span>` : ''}
                             <span>${escapeHtml(s.city)}, ${escapeHtml(s.country)}</span>
                             <span>${date}</span>
+                            ${s.email ? `<span style="color:#22d3ee;">✉️ ${escapeHtml(s.email)}${s.notify ? ' · 🔔 wants notification' : ''}</span>` : '<span style="color:#6b7080;">No email provided</span>'}
                         </div>
+                        ${s.email ? `<div style="margin:6px 0 8px;display:flex;gap:6px;">
+                            <a href="mailto:${escapeAttr(s.email)}?subject=Re: Your PaddlePoint Feedback — ${encodeURIComponent(s.title)}&body=${encodeURIComponent('Hi ' + (s.name || 'there') + ',\\n\\nThanks for your feedback on PaddlePoint!\\n\\nRegarding your suggestion: \"' + s.title + '\"\\n\\nI had a few questions to better understand what you\\'re looking for:\\n\\n1. \\n2. \\n\\nThanks,\\nGuillermo\\nPaddlePoint')}" class="btn btn-sm" style="background:#0ea5e9;color:#fff;text-decoration:none;padding:4px 12px;border-radius:6px;font-size:11px;">✉️ Reply via Email</a>
+                            ${s.notify ? '<span style="font-size:10px;color:#22c55e;padding:4px 8px;background:rgba(34,197,94,0.1);border-radius:6px;">🔔 Notify when done</span>' : ''}
+                        </div>` : ''}
                         <div class="form-row">
                             <label>Title</label>
                             <input type="text" id="sug-title-${s.id}" value="${escapeAttr(s.title)}">
