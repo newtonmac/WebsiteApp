@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import { query } from '@/lib/db';
 import { EventsList } from './EventsList';
+import { RecentlyAdded } from './RecentlyAdded';
 
 export const metadata: Metadata = {
   title: 'Events',
@@ -24,8 +25,27 @@ async function getEvents(): Promise<Event[]> {
   } catch { return []; }
 }
 
+interface RecentEvent {
+  name: string; start_date: string; city: string; state: string; country: string;
+}
+
+async function getRecentlyAdded(): Promise<{ events: RecentEvent[]; date: string }> {
+  try {
+    // Get the most recent scrape date
+    const [latest] = await query('SELECT DATE(created_at) as d FROM events ORDER BY created_at DESC LIMIT 1') as any[];
+    if (!latest) return { events: [], date: '' };
+    const scrapeDate = latest.d;
+    const rows = await query(
+      'SELECT name, start_date, city, state, country FROM events WHERE DATE(created_at) = ? ORDER BY start_date ASC',
+      [scrapeDate]
+    ) as RecentEvent[];
+    return { events: rows, date: scrapeDate };
+  } catch { return { events: [], date: '' }; }
+}
+
 export default async function EventsPage() {
   const events = await getEvents();
+  const recent = await getRecentlyAdded();
   const lastUpdated = events.reduce((latest, e) => {
     const d = new Date(e.updated_at);
     return d > latest ? d : latest;
@@ -42,9 +62,14 @@ export default async function EventsPage() {
           {events.length} events
         </span>
         {lastUpdated.getTime() > 0 && (
-          <p className="text-xs opacity-60 mt-2">
-            Last updated: {lastUpdated.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-          </p>
+          <div className="flex items-center justify-center gap-3 mt-2">
+            <p className="text-xs opacity-60">
+              Last updated: {lastUpdated.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </p>
+            {recent.events.length > 0 && (
+              <RecentlyAdded events={JSON.parse(JSON.stringify(recent.events))} count={recent.events.length} />
+            )}
+          </div>
         )}
       </section>
 
