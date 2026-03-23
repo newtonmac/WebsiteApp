@@ -35,6 +35,9 @@ export function ClubsMap({ totalClubs, totalCountries, craftTypes }: Props) {
   const [searchMode, setSearchMode] = useState<'location' | 'club'>('location');
   const [visibleCount, setVisibleCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [suggestions, setSuggestions] = useState<Club[]>([]);
+  const [listOpen, setListOpen] = useState(false);
+  const [listClubs, setListClubs] = useState<Club[]>([]);
 
   // Load Google Maps API
   useEffect(() => {
@@ -121,6 +124,7 @@ export function ClubsMap({ totalClubs, totalCountries, craftTypes }: Props) {
         icon,
         title: club.n,
       });
+      (marker as any)._club = club;
       marker.addListener('click', () => {
         setSelected(club);
         map.panTo({ lat: club.la, lng: club.lo });
@@ -154,6 +158,47 @@ export function ClubsMap({ totalClubs, totalCountries, craftTypes }: Props) {
     });
   }, [search, searchMode]);
 
+  // Club name suggestions as user types
+  const handleClubInput = useCallback((val: string) => {
+    setSearch(val);
+    if (val.length < 2) { setSuggestions([]); return; }
+    const q = val.toLowerCase();
+    const matches = clubs.filter(c => {
+      if (craftFilter && !c.ct?.toLowerCase().includes(craftFilter.toLowerCase())) return false;
+      return c.n?.toLowerCase().includes(q);
+    });
+    setSuggestions(matches.slice(0, 40));
+  }, [clubs, craftFilter]);
+
+  const selectSuggestion = useCallback((club: Club) => {
+    setSuggestions([]);
+    setSearch(club.n);
+    setSelected(club);
+    const map = mapInstanceRef.current;
+    if (map && club.la && club.lo) {
+      map.setCenter({ lat: club.la, lng: club.lo });
+      map.setZoom(14);
+    }
+  }, []);
+
+  // Toggle club list panel
+  const toggleClubList = useCallback(() => {
+    setListOpen(prev => {
+      if (!prev) {
+        const map = mapInstanceRef.current;
+        const bounds = map?.getBounds();
+        const visible: Club[] = [];
+        markersRef.current.forEach(m => {
+          if (!bounds || bounds.contains((m as any).getPosition())) {
+            visible.push((m as any)._club);
+          }
+        });
+        setListClubs(visible);
+      }
+      return !prev;
+    });
+  }, []);
+
   return (
     <div className="flex-1 relative">
       {/* Toolbar */}
@@ -175,9 +220,26 @@ export function ClubsMap({ totalClubs, totalCountries, craftTypes }: Props) {
               placeholder="Search by city, state, zip, or country..."
               className="w-full px-4 py-2 bg-white rounded-lg shadow-md text-sm outline-none" />
           ) : (
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search club name..."
-              className="w-full px-4 py-2 bg-white rounded-lg shadow-md text-sm outline-none" />
+            <div className="relative">
+              <input type="text" value={search} onChange={e => handleClubInput(e.target.value)}
+                onBlur={() => setTimeout(() => setSuggestions([]), 200)}
+                placeholder="Search club name..."
+                className="w-full px-4 py-2 bg-white rounded-lg shadow-md text-sm outline-none" />
+              {suggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 bg-white border border-slate-200 rounded-b-lg max-h-[350px] overflow-y-auto z-30 shadow-xl">
+                  {suggestions.map(c => {
+                    const loc = [c.ci, c.st || c.sa, c.co].filter(Boolean).join(', ');
+                    return (
+                      <div key={c.id} onMouseDown={() => selectSuggestion(c)}
+                        className="px-3 py-2 cursor-pointer border-b border-slate-100 text-sm hover:bg-emerald-50">
+                        <span className="font-medium text-slate-800">{c.n}</span>
+                        <span className="text-slate-400 text-xs ml-1.5">{loc}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           )}
         </form>
 
@@ -189,9 +251,10 @@ export function ClubsMap({ totalClubs, totalCountries, craftTypes }: Props) {
           ))}
         </select>
 
-        <span className="bg-slate-800 text-white text-sm font-bold px-3 py-2 rounded-lg shadow-md animate-[badgePulse_1.5s_ease-in-out_infinite]">
+        <button onClick={toggleClubList} title="Click to view club list"
+          className="bg-slate-800 text-white text-sm font-bold px-3 py-2 rounded-lg shadow-md animate-[badgePulse_1.5s_ease-in-out_infinite] cursor-pointer hover:bg-slate-700 transition-colors">
           <span className="text-cyan-400">{visibleCount}</span> clubs
-        </span>
+        </button>
       </div>
 
       <style dangerouslySetInnerHTML={{ __html: `
@@ -207,6 +270,41 @@ export function ClubsMap({ totalClubs, totalCountries, craftTypes }: Props) {
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50 z-20">
           <div className="bg-white rounded-xl px-6 py-4 shadow-lg text-sm font-medium">Loading {totalClubs.toLocaleString()} clubs...</div>
+        </div>
+      )}
+
+      {/* Club List Panel */}
+      {listOpen && (
+        <div className="absolute top-14 right-3 z-20 w-[340px] max-h-[calc(100%-80px)] bg-slate-900/95 backdrop-blur border border-slate-700 rounded-2xl flex flex-col overflow-hidden shadow-2xl">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-700 shrink-0">
+            <h3 className="text-sm font-bold text-white"><span className="text-cyan-400">{listClubs.length}</span> Clubs Found</h3>
+            <button onClick={() => setListOpen(false)} className="text-slate-400 hover:text-white text-xl">×</button>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {listClubs.length === 0 && (
+              <div className="p-5 text-center text-slate-400 text-sm">No clubs in current view</div>
+            )}
+            {listClubs.length > 100 && (
+              <div className="px-4 py-2 bg-slate-800 text-amber-400 text-[11px] border-b border-slate-700">
+                Showing 100 of {listClubs.length} — zoom in to see all
+              </div>
+            )}
+            {listClubs.slice(0, 100).map((c, i) => {
+              const loc = [c.ci, c.st].filter(Boolean).join(', ');
+              return (
+                <div key={c.id} onClick={() => { setSelected(c); const m = mapInstanceRef.current; if (m && c.la && c.lo) { m.panTo({ lat: c.la, lng: c.lo }); m.setZoom(Math.max(m.getZoom() || 10, 12)); } }}
+                  className="flex items-start gap-2 px-4 py-2.5 border-b border-slate-800 cursor-pointer hover:bg-slate-800 transition-colors">
+                  <span className="text-slate-500 text-[11px] min-w-[20px] pt-0.5">{i + 1}</span>
+                  <div>
+                    <div className="text-xs font-semibold text-white">
+                      {c.n}{c.gr ? <span className="text-amber-400 text-[10px] ml-1">{c.gr} ★</span> : null}
+                    </div>
+                    <div className="text-[10px] text-slate-400">{loc || c.co || ''}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
