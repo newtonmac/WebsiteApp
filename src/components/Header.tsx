@@ -13,7 +13,11 @@ const NAV_ITEMS = [
   { href: '/events', label: 'Events' },
   { href: '/gear', label: 'Gear' },
   { href: '/federations', label: 'Federations' },
-  { href: '/feedback', label: 'Feedback' },
+];
+
+const MODAL_ITEMS = [
+  { id: 'feedback', label: 'Feedback', action: 'openSuggestModal' },
+  { id: 'updates', label: 'Updates', action: 'openUpdatesModal' },
 ];
 
 export function Header() {
@@ -47,6 +51,15 @@ export function Header() {
               {label}
             </Link>
           ))}
+          {MODAL_ITEMS.map(({ id, label, action }) => (
+            <button
+              key={id}
+              onClick={() => { const fn = (window as any)[action]; if (fn) fn(); }}
+              className="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+            >
+              {label}
+            </button>
+          ))}
         </nav>
 
         {/* Mobile Hamburger */}
@@ -79,6 +92,15 @@ export function Header() {
             >
               {label}
             </Link>
+          ))}
+          {MODAL_ITEMS.map(({ id, label, action }) => (
+            <button
+              key={id}
+              onClick={() => { setMobileOpen(false); const fn = (window as any)[action]; if (fn) fn(); }}
+              className="block w-full text-left py-3 px-4 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50"
+            >
+              {label}
+            </button>
           ))}
         </nav>
       )}
