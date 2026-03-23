@@ -4,7 +4,9 @@ declare namespace google.maps {
     panTo(latLng: any): void;
     setCenter(latLng: any): void;
     setZoom(zoom: number): void;
+    getZoom(): number;
     getBounds(): any;
+    fitBounds(bounds: any, padding?: any): void;
     addListener(event: string, handler: () => void): void;
   }
   class Marker {
