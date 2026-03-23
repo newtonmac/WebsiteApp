@@ -35,6 +35,14 @@ export function EventsList({ events }: { events: Event[] }) {
   const [typeFilter, setTypeFilter] = useState('');
   const [sportFilter, setSportFilter] = useState('');
   const [countryFilter, setCountryFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'upcoming' | 'past'>('upcoming');
+
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const todayTs = now.getTime();
+
+  const upcomingCount = useMemo(() => events.filter(e => new Date(e.end_date || e.start_date).getTime() >= todayTs).length, [events, todayTs]);
+  const pastCount = events.length - upcomingCount;
 
   const types = useMemo(() => [...new Set(events.map(e => e.event_type).filter(Boolean))].sort(), [events]);
   const sports = useMemo(() => {
@@ -46,16 +54,36 @@ export function EventsList({ events }: { events: Event[] }) {
 
   const filtered = useMemo(() => {
     return events.filter(e => {
+      const eventEnd = new Date(e.end_date || e.start_date).getTime();
+      const isPast = eventEnd < todayTs;
+      if (statusFilter === 'upcoming' && isPast) return false;
+      if (statusFilter === 'past' && !isPast) return false;
       if (search && !`${e.name} ${e.city} ${e.state} ${e.country} ${e.organizer}`.toLowerCase().includes(search.toLowerCase())) return false;
       if (typeFilter && e.event_type !== typeFilter) return false;
       if (sportFilter && !e.sports?.toLowerCase().includes(sportFilter.toLowerCase())) return false;
       if (countryFilter && e.country !== countryFilter) return false;
       return true;
     });
-  }, [events, search, typeFilter, sportFilter, countryFilter]);
+  }, [events, search, typeFilter, sportFilter, countryFilter, statusFilter, todayTs]);
 
   return (
     <section className="max-w-6xl mx-auto px-4 py-8">
+      {/* Status Toggle */}
+      <div className="flex items-center justify-center gap-1 mb-5 bg-slate-100 rounded-xl p-1 max-w-md mx-auto">
+        <button onClick={() => setStatusFilter('upcoming')}
+          className={`flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${statusFilter === 'upcoming' ? 'bg-emerald-500 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}>
+          Upcoming ({upcomingCount})
+        </button>
+        <button onClick={() => setStatusFilter('past')}
+          className={`flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${statusFilter === 'past' ? 'bg-slate-500 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}>
+          Past ({pastCount})
+        </button>
+        <button onClick={() => setStatusFilter('all')}
+          className={`flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${statusFilter === 'all' ? 'bg-blue-500 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}>
+          All ({events.length})
+        </button>
+      </div>
+
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-6">
         <input
@@ -79,15 +107,21 @@ export function EventsList({ events }: { events: Event[] }) {
 
       {/* Event Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filtered.map(event => (
-          <div key={event.id} className="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-shadow border-l-4"
-            style={{ borderLeftColor: event.competition_level === 'international' ? '#8b5cf6' : event.competition_level === 'national' ? '#10b981' : '#3b82f6' }}>
+        {filtered.map(event => {
+          const eventEnd = new Date(event.end_date || event.start_date).getTime();
+          const isPast = eventEnd < todayTs;
+          return (
+          <div key={event.id} className={`bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-shadow border-l-4 ${isPast ? 'opacity-60' : ''}`}
+            style={{ borderLeftColor: isPast ? '#94a3b8' : event.competition_level === 'international' ? '#8b5cf6' : event.competition_level === 'national' ? '#10b981' : '#3b82f6' }}>
             <div className="flex items-start justify-between mb-2">
-              {event.event_type && (
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full uppercase ${TYPE_COLORS[event.event_type] || 'bg-slate-100 text-slate-600'}`}>
-                  {event.event_type}
-                </span>
-              )}
+              <div className="flex items-center gap-1.5">
+                {isPast && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-500 uppercase">Past</span>}
+                {event.event_type && (
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full uppercase ${TYPE_COLORS[event.event_type] || 'bg-slate-100 text-slate-600'}`}>
+                    {event.event_type}
+                  </span>
+                )}
+              </div>
               {event.competition_level && (
                 <span className={`text-xs font-semibold uppercase ${LEVEL_COLORS[event.competition_level] || 'text-slate-500'}`}>
                   {event.competition_level}
@@ -127,7 +161,7 @@ export function EventsList({ events }: { events: Event[] }) {
               </div>
             </div>
           </div>
-        ))}
+        ); })}
       </div>
       {filtered.length === 0 && <p className="text-center text-slate-400 py-12">No events match your filters.</p>}
     </section>

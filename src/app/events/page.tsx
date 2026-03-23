@@ -31,15 +31,14 @@ interface RecentEvent {
 
 async function getRecentlyAdded(): Promise<{ events: RecentEvent[]; date: string }> {
   try {
-    // Get the most recent scrape date
-    const [latest] = await query('SELECT DATE(created_at) as d FROM events ORDER BY created_at DESC LIMIT 1') as any[];
+    // Get the most recent scrape batch: events created within 30 min of the latest created_at
+    const [latest] = await query('SELECT created_at FROM events ORDER BY created_at DESC LIMIT 1') as any[];
     if (!latest) return { events: [], date: '' };
-    const scrapeDate = latest.d;
     const rows = await query(
-      'SELECT name, start_date, city, state, country FROM events WHERE DATE(created_at) = ? ORDER BY start_date ASC',
-      [scrapeDate]
+      'SELECT name, start_date, city, state, country FROM events WHERE created_at >= DATE_SUB(?, INTERVAL 30 MINUTE) ORDER BY start_date ASC',
+      [latest.created_at]
     ) as RecentEvent[];
-    return { events: rows, date: scrapeDate };
+    return { events: rows, date: String(latest.created_at) };
   } catch { return { events: [], date: '' }; }
 }
 
