@@ -20,6 +20,18 @@ const MODAL_ITEMS = [
   { id: 'updates', label: 'Updates', action: 'openUpdatesModal' },
 ];
 
+function callWhenReady(fnName: string) {
+  const fn = (window as any)[fnName];
+  if (fn) { fn(); return; }
+  // pp-shared.js may not be ready yet — retry briefly
+  let tries = 0;
+  const timer = setInterval(() => {
+    const fn = (window as any)[fnName];
+    if (fn) { clearInterval(timer); fn(); }
+    else if (++tries > 20) { clearInterval(timer); } // give up after 2s
+  }, 100);
+}
+
 export function Header() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -54,7 +66,7 @@ export function Header() {
           {MODAL_ITEMS.map(({ id, label, action }) => (
             <button
               key={id}
-              onClick={() => { const fn = (window as any)[action]; if (fn) fn(); }}
+              onClick={() => callWhenReady(action)}
               className="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
             >
               {label}
@@ -96,7 +108,7 @@ export function Header() {
           {MODAL_ITEMS.map(({ id, label, action }) => (
             <button
               key={id}
-              onClick={() => { setMobileOpen(false); const fn = (window as any)[action]; if (fn) fn(); }}
+              onClick={() => { setMobileOpen(false); callWhenReady(action); }}
               className="block w-full text-left py-3 px-4 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50"
             >
               {label}

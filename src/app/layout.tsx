@@ -26,10 +26,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
+        <link rel="stylesheet" href="/pp-shared.css" />
         <Header />
         <main className="flex-1">{children}</main>
         <Footer />
-        <Script src="/pp-shared.js" strategy="lazyOnload" />
+        <Script src="/pp-shared.js" strategy="afterInteractive" />
       </body>
     </html>
   );
