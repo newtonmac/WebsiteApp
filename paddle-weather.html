@@ -755,13 +755,17 @@
             .wq-item { flex-wrap: wrap; }
             .access-item { flex-wrap: wrap; }
         }
+        /* Mobile: bump tiny fonts for readability */
+        @media (max-width: 600px) {
+            .cold-water-label { font-size: 11px !important; }
+        }
     </style>
 </head>
 <body>
 
 <div class="header">
     <div class="header-left">
-        <img src="paddle-pin.svg" alt="PaddlePoint Logo" class="header-logo">
+        <img src="paddle-pin.svg" alt="PaddlePoint Logo" class="header-logo" width="48" height="62">
         <div>
             <h1>PaddlePoint</h1>
             <div class="subtitle">Weather &amp; Tides · Free community resource</div>

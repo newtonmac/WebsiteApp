@@ -1457,13 +1457,21 @@
             margin-top: 10px;
         }
         @media (min-width: 701px) { .stats-map-wrap { height: 260px; } }
+        /* Mobile: bump tiny fonts for readability */
+        @media (max-width: 600px) {
+            .compass-label, .stats-bar-label { font-size: 11px !important; }
+            .footer-copy { font-size: 11px !important; }
+            .beach-station-code, .beach-station-dist, .beach-station-link { font-size: 11px !important; }
+            .score-cat-tag { font-size: 11px !important; }
+            .data-source { font-size: 11px !important; }
+        }
     </style>
 <link rel="stylesheet" href="pp-shared.css">
 </head>
 <body>
     <div class="header">
         <div class="header-left">
-            <img src="paddle-pin.svg" alt="PaddlePoint" class="header-logo">
+            <img src="paddle-pin.svg" alt="PaddlePoint" class="header-logo" width="48" height="62">
             <div>
                 <h1>PaddlePoint</h1>
                 <div class="subtitle">Water Conditions · Free community resource</div>

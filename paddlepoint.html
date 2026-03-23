@@ -14,6 +14,8 @@
     <meta name="twitter:card" content="summary_large_image">
     <link rel="preconnect" href="https://visitor-counter.newtonmac.workers.dev" crossorigin>
     <link rel="preload" href="paddle-pin.svg" as="image">
+    <link rel="preload" href="paddlepoint.jpg" as="image" media="(min-width: 601px)">
+    <link rel="preload" href="paddlepoint-mobile.jpg" as="image" media="(max-width: 600px)">
     <!-- Leaflet loaded on demand when Stats clicked -->
     <style>
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -487,7 +489,7 @@
     <!-- HEADER -->
     <div class="header">
         <a href="paddlepoint.html" class="header-left">
-            <img src="paddle-pin.svg" alt="PaddlePoint" class="header-logo">
+            <img src="paddle-pin.svg" alt="PaddlePoint" class="header-logo" width="48" height="62">
             <div>
                 <h1>PaddlePoint</h1>
                 <div class="subtitle">Paddle conditions, clubs & events</div>
@@ -527,7 +529,10 @@
 
     <!-- HERO -->
     <section class="hero">
-        <img src="paddlepoint.jpg" alt="Outrigger paddlers on Mission Bay" class="hero-img" fetchpriority="high" decoding="async">
+        <picture>
+            <source media="(max-width: 600px)" srcset="paddlepoint-mobile.jpg">
+            <img src="paddlepoint.jpg" alt="Outrigger paddlers on Mission Bay" class="hero-img" width="1200" height="600" fetchpriority="high" decoding="async">
+        </picture>
         <div class="hero-overlay">
             <h1 class="hero-title">Know Before You Paddle</h1>
             <p class="hero-subtitle">Real-time water conditions, weather, tides, clubs, and events for SUP, kayak, outrigger & canoe paddlers.</p>
