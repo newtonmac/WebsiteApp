@@ -1,13 +1,6 @@
 'use client';
-import { useState, useEffect, createContext, useContext } from 'react';
-
-interface AdminContextType {
-  authenticated: boolean;
-  logout: () => void;
-}
-
-const AdminContext = createContext<AdminContextType>({ authenticated: false, logout: () => {} });
-export const useAdmin = () => useContext(AdminContext);
+import { useState, useEffect } from 'react';
+import { AdminContext } from './AdminContext';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
