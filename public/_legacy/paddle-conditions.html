@@ -2788,6 +2788,20 @@
                 // Fetch coastal access in background (non-blocking)
                 const coastalAccessPromise = cachedFetch('coastal', (s) => fetchCoastalAccess(lat, lon, s)).catch(() => []);
 
+                // Check if this location is near water before rendering scores
+                if (!hasWaterNearby(marineSwell, riverFlow, sdBeach)) {
+                    // No water data — find nearest paddle spots via Google Places
+                    const nearbySpots = await findNearestWater(lat, lon);
+                    if (signal.aborted) return;
+                    // If nearest spot is within 10 miles, still show conditions but with a note
+                    // If no spots or all > 10 miles, show the "no water" message
+                    const closest = nearbySpots.length > 0 ? nearbySpots[0] : null;
+                    if (!closest || closest.dist > 10) {
+                        renderNoWaterMessage(nearbySpots);
+                        return;
+                    }
+                }
+
                 render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, [], marineSwell, noaaWaterTemp, usgsWaterTemp);
 
                 // When coastal access arrives, update the resources section if needed
@@ -3107,6 +3121,99 @@
         // ======== Scoring ========
         // Detect south swell (transboundary flow) per SD County DEH tiered system
         // South swell pushes contaminated water from TJ River northward toward Imperial Beach
+        // ======== Nearby water body detection ========
+        async function findNearestWater(lat, lon) {
+            const searches = ['beach', 'boat ramp', 'lake', 'marina', 'kayak launch'];
+            const results = [];
+            for (const q of searches) {
+                try {
+                    const svc = new google.maps.places.PlacesService(map);
+                    const res = await new Promise((resolve) => {
+                        svc.nearbySearch({
+                            location: { lat, lng: lon },
+                            rankBy: google.maps.places.RankBy.DISTANCE,
+                            keyword: q,
+                        }, (r, s) => resolve(s === 'OK' ? r : []));
+                    });
+                    for (const p of res.slice(0, 3)) {
+                        const plat = p.geometry.location.lat();
+                        const plng = p.geometry.location.lng();
+                        const dist = haversine(lat, lon, plat, plng);
+                        results.push({ name: p.name, lat: plat, lng: plng, dist, rating: p.rating || 0, types: p.types || [], query: q });
+                    }
+                } catch(e) {}
+            }
+            // Dedupe by name, sort by distance
+            const seen = new Set();
+            return results
+                .filter(r => { if (seen.has(r.name)) return false; seen.add(r.name); return true; })
+                .sort((a, b) => a.dist - b.dist)
+                .slice(0, 5);
+        }
+
+        function haversine(lat1, lon1, lat2, lon2) {
+            const R = 3959; // miles
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
+        function hasWaterNearby(marineSwell, riverFlow, sdBeach) {
+            // Check if marine API returned actual wave/temp data
+            if (marineSwell?.current) {
+                const mc = marineSwell.current;
+                if (mc.wave_height != null || mc.sea_surface_temperature != null) return true;
+            }
+            // Check if river gauges returned data
+            if (riverFlow && Array.isArray(riverFlow) && riverFlow.length > 0) return true;
+            // Check if DEH beach stations exist nearby
+            if (sdBeach && Array.isArray(sdBeach) && sdBeach.length > 0) return true;
+            return false;
+        }
+
+        function renderNoWaterMessage(nearbySpots) {
+            const spotsHtml = nearbySpots.length > 0
+                ? nearbySpots.slice(0, 3).map(s => {
+                    const dir = getCardinal(paddleLat, paddleLon, s.lat, s.lng);
+                    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;cursor:pointer;" onclick="paddleLat=${s.lat};paddleLon=${s.lng};paddleName='${s.name.replace(/'/g,"\\'")}';paddleAddress='';map.panTo({lat:${s.lat},lng:${s.lng}});map.setZoom(14);loadConditions();">
+                        <div style="font-size:24px;">📍</div>
+                        <div style="flex:1;">
+                            <div style="font-weight:700;color:#166534;font-size:14px;">${s.name}</div>
+                            <div style="font-size:12px;color:#6b7280;">${s.dist.toFixed(1)} miles ${dir} · ${s.query}</div>
+                        </div>
+                        <div style="color:#16a34a;font-size:13px;font-weight:600;">Go →</div>
+                    </div>`;
+                }).join('')
+                : `<div style="padding:12px;color:#6b7280;font-size:13px;">No known paddle spots found within search range. Try searching for a specific beach, lake, or river in the search bar above.</div>`;
+
+            document.getElementById('conditionsArea').innerHTML = `
+                <div style="max-width:560px;margin:24px auto;text-align:center;">
+                    <div style="font-size:48px;margin-bottom:12px;">🏜️</div>
+                    <h3 style="font-size:20px;font-weight:700;color:#1a1a2e;margin-bottom:8px;">No Body of Water Detected</h3>
+                    <p style="color:#6b7280;font-size:14px;line-height:1.6;margin-bottom:20px;">
+                        This location doesn't appear to be near a navigable body of water. 
+                        For accurate paddle conditions, tap directly on a beach, lake, river, or bay on the map.
+                    </p>
+                    ${nearbySpots.length > 0 ? `
+                        <div style="text-align:left;margin-bottom:8px;">
+                            <div style="font-size:13px;font-weight:600;color:#4b5563;margin-bottom:8px;">🛶 Nearest Paddle Spots</div>
+                            <div style="display:flex;flex-direction:column;gap:6px;">
+                                ${spotsHtml}
+                            </div>
+                        </div>
+                    ` : spotsHtml}
+                </div>`;
+        }
+
+        function getCardinal(lat1, lon1, lat2, lon2) {
+            const dy = lat2 - lat1;
+            const dx = (lon2 - lon1) * Math.cos(lat1 * Math.PI / 180);
+            const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+            const dirs = ['E','NE','N','NW','W','SW','S','SE'];
+            return dirs[Math.round(((angle + 360) % 360) / 45) % 8];
+        }
+
         function hasSouthSwell(marineSwell) {
             if (!marineSwell?.current) return false;
             const dir = marineSwell.current.swell_wave_direction ?? marineSwell.current.wave_direction;
