@@ -26,6 +26,9 @@ function callWhenReady(fnName: string) {
 }
 
 const SITE_UPDATES = [
+  { date: 'Mar 24', text: 'Gear — added Clothing and Accessories category tabs' },
+  { date: 'Mar 24', text: 'Footer — Live data popup lists all real-time API sources' },
+  { date: 'Mar 24', text: 'Nav — removed Home button, added changelog dot next to Updates' },
   { date: 'Mar 24', text: 'Water body zone filtering — bay vs ocean vs inland scored separately' },
   { date: 'Mar 24', text: 'Cold water safety alerts with USCG, ACA, NCCWS source links' },
   { date: 'Mar 24', text: 'Dry land detection — suggests nearest paddle spots' },
