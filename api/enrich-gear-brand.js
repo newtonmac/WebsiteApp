@@ -147,8 +147,14 @@ ${textContent}`
           result.popular_products = aiText;
         }
       }
-    } catch(e) { console.log('[enrich] AI extraction error:', e.message); }
+    } catch(e) { console.log('[enrich] AI extraction error:', e.message); result._debug_ai_error = e.message; }
   }
+
+  // Debug info (temporary)
+  result._debug = {
+    hasApiKey: !!process.env.ANTHROPIC_API_KEY,
+    siteHtmlLen: siteHtml.length,
+  };
 
   // Also improve description with AI if we got a generic meta description
   if (website && siteHtml && result.description && process.env.ANTHROPIC_API_KEY) {
