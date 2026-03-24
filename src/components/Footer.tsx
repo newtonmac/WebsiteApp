@@ -17,11 +17,8 @@ export function Footer() {
     <footer className="border-t border-slate-200 mt-8 py-6 px-4 text-center">
       <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mb-3">
         {FOOTER_LINKS.map(({ href, label }) => (
-          <Link
-            key={href}
-            href={href}
-            className="text-xs text-slate-500 hover:text-slate-700 no-underline"
-          >
+          <Link key={href} href={href}
+            className="text-xs text-slate-500 hover:text-slate-700 no-underline">
             {label}
           </Link>
         ))}

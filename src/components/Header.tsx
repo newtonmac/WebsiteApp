@@ -16,8 +16,8 @@ const NAV_ITEMS = [
 ];
 
 const MODAL_ITEMS = [
-  { id: 'feedback', label: 'Feedback', action: 'openSuggestModal' },
-  { id: 'updates', label: 'Updates', action: 'openUpdatesModal' },
+  { id: 'feedback', label: 'Feedback', action: 'openSuggestModal', icon: null },
+  { id: 'updates', label: 'Updates', action: 'openUpdatesModal', icon: 'ripple' },
 ];
 
 function callWhenReady(fnName: string) {
@@ -30,6 +30,26 @@ function callWhenReady(fnName: string) {
     if (fn) { clearInterval(timer); fn(); }
     else if (++tries > 20) { clearInterval(timer); } // give up after 2s
   }, 100);
+}
+
+function WaterRipple() {
+  return (
+    <span className="relative inline-flex items-center justify-center w-5 h-5 mr-1">
+      <svg viewBox="0 0 20 20" className="w-5 h-5 text-cyan-500" fill="none">
+        <circle cx="10" cy="10" r="3" fill="currentColor" opacity="0.8">
+          <animate attributeName="r" from="3" to="3" dur="2s" repeatCount="indefinite" />
+        </circle>
+        <circle cx="10" cy="10" r="3" stroke="currentColor" strokeWidth="1" fill="none" opacity="0.6">
+          <animate attributeName="r" from="3" to="9" dur="2s" repeatCount="indefinite" />
+          <animate attributeName="opacity" from="0.6" to="0" dur="2s" repeatCount="indefinite" />
+        </circle>
+        <circle cx="10" cy="10" r="3" stroke="currentColor" strokeWidth="0.8" fill="none" opacity="0.4">
+          <animate attributeName="r" from="3" to="9" dur="2s" begin="0.6s" repeatCount="indefinite" />
+          <animate attributeName="opacity" from="0.4" to="0" dur="2s" begin="0.6s" repeatCount="indefinite" />
+        </circle>
+      </svg>
+    </span>
+  );
 }
 
 export function Header() {
@@ -63,12 +83,13 @@ export function Header() {
               {label}
             </Link>
           ))}
-          {MODAL_ITEMS.map(({ id, label, action }) => (
+          {MODAL_ITEMS.map(({ id, label, action, icon }) => (
             <button
               key={id}
               onClick={() => callWhenReady(action)}
-              className="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+              className="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors flex items-center"
             >
+              {icon === 'ripple' && <WaterRipple />}
               {label}
             </button>
           ))}
@@ -105,12 +126,13 @@ export function Header() {
               {label}
             </Link>
           ))}
-          {MODAL_ITEMS.map(({ id, label, action }) => (
+          {MODAL_ITEMS.map(({ id, label, action, icon }) => (
             <button
               key={id}
               onClick={() => { setMobileOpen(false); callWhenReady(action); }}
-              className="block w-full text-left py-3 px-4 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50"
+              className="block w-full text-left py-3 px-4 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center"
             >
+              {icon === 'ripple' && <WaterRipple />}
               {label}
             </button>
           ))}
