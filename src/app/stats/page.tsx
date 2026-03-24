@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 
 const COUNTER_API = 'https://visitor-counter.newtonmac.workers.dev';
 
-interface DayData { date: string; uniqueVisitors: number; totalVisits: number; }
-interface StatsData { totalVisitors: number; totalVisits: number; days: DayData[]; }
+interface DayData { date: string; uniqueVisitors: number; totalHits: number; }
+interface StatsData { total: number; days: DayData[]; }
 
 export default function StatsPage() {
   const [stats, setStats] = useState<StatsData | null>(null);
@@ -48,7 +48,7 @@ export default function StatsPage() {
       <div className="grid grid-cols-3 gap-4 mb-10">
         <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 text-center">
           <div className="text-xs font-semibold text-blue-500 uppercase tracking-wide mb-1">All Time</div>
-          <div className="text-3xl font-extrabold text-blue-600">{stats.totalVisitors.toLocaleString()}</div>
+          <div className="text-3xl font-extrabold text-blue-600">{stats.total.toLocaleString()}</div>
         </div>
         <div className="bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-xl p-5 text-center">
           <div className="text-xs font-semibold text-cyan-500 uppercase tracking-wide mb-1">This Week</div>
@@ -104,7 +104,7 @@ export default function StatsPage() {
                   <tr key={d.date} className={`border-b border-slate-100 ${isToday ? 'bg-cyan-50' : ''}`}>
                     <td className="px-4 py-2.5 text-slate-700">{dateStr}{isToday && <span className="ml-2 text-[10px] bg-cyan-100 text-cyan-600 px-1.5 py-0.5 rounded-full font-medium">today</span>}</td>
                     <td className="px-4 py-2.5 text-right font-semibold text-slate-800">{d.uniqueVisitors.toLocaleString()}</td>
-                    <td className="px-4 py-2.5 text-right text-slate-500">{d.totalVisits.toLocaleString()}</td>
+                    <td className="px-4 py-2.5 text-right text-slate-500">{(d.totalHits || 0).toLocaleString()}</td>
                   </tr>
                 );
               })}
