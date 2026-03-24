@@ -78,8 +78,9 @@ module.exports = async (req, res) => {
     try {
       // Try to find and scrape a products/shop page for richer data
       let productsHtml = siteHtml;
-      const productLinks = siteHtml.match(/href=["'](\/(?:products|shop|models|boats|boards|kayaks|surfski|paddles|gear|collections|catalog)[^"']*?)["']/gi);
-      console.log('[enrich] Product links found:', productLinks?.length || 0, productLinks?.slice(0,3));
+      const productLinks = siteHtml.match(/href=["'](\/(?:products|shop|models|boats|boards|kayaks|surfski|surfskis|paddles|gear|collections|catalog|our-|range|equipment|all-)[^"']*?)["']/gi)
+        || siteHtml.match(/href=["'](https?:\/\/[^"']*\/(?:products|shop|models|boats|boards|kayaks|collections|catalog)[^"']*?)["']/gi);
+      console.log('[enrich] Product links found:', productLinks?.length || 0);
       if (productLinks && productLinks.length > 0) {
         const href = productLinks[0].match(/href=["']([^"']+)["']/i)?.[1];
         if (href) {
@@ -111,7 +112,7 @@ module.exports = async (req, res) => {
       // Call Claude to extract products
       const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
       console.log('[enrich] AI key exists:', !!ANTHROPIC_KEY, 'textLen:', textContent.length);
-      if (ANTHROPIC_KEY && textContent.length > 100) {
+      if (ANTHROPIC_KEY && textContent.length > 50) {
         const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
           headers: {
@@ -143,6 +144,7 @@ ${textContent}`
         const aiData = await aiRes.json();
         const aiText = aiData?.content?.[0]?.text?.trim() || '';
         console.log('[enrich] AI response:', aiText.substring(0, 200), 'error:', aiData?.error);
+        result._debug_ai = { textLen: textContent.length, responseLen: aiText.length, response: aiText.substring(0, 300), error: aiData?.error || null };
         if (aiText && aiText !== 'NONE' && aiText.includes('—')) {
           result.popular_products = aiText;
         }
@@ -154,8 +156,7 @@ ${textContent}`
   result._debug = {
     hasApiKey: !!process.env.ANTHROPIC_API_KEY,
     siteHtmlLen: siteHtml.length,
-    productLinksFound: siteHtml.match(/href=["'](\/(?:products|shop|models|boats|boards|kayaks|surfski|paddles|gear|collections|catalog)[^"']*?)["']/gi)?.length || 0,
-    productLinksExamples: (siteHtml.match(/href=["'](\/(?:products|shop|models|boats|boards|kayaks|surfski|paddles|gear|collections|catalog)[^"']*?)["']/gi) || []).slice(0,3),
+    productLinksFound: siteHtml.match(/href=["'](\/(?:products|shop|models|boats|boards|kayaks|surfski|surfskis|paddles|gear|collections|catalog|our-|range|equipment|all-)[^"']*?)["']/gi)?.length || 0,
   };
 
   // Also improve description with AI if we got a generic meta description
