@@ -37,12 +37,9 @@ export function Footer() {
       <div className="flex items-center justify-center gap-3 mb-3">
         <WaterPulse />
         <span className="text-xs text-slate-300">|</span>
-        <button
-          onClick={() => { const fn = (window as any).toggleStats; if (fn) fn(); }}
-          className="text-xs text-slate-500 hover:text-cyan-600 cursor-pointer font-medium transition-colors"
-        >
+        <Link href="/stats" className="text-xs text-slate-500 hover:text-cyan-600 font-medium transition-colors no-underline">
           📊 Stats
-        </button>
+        </Link>
       </div>
       <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mb-3">
         {FOOTER_LINKS.map(({ href, label }) => (
