@@ -7,7 +7,7 @@ interface Brand {
   logo_url: string; facebook_url: string; instagram_url: string; distributors: string;
 }
 
-const TABS = ['All','SUP','Surfski','Sprint Kayak','Canoe','Outrigger',"Va'a",'Kayak','Paddles','PFDs'];
+const TABS = ['All','SUP','Surfski','Sprint Kayak','Canoe','Outrigger',"Va'a",'Kayak','Paddles','PFDs','Clothing','Accessories'];
 
 export function GearList({ brands }: { brands: Brand[] }) {
   const [tab, setTab] = useState('All');
@@ -16,7 +16,25 @@ export function GearList({ brands }: { brands: Brand[] }) {
 
   const filtered = useMemo(() => {
     return brands.filter(b => {
-      if (tab !== 'All' && !b.categories?.toLowerCase().includes(tab.toLowerCase())) return false;
+      if (tab !== 'All') {
+        const cats = (b.categories || '').toLowerCase();
+        const t = tab.toLowerCase();
+        // Clothing tab matches: clothing, paddle clothing, dry wear, wetsuit, drysuit
+        if (t === 'clothing') {
+          if (!cats.match(/clothing|dry wear|wetsuit|drysuit|apparel/)) return false;
+        }
+        // Accessories tab matches: accessories, paddle accessories
+        else if (t === 'accessories') {
+          if (!cats.includes('accessories')) return false;
+        }
+        // PFDs tab matches: pfd, pfds, life jacket
+        else if (t === 'pfds') {
+          if (!cats.match(/pfd|life jacket/)) return false;
+        }
+        else {
+          if (!cats.includes(t)) return false;
+        }
+      }
       if (search && !b.name.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
