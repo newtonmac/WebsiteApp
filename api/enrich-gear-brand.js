@@ -28,6 +28,8 @@ function buildProductPrompt(name, categories, text, linkTextStr) {
 
   return `You are extracting product information for "${name}", ${brandType}.
 
+This brand was manually curated for a paddle sports directory — it IS relevant. Your job is to find their products.
+
 From the website text below, identify their 4-8 most popular or flagship products. For each product, provide:
 - Product name (model/line name only, no brand prefix)
 - A short 5-10 word description of what it is
@@ -38,7 +40,8 @@ Respond ONLY with products in this exact format, separated by |:
 Product Name — short description | Product Name — short description
 
 If the text mentions model names, series names, or collection names in links/navigation, include those.
-If you truly cannot identify any specific products or lines, respond with just: NONE
+Even if you only find 2-3 products, list them. Try hard — look at navigation links, page titles, headings, and any product references.
+Only respond NONE if the page is completely empty or blocked.
 
 Website text:
 ${text}${linkTextStr}`;
