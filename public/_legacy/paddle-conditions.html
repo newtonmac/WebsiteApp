@@ -3352,7 +3352,10 @@
             else { uvFactors.push({l:`Low UV (${uv})`,c:'#34d399'}); }
 
             // --- WATER TEMPERATURE (0-100) ---
-            // Fallback chain: NOAA coastal (local) → USGS inland (local) → Open-Meteo SST (national/global)
+            // Based on official safety thresholds:
+            // USCG: cold water = below 70°F. ACA: thermal protection below 60°F.
+            // NCCWS: caution below 70°F. American Whitewater: protection below 50°F.
+            // 1-10-1 Rule: 1 min breathing control, 10 min movement, 1 hr consciousness
             let wtScore = 100, wtFactors = [];
             const sstC = marineSwell?.current?.sea_surface_temperature;
             let sstF = null;
@@ -3360,14 +3363,47 @@
             else if (usgsWaterTemp != null) { sstF = usgsWaterTemp; }
             else if (sstC != null) { sstF = sstC * 9/5 + 32; }
 
+            let gearRec = '';
             if (sstF != null) {
-                if (sstF >= 75) { wtScore = 100; wtFactors.push({l:`Warm (${sstF.toFixed(0)}°F)`,c:'#34d399'}); }
-                else if (sstF >= 68) { wtScore = 90; wtFactors.push({l:`Comfortable (${sstF.toFixed(0)}°F)`,c:'#34d399'}); }
-                else if (sstF >= 60) { wtScore = 70; wtFactors.push({l:`Cool (${sstF.toFixed(0)}°F)`,c:'#22d3ee'}); }
-                else if (sstF >= 55) { wtScore = 50; wtFactors.push({l:`Cold (${sstF.toFixed(0)}°F)`,c:'#fbbf24'}); }
-                else { wtScore = 25; wtFactors.push({l:`Very Cold (${sstF.toFixed(0)}°F)`,c:'#f87171'}); }
+                const airF = c.temperature_2m;
+                const rule120 = (airF != null && sstF != null) ? (airF + sstF < 120) : false;
+
+                if (sstF >= 70) {
+                    wtScore = 100;
+                    wtFactors.push({l:`Warm (${sstF.toFixed(0)}°F)`,c:'#34d399'});
+                    gearRec = 'Standard paddling clothes (synthetic, no cotton). Sun protection is the priority.';
+                } else if (sstF >= 60) {
+                    wtScore = 65;
+                    wtFactors.push({l:`Cool (${sstF.toFixed(0)}°F) — Wetsuit recommended`,c:'#22d3ee'});
+                    gearRec = 'Wetsuit recommended (3mm). Cold shock can cause gasping if immersed. Synthetic layers only — no cotton.';
+                } else if (sstF >= 50) {
+                    wtScore = 30;
+                    wtFactors.push({l:`Cold (${sstF.toFixed(0)}°F) — Wetsuit/drysuit required`,c:'#fbbf24'});
+                    gearRec = 'Wetsuit (4/3mm minimum) or drysuit strongly recommended. Neoprene boots, gloves, and hood for extremities. 1-10-1 Rule applies: 1 min to control breathing, 10 min of useful movement, 1 hr before hypothermia.';
+                } else if (sstF >= 45) {
+                    wtScore = 10;
+                    wtFactors.push({l:`Dangerous (${sstF.toFixed(0)}°F) — Drysuit essential`,c:'#f87171'});
+                    gearRec = 'Full drysuit with heavy fleece layers mandatory. Neoprene boots, gloves, hood essential. Cold incapacitation in minutes — stay close to shore. Never paddle alone.';
+                } else {
+                    wtScore = 5;
+                    wtFactors.push({l:`Life-threatening (${sstF.toFixed(0)}°F) — Extreme danger`,c:'#dc2626'});
+                    gearRec = 'Full drysuit with maximum insulation mandatory. Survival time in water is minutes. Strongly consider not paddling. If you must: stay within 50 feet of shore, never alone, file a float plan.';
+                }
+
+                // 120 Rule: USCG/ACA guideline — air + water < 120°F requires thermal protection
+                if (rule120) {
+                    wtScore = Math.min(wtScore, 40);
+                    wtFactors.push({l:`120 Rule: Air (${airF.toFixed(0)}°F) + Water (${sstF.toFixed(0)}°F) = ${(airF+sstF).toFixed(0)}°F < 120°F`,c:'#f97316'});
+                }
+
+                // Always show PFD reminder for cold water
+                if (sstF < 60) {
+                    wtFactors.push({l:'PFD essential — cold shock causes involuntary gasp reflex',c:'#f87171'});
+                    wtFactors.push({l:'Cotton kills — wear synthetic or wool only',c:'#f97316'});
+                }
             } else {
-                wtScore = 75; wtFactors.push({l:'No data',c:'#6b7280'});
+                wtScore = 75; wtFactors.push({l:'No water temp data',c:'#6b7280'});
+                gearRec = 'No water temp data — dress for immersion as a precaution.';
             }
 
             // Clamp all sub-scores
@@ -3378,16 +3414,21 @@
             wtScore = Math.max(0, Math.min(100, wtScore));
 
             // --- PADDLING SCORE (conditions for actually paddling) ---
-            // Weighted: wind/weather 45%, water surface 45%, water temp 10%
-            let paddleScore = Math.round(wwScore * 0.45 + wsScore * 0.45 + wtScore * 0.10);
+            // Weighted: wind/weather 30%, water surface 35%, water temp 35%
+            // Water temp weighted heavily because cold water is life-threatening
+            // Per USCG: cold water is #1 killer of recreational boaters
+            let paddleScore = Math.round(wwScore * 0.30 + wsScore * 0.35 + wtScore * 0.35);
             if (wc >= 95) paddleScore = Math.min(paddleScore, 20); // thunderstorms
+            // Cold water cap: if water is dangerously cold, cap the paddle score
+            if (sstF != null && sstF < 45) paddleScore = Math.min(paddleScore, 25);
+            else if (sstF != null && sstF < 50) paddleScore = Math.min(paddleScore, 40);
             paddleScore = Math.max(0, Math.min(100, paddleScore));
 
             // Collect all factors for the dot display
             const factors = [...wqFactors, ...wwFactors, ...wsFactors, ...uvFactors, ...wtFactors];
 
             return {
-                paddleScore, wqScore, factors, tier,
+                paddleScore, wqScore, factors, tier, gearRec, sstF,
                 categories: {
                     water: { score: wqScore, label: 'Water Quality', icon: '&#x1F4A7;', factors: wqFactors },
                     wind: { score: wwScore, label: 'Wind & Weather', icon: '&#x1F4A8;', factors: wwFactors },
@@ -3929,7 +3970,7 @@
 
         function render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell, noaaWaterTemp, usgsWaterTemp) {
             const c = weather.current;
-            const {paddleScore,wqScore,factors,categories,tier} = calcScore(weather, sdBeach, beachAdvisories, marineSwell, riverFlow, noaaWaterTemp, usgsWaterTemp);
+            const {paddleScore,wqScore,factors,categories,tier,gearRec,sstF} = calcScore(weather, sdBeach, beachAdvisories, marineSwell, riverFlow, noaaWaterTemp, usgsWaterTemp);
             const paddleColor = sClr(paddleScore);
             const wqColor = sClr(wqScore);
             // Data availability flags — only show scores when real monitoring data exists
@@ -4316,6 +4357,27 @@
             let alertH='';
             if(c.weather_code>=95) alertH+=`<div class="alert-banner" style="border-color:#ef444460;background:#ef444415;color:#f87171;"><span class="alert-icon">&#x26A1;</span><span>Thunderstorm activity. Do NOT go on the water.</span></div>`;
             else if(paddleScore<40) alertH+=`<div class="alert-banner"><span class="alert-icon">&#x26A0;</span><span>Conditions unfavorable for most paddle sports.</span></div>`;
+
+            // Cold water safety alerts based on official thresholds
+            if(sstF != null && sstF < 45) {
+                alertH+=`<div class="alert-banner" style="border-color:#dc262660;background:#dc262615;color:#f87171;"><span class="alert-icon">&#x2744;</span><span><strong>LIFE-THREATENING WATER TEMP (${sstF.toFixed(0)}°F)</strong> — Full drysuit mandatory. Survival time in minutes. 1-10-1 Rule applies. PFD must be worn.</span></div>`;
+            } else if(sstF != null && sstF < 50) {
+                alertH+=`<div class="alert-banner" style="border-color:#ef444460;background:#ef444415;color:#f87171;"><span class="alert-icon">&#x2744;</span><span><strong>Dangerous Water Temp (${sstF.toFixed(0)}°F)</strong> — Drysuit required. Cold shock and rapid hypothermia risk. Always wear a PFD.</span></div>`;
+            } else if(sstF != null && sstF < 60) {
+                alertH+=`<div class="alert-banner" style="border-color:#f59e0b60;background:#f59e0b15;color:#fbbf24;"><span class="alert-icon">&#x1F321;</span><span><strong>Cold Water (${sstF.toFixed(0)}°F)</strong> — Wetsuit required (ACA/USCG). Cold shock can cause gasping and loss of breathing control. Wear a PFD. No cotton.</span></div>`;
+            } else if(sstF != null && sstF < 70 && c.temperature_2m > 60) {
+                alertH+=`<div class="alert-banner" style="border-color:#06b6d440;background:#06b6d410;color:#22d3ee;"><span class="alert-icon">&#x1F321;</span><span><strong>Think 60 (USCG/NWS):</strong> Air feels warm (${c.temperature_2m.toFixed(0)}°F) but water is ${sstF.toFixed(0)}°F — dress for the water, not the air. Wetsuit recommended.</span></div>`;
+            }
+
+            // 120 Rule alert
+            if(sstF != null && c.temperature_2m != null && (sstF + c.temperature_2m) < 120 && sstF < 70) {
+                alertH+=`<div class="alert-banner"><span class="alert-icon">&#x26A0;</span><span><strong>120 Rule:</strong> Air (${c.temperature_2m.toFixed(0)}°F) + Water (${sstF.toFixed(0)}°F) = ${(c.temperature_2m+sstF).toFixed(0)}°F — below 120°F threshold. Wetsuit or drysuit required per ACA/USCG guidelines.</span></div>`;
+            }
+
+            // Gear recommendation bar
+            if(gearRec) {
+                alertH+=`<div style="background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px;font-size:13px;color:#94a3b8;"><span style="font-size:18px;">🧥</span><div><strong style="color:#e2e8f0;">Gear Recommendation:</strong> ${gearRec}${sstF != null && sstF < 70 ? '<br><span style="font-size:11px;color:#64748b;margin-top:4px;display:inline-block;">Sources: U.S. Coast Guard, American Canoe Association (ACA), National Center for Cold Water Safety</span>' : ''}</div></div>`;
+            }
 
             document.getElementById('alertArea').innerHTML=alertH;
 
