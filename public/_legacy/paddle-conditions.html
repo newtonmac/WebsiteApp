@@ -4017,6 +4017,7 @@
 
         function render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell, noaaWaterTemp, usgsWaterTemp) {
             const c = weather.current;
+            const pointZone = classifyPointZone(paddleLat, paddleLon);
             const {paddleScore,wqScore,factors,categories,tier,gearRec,sstF} = calcScore(weather, sdBeach, beachAdvisories, marineSwell, riverFlow, noaaWaterTemp, usgsWaterTemp, pointZone);
             const paddleColor = sClr(paddleScore);
             const wqColor = sClr(wqScore);
@@ -4037,7 +4038,6 @@
             // Water body zone matching: only use DEH stations from the SAME water body
             // A bay station across a peninsula is irrelevant to the ocean side (and vice versa)
             // Inland locations (reservoirs, lakes) have no relevant DEH monitoring
-            const pointZone = classifyPointZone(paddleLat, paddleLon);
             const nearbyStations = sortedDEH.filter(s =>
                 s._dist <= dehRadius && s.TypeID !== 2 && zonesCompatible(s._zone, pointZone)
             );
