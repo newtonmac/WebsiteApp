@@ -2890,6 +2890,7 @@
             allDEHStations = results.filter(s => s.Latitude && s.Longitude).map(s => {
                 s._dist = hav(lat, lon, s.Latitude, s.Longitude);
                 s._dir = compassDir(lat, lon, s.Latitude, s.Longitude);
+                s._zone = classifyStationZone(s.Name);
                 return s;
             });
             // Return nearby stations (within ~8 miles) for card display
@@ -3220,6 +3221,45 @@
             return dirs[Math.round(((angle + 360) % 360) / 45) % 8];
         }
 
+        // ======== Water body zone classification ========
+        // DEH stations monitor specific water bodies. A bay station across a peninsula
+        // is irrelevant to the ocean side, and vice versa. Inland lakes/reservoirs
+        // have no DEH monitoring at all.
+        function classifyStationZone(name) {
+            const n = (name || '').toLowerCase();
+            if (n.includes('mission bay') || n.match(/\(mb-/)) return 'mission_bay';
+            if (n.includes('san diego bay') || n.includes('bayside') || n.includes('shelter island')
+                || n.includes('harbor island') || n.includes('embarcadero') || n.includes('glorietta bay')
+                || n.includes('tidelands') || n.includes('chula vista marina')) return 'sd_bay';
+            if (n.includes('lake') || n.includes('reservoir') || n.includes('pond')) return 'inland';
+            return 'ocean';
+        }
+
+        // Classify a clicked lat/lon into a water body zone
+        // Uses geographic bounding boxes for San Diego's enclosed water bodies
+        function classifyPointZone(lat, lon) {
+            // Mission Bay: enclosed bay north of Sea World
+            if (lat >= 32.755 && lat <= 32.805 && lon >= -117.255 && lon <= -117.205) return 'mission_bay';
+            // San Diego Bay: enclosed bay from downtown to National City
+            // Bay is east of Coronado (Silver Strand separates bay from ocean)
+            if (lat >= 32.58 && lat <= 32.735 && lon >= -117.195 && lon <= -117.10) return 'sd_bay';
+            // Agua Hedionda Lagoon, Batiquitos Lagoon, San Elijo Lagoon (North County)
+            if (lat >= 33.08 && lat <= 33.10 && lon >= -117.34 && lon <= -117.30) return 'lagoon_north';
+            // Inland: east of the coastal zone (roughly east of -117.05 for SD area)
+            if (lon > -117.05) return 'inland';
+            // Default: Pacific Ocean coast
+            return 'ocean';
+        }
+
+        // Check if two zones are compatible (same water body)
+        function zonesCompatible(stationZone, pointZone) {
+            if (stationZone === pointZone) return true;
+            // Lagoon stations can match with ocean (they're connected)
+            if (stationZone === 'ocean' && pointZone === 'lagoon_north') return true;
+            if (stationZone === 'lagoon_north' && pointZone === 'ocean') return true;
+            return false;
+        }
+
         function hasSouthSwell(marineSwell) {
             if (!marineSwell?.current) return false;
             const dir = marineSwell.current.swell_wave_direction ?? marineSwell.current.wave_direction;
@@ -3240,13 +3280,11 @@
         // Priority: sdBeach (real-time DEH stations via our proxy) > CA Open Data (stale)
         // The CA Open Data dataset has NO "closure lifted" field, so old closures linger.
         // Our sdBeach proxy gets real-time station colors directly from sdbeachinfo.com.
-        function dehTier(sdBeach, beachAdvisories, marineSwell, riverFlow) {
-            // Use TIERED radius for scoring — a closure 7 miles away at Coronado
-            // should not close Mission Bay. Different water bodies, different conditions.
-            // Closures: ≤2mi (same beach/bay area)
-            // Advisories: ≤3mi (nearby stations)
-            // Display: full list kept at 8mi for informational purposes
-            const nearby = (sdBeach||[]);
+        function dehTier(sdBeach, beachAdvisories, marineSwell, riverFlow, pointZone) {
+            // Filter stations to same water body zone
+            // A bay closure shouldn't affect ocean scores (different water body, land barrier between)
+            const pz = pointZone || 'ocean';
+            const nearby = (sdBeach||[]).filter(st => !st._zone || zonesCompatible(st._zone, pz));
             const closedStations = nearby.filter(st => (st.RBGColor||'').toLowerCase().includes('red') && (st._dist || 99) <= 2);
             const advisoryStations = nearby.filter(st => (st.RBGColor||'').toLowerCase().includes('yellow') && (st._dist || 99) <= 3);
             const localStations = nearby.filter(st => (st._dist || 99) <= 3);
@@ -3291,13 +3329,13 @@
         // Each category scored 0-100 independently. Overall is weighted average
         // but CAPPED by critical categories (water closure = can't paddle).
 
-        function calcScore(w, sdBeach, beachAdvisories, marineSwell, riverFlow, noaaWaterTemp, usgsWaterTemp) {
+        function calcScore(w, sdBeach, beachAdvisories, marineSwell, riverFlow, noaaWaterTemp, usgsWaterTemp, pointZone) {
             const c = w.current;
             const wi = c.wind_speed_10m, g = c.wind_gusts_10m, wc = c.weather_code;
             const p = w.daily?.precipitation_sum?.[0] || 0;
 
             // --- WATER QUALITY (0-100) ---
-            const tier = dehTier(sdBeach, beachAdvisories, marineSwell, riverFlow);
+            const tier = dehTier(sdBeach, beachAdvisories, marineSwell, riverFlow, pointZone);
             let wqScore = 100, wqFactors = [];
             if (tier.tier === 'closure') { wqScore = 0; wqFactors.push({l:'Beach Closure',c:'#f87171'}); }
             else if (tier.tier === 'advisory') { wqScore = 40; wqFactors.push({l:'Bacteria Advisory',c:'#fbbf24'}); }
@@ -3595,7 +3633,7 @@
         // South swell (135°-225°) indicates transboundary flow from Tijuana River
         function wq(w, sdBeach, beachAdvisories, marineSwell, riverFlow){
             const p=w.daily?.precipitation_sum?.[0]||0,wc=w.current.weather_code;
-            const tier = dehTier(sdBeach, beachAdvisories, marineSwell, riverFlow);
+            const tier = dehTier(sdBeach, beachAdvisories, marineSwell, riverFlow, classifyPointZone(paddleLat, paddleLon));
             const southSwell = tier.southSwell;
             const swellNote = southSwell ? ' South swell detected — transboundary contamination risk.' : '';
 
@@ -3976,7 +4014,7 @@
 
         function render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell, noaaWaterTemp, usgsWaterTemp) {
             const c = weather.current;
-            const {paddleScore,wqScore,factors,categories,tier,gearRec,sstF} = calcScore(weather, sdBeach, beachAdvisories, marineSwell, riverFlow, noaaWaterTemp, usgsWaterTemp);
+            const {paddleScore,wqScore,factors,categories,tier,gearRec,sstF} = calcScore(weather, sdBeach, beachAdvisories, marineSwell, riverFlow, noaaWaterTemp, usgsWaterTemp, pointZone);
             const paddleColor = sClr(paddleScore);
             const wqColor = sClr(wqScore);
             // Data availability flags — only show scores when real monitoring data exists
@@ -3993,8 +4031,13 @@
             addStationMarkers(sortedDEH.filter(s => s._dist <= dehRadius));
             const localSrc = getLocalBeachSource(paddleLat, paddleLon);
 
-            // Determine status from nearest monitoring station (not storm drains)
-            const nearbyStations = sortedDEH.filter(s => s._dist <= dehRadius && s.TypeID !== 2);
+            // Water body zone matching: only use DEH stations from the SAME water body
+            // A bay station across a peninsula is irrelevant to the ocean side (and vice versa)
+            // Inland locations (reservoirs, lakes) have no relevant DEH monitoring
+            const pointZone = classifyPointZone(paddleLat, paddleLon);
+            const nearbyStations = sortedDEH.filter(s =>
+                s._dist <= dehRadius && s.TypeID !== 2 && zonesCompatible(s._zone, pointZone)
+            );
             const hasStatusData = nearbyStations.length > 0;
             let pinStatusColor, pinStatusLabel, pinStatusSource, pinStatusDetail = '';
             if (nearbyStations.length > 0) {
@@ -4638,7 +4681,7 @@
                         <div class="stat-row"><span class="stat-label">Wave Period</span><span class="stat-value">${(marineSwell.current.swell_wave_period||marineSwell.current.wave_period||0).toFixed(1)}s</span></div>
                         ` : ''}
                         ${(() => {
-                            const t = dehTier(sdBeach, beachAdvisories, marineSwell, riverFlow);
+                            const t = dehTier(sdBeach, beachAdvisories, marineSwell, riverFlow, pointZone);
                             const clr = t.tier==='closure'?'#f87171':t.tier==='advisory'?'#fbbf24':'#34d399';
                             return `<div class="stat-row"><span class="stat-label">DEH Tier</span><span class="stat-value" style="font-weight:600;color:${clr}">${t.tier.toUpperCase()}</span></div>`;
                         })()}
