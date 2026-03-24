@@ -3371,23 +3371,23 @@
                 if (sstF >= 70) {
                     wtScore = 100;
                     wtFactors.push({l:`Warm (${sstF.toFixed(0)}°F)`,c:'#34d399'});
-                    gearRec = 'Standard paddling clothes (synthetic, no cotton). Sun protection is the priority.';
+                    gearRec = 'Standard paddling clothes (synthetic, no cotton). Sun protection is the priority. Check local regulations for PFD requirements.';
                 } else if (sstF >= 60) {
                     wtScore = 65;
                     wtFactors.push({l:`Cool (${sstF.toFixed(0)}°F) — Wetsuit recommended`,c:'#22d3ee'});
-                    gearRec = 'Wetsuit recommended (3mm). Cold shock can cause gasping if immersed. Synthetic layers only — no cotton.';
+                    gearRec = 'Wetsuit recommended (3mm). Cold shock can cause gasping if immersed. Synthetic layers only — no cotton. Check with your local paddling club or federation for area-specific guidance.';
                 } else if (sstF >= 50) {
                     wtScore = 30;
                     wtFactors.push({l:`Cold (${sstF.toFixed(0)}°F) — Wetsuit/drysuit required`,c:'#fbbf24'});
-                    gearRec = 'Wetsuit (4/3mm minimum) or drysuit strongly recommended. Neoprene boots, gloves, and hood for extremities. 1-10-1 Rule applies: 1 min to control breathing, 10 min of useful movement, 1 hr before hypothermia.';
+                    gearRec = 'Wetsuit (4/3mm minimum) or drysuit strongly recommended. Neoprene boots, gloves, and hood for extremities. 1-10-1 Rule applies: 1 min to control breathing, 10 min of useful movement, 1 hr before hypothermia. Consult your local governing body for area-specific cold water requirements.';
                 } else if (sstF >= 45) {
                     wtScore = 10;
                     wtFactors.push({l:`Dangerous (${sstF.toFixed(0)}°F) — Drysuit essential`,c:'#f87171'});
-                    gearRec = 'Full drysuit with heavy fleece layers mandatory. Neoprene boots, gloves, hood essential. Cold incapacitation in minutes — stay close to shore. Never paddle alone.';
+                    gearRec = 'Full drysuit with heavy fleece layers mandatory. Neoprene boots, gloves, hood essential. Cold incapacitation in minutes — stay close to shore. Never paddle alone. Verify local regulations and contact your regional paddling federation before going out.';
                 } else {
                     wtScore = 5;
                     wtFactors.push({l:`Life-threatening (${sstF.toFixed(0)}°F) — Extreme danger`,c:'#dc2626'});
-                    gearRec = 'Full drysuit with maximum insulation mandatory. Survival time in water is minutes. Strongly consider not paddling. If you must: stay within 50 feet of shore, never alone, file a float plan.';
+                    gearRec = 'Full drysuit with maximum insulation mandatory. Survival time in water is minutes. Strongly consider not paddling. If you must: stay within 50 feet of shore, never alone, file a float plan, and notify local authorities. Contact your regional paddling federation or coast guard for current advisories.';
                 }
 
                 // 120 Rule: USCG/ACA guideline — air + water < 120°F requires thermal protection
@@ -3403,7 +3403,7 @@
                 }
             } else {
                 wtScore = 75; wtFactors.push({l:'No water temp data',c:'#6b7280'});
-                gearRec = 'No water temp data — dress for immersion as a precaution.';
+                gearRec = 'No water temperature data available for this location. As a precaution, always dress for immersion — check local conditions and consult your regional paddling federation.';
             }
 
             // Clamp all sub-scores
@@ -4360,23 +4360,40 @@
 
             // Cold water safety alerts based on official thresholds
             if(sstF != null && sstF < 45) {
-                alertH+=`<div class="alert-banner" style="border-color:#dc262660;background:#dc262615;color:#f87171;"><span class="alert-icon">&#x2744;</span><span><strong>LIFE-THREATENING WATER TEMP (${sstF.toFixed(0)}°F)</strong> — Full drysuit mandatory. Survival time in minutes. 1-10-1 Rule applies. PFD must be worn.</span></div>`;
+                alertH+=`<div class="alert-banner" style="border-color:#dc262660;background:#dc262615;color:#f87171;"><span class="alert-icon">&#x2744;</span><span><strong>LIFE-THREATENING WATER TEMP (${sstF.toFixed(0)}°F)</strong> — Full drysuit mandatory per <a href="https://www.coldwatersafety.org" target="_blank" style="color:#f87171;text-decoration:underline;">NCCWS</a> guidelines. 1-10-1 Rule: 1 min breathing control, 10 min movement, 1 hr consciousness. PFD must be worn.</span></div>`;
             } else if(sstF != null && sstF < 50) {
-                alertH+=`<div class="alert-banner" style="border-color:#ef444460;background:#ef444415;color:#f87171;"><span class="alert-icon">&#x2744;</span><span><strong>Dangerous Water Temp (${sstF.toFixed(0)}°F)</strong> — Drysuit required. Cold shock and rapid hypothermia risk. Always wear a PFD.</span></div>`;
+                alertH+=`<div class="alert-banner" style="border-color:#ef444460;background:#ef444415;color:#f87171;"><span class="alert-icon">&#x2744;</span><span><strong>Dangerous Water Temp (${sstF.toFixed(0)}°F)</strong> — Drysuit required per <a href="https://americanwhitewater.org" target="_blank" style="color:#f87171;text-decoration:underline;">American Whitewater</a> &amp; <a href="https://www.uscgboating.org" target="_blank" style="color:#f87171;text-decoration:underline;">USCG</a>. Cold shock and rapid hypothermia risk.</span></div>`;
             } else if(sstF != null && sstF < 60) {
-                alertH+=`<div class="alert-banner" style="border-color:#f59e0b60;background:#f59e0b15;color:#fbbf24;"><span class="alert-icon">&#x1F321;</span><span><strong>Cold Water (${sstF.toFixed(0)}°F)</strong> — Wetsuit required (ACA/USCG). Cold shock can cause gasping and loss of breathing control. Wear a PFD. No cotton.</span></div>`;
+                alertH+=`<div class="alert-banner" style="border-color:#f59e0b60;background:#f59e0b15;color:#fbbf24;"><span class="alert-icon">&#x1F321;</span><span><strong>Cold Water (${sstF.toFixed(0)}°F)</strong> — Thermal protection required per <a href="https://americancanoe.org" target="_blank" style="color:#fbbf24;text-decoration:underline;">ACA</a> (below 60°F threshold). <a href="https://www.uscgboating.org" target="_blank" style="color:#fbbf24;text-decoration:underline;">USCG</a> classifies water below 70°F as cold. Wear a PFD. No cotton.</span></div>`;
             } else if(sstF != null && sstF < 70 && c.temperature_2m > 60) {
-                alertH+=`<div class="alert-banner" style="border-color:#06b6d440;background:#06b6d410;color:#22d3ee;"><span class="alert-icon">&#x1F321;</span><span><strong>Think 60 (USCG/NWS):</strong> Air feels warm (${c.temperature_2m.toFixed(0)}°F) but water is ${sstF.toFixed(0)}°F — dress for the water, not the air. Wetsuit recommended.</span></div>`;
+                alertH+=`<div class="alert-banner" style="border-color:#06b6d440;background:#06b6d410;color:#22d3ee;"><span class="alert-icon">&#x1F321;</span><span><strong>Think 60 (<a href="https://www.weather.gov" target="_blank" style="color:#22d3ee;text-decoration:underline;">NWS</a>/<a href="https://www.uscgboating.org" target="_blank" style="color:#22d3ee;text-decoration:underline;">USCG</a>):</strong> Air feels warm (${c.temperature_2m.toFixed(0)}°F) but water is ${sstF.toFixed(0)}°F — dress for the water, not the air.</span></div>`;
             }
 
             // 120 Rule alert
             if(sstF != null && c.temperature_2m != null && (sstF + c.temperature_2m) < 120 && sstF < 70) {
-                alertH+=`<div class="alert-banner"><span class="alert-icon">&#x26A0;</span><span><strong>120 Rule:</strong> Air (${c.temperature_2m.toFixed(0)}°F) + Water (${sstF.toFixed(0)}°F) = ${(c.temperature_2m+sstF).toFixed(0)}°F — below 120°F threshold. Wetsuit or drysuit required per ACA/USCG guidelines.</span></div>`;
+                alertH+=`<div class="alert-banner"><span class="alert-icon">&#x26A0;</span><span><strong>120 Rule (<a href="https://americancanoe.org" target="_blank" style="color:#fbbf24;text-decoration:underline;">ACA</a>):</strong> Air (${c.temperature_2m.toFixed(0)}°F) + Water (${sstF.toFixed(0)}°F) = ${(c.temperature_2m+sstF).toFixed(0)}°F — below 120°F threshold. Wetsuit or drysuit recommended.</span></div>`;
             }
 
-            // Gear recommendation bar
+            // Gear recommendation bar with source links and disclaimer
             if(gearRec) {
-                alertH+=`<div style="background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px;font-size:13px;color:#94a3b8;"><span style="font-size:18px;">🧥</span><div><strong style="color:#e2e8f0;">Gear Recommendation:</strong> ${gearRec}${sstF != null && sstF < 70 ? '<br><span style="font-size:11px;color:#64748b;margin-top:4px;display:inline-block;">Sources: U.S. Coast Guard, American Canoe Association (ACA), National Center for Cold Water Safety</span>' : ''}</div></div>`;
+                const srcLinks = sstF != null && sstF < 70 ? `<div style="font-size:11px;color:#64748b;margin-top:6px;line-height:1.5;">` +
+                    `Based on guidelines from: <a href="https://www.uscgboating.org/recreational-boaters/cold-water-safety.php" target="_blank" style="color:#06b6d4;">U.S. Coast Guard</a> · ` +
+                    `<a href="https://americancanoe.org/safety/" target="_blank" style="color:#06b6d4;">American Canoe Association</a> · ` +
+                    `<a href="https://www.coldwatersafety.org" target="_blank" style="color:#06b6d4;">National Center for Cold Water Safety</a> · ` +
+                    `<a href="https://americanwhitewater.org/content/Wiki/safety:start" target="_blank" style="color:#06b6d4;">American Whitewater</a>` +
+                    `</div>` : '';
+                alertH+=`<div style="background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;font-size:13px;color:#94a3b8;"><span style="font-size:18px;">🧥</span><div><strong style="color:#e2e8f0;">Gear Recommendation:</strong> ${gearRec}${srcLinks}</div></div>`;
+            }
+
+            // Liability disclaimer — always show when water temp data exists
+            if(sstF != null) {
+                alertH+=`<div style="background:transparent;border:1px solid #1e293b;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:11px;color:#475569;line-height:1.5;">` +
+                    `<strong style="color:#64748b;">⚠️ Important:</strong> The information above is aggregated from publicly available sources for general reference only. ` +
+                    `PaddlePoint does not provide professional safety advice. Conditions vary by location and can change rapidly. ` +
+                    `<strong>It is your responsibility</strong> to check local regulations, consult your local paddling federation or governing body, ` +
+                    `assess conditions in person, and make your own informed decisions before entering the water. ` +
+                    `Always wear a PFD. When in doubt, don't go out.` +
+                    `</div>`;
             }
 
             document.getElementById('alertArea').innerHTML=alertH;
