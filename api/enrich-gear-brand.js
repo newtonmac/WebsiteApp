@@ -2,12 +2,19 @@ const { query } = require('./_db');
 const { requireAdmin } = require('./_auth');
 const API_TOKEN = 'pp-clubs-7742-v1';
 const ALLOWED_ORIGINS = ['https://paddlepoint.org','https://jmlsd.org','http://localhost'];
+const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+const delay = (ms) => new Promise(r => setTimeout(r, ms));
+
+async function fetchPage(url) {
+  try {
+    const r = await fetch(url, { headers: { 'User-Agent': UA }, redirect: 'follow', signal: AbortSignal.timeout(10000) });
+    return r.ok ? await r.text() : '';
+  } catch { return ''; }
+}
 
 module.exports = async (req, res) => {
   const origin = req.headers.origin || '';
-  if (ALLOWED_ORIGINS.some(o => origin.startsWith(o))) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  }
+  if (ALLOWED_ORIGINS.some(o => origin.startsWith(o))) res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,X-API-Token');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -16,207 +23,108 @@ module.exports = async (req, res) => {
   const session = requireAdmin(req);
   if (token !== API_TOKEN && !session.valid) return res.status(403).json({ error: 'Access denied' });
 
-  const { name, website, facebook_url, instagram_url } = req.body || {};
+  const { name, website, id, facebook_url, instagram_url } = req.body || {};
   if (!name) return res.status(400).json({ error: 'Brand name required' });
 
   const result = { name, website: website || '', facebook_url: facebook_url || '', instagram_url: instagram_url || '' };
   let siteHtml = '';
 
-  // Scrape website for description, logo, email, phone, social links
+  // Step 1: Scrape homepage
   if (website) {
-    try {
-      const siteRes = await fetch(website, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36' },
-        redirect: 'follow', signal: AbortSignal.timeout(10000)
-      });
-      siteHtml = await siteRes.text();
-
-      // Description from meta tags
+    siteHtml = await fetchPage(website);
+    if (siteHtml) {
+      // Basic info extraction
       const descMatch = siteHtml.match(/<meta[^>]*name=["']description["'][^>]*content=["'](.*?)["']/i)
         || siteHtml.match(/<meta[^>]*property=["']og:description["'][^>]*content=["'](.*?)["']/i);
       if (descMatch) result.description = descMatch[1].trim().slice(0, 500);
-
-      // Logo: DuckDuckGo favicon
-      try {
-        const urlObj = new URL(website);
-        result.logo_url = `https://icons.duckduckgo.com/ip3/${urlObj.hostname}.ico`;
-      } catch(e) {}
-
-      // Email
+      try { result.logo_url = `https://icons.duckduckgo.com/ip3/${new URL(website).hostname}.ico`; } catch {}
       const emails = siteHtml.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g);
-      if (emails) {
-        const good = emails.filter(e => !e.includes('example') && !e.includes('sentry') && !e.includes('webpack'));
-        if (good.length) result.email = good[0];
-      }
-
-      // Phone
+      if (emails) { const good = emails.filter(e => !e.includes('example') && !e.includes('sentry')); if (good.length) result.email = good[0]; }
       const phones = siteHtml.match(/(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g);
       if (phones) result.phone = phones[0];
-
-      // Facebook
-      if (!result.facebook_url) {
-        const fbMatch = siteHtml.match(/https?:\/\/(?:www\.)?facebook\.com\/[a-zA-Z0-9._\-]{3,}\/?/g);
-        if (fbMatch) {
-          const good = fbMatch.filter(u => !u.includes('/tr') && !u.includes('/sharer') && !u.includes('/plugins'));
-          if (good.length) result.facebook_url = good[0];
-        }
-      }
-      // Instagram
-      if (!result.instagram_url) {
-        const igMatch = siteHtml.match(/https?:\/\/(?:www\.)?instagram\.com\/[a-zA-Z0-9._]+\/?/);
-        if (igMatch) result.instagram_url = igMatch[0];
-      }
-      // YouTube
-      const ytMatch = siteHtml.match(/https?:\/\/(?:www\.)?youtube\.com\/(?:channel|c|user|@)\/[a-zA-Z0-9._-]+\/?/);
-      if (ytMatch) result.youtube_url = ytMatch[0];
-
-    } catch(e) { /* scrape failed, continue with what we have */ }
+      if (!result.facebook_url) { const fb = siteHtml.match(/https?:\/\/(?:www\.)?facebook\.com\/[a-zA-Z0-9._\-]{3,}\/?/g); if (fb) { const g = fb.filter(u => !u.includes('/tr') && !u.includes('/sharer')); if (g.length) result.facebook_url = g[0]; } }
+      if (!result.instagram_url) { const ig = siteHtml.match(/https?:\/\/(?:www\.)?instagram\.com\/[a-zA-Z0-9._]+\/?/); if (ig) result.instagram_url = ig[0]; }
+      const yt = siteHtml.match(/https?:\/\/(?:www\.)?youtube\.com\/(?:channel|c|user|@)\/[a-zA-Z0-9._-]+\/?/);
+      if (yt) result.youtube_url = yt[0];
+    }
   }
 
-  // AI-powered product extraction: scrape products page + use Claude to extract
+  // Step 2: SLOWLY scrape sub-pages for product data
   if (website && siteHtml) {
     try {
-      // Try to find and scrape a products/shop page for richer data
-      let productsHtml = siteHtml;
-
-      // Strategy 1: Find product links in the homepage HTML
-      const productLinks = siteHtml.match(/href=["'](\/(?:products|shop|models|boats|boards|kayaks|surfski|surfskis|paddles|gear|collections|catalog|our-|range|equipment|all-)[^"']*?)["']/gi)
-        || siteHtml.match(/href=["'](https?:\/\/[^"']*\/(?:products|shop|models|boats|boards|kayaks|collections|catalog)[^"']*?)["']/gi);
-
-      // Strategy 2: Also try common product page URLs directly
       const base = new URL(website);
-      const tryPaths = ['/products', '/shop', '/models', '/kayaks', '/surfski', '/surf-skis',
-        '/boats', '/boards', '/collections', '/our-boats', '/equipment', '/range',
-        '/touring-kayaks', '/racing-kayaks', '/kayak-paddles', '/canoes', '/outrigger',
-        '/sup-boards', '/stand-up-paddle', '/all-products', '/catalog'];
-      const allUrls = new Set();
-
-      // Add discovered links
-      if (productLinks) {
-        for (const link of productLinks.slice(0, 3)) {
-          const href = link.match(/href=["']([^"']+)["']/i)?.[1];
-          if (href) allUrls.add(new URL(href, base).toString());
-        }
-      }
-      // Add common paths
-      for (const p of tryPaths) allUrls.add(new URL(p, base).toString());
-
-      // Strategy 3: extract ALL internal links from homepage and pick likely product pages
+      // Find internal links
       const allHrefs = [...siteHtml.matchAll(/href=["']([^"'#]*?)["']/gi)].map(m => m[1]).filter(Boolean);
       const skipPattern = /css|js|images?|fonts?|favicon|mailto|tel:|privacy|terms|contact|about|news|blog|faq|login|cart|account|search|sitemap|\.(jpg|png|gif|svg|pdf|css|js)$/i;
+      const urls = new Set();
       for (const href of allHrefs) {
         if (skipPattern.test(href)) continue;
-        try {
-          const fullUrl = new URL(href, base);
-          if (fullUrl.hostname === base.hostname && fullUrl.pathname !== '/' && fullUrl.pathname.length > 2) {
-            allUrls.add(fullUrl.toString());
-          }
-        } catch(e) {}
+        try { const u = new URL(href, base); if (u.hostname === base.hostname && u.pathname !== '/' && u.pathname.length > 2) urls.add(u.toString()); } catch {}
+      }
+      for (const p of ['/products','/shop','/models','/kayaks','/surfski','/surf-skis','/boats','/boards','/collections','/touring-kayaks','/racing-kayaks','/our-boats']) {
+        urls.add(new URL(p, base).toString());
       }
 
-      // Fetch pages SLOWLY and sequentially to avoid getting blocked
-      // 1.5 second delay between each request — polite scraping
-      const delay = (ms) => new Promise(r => setTimeout(r, ms));
-      const urlList = [...allUrls].slice(0, 6);
-      const pageResults = [];
-      for (const url of urlList) {
-        try {
-          const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36' }, redirect: 'follow', signal: AbortSignal.timeout(8000) });
-          pageResults.push(r.ok ? await r.text() : '');
-        } catch(e) { pageResults.push(''); }
-        await delay(1500); // 1.5s between requests
+      // Scrape up to 4 sub-pages with 3 SECOND delays
+      const pages = [siteHtml];
+      for (const url of [...urls].slice(0, 4)) {
+        await delay(3000);
+        const page = await fetchPage(url);
+        if (page.length > 200) pages.push(page);
       }
-      // Combine all successful pages
-      const allPagesText = pageResults.filter(p => p.length > 200).join('\n');
-      if (allPagesText.length > 500) productsHtml = allPagesText;
 
-      // Also extract all link text from homepage (nav links often list product names)
-      const linkTexts = [...siteHtml.matchAll(/<a[^>]*>([^<]{3,60})<\/a>/gi)]
-        .map(m => m[1].trim()).filter(t => t && !t.match(/home|about|contact|login|cart|search|menu|privacy|terms/i));
-      const linkTextStr = linkTexts.length > 0 ? '\n\nNavigation/link text found: ' + linkTexts.join(', ') : '';
-
-      // Strip HTML to text for AI analysis (keep structure hints)
-      const textContent = productsHtml
+      // Strip HTML, combine text
+      const text = pages.join('\n')
         .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
         .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
         .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, '')
         .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, '')
-        .replace(/<header[^>]*>[\s\S]*?<\/header>/gi, '')
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .slice(0, 8000);
+        .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 8000);
+
+      // Extract nav link text (often contains model names)
+      const linkTexts = [...siteHtml.matchAll(/<a[^>]*>([^<]{3,60})<\/a>/gi)]
+        .map(m => m[1].trim()).filter(t => t && !t.match(/home|about|contact|login|cart|search|menu|privacy|terms/i));
+      const linkTextStr = linkTexts.length > 0 ? '\n\nNavigation/link text: ' + linkTexts.join(', ') : '';
 
       // Call Claude to extract products
       const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
-      console.log('[enrich] AI text length:', textContent.length);
-      if (ANTHROPIC_KEY && textContent.length > 50) {
+      if (ANTHROPIC_KEY && text.length > 50) {
         const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': ANTHROPIC_KEY,
-            'anthropic-version': '2023-06-01',
-          },
+          headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
           body: JSON.stringify({
-            model: 'claude-sonnet-4-20250514',
-            max_tokens: 500,
+            model: 'claude-sonnet-4-20250514', max_tokens: 500,
             messages: [{ role: 'user', content:
-              `You are extracting product information for "${name}", a paddle sports / water sports brand.
-
-From the website text below, identify their 4-8 most popular or flagship products. For each product, provide:
-- Product name (model name only, no brand prefix)
-- A short 5-10 word description of what it is
-
-Respond ONLY with products in this exact format, one per line, separated by |:
-Product Name — short description | Product Name — short description
-
-If the text mentions model names, series names, or product lines in links/navigation, include those.
-If this doesn't appear to be a paddle/water sports brand, or you can't identify specific products, respond with just: NONE
-
-Website text:
-${textContent}${linkTextStr}`
-            }],
+              `You are extracting product information for "${name}", a paddle sports / water sports brand.\n\nFrom the website text below, identify their 4-8 most popular or flagship products. For each product, provide:\n- Product name (model name only, no brand prefix)\n- A short 5-10 word description of what it is\n\nRespond ONLY with products in this exact format, one per line, separated by |:\nProduct Name — short description | Product Name — short description\n\nIf the text mentions model names in links/navigation, include those.\nIf you can't identify specific products, respond with just: NONE\n\nWebsite text:\n${text}${linkTextStr}` }],
           }),
           signal: AbortSignal.timeout(15000),
         });
         const aiData = await aiRes.json();
         const aiText = aiData?.content?.[0]?.text?.trim() || '';
-        console.log('[enrich] AI products:', aiText.substring(0, 100));
         if (aiText && aiText !== 'NONE' && aiText.includes('—')) {
           result.popular_products = aiText;
         }
       }
-    } catch(e) { console.log('[enrich] AI extraction error:', e.message); }
-  }
 
-  // Also improve description with AI if we got a generic meta description
-  if (website && siteHtml && result.description && process.env.ANTHROPIC_API_KEY) {
-    try {
-      const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': process.env.ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 200,
-          messages: [{ role: 'user', content:
-            `Rewrite this brand description for "${name}" to be a concise 1-2 sentence summary focused on paddle sports / water sports. Keep it factual and under 200 characters. If the brand isn't related to water sports, keep the original description but make it concise.
-
-Original: ${result.description}`
-          }],
-        }),
-        signal: AbortSignal.timeout(10000),
-      });
-      const aiData = await aiRes.json();
-      const improved = aiData?.content?.[0]?.text?.trim() || '';
-      if (improved && improved.length > 20 && improved.length < 500) {
-        result.description = improved;
+      // Also improve description with AI
+      if (ANTHROPIC_KEY && result.description && result.description.length > 5) {
+        try {
+          const descRes = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
+            body: JSON.stringify({
+              model: 'claude-sonnet-4-20250514', max_tokens: 200,
+              messages: [{ role: 'user', content:
+                `Rewrite this brand description for "${name}" to be a concise 1-2 sentence summary focused on paddle sports / water sports. Keep it factual and under 200 characters. If it's just a rating or unrelated text, write a brief description based on the brand name and any context you know.\n\nOriginal: ${result.description}` }],
+            }),
+            signal: AbortSignal.timeout(10000),
+          });
+          const descData = await descRes.json();
+          const improved = descData?.content?.[0]?.text?.trim() || '';
+          if (improved && improved.length > 20 && improved.length < 500) result.description = improved;
+        } catch {}
       }
-    } catch(e) { /* AI description improvement failed */ }
+    } catch(e) { console.log('[enrich] Error:', e.message); }
   }
 
   return res.status(200).json(result);
