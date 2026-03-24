@@ -3242,8 +3242,8 @@
             if (lat >= 32.755 && lat <= 32.805 && lon >= -117.255 && lon <= -117.205) return 'mission_bay';
             // San Diego Bay: complex shape, split into sub-regions
             // South bay (Silver Strand area): bay is EAST of the peninsula centerline (~-117.168)
-            // The strand is only ~500ft wide — ocean is west, bay is east
-            if (lat >= 32.58 && lat < 32.70 && lon > -117.168 && lon <= -117.10) return 'sd_bay';
+            // Bay starts around lat 32.62 (south end near salt works). Below that is open coast.
+            if (lat >= 32.62 && lat < 32.70 && lon > -117.168 && lon <= -117.10) return 'sd_bay';
             // North bay (downtown to Shelter Island): wider due to Harbor Island, Shelter Island
             if (lat >= 32.70 && lat <= 32.735 && lon >= -117.230 && lon <= -117.10) return 'sd_bay';
             // Agua Hedionda Lagoon, Batiquitos Lagoon, San Elijo Lagoon (North County)
