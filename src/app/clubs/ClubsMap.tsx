@@ -214,7 +214,7 @@ export function ClubsMap({ totalClubs, totalCountries, craftTypes }: Props) {
           </button>
         </div>
 
-        <form onSubmit={handleLocationSearch} className="flex-1 min-w-[200px]">
+        <form onSubmit={handleLocationSearch} className="flex-1 min-w-[140px] sm:min-w-[200px]">
           {searchMode === 'location' ? (
             <input ref={locationInputRef} type="text"
               placeholder="Search by city, state, zip, or country..."
@@ -275,7 +275,7 @@ export function ClubsMap({ totalClubs, totalCountries, craftTypes }: Props) {
 
       {/* Club List Panel */}
       {listOpen && (
-        <div className="absolute top-14 right-3 z-20 w-[340px] max-h-[calc(100%-80px)] bg-slate-900/95 backdrop-blur border border-slate-700 rounded-2xl flex flex-col overflow-hidden shadow-2xl">
+        <div className="absolute top-14 right-3 left-3 sm:left-auto z-20 sm:w-[340px] max-h-[calc(100%-80px)] bg-slate-900/95 backdrop-blur border border-slate-700 rounded-2xl flex flex-col overflow-hidden shadow-2xl">
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-700 shrink-0">
             <h3 className="text-sm font-bold text-white"><span className="text-cyan-400">{listClubs.length}</span> Clubs Found</h3>
             <button onClick={() => setListOpen(false)} className="text-slate-400 hover:text-white text-xl">×</button>
@@ -310,7 +310,7 @@ export function ClubsMap({ totalClubs, totalCountries, craftTypes }: Props) {
 
       {/* Club Detail Panel */}
       {selected && (
-        <div className="absolute top-16 right-3 z-20 w-80 max-h-[70vh] overflow-y-auto bg-slate-900 text-white rounded-2xl shadow-xl">
+        <div className="absolute top-16 right-3 left-3 sm:left-auto z-20 sm:w-80 max-h-[70vh] overflow-y-auto bg-slate-900 text-white rounded-2xl shadow-xl">
           <div className="p-4">
             <div className="flex justify-between items-start mb-3">
               <h3 className="font-bold text-lg leading-tight">{selected.n}</h3>
