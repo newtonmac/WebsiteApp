@@ -3396,16 +3396,16 @@
 </svg>`;
         }
 
-        function sSum(pScore,wqS,w,cats){
+        function sSum(pScore,wqS,w,cats,hasWq){
             if (!cats) return '';
-            // Check water quality separately
-            if (wqS <= 15) return `Water Quality is critical — ${cats.water.factors[0]?.l || 'unsafe'}. Do not enter the water.`;
+            // Check water quality separately — only if monitoring data exists
+            if (hasWq && wqS <= 15) return `Water Quality is critical — ${cats.water.factors[0]?.l || 'unsafe'}. Do not enter the water.`;
             // Check paddling conditions
             const paddleCats = {wind: cats.wind, surface: cats.surface, temp: cats.temp};
             const worst = Object.values(paddleCats).reduce((a, b) => a.score < b.score ? a : b);
             if (worst.score <= 15) return `${worst.label} is critical — ${worst.factors[0]?.l || 'unsafe'}. Stay on shore.`;
             if (worst.score <= 40) return `${worst.label} is poor — ${worst.factors[0]?.l || 'use caution'}. Not recommended for paddling.`;
-            if (wqS <= 40) return `Paddling conditions are ${pScore>=60?'good':'fair'}, but water quality is poor — ${cats.water.factors[0]?.l || 'use caution'}.`;
+            if (hasWq && wqS <= 40) return `Paddling conditions are ${pScore>=60?'good':'fair'}, but water quality is poor — ${cats.water.factors[0]?.l || 'use caution'}.`;
             if (pScore >= 80) return `All conditions favorable. Great day to get on the water!`;
             if (pScore >= 60) return `Mostly good conditions. ${worst.label} is the limiting factor — ${worst.factors[0]?.l || 'monitor conditions'}.`;
             return `${worst.label} is the main concern — ${worst.factors[0]?.l || 'use caution'}. Check conditions carefully.`;
@@ -3825,6 +3825,8 @@
             const {paddleScore,wqScore,factors,categories,tier} = calcScore(weather, sdBeach, beachAdvisories, marineSwell, riverFlow, noaaWaterTemp, usgsWaterTemp);
             const paddleColor = sClr(paddleScore);
             const wqColor = sClr(wqScore);
+            // Data availability flags — only show scores when real monitoring data exists
+            const hasWqData = (sdBeach && sdBeach.length > 0) || (beachAdvisories && beachAdvisories.length > 0);
             const wwScore = Math.round(categories.wind.score * 0.6 + categories.uv.score * 0.25 + categories.temp.score * 0.15);
             const wwColor = sClr(wwScore);
             const q = wq(weather, sdBeach, beachAdvisories, marineSwell, riverFlow);
@@ -3839,6 +3841,7 @@
 
             // Determine status from nearest monitoring station (not storm drains)
             const nearbyStations = sortedDEH.filter(s => s._dist <= dehRadius && s.TypeID !== 2);
+            const hasStatusData = nearbyStations.length > 0;
             let pinStatusColor, pinStatusLabel, pinStatusSource, pinStatusDetail = '';
             if (nearbyStations.length > 0) {
                 const nearest = nearbyStations[0];
@@ -3959,7 +3962,7 @@
                 }, 1300);
 
                 // Build combined InfoWindow for paddle pin click
-                const catBars = Object.values(categories).map(cat => {
+                const catBars = Object.entries(categories).filter(([k]) => k !== 'water' || hasWqData).map(([k, cat]) => {
                     const cc = sClr(cat.score);
                     return `<div style="margin:3px 0;">` +
                         `<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:1px;color:#c0c4d0;">` +
@@ -3995,18 +3998,18 @@
                         const statusFs = pinStatusLabel.length > 6 ? 9 : pinStatusLabel.length > 4 ? 10 : 12;
                         const circleStyle = `width:${cSize}px;height:${cSize}px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto;`;
                         return `<div style="display:flex;gap:10px;justify-content:center;margin-bottom:8px;">` +
-                        `<div style="text-align:center;">` +
+                        (hasStatusData ? `<div style="text-align:center;">` +
                         `<div style="${circleStyle}border:3px solid ${pinStatusColor};">` +
                         `<span style="font-weight:800;font-size:${statusFs}px;color:${pinStatusColor};line-height:1.1;text-align:center;">${pinStatusLabel}</span></div>` +
-                        `<div style="font-size:8px;color:#8b8fa3;margin-top:2px;">Status</div></div>` +
+                        `<div style="font-size:8px;color:#8b8fa3;margin-top:2px;">Status</div></div>` : '') +
                         `<div style="text-align:center;">` +
                         `<div style="${circleStyle}border:3px solid ${paddleColor};">` +
                         `<span style="font-weight:800;font-size:18px;color:${paddleColor};">${paddleScore}</span></div>` +
                         `<div style="font-size:8px;color:#8b8fa3;margin-top:2px;">Paddling</div></div>` +
-                        `<div style="text-align:center;">` +
+                        (hasWqData ? `<div style="text-align:center;">` +
                         `<div style="${circleStyle}border:3px solid ${wqColor};">` +
                         `<span style="font-weight:800;font-size:18px;color:${wqColor};">${wqScore}</span></div>` +
-                        `<div style="font-size:8px;color:#8b8fa3;margin-top:2px;">Water Quality</div></div>` +
+                        `<div style="font-size:8px;color:#8b8fa3;margin-top:2px;">Water Quality</div></div>` : '') +
                         `<div style="text-align:center;">` +
                         `<div style="${circleStyle}border:3px solid ${wwColor};">` +
                         `<span style="font-weight:800;font-size:18px;color:${wwColor};">${wwScore}</span></div>` +
@@ -4248,22 +4251,22 @@
             document.getElementById('conditionsArea').innerHTML=`
                 <div class="score-hero">
                     <div class="score-circles-stack">
-                        <div class="score-circle status-circle" style="--score-color:${pinStatusColor};--score-pct:100;cursor:pointer;" onclick="var p=document.getElementById('statusPopup'),o=document.getElementById('statusOverlay'),s=p.style.display==='block'?'none':'block';p.style.display=s;o.style.display=s">
+                        ${hasStatusData ? `<div class="score-circle status-circle" style="--score-color:${pinStatusColor};--score-pct:100;cursor:pointer;" onclick="var p=document.getElementById('statusPopup'),o=document.getElementById('statusOverlay'),s=p.style.display==='block'?'none':'block';p.style.display=s;o.style.display=s">
                             <span class="score-number" style="color:${pinStatusColor};">${pinStatusLabel}</span>
                             <span class="score-label">Status</span>
                             <span class="score-label" style="font-size:9px;color:#06b6d4;text-decoration:underline;margin-top:4px;">Source</span>
                         </div>
-                        ${pinStatusDetail ? `<div style="font-size:11px;color:${pinStatusColor};max-width:140px;text-align:center;line-height:1.3;margin-top:2px;">${pinStatusDetail}</div>` : ''}
+                        ${pinStatusDetail ? `<div style="font-size:11px;color:${pinStatusColor};max-width:140px;text-align:center;line-height:1.3;margin-top:2px;">${pinStatusDetail}</div>` : ''}` : ''}
                         <div class="score-circle" style="--score-color:${paddleColor};--score-pct:${paddleScore};cursor:pointer;" onclick="var p=document.getElementById('scorePopup'),o=document.getElementById('scoreOverlay'),s=p.style.display==='block'?'none':'block';p.style.display=s;o.style.display=s">
                             <span class="score-number" style="color:${paddleColor};">${paddleScore}</span>
                             <span class="score-label">Paddling</span>
                             <span class="score-label" style="font-size:9px;color:#06b6d4;text-decoration:underline;margin-top:4px;">Source</span>
                         </div>
-                        <div class="score-circle" style="--score-color:${wqColor};--score-pct:${wqScore};cursor:pointer;" onclick="var p=document.getElementById('wqPopup'),o=document.getElementById('wqOverlay'),s=p.style.display==='block'?'none':'block';p.style.display=s;o.style.display=s">
+                        ${hasWqData ? `<div class="score-circle" style="--score-color:${wqColor};--score-pct:${wqScore};cursor:pointer;" onclick="var p=document.getElementById('wqPopup'),o=document.getElementById('wqOverlay'),s=p.style.display==='block'?'none':'block';p.style.display=s;o.style.display=s">
                             <span class="score-number" style="color:${wqColor};">${wqScore}</span>
                             <span class="score-label">Water<br>Quality</span>
                             <span class="score-label" style="font-size:9px;color:#06b6d4;text-decoration:underline;margin-top:4px;">Source</span>
-                        </div>
+                        </div>` : ''}
                         <div class="score-circle" style="--score-color:${wwColor};--score-pct:${wwScore};cursor:pointer;" onclick="var p=document.getElementById('wwPopup'),o=document.getElementById('wwOverlay'),s=p.style.display==='block'?'none':'block';p.style.display=s;o.style.display=s">
                             <span class="score-number" style="color:${wwColor};">${wwScore}</span>
                             <span class="score-label">Weather</span>
@@ -4275,9 +4278,9 @@
                         <div class="score-place-sub" id="paddlePlaceAddr">${paddleAddress || (paddleLat.toFixed(4)+'°'+(paddleLat>=0?'N':'S')+', '+Math.abs(paddleLon).toFixed(4)+'°'+(paddleLon>=0?'E':'W'))}</div>
                         <div id="placeBadgeArea"></div>
                         <div class="score-verdict" style="color:${paddleColor};">${sVer(paddleScore)}</div>
-                        <div class="score-summary">${sSum(paddleScore,wqScore,weather,categories)}</div>
+                        <div class="score-summary">${sSum(paddleScore,wqScore,weather,categories,hasWqData)}</div>
                         <div class="score-categories">
-                            ${['water','wind','surface'].map(key => { const cat = categories[key]; const cc = sClr(cat.score);
+                            ${['water','wind','surface'].filter(k => k !== 'water' || hasWqData).map(key => { const cat = categories[key]; const cc = sClr(cat.score);
                                 if (key === 'wind') {
                                     const uvCat = categories.uv; const wtCat = categories.temp;
                                     const uvCc = sClr(uvCat.score); const wtCc = sClr(wtCat.score);
