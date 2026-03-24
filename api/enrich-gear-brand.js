@@ -78,24 +78,41 @@ module.exports = async (req, res) => {
     try {
       // Try to find and scrape a products/shop page for richer data
       let productsHtml = siteHtml;
+
+      // Strategy 1: Find product links in the homepage HTML
       const productLinks = siteHtml.match(/href=["'](\/(?:products|shop|models|boats|boards|kayaks|surfski|surfskis|paddles|gear|collections|catalog|our-|range|equipment|all-)[^"']*?)["']/gi)
         || siteHtml.match(/href=["'](https?:\/\/[^"']*\/(?:products|shop|models|boats|boards|kayaks|collections|catalog)[^"']*?)["']/gi);
-      console.log('[enrich] Product links found:', productLinks?.length || 0);
-      if (productLinks && productLinks.length > 0) {
-        const href = productLinks[0].match(/href=["']([^"']+)["']/i)?.[1];
-        if (href) {
-          try {
-            const base = new URL(website);
-            const prodUrl = new URL(href, base).toString();
-            const prodRes = await fetch(prodUrl, {
-              headers: { 'User-Agent': 'Mozilla/5.0 PaddlePoint/1.0' },
-              redirect: 'follow', signal: AbortSignal.timeout(10000)
-            });
-            const prodPage = await prodRes.text();
-            if (prodPage.length > 500) productsHtml = prodPage;
-          } catch(e) {}
+
+      // Strategy 2: Also try common product page URLs directly
+      const base = new URL(website);
+      const tryPaths = ['/products', '/shop', '/models', '/kayaks', '/surfski', '/boats', '/boards', '/collections', '/our-boats', '/equipment', '/range'];
+      const allUrls = new Set();
+
+      // Add discovered links
+      if (productLinks) {
+        for (const link of productLinks.slice(0, 3)) {
+          const href = link.match(/href=["']([^"']+)["']/i)?.[1];
+          if (href) allUrls.add(new URL(href, base).toString());
         }
       }
+      // Add common paths
+      for (const p of tryPaths) allUrls.add(new URL(p, base).toString());
+
+      // Fetch up to 3 pages in parallel, take the one with most content
+      const pageResults = await Promise.all(
+        [...allUrls].slice(0, 6).map(url =>
+          fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 PaddlePoint/1.0' }, redirect: 'follow', signal: AbortSignal.timeout(8000) })
+            .then(r => r.ok ? r.text() : '')
+            .catch(() => '')
+        )
+      );
+      const richestPage = pageResults.reduce((best, page) => page.length > best.length ? page : best, '');
+      if (richestPage.length > 1000) productsHtml = richestPage;
+
+      // Also extract all link text from homepage (nav links often list product names)
+      const linkTexts = [...siteHtml.matchAll(/<a[^>]*>([^<]{3,60})<\/a>/gi)]
+        .map(m => m[1].trim()).filter(t => t && !t.match(/home|about|contact|login|cart|search|menu|privacy|terms/i));
+      const linkTextStr = linkTexts.length > 0 ? '\n\nNavigation/link text found: ' + linkTexts.join(', ') : '';
 
       // Strip HTML to text for AI analysis (keep structure hints)
       const textContent = productsHtml
@@ -135,10 +152,11 @@ From the website text below, identify their 4-8 most popular or flagship product
 Respond ONLY with products in this exact format, one per line, separated by |:
 Product Name — short description | Product Name — short description
 
+If the text mentions model names, series names, or product lines in links/navigation, include those.
 If this doesn't appear to be a paddle/water sports brand, or you can't identify specific products, respond with just: NONE
 
 Website text:
-${textContent}`
+${textContent}${linkTextStr}`
             }],
           }),
           signal: AbortSignal.timeout(15000),
@@ -158,7 +176,6 @@ ${textContent}`
   result._debug = {
     hasApiKey: !!process.env.ANTHROPIC_API_KEY,
     siteHtmlLen: siteHtml.length,
-    productLinksFound: siteHtml.match(/href=["'](\/(?:products|shop|models|boats|boards|kayaks|surfski|surfskis|paddles|gear|collections|catalog|our-|range|equipment|all-)[^"']*?)["']/gi)?.length || 0,
   };
 
   // Also improve description with AI if we got a generic meta description
