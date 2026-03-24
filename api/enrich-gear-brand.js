@@ -145,9 +145,7 @@ module.exports = async (req, res) => {
 
       // Call Claude to extract products
       const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
-      console.log('[enrich] AI key exists:', !!ANTHROPIC_KEY, 'textLen:', textContent.length);
-      result._debug_textLen = textContent.length;
-      result._debug_textSample = textContent.substring(0, 300);
+      console.log('[enrich] AI text length:', textContent.length);
       if (ANTHROPIC_KEY && textContent.length > 50) {
         const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
@@ -180,20 +178,13 @@ ${textContent}${linkTextStr}`
         });
         const aiData = await aiRes.json();
         const aiText = aiData?.content?.[0]?.text?.trim() || '';
-        console.log('[enrich] AI response:', aiText.substring(0, 200), 'error:', aiData?.error);
-        result._debug_ai = { textLen: textContent.length, responseLen: aiText.length, response: aiText.substring(0, 300), error: aiData?.error || null };
+        console.log('[enrich] AI products:', aiText.substring(0, 100));
         if (aiText && aiText !== 'NONE' && aiText.includes('—')) {
           result.popular_products = aiText;
         }
       }
-    } catch(e) { console.log('[enrich] AI extraction error:', e.message); result._debug_ai_error = e.message; }
+    } catch(e) { console.log('[enrich] AI extraction error:', e.message); }
   }
-
-  // Debug info (temporary)
-  result._debug = {
-    hasApiKey: !!process.env.ANTHROPIC_API_KEY,
-    siteHtmlLen: siteHtml.length,
-  };
 
   // Also improve description with AI if we got a generic meta description
   if (website && siteHtml && result.description && process.env.ANTHROPIC_API_KEY) {
