@@ -2790,16 +2790,11 @@
 
                 // Check if this location is near water before rendering scores
                 if (!hasWaterNearby(marineSwell, riverFlow, sdBeach)) {
-                    // No water data — find nearest paddle spots via Google Places
+                    // No water data at this location — find nearest paddle spots
                     const nearbySpots = await findNearestWater(lat, lon);
                     if (signal.aborted) return;
-                    // If nearest spot is within 10 miles, still show conditions but with a note
-                    // If no spots or all > 10 miles, show the "no water" message
-                    const closest = nearbySpots.length > 0 ? nearbySpots[0] : null;
-                    if (!closest || closest.dist > 10) {
-                        renderNoWaterMessage(nearbySpots);
-                        return;
-                    }
+                    renderNoWaterMessage(nearbySpots);
+                    return;
                 }
 
                 render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, [], marineSwell, noaaWaterTemp, usgsWaterTemp);
@@ -3160,21 +3155,23 @@
         }
 
         function hasWaterNearby(marineSwell, riverFlow, sdBeach) {
-            // Check if marine API returned actual wave/temp data
+            // Check if marine API returned actual wave/temp data (not null grid cells)
             if (marineSwell?.current) {
                 const mc = marineSwell.current;
                 if (mc.wave_height != null || mc.sea_surface_temperature != null) return true;
             }
-            // Check if river gauges returned data
-            if (riverFlow && Array.isArray(riverFlow) && riverFlow.length > 0) return true;
-            // Check if DEH beach stations exist nearby
-            if (sdBeach && Array.isArray(sdBeach) && sdBeach.length > 0) return true;
+            // Check if river gauges returned meaningful data (flow > 0, within 5 miles)
+            if (riverFlow && Array.isArray(riverFlow) && riverFlow.some(g => g.flow > 0 && (g._dist == null || g._dist < 5))) return true;
+            // Check if DEH beach stations are within 3 miles (not just exist)
+            if (sdBeach && Array.isArray(sdBeach) && sdBeach.some(s => (s._dist || 99) < 3)) return true;
             return false;
         }
 
         function renderNoWaterMessage(nearbySpots) {
+            const hasNearby = nearbySpots.length > 0 && nearbySpots[0].dist < 20;
+            const hasClose = nearbySpots.length > 0 && nearbySpots[0].dist < 10;
             const spotsHtml = nearbySpots.length > 0
-                ? nearbySpots.slice(0, 3).map(s => {
+                ? nearbySpots.slice(0, 5).map(s => {
                     const dir = getCardinal(paddleLat, paddleLon, s.lat, s.lng);
                     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;cursor:pointer;" onclick="paddleLat=${s.lat};paddleLon=${s.lng};paddleName='${s.name.replace(/'/g,"\\'")}';paddleAddress='';map.panTo({lat:${s.lat},lng:${s.lng}});map.setZoom(14);loadConditions();">
                         <div style="font-size:24px;">📍</div>
@@ -3182,27 +3179,36 @@
                             <div style="font-weight:700;color:#166534;font-size:14px;">${s.name}</div>
                             <div style="font-size:12px;color:#6b7280;">${s.dist.toFixed(1)} miles ${dir} · ${s.query}</div>
                         </div>
-                        <div style="color:#16a34a;font-size:13px;font-weight:600;">Go →</div>
+                        <div style="color:#16a34a;font-size:13px;font-weight:600;">Check Conditions →</div>
                     </div>`;
                 }).join('')
-                : `<div style="padding:12px;color:#6b7280;font-size:13px;">No known paddle spots found within search range. Try searching for a specific beach, lake, or river in the search bar above.</div>`;
+                : '';
+
+            const icon = hasClose ? '📍' : '🏜️';
+            const title = hasClose
+                ? 'Not Directly on Water'
+                : hasNearby ? 'No Body of Water Nearby' : 'No Body of Water Detected';
+            const message = hasClose
+                ? `This location is inland. For accurate paddle conditions, select a specific body of water below — scores and safety data are tied to the water you'll be paddling on.`
+                : hasNearby
+                    ? `This location doesn't appear to be near a navigable body of water. The closest known paddle spots are listed below — tap one to see its conditions.`
+                    : `This location is far from any known paddling area. Try searching for a specific beach, lake, river, or bay in the search bar above.`;
 
             document.getElementById('conditionsArea').innerHTML = `
                 <div style="max-width:560px;margin:24px auto;text-align:center;">
-                    <div style="font-size:48px;margin-bottom:12px;">🏜️</div>
-                    <h3 style="font-size:20px;font-weight:700;color:#1a1a2e;margin-bottom:8px;">No Body of Water Detected</h3>
-                    <p style="color:#6b7280;font-size:14px;line-height:1.6;margin-bottom:20px;">
-                        This location doesn't appear to be near a navigable body of water. 
-                        For accurate paddle conditions, tap directly on a beach, lake, river, or bay on the map.
-                    </p>
-                    ${nearbySpots.length > 0 ? `
-                        <div style="text-align:left;margin-bottom:8px;">
+                    <div style="font-size:48px;margin-bottom:12px;">${icon}</div>
+                    <h3 style="font-size:20px;font-weight:700;color:#1a1a2e;margin-bottom:8px;">${title}</h3>
+                    <p style="color:#6b7280;font-size:14px;line-height:1.6;margin-bottom:20px;">${message}</p>
+                    ${spotsHtml ? `
+                        <div style="text-align:left;margin-bottom:12px;">
                             <div style="font-size:13px;font-weight:600;color:#4b5563;margin-bottom:8px;">🛶 Nearest Paddle Spots</div>
-                            <div style="display:flex;flex-direction:column;gap:6px;">
-                                ${spotsHtml}
-                            </div>
+                            <div style="display:flex;flex-direction:column;gap:6px;">${spotsHtml}</div>
                         </div>
-                    ` : spotsHtml}
+                    ` : `<div style="padding:12px;color:#6b7280;font-size:13px;">No known paddle spots found within search range.</div>`}
+                    <div style="margin-top:16px;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;font-size:11px;color:#64748b;line-height:1.5;">
+                        💡 <strong>Tip:</strong> Tap directly on a lake, river, bay, or beach on the map for the most accurate conditions. 
+                        Water quality, safety scores, and gear recommendations are specific to each body of water.
+                    </div>
                 </div>`;
         }
 
