@@ -3240,9 +3240,12 @@
         function classifyPointZone(lat, lon) {
             // Mission Bay: enclosed bay north of Sea World
             if (lat >= 32.755 && lat <= 32.805 && lon >= -117.255 && lon <= -117.205) return 'mission_bay';
-            // San Diego Bay: enclosed bay from downtown to National City
-            // Bay is east of Coronado (Silver Strand separates bay from ocean)
-            if (lat >= 32.58 && lat <= 32.735 && lon >= -117.195 && lon <= -117.10) return 'sd_bay';
+            // San Diego Bay: complex shape, split into sub-regions
+            // South bay (Silver Strand area): bay is EAST of the peninsula centerline (~-117.168)
+            // The strand is only ~500ft wide — ocean is west, bay is east
+            if (lat >= 32.58 && lat < 32.70 && lon > -117.168 && lon <= -117.10) return 'sd_bay';
+            // North bay (downtown to Shelter Island): wider due to Harbor Island, Shelter Island
+            if (lat >= 32.70 && lat <= 32.735 && lon >= -117.230 && lon <= -117.10) return 'sd_bay';
             // Agua Hedionda Lagoon, Batiquitos Lagoon, San Elijo Lagoon (North County)
             if (lat >= 33.08 && lat <= 33.10 && lon >= -117.34 && lon <= -117.30) return 'lagoon_north';
             // Inland: east of the coastal zone (roughly east of -117.05 for SD area)
