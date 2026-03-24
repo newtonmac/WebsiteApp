@@ -3,10 +3,9 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 const NAV_ITEMS = [
-  { href: '/', label: 'Home' },
   { href: '/conditions', label: 'Water' },
   { href: '/weather', label: 'Weather' },
   { href: '/clubs', label: 'Clubs' },
@@ -15,51 +14,83 @@ const NAV_ITEMS = [
   { href: '/federations', label: 'Federations' },
 ];
 
-const MODAL_ITEMS = [
-  { id: 'feedback', label: 'Feedback', action: 'openSuggestModal', icon: null },
-  { id: 'updates', label: 'Updates', action: 'openUpdatesModal', icon: 'ripple' },
-];
-
 function callWhenReady(fnName: string) {
   const fn = (window as any)[fnName];
   if (fn) { fn(); return; }
-  // pp-shared.js may not be ready yet — retry briefly
   let tries = 0;
   const timer = setInterval(() => {
     const fn = (window as any)[fnName];
     if (fn) { clearInterval(timer); fn(); }
-    else if (++tries > 20) { clearInterval(timer); } // give up after 2s
+    else if (++tries > 20) { clearInterval(timer); }
   }, 100);
 }
 
-function WaterRipple() {
+const SITE_UPDATES = [
+  { date: 'Mar 24', text: 'Water body zone filtering — bay vs ocean vs inland stations now scored separately' },
+  { date: 'Mar 24', text: 'Cold water safety alerts with links to USCG, ACA, NCCWS official sources' },
+  { date: 'Mar 24', text: 'Dry land detection — suggests nearest paddle spots when no water found' },
+  { date: 'Mar 24', text: 'Stats page with visitor map showing 43 cities across 17 countries' },
+  { date: 'Mar 24', text: 'All legal pages live — About, Privacy, Terms, Safety, FAQ, and more' },
+  { date: 'Mar 23', text: 'Clubs page mobile responsive improvements' },
+  { date: 'Mar 23', text: 'Admin panel with federations CRUD management' },
+  { date: 'Mar 22', text: 'Feedback form with email and notification options' },
+  { date: 'Mar 22', text: 'Water conditions score circles — hidden when no monitoring data' },
+];
+
+function ChangelogDot({ isOpen, onClick }: { isOpen: boolean; onClick: () => void }) {
   return (
-    <span className="relative inline-flex items-center justify-center w-5 h-5 mr-1">
-      <svg viewBox="0 0 20 20" className="w-5 h-5 text-cyan-500" fill="none">
-        <circle cx="10" cy="10" r="3" fill="currentColor" opacity="0.8">
-          <animate attributeName="r" from="3" to="3" dur="2s" repeatCount="indefinite" />
-        </circle>
-        <circle cx="10" cy="10" r="3" stroke="currentColor" strokeWidth="1" fill="none" opacity="0.6">
-          <animate attributeName="r" from="3" to="9" dur="2s" repeatCount="indefinite" />
-          <animate attributeName="opacity" from="0.6" to="0" dur="2s" repeatCount="indefinite" />
-        </circle>
-        <circle cx="10" cy="10" r="3" stroke="currentColor" strokeWidth="0.8" fill="none" opacity="0.4">
-          <animate attributeName="r" from="3" to="9" dur="2s" begin="0.6s" repeatCount="indefinite" />
-          <animate attributeName="opacity" from="0.4" to="0" dur="2s" begin="0.6s" repeatCount="indefinite" />
-        </circle>
-      </svg>
-    </span>
+    <button onClick={onClick} className="relative ml-1 p-1 group" title="Recent site updates">
+      <span className="relative flex h-2.5 w-2.5">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+      </span>
+    </button>
+  );
+}
+
+function ChangelogDropdown({ onClose }: { onClose: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    function handleClick(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [onClose]);
+
+  return (
+    <div ref={ref} className="absolute right-0 top-full mt-2 w-80 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
+      <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
+        <h3 className="text-sm font-bold text-slate-800">🛠️ Recent Site Updates</h3>
+        <p className="text-[10px] text-slate-400">What&apos;s new on PaddlePoint</p>
+      </div>
+      <div className="max-h-64 overflow-y-auto">
+        {SITE_UPDATES.map((u, i) => (
+          <div key={i} className="px-4 py-2.5 border-b border-slate-50 last:border-b-0 hover:bg-slate-50 transition-colors">
+            <div className="flex items-start gap-2">
+              <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap mt-0.5">{u.date}</span>
+              <span className="text-xs text-slate-600 leading-relaxed">{u.text}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="px-4 py-2 border-t border-slate-100 bg-slate-50">
+        <button onClick={() => { onClose(); callWhenReady('openUpdatesModal'); }}
+          className="text-[11px] text-cyan-600 hover:text-cyan-700 font-medium">
+          View full roadmap →
+        </button>
+      </div>
+    </div>
   );
 }
 
 export function Header() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [changelogOpen, setChangelogOpen] = useState(false);
 
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-        {/* Logo */}
+        {/* Logo → Home */}
         <Link href="/" className="flex items-center gap-3 no-underline">
           <Image src="/paddle-pin.svg" alt="PaddlePoint" width={48} height={62} className="w-12 h-auto" priority />
           <div>
@@ -71,42 +102,36 @@ export function Header() {
         {/* Desktop Nav */}
         <nav className="hidden md:flex items-center gap-1">
           {NAV_ITEMS.map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
+            <Link key={href} href={href}
               className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors no-underline ${
-                pathname === href
-                  ? 'bg-blue-500 text-white'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
+                pathname === href ? 'bg-blue-500 text-white' : 'text-slate-600 hover:bg-slate-100'
+              }`}>
               {label}
             </Link>
           ))}
-          {MODAL_ITEMS.map(({ id, label, action, icon }) => (
-            <button
-              key={id}
-              onClick={() => callWhenReady(action)}
-              className="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors flex items-center"
-            >
-              {icon === 'ripple' && <WaterRipple />}
-              {label}
+          <button onClick={() => callWhenReady('openSuggestModal')}
+            className="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">
+            Feedback
+          </button>
+          {/* Updates + changelog dot */}
+          <div className="relative flex items-center">
+            <button onClick={() => callWhenReady('openUpdatesModal')}
+              className="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">
+              Updates
             </button>
-          ))}
+            <ChangelogDot isOpen={changelogOpen} onClick={() => setChangelogOpen(!changelogOpen)} />
+            {changelogOpen && <ChangelogDropdown onClose={() => setChangelogOpen(false)} />}
+          </div>
         </nav>
 
         {/* Mobile Hamburger */}
-        <button
-          onClick={() => setMobileOpen(!mobileOpen)}
-          className="md:hidden p-2 rounded-lg hover:bg-slate-100"
-          aria-label="Toggle menu"
-        >
+        <button onClick={() => setMobileOpen(!mobileOpen)}
+          className="md:hidden p-2 rounded-lg hover:bg-slate-100" aria-label="Toggle menu">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            {mobileOpen ? (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            )}
+            {mobileOpen
+              ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            }
           </svg>
         </button>
       </div>
@@ -115,27 +140,21 @@ export function Header() {
       {mobileOpen && (
         <nav className="md:hidden border-t border-slate-200 bg-white px-4 pb-4">
           {NAV_ITEMS.map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={() => setMobileOpen(false)}
+            <Link key={href} href={href} onClick={() => setMobileOpen(false)}
               className={`block py-3 px-4 rounded-lg text-sm font-medium no-underline ${
                 pathname === href ? 'bg-blue-50 text-blue-600' : 'text-slate-600 hover:bg-slate-50'
-              }`}
-            >
+              }`}>
               {label}
             </Link>
           ))}
-          {MODAL_ITEMS.map(({ id, label, action, icon }) => (
-            <button
-              key={id}
-              onClick={() => { setMobileOpen(false); callWhenReady(action); }}
-              className="block w-full text-left py-3 px-4 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center"
-            >
-              {icon === 'ripple' && <WaterRipple />}
-              {label}
-            </button>
-          ))}
+          <button onClick={() => { setMobileOpen(false); callWhenReady('openSuggestModal'); }}
+            className="block w-full text-left py-3 px-4 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50">
+            Feedback
+          </button>
+          <button onClick={() => { setMobileOpen(false); callWhenReady('openUpdatesModal'); }}
+            className="block w-full text-left py-3 px-4 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50">
+            Updates
+          </button>
         </nav>
       )}
     </header>
