@@ -112,6 +112,8 @@ module.exports = async (req, res) => {
       // Call Claude to extract products
       const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
       console.log('[enrich] AI key exists:', !!ANTHROPIC_KEY, 'textLen:', textContent.length);
+      result._debug_textLen = textContent.length;
+      result._debug_textSample = textContent.substring(0, 300);
       if (ANTHROPIC_KEY && textContent.length > 50) {
         const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
