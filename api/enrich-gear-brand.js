@@ -85,7 +85,10 @@ module.exports = async (req, res) => {
 
       // Strategy 2: Also try common product page URLs directly
       const base = new URL(website);
-      const tryPaths = ['/products', '/shop', '/models', '/kayaks', '/surfski', '/boats', '/boards', '/collections', '/our-boats', '/equipment', '/range'];
+      const tryPaths = ['/products', '/shop', '/models', '/kayaks', '/surfski', '/surf-skis',
+        '/boats', '/boards', '/collections', '/our-boats', '/equipment', '/range',
+        '/touring-kayaks', '/racing-kayaks', '/kayak-paddles', '/canoes', '/outrigger',
+        '/sup-boards', '/stand-up-paddle', '/all-products', '/catalog'];
       const allUrls = new Set();
 
       // Add discovered links
@@ -98,16 +101,30 @@ module.exports = async (req, res) => {
       // Add common paths
       for (const p of tryPaths) allUrls.add(new URL(p, base).toString());
 
-      // Fetch up to 3 pages in parallel, take the one with most content
+      // Strategy 3: extract ALL internal links from homepage and pick likely product pages
+      const allHrefs = [...siteHtml.matchAll(/href=["']([^"'#]*?)["']/gi)].map(m => m[1]).filter(Boolean);
+      const skipPattern = /css|js|images?|fonts?|favicon|mailto|tel:|privacy|terms|contact|about|news|blog|faq|login|cart|account|search|sitemap|\.(jpg|png|gif|svg|pdf|css|js)$/i;
+      for (const href of allHrefs) {
+        if (skipPattern.test(href)) continue;
+        try {
+          const fullUrl = new URL(href, base);
+          if (fullUrl.hostname === base.hostname && fullUrl.pathname !== '/' && fullUrl.pathname.length > 2) {
+            allUrls.add(fullUrl.toString());
+          }
+        } catch(e) {}
+      }
+
+      // Fetch up to 8 pages in parallel, combine text for richest product data
       const pageResults = await Promise.all(
-        [...allUrls].slice(0, 6).map(url =>
-          fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 PaddlePoint/1.0' }, redirect: 'follow', signal: AbortSignal.timeout(8000) })
+        [...allUrls].slice(0, 8).map(url =>
+          fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 PaddlePoint/1.0' }, redirect: 'follow', signal: AbortSignal.timeout(6000) })
             .then(r => r.ok ? r.text() : '')
             .catch(() => '')
         )
       );
-      const richestPage = pageResults.reduce((best, page) => page.length > best.length ? page : best, '');
-      if (richestPage.length > 1000) productsHtml = richestPage;
+      // Combine all successful pages
+      const allPagesText = pageResults.filter(p => p.length > 200).join('\n');
+      if (allPagesText.length > 500) productsHtml = allPagesText;
 
       // Also extract all link text from homepage (nav links often list product names)
       const linkTexts = [...siteHtml.matchAll(/<a[^>]*>([^<]{3,60})<\/a>/gi)]
