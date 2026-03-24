@@ -317,7 +317,10 @@ async function enrichBrand(){
         fillIf('ed_facebook_url',data.facebook_url);
         fillIf('ed_instagram_url',data.instagram_url);
         fillIf('ed_youtube_url',data.youtube_url);
-        showToast('Enriched! Review and save.');
+        // Auto-save enriched data
+        btn.textContent='💾 Saving...';
+        await saveBrand();
+        showToast('Enriched & saved!' + (data.popular_products ? ' Products found.' : ''));
     }catch(e){alert('Enrich failed: '+e.message);}
     finally{btn.disabled=false;btn.textContent='🔍 Enrich from Website';}
 }
