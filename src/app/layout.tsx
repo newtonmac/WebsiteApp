@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Script from 'next/script';
 import './globals.css';
+import './pp-shared.css';
 import { SiteShell } from '@/components/SiteShell';
 
 export const metadata: Metadata = {
@@ -24,9 +25,6 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <head>
-        <link rel="stylesheet" href="/pp-shared.css?v=2" />
-      </head>
       <body className="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
         <SiteShell>{children}</SiteShell>
         <Script src="/pp-shared.js?v=2" strategy="afterInteractive" />
