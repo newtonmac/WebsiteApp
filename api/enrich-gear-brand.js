@@ -79,6 +79,7 @@ module.exports = async (req, res) => {
       // Try to find and scrape a products/shop page for richer data
       let productsHtml = siteHtml;
       const productLinks = siteHtml.match(/href=["'](\/(?:products|shop|models|boats|boards|kayaks|surfski|paddles|gear|collections|catalog)[^"']*?)["']/gi);
+      console.log('[enrich] Product links found:', productLinks?.length || 0, productLinks?.slice(0,3));
       if (productLinks && productLinks.length > 0) {
         const href = productLinks[0].match(/href=["']([^"']+)["']/i)?.[1];
         if (href) {
@@ -109,6 +110,7 @@ module.exports = async (req, res) => {
 
       // Call Claude to extract products
       const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+      console.log('[enrich] AI key exists:', !!ANTHROPIC_KEY, 'textLen:', textContent.length);
       if (ANTHROPIC_KEY && textContent.length > 100) {
         const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
@@ -140,11 +142,12 @@ ${textContent}`
         });
         const aiData = await aiRes.json();
         const aiText = aiData?.content?.[0]?.text?.trim() || '';
+        console.log('[enrich] AI response:', aiText.substring(0, 200), 'error:', aiData?.error);
         if (aiText && aiText !== 'NONE' && aiText.includes('—')) {
           result.popular_products = aiText;
         }
       }
-    } catch(e) { /* AI extraction failed, continue */ }
+    } catch(e) { console.log('[enrich] AI extraction error:', e.message); }
   }
 
   // Also improve description with AI if we got a generic meta description
