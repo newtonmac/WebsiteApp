@@ -4377,21 +4377,46 @@
             // Gear recommendation bar with source links and disclaimer
             if(gearRec) {
                 const srcLinks = sstF != null && sstF < 70 ? `<div style="font-size:11px;color:#64748b;margin-top:6px;line-height:1.5;">` +
-                    `Based on guidelines from: <a href="https://www.uscgboating.org/recreational-boaters/cold-water-safety.php" target="_blank" style="color:#06b6d4;">U.S. Coast Guard</a> · ` +
-                    `<a href="https://americancanoe.org/safety/" target="_blank" style="color:#06b6d4;">American Canoe Association</a> · ` +
-                    `<a href="https://www.coldwatersafety.org" target="_blank" style="color:#06b6d4;">National Center for Cold Water Safety</a> · ` +
-                    `<a href="https://americanwhitewater.org/content/Wiki/safety:start" target="_blank" style="color:#06b6d4;">American Whitewater</a>` +
+                    `Based on guidelines from: <a href="https://www.coldwatersafety.org" target="_blank" style="color:#06b6d4;">National Center for Cold Water Safety</a> · ` +
+                    `<a href="https://www.canoeicf.com" target="_blank" style="color:#06b6d4;">ICF</a> · ` +
+                    `<a href="https://www.uscgboating.org/recreational-boaters/cold-water-safety.php" target="_blank" style="color:#06b6d4;">U.S. Coast Guard</a> · ` +
+                    `<a href="https://americancanoe.org/safety/" target="_blank" style="color:#06b6d4;">ACA</a>` +
                     `</div>` : '';
                 alertH+=`<div style="background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;font-size:13px;color:#94a3b8;"><span style="font-size:18px;">🧥</span><div><strong style="color:#e2e8f0;">Gear Recommendation:</strong> ${gearRec}${srcLinks}</div></div>`;
+            }
+
+            // Safety resources — international governing bodies
+            if(sstF != null && sstF < 70) {
+                alertH+=`<div style="background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:10px 14px;margin-bottom:8px;">` +
+                    `<details style="cursor:pointer;">` +
+                    `<summary style="font-size:12px;font-weight:600;color:#94a3b8;margin-bottom:6px;">🌍 Official Paddling Safety Resources <span style="font-size:10px;color:#64748b;">(click to expand)</span></summary>` +
+                    `<div style="font-size:11px;color:#64748b;line-height:1.8;margin-top:8px;">` +
+                    `<div style="margin-bottom:6px;font-weight:600;color:#8b8fa3;">International</div>` +
+                    `<a href="https://www.canoeicf.com" target="_blank" style="color:#06b6d4;">International Canoe Federation (ICF)</a> — World governing body for paddle sports<br>` +
+                    `<a href="https://www.coldwatersafety.org" target="_blank" style="color:#06b6d4;">National Center for Cold Water Safety</a> — Cold water research &amp; 5 Golden Rules<br>` +
+                    `<div style="margin:6px 0;font-weight:600;color:#8b8fa3;">Americas</div>` +
+                    `<a href="https://www.uscgboating.org/recreational-boaters/cold-water-safety.php" target="_blank" style="color:#06b6d4;">U.S. Coast Guard</a> — Cold water defined as below 70°F<br>` +
+                    `<a href="https://americancanoe.org/safety/" target="_blank" style="color:#06b6d4;">American Canoe Association (ACA)</a> — Thermal protection below 60°F<br>` +
+                    `<a href="https://americanwhitewater.org/content/Wiki/safety:start" target="_blank" style="color:#06b6d4;">American Whitewater</a> — Protection below 50°F<br>` +
+                    `<a href="https://www.paddlecanada.com" target="_blank" style="color:#06b6d4;">Paddle Canada</a> — National paddling safety standards<br>` +
+                    `<div style="margin:6px 0;font-weight:600;color:#8b8fa3;">Europe</div>` +
+                    `<a href="https://www.canoe-europe.org" target="_blank" style="color:#06b6d4;">European Canoe Association (ECA)</a> — Continental governing body<br>` +
+                    `<a href="https://paddleuk.org.uk" target="_blank" style="color:#06b6d4;">Paddle UK (British Canoeing)</a> — UK safety guidelines<br>` +
+                    `<a href="https://weather.metoffice.gov.uk/warnings-and-advice/seasonal-advice/travel/out-and-about/winter-water-safety" target="_blank" style="color:#06b6d4;">UK Met Office</a> — Cold water below 15°C (59°F)<br>` +
+                    `<div style="margin:6px 0;font-weight:600;color:#8b8fa3;">Oceania</div>` +
+                    `<a href="https://paddle.org.au/education/safety-guidelines-v2/" target="_blank" style="color:#06b6d4;">Paddle Australia</a> — Safety guidelines &amp; leader standards<br>` +
+                    `<a href="https://www.watersafety.org.nz" target="_blank" style="color:#06b6d4;">Water Safety NZ</a> — New Zealand water safety<br>` +
+                    `</div></details></div>`;
             }
 
             // Liability disclaimer — always show when water temp data exists
             if(sstF != null) {
                 alertH+=`<div style="background:transparent;border:1px solid #1e293b;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:11px;color:#475569;line-height:1.5;">` +
-                    `<strong style="color:#64748b;">⚠️ Important:</strong> The information above is aggregated from publicly available sources for general reference only. ` +
-                    `PaddlePoint does not provide professional safety advice. Conditions vary by location and can change rapidly. ` +
-                    `<strong>It is your responsibility</strong> to check local regulations, consult your local paddling federation or governing body, ` +
-                    `assess conditions in person, and make your own informed decisions before entering the water. ` +
+                    `<strong style="color:#64748b;">⚠️ Important:</strong> The safety information above is compiled from publicly available guidelines published by recognized international and national paddling organizations for general educational reference only. ` +
+                    `PaddlePoint is a data aggregator — it does not provide professional safety, medical, or legal advice. Conditions vary by location and can change rapidly. ` +
+                    `<strong>It is your responsibility</strong> to check local regulations, consult your national paddling federation or regional governing body, ` +
+                    `verify conditions in person, and make your own informed decisions before entering the water. ` +
+                    `Local rules, requirements, and safety standards may differ from the general guidelines shown here. ` +
                     `Always wear a PFD. When in doubt, don't go out.` +
                     `</div>`;
             }
