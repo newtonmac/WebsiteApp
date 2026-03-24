@@ -26,7 +26,7 @@ module.exports = async (req, res) => {
   if (website) {
     try {
       const siteRes = await fetch(website, {
-        headers: { 'User-Agent': 'Mozilla/5.0 PaddlePoint/1.0' },
+        headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36' },
         redirect: 'follow', signal: AbortSignal.timeout(10000)
       });
       siteHtml = await siteRes.text();
@@ -114,14 +114,18 @@ module.exports = async (req, res) => {
         } catch(e) {}
       }
 
-      // Fetch up to 8 pages in parallel, combine text for richest product data
-      const pageResults = await Promise.all(
-        [...allUrls].slice(0, 8).map(url =>
-          fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 PaddlePoint/1.0' }, redirect: 'follow', signal: AbortSignal.timeout(6000) })
-            .then(r => r.ok ? r.text() : '')
-            .catch(() => '')
-        )
-      );
+      // Fetch pages SLOWLY and sequentially to avoid getting blocked
+      // 1.5 second delay between each request — polite scraping
+      const delay = (ms) => new Promise(r => setTimeout(r, ms));
+      const urlList = [...allUrls].slice(0, 6);
+      const pageResults = [];
+      for (const url of urlList) {
+        try {
+          const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36' }, redirect: 'follow', signal: AbortSignal.timeout(8000) });
+          pageResults.push(r.ok ? await r.text() : '');
+        } catch(e) { pageResults.push(''); }
+        await delay(1500); // 1.5s between requests
+      }
       // Combine all successful pages
       const allPagesText = pageResults.filter(p => p.length > 200).join('\n');
       if (allPagesText.length > 500) productsHtml = allPagesText;
