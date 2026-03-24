@@ -154,6 +154,8 @@ ${textContent}`
   result._debug = {
     hasApiKey: !!process.env.ANTHROPIC_API_KEY,
     siteHtmlLen: siteHtml.length,
+    productLinksFound: siteHtml.match(/href=["'](\/(?:products|shop|models|boats|boards|kayaks|surfski|paddles|gear|collections|catalog)[^"']*?)["']/gi)?.length || 0,
+    productLinksExamples: (siteHtml.match(/href=["'](\/(?:products|shop|models|boats|boards|kayaks|surfski|paddles|gear|collections|catalog)[^"']*?)["']/gi) || []).slice(0,3),
   };
 
   // Also improve description with AI if we got a generic meta description
