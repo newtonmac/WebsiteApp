@@ -302,6 +302,7 @@ async function enrichBrand(){
             headers:{'Content-Type':'application/json','X-API-Token':'pp-clubs-7742-v1'},
             credentials: 'include',
             body:JSON.stringify({name,website,
+                categories:document.getElementById('ed_categories').value,
                 facebook_url:document.getElementById('ed_facebook_url').value,
                 instagram_url:document.getElementById('ed_instagram_url').value})});
         const data=await res.json();
@@ -309,6 +310,7 @@ async function enrichBrand(){
         // Fill in empty fields only
         const fillIf=(id,val)=>{const el=document.getElementById(id);if(el&&!el.value&&val)el.value=val;};
         fillIf('ed_description',data.description);
+        fillIf('ed_popular_products',data.popular_products);
         fillIf('ed_logo_url',data.logo_url);
         fillIf('ed_email',data.email);
         fillIf('ed_phone',data.phone);

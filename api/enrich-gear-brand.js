@@ -5,6 +5,46 @@ const ALLOWED_ORIGINS = ['https://paddlepoint.org','https://jmlsd.org','http://l
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
+function buildProductPrompt(name, categories, text, linkTextStr) {
+  const cats = (categories || '').toLowerCase();
+  const isClothing = cats.match(/clothing|apparel|dry wear|wetsuit|drysuit/);
+  const isAccessories = cats.includes('accessories');
+  const isPaddles = cats.includes('paddles');
+
+  let brandType, productHint;
+  if (isClothing) {
+    brandType = 'an activewear / sports clothing brand relevant to paddle sports';
+    productHint = 'Look for their most popular product LINES or COLLECTIONS (e.g. "Rep Shorts", "Base Tee", "Performance Hoodie"). Focus on items a paddler would wear — shorts, rash guards, performance tops, hoodies, leggings, etc.';
+  } else if (isAccessories) {
+    brandType = 'a paddle sports accessories brand';
+    productHint = 'Look for specific accessories like dry bags, phone cases, leashes, roof racks, carriers, etc.';
+  } else if (isPaddles) {
+    brandType = 'a paddle manufacturer';
+    productHint = 'Look for specific paddle models with their intended sport (SUP, kayak, outrigger, etc).';
+  } else {
+    brandType = 'a paddle sports / water sports equipment brand';
+    productHint = 'Look for specific boat/board/equipment models.';
+  }
+
+  return `You are extracting product information for "${name}", ${brandType}.
+
+From the website text below, identify their 4-8 most popular or flagship products. For each product, provide:
+- Product name (model/line name only, no brand prefix)
+- A short 5-10 word description of what it is
+
+${productHint}
+
+Respond ONLY with products in this exact format, separated by |:
+Product Name — short description | Product Name — short description
+
+If the text mentions model names, series names, or collection names in links/navigation, include those.
+If you truly cannot identify any specific products or lines, respond with just: NONE
+
+Website text:
+${text}${linkTextStr}`;
+}
+
+
 async function fetchPage(url) {
   try {
     const r = await fetch(url, { headers: { 'User-Agent': UA }, redirect: 'follow', signal: AbortSignal.timeout(10000) });
@@ -23,7 +63,7 @@ module.exports = async (req, res) => {
   const session = requireAdmin(req);
   if (token !== API_TOKEN && !session.valid) return res.status(403).json({ error: 'Access denied' });
 
-  const { name, website, id, facebook_url, instagram_url } = req.body || {};
+  const { name, website, id, categories, facebook_url, instagram_url } = req.body || {};
   if (!name) return res.status(400).json({ error: 'Brand name required' });
 
   const result = { name, website: website || '', facebook_url: facebook_url || '', instagram_url: instagram_url || '' };
@@ -94,8 +134,7 @@ module.exports = async (req, res) => {
           headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
           body: JSON.stringify({
             model: 'claude-sonnet-4-20250514', max_tokens: 500,
-            messages: [{ role: 'user', content:
-              `You are extracting product information for "${name}", a paddle sports / water sports brand.\n\nFrom the website text below, identify their 4-8 most popular or flagship products. For each product, provide:\n- Product name (model name only, no brand prefix)\n- A short 5-10 word description of what it is\n\nRespond ONLY with products in this exact format, one per line, separated by |:\nProduct Name — short description | Product Name — short description\n\nIf the text mentions model names in links/navigation, include those.\nIf you can't identify specific products, respond with just: NONE\n\nWebsite text:\n${text}${linkTextStr}` }],
+            messages: [{ role: 'user', content: buildProductPrompt(name, categories, text, linkTextStr) }],
           }),
           signal: AbortSignal.timeout(15000),
         });
