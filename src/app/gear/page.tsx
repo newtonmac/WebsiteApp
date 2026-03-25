@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   openGraph: { title: 'PaddlePoint — Gear', description: 'Paddle gear brands worldwide' },
 };
 
-export const revalidate = 3600;
+export const revalidate = 60; // 1 minute cache — gear data changes when enriched
 
 interface Brand {
   id: number; name: string; categories: string; country: string; website: string;
