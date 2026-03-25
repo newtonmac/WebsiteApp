@@ -43,7 +43,7 @@ export default async function HomePage() {
             src="/paddlepoint.jpg"
             alt="Outrigger paddlers on Mission Bay"
             fill
-            className="object-cover object-[center_40%]"
+            className="object-cover object-[center_55%]"
             priority
           />
         </picture>
