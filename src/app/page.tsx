@@ -36,14 +36,14 @@ export default async function HomePage() {
   return (
     <>
       {/* Hero */}
-      <section className="relative h-[55vh] md:h-[60vh] lg:h-[65vh] min-h-[400px] max-h-[700px] flex items-center justify-center overflow-hidden">
+      <section className="relative h-[55vh] md:h-[65vh] lg:h-[75vh] min-h-[400px] max-h-[850px] flex items-center justify-center overflow-hidden">
         <picture>
           <source media="(max-width: 600px)" srcSet="/paddlepoint-mobile.jpg" />
           <Image
             src="/paddlepoint.jpg"
             alt="Outrigger paddlers on Mission Bay"
             fill
-            className="object-cover"
+            className="object-cover object-[center_40%]"
             priority
           />
         </picture>
@@ -69,7 +69,7 @@ export default async function HomePage() {
       </section>
 
       {/* Stats */}
-      <section className="max-w-4xl mx-auto px-4 -mt-6 relative z-20">
+      <section className="max-w-4xl mx-auto px-4 -mt-8 relative z-20">
         <div className="flex justify-center gap-4 md:gap-8">
           {[
             { value: counts.clubs.toLocaleString(), label: 'Paddle Clubs', sub: 'Worldwide', color: 'text-sky-500' },
@@ -85,7 +85,7 @@ export default async function HomePage() {
       </section>
 
       {/* Nav Cards */}
-      <section className="max-w-5xl mx-auto px-4 py-8 md:py-10">
+      <section className="max-w-5xl mx-auto px-4 py-6 md:py-8">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {NAV_CARDS.map((card) => (
             <Link
