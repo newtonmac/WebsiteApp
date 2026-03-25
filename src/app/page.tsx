@@ -36,7 +36,7 @@ export default async function HomePage() {
   return (
     <>
       {/* Hero */}
-      <section className="relative h-[55vh] md:h-[65vh] lg:h-[75vh] min-h-[400px] max-h-[850px] flex items-center justify-center overflow-hidden">
+      <section className="relative h-[70vh] md:h-[80vh] lg:h-[85vh] min-h-[500px] max-h-[1000px] flex flex-col items-center justify-center overflow-hidden">
         <picture>
           <source media="(max-width: 600px)" srcSet="/paddlepoint-mobile.jpg" />
           <Image
@@ -47,7 +47,7 @@ export default async function HomePage() {
             priority
           />
         </picture>
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 to-black/60" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/50 to-black/60" />
         <div className="relative z-10 text-center text-white px-4">
           <h2 className="text-4xl md:text-5xl font-extrabold drop-shadow-lg mb-4">
             Know Before You Paddle
@@ -65,22 +65,19 @@ export default async function HomePage() {
           >
             Check Conditions
           </Link>
-        </div>
-      </section>
-
-      {/* Stats */}
-      <section className="max-w-4xl mx-auto px-4 -mt-8 relative z-20">
-        <div className="flex justify-center gap-4 md:gap-8">
-          {[
-            { value: counts.clubs.toLocaleString(), label: 'Paddle Clubs', sub: 'Worldwide', color: 'text-sky-500' },
-            { value: counts.countries.toString(), label: 'Countries', sub: 'Covered', color: 'text-violet-500' },
-            { value: counts.events.toString(), label: 'Paddling', sub: 'Events', color: 'text-amber-500' },
-          ].map((stat) => (
-            <div key={stat.label} className="bg-white rounded-2xl shadow-sm border border-slate-200 px-6 py-4 text-center">
-              <span className={`text-2xl md:text-3xl font-extrabold ${stat.color}`}>{stat.value}</span>
-              <div className="text-xs text-slate-500 mt-1">{stat.label}<br />{stat.sub}</div>
-            </div>
-          ))}
+          {/* Stats inside hero */}
+          <div className="flex justify-center gap-3 md:gap-6 mt-8">
+            {[
+              { value: counts.clubs.toLocaleString(), label: 'Paddle Clubs', sub: 'Worldwide', color: 'text-sky-400' },
+              { value: counts.countries.toString(), label: 'Countries', sub: 'Covered', color: 'text-violet-400' },
+              { value: counts.events.toString(), label: 'Paddling', sub: 'Events', color: 'text-amber-400' },
+            ].map((stat) => (
+              <div key={stat.label} className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-5 py-3 md:px-6 md:py-4 text-center">
+                <span className={`text-2xl md:text-3xl font-extrabold ${stat.color}`}>{stat.value}</span>
+                <div className="text-[10px] md:text-xs text-white/70 mt-1">{stat.label}<br />{stat.sub}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
