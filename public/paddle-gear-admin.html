@@ -307,10 +307,12 @@ async function enrichBrand(){
                 instagram_url:document.getElementById('ed_instagram_url').value})});
         const data=await res.json();
         if(data.error){alert(data.error);return;}
-        // Fill in empty fields only
+        // Always overwrite description and products (the point of re-enriching)
+        const fillAlways=(id,val)=>{const el=document.getElementById(id);if(el&&val)el.value=val;};
+        // Only fill contact/social if currently empty
         const fillIf=(id,val)=>{const el=document.getElementById(id);if(el&&!el.value&&val)el.value=val;};
-        fillIf('ed_description',data.description);
-        fillIf('ed_popular_products',data.popular_products);
+        fillAlways('ed_description',data.description);
+        fillAlways('ed_popular_products',data.popular_products);
         fillIf('ed_logo_url',data.logo_url);
         fillIf('ed_email',data.email);
         fillIf('ed_phone',data.phone);
