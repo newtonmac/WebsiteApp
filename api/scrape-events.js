@@ -26,7 +26,9 @@ const SOURCES = [
   // SUP CIRCUITS
   { name: 'European SUP League', url: 'standupmagazin.com', country: 'EU', query: 'European SUP League ESL 2026 calendar race series events' },
   { name: 'TotalSUP Events', url: 'totalsup.com', country: 'INT', query: 'TotalSUP 2026 SUP race events calendar worldwide' },
-  { name: 'PaddleGuru Races', url: 'paddleguru.com', country: 'US', query: 'PaddleGuru 2026 paddle races SUP kayak outrigger events calendar' },
+  { name: 'PaddleGuru Races', url: 'paddleguru.com', country: 'US', query: 'site:paddleguru.com 2026 races registration open SUP kayak outrigger surfski canoe' },
+  { name: 'PaddleGuru SUP/OC', url: 'paddleguru.com', country: 'US', query: 'site:paddleguru.com 2026 SUP outrigger race paddleboard ocean' },
+  { name: 'PaddleGuru Kayak', url: 'paddleguru.com', country: 'US', query: 'site:paddleguru.com 2026 kayak canoe surfski race sprint flatwater' },
   // OUTRIGGER
   { name: 'IVF (Va\'a)', url: 'ivf.org.fj', country: 'INT', query: 'International Va\'a Federation IVF 2026 outrigger world sprints championships' },
   { name: 'USAORCA', url: 'usaorca.org', country: 'US', query: 'USAORCA USA Outrigger 2026 national championships events races' },
