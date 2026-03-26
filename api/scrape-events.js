@@ -26,9 +26,9 @@ const SOURCES = [
   // SUP CIRCUITS
   { name: 'European SUP League', url: 'standupmagazin.com', country: 'EU', query: 'European SUP League ESL 2026 calendar race series events' },
   { name: 'TotalSUP Events', url: 'totalsup.com', country: 'INT', query: 'TotalSUP 2026 SUP race events calendar worldwide' },
-  { name: 'PaddleGuru Races', url: 'paddleguru.com', country: 'US', query: 'site:paddleguru.com 2026 races registration open SUP kayak outrigger surfski canoe' },
-  { name: 'PaddleGuru SUP/OC', url: 'paddleguru.com', country: 'US', query: 'site:paddleguru.com 2026 SUP outrigger race paddleboard ocean' },
-  { name: 'PaddleGuru Kayak', url: 'paddleguru.com', country: 'US', query: 'site:paddleguru.com 2026 kayak canoe surfski race sprint flatwater' },
+  { name: 'PaddleGuru Races', url: 'paddleguru.com', country: 'US', query: 'paddleguru.com upcoming 2026 paddle races SUP kayak outrigger surfski events registration' },
+  { name: 'PaddleGuru SUP/OC', url: 'paddleguru.com', country: 'US', query: 'paddleguru 2026 SUP outrigger paddleboard ocean race challenge' },
+  { name: 'PaddleGuru Kayak', url: 'paddleguru.com', country: 'US', query: 'paddleguru 2026 kayak canoe surfski sprint race regatta' },
   // OUTRIGGER
   { name: 'IVF (Va\'a)', url: 'ivf.org.fj', country: 'INT', query: 'International Va\'a Federation IVF 2026 outrigger world sprints championships' },
   { name: 'USAORCA', url: 'usaorca.org', country: 'US', query: 'USAORCA USA Outrigger 2026 national championships events races' },
@@ -51,8 +51,11 @@ module.exports = async (req, res) => {
   const source = typeof sourceIndex === 'number' ? SOURCES[sourceIndex] : null;
   const toScrape = source ? [source] : SOURCES;
 
+  const delay = (ms) => new Promise(r => setTimeout(r, ms));
   const results = [];
-  for (const src of toScrape) {
+  for (let i = 0; i < toScrape.length; i++) {
+    const src = toScrape[i];
+    if (i > 0) await delay(3000); // 3 second pause between sources
     try {
       const apiKey = process.env.ANTHROPIC_API_KEY || '';
       if (!apiKey) { results.push({ source: src.name, status: 'error', error: 'ANTHROPIC_API_KEY not set' }); continue; }
