@@ -280,7 +280,9 @@ class EVRouteService {
         batteryKwh: Double, peakChargeKw: Double,
         minStopMinutes: Double
     ) -> Double {
-        guard toPct > fromPct, peakChargeKw > 0 else { return minStopMinutes }
+        guard toPct > fromPct else { return minStopMinutes }
+        // 0 means "any charger" — use 50 kW as a conservative fallback for time estimation
+        let effectivePeak = peakChargeKw > 0 ? peakChargeKw : 50.0
 
         var totalMinutes = 0.0
         // Break into 3 charging rate bands
@@ -298,7 +300,7 @@ class EVRouteService {
 
             let pctRange = bandEnd - currentPct
             let kwhToAdd = (pctRange / 100.0) * batteryKwh
-            let effectiveKw = peakChargeKw * band.rateFactor
+            let effectiveKw = effectivePeak * band.rateFactor
             totalMinutes += (kwhToAdd / effectiveKw) * 60.0
             currentPct = bandEnd
         }
@@ -561,8 +563,8 @@ class EVRouteService {
             minStopMinutes: minStopMinutes
         )
 
-        let stopCount = waypoints.count - 2
-        let stopLabel = stopCount == 1 ? "1 stop" : "\(stopCount) stops"
+        let stopCount = max(0, waypoints.count - 2)
+        let stopLabel = stopCount == 0 ? "direct" : stopCount == 1 ? "1 stop" : "\(stopCount) stops"
 
         // Fix charging stop coordinates: interpolate real positions from combined polyline.
         // Precompute cumDist ONCE for all stops — avoids O(n) rebuild per stop.

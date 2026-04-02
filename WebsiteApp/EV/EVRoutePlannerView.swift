@@ -458,6 +458,7 @@ struct EVRoutePlannerView: View {
     private var planButton: some View {
         Button {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            selectedRoute = nil
             routeTask?.cancel()
             routeTask = Task { await planRoute() }
         } label: {
@@ -874,7 +875,7 @@ struct EVRoutePlannerView: View {
             chargeTarget: settings.chargeTargetPct,
             avoidHighways: settings.avoidHighways,
             avoidTolls: settings.avoidTolls,
-            preferredChargerSpeedKw: max(50, settings.preferredChargerSpeedKw),
+            preferredChargerSpeedKw: settings.preferredChargerSpeedKw,
             preferredStopMinutes: settings.preferredStopMinutes
         )
 
