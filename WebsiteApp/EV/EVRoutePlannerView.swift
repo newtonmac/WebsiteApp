@@ -1128,11 +1128,17 @@ struct PDFShareSheet: UIViewControllerRepresentable {
     let fileName: String
 
     func makeUIViewController(context: Context) -> UIActivityViewController {
+        // Try to write a named file so the share sheet shows the filename.
+        // Fall back to sharing raw Data if the write fails (e.g. disk full).
         let tempDir = FileManager.default.temporaryDirectory
         let fileURL = tempDir.appendingPathComponent(fileName)
-        try? pdfData.write(to: fileURL)
-        let controller = UIActivityViewController(activityItems: [fileURL], applicationActivities: nil)
-        return controller
+        let items: [Any]
+        if (try? pdfData.write(to: fileURL)) != nil {
+            items = [fileURL]
+        } else {
+            items = [pdfData]
+        }
+        return UIActivityViewController(activityItems: items, applicationActivities: nil)
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}

@@ -60,7 +60,7 @@ struct EVRoutePDFGenerator {
             }
             context.beginPage(mediaBox: &mediaBox)
 
-            // Dark background
+            // White background (PDF uses light theme)
             context.setFillColor(bgPrimary.cgColor)
             context.fill(CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight))
 
