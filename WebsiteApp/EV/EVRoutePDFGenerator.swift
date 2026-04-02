@@ -4,6 +4,12 @@ import CoreGraphics
 /// Generates a professional PDF report for an EV route with graphs and section breakdowns.
 struct EVRoutePDFGenerator {
 
+    // MARK: - Unit helpers (respect user's distance preference)
+    private static var useMiles: Bool { EVSettingsManager.shared.useMiles }
+    private static func distStr(_ miles: Double) -> String { EVSettingsManager.shared.distanceString(miles) }
+    private static func effStr(_ miPerKwh: Double) -> String { EVSettingsManager.shared.efficiencyInverse(miPerKwh: miPerKwh) }
+    private static func kwhPerDistStr(_ kwhPerMile: Double) -> String { EVSettingsManager.shared.efficiencyString(kwhPerMile: kwhPerMile) }
+
     // MARK: - Colors (print-friendly light theme)
 
     private static let bgPrimary = UIColor.white
@@ -108,9 +114,9 @@ struct EVRoutePDFGenerator {
                              x: cardX, y: y, width: cardW, valueColor: accentGreen)
             y = drawKeyValue(context: context, key: "Battery", value: "\(Int(vehicle.batteryKwh)) kWh",
                              x: cardX, y: y, width: cardW)
-            y = drawKeyValue(context: context, key: "EPA Range", value: "\(vehicle.epaMiles) miles",
+            y = drawKeyValue(context: context, key: "EPA Range", value: useMiles ? "\(vehicle.epaMiles) mi" : "\(Int(Double(vehicle.epaMiles) * EVConstants.kmPerMile)) km",
                              x: cardX, y: y, width: cardW)
-            y = drawKeyValue(context: context, key: "Efficiency", value: String(format: "%.2f kWh/mi", vehicle.effKwhMi),
+            y = drawKeyValue(context: context, key: "Efficiency", value: kwhPerDistStr(vehicle.effKwhMi),
                              x: cardX, y: y, width: cardW)
             return y
         }
@@ -121,7 +127,7 @@ struct EVRoutePDFGenerator {
         currentY -= 8
         currentY = drawCard(context: context, x: margin, y: currentY, width: contentWidth) { cardX, cardY, cardW in
             var y = cardY
-            y = drawKeyValue(context: context, key: "Distance", value: String(format: "%.1f miles", route.distanceMiles),
+            y = drawKeyValue(context: context, key: "Distance", value: distStr(route.distanceMiles),
                              x: cardX, y: y, width: cardW)
             y = drawKeyValue(context: context, key: "Est. Time", value: formatDuration(route.durationMinutes),
                              x: cardX, y: y, width: cardW)
@@ -130,9 +136,10 @@ struct EVRoutePDFGenerator {
             y = drawKeyValue(context: context, key: "Battery Used", value: String(format: "%.0f%%", route.batteryPctUsed),
                              x: cardX, y: y, width: cardW,
                              valueColor: route.batteryPctUsed > 80 ? accentRed : route.batteryPctUsed > 50 ? accentYellow : accentGreen)
-            y = drawKeyValue(context: context, key: "Efficiency", value: String(format: "%.1f mi/kWh", route.efficiency),
+            y = drawKeyValue(context: context, key: "Efficiency", value: effStr(route.efficiency),
                              x: cardX, y: y, width: cardW, valueColor: accentGreen)
-            y = drawKeyValue(context: context, key: "kWh/mile", value: String(format: "%.3f kWh/mi", route.energyKwh / max(0.1, route.distanceMiles)),
+            let kwhDistKey = "kWh/" + (useMiles ? "mi" : "km")
+            y = drawKeyValue(context: context, key: kwhDistKey, value: kwhPerDistStr(route.energyKwh / max(0.1, route.distanceMiles)),
                              x: cardX, y: y, width: cardW)
             y = drawKeyValue(context: context, key: "Arrival Battery",
                              value: String(format: "%.0f%%", route.finalBatteryPct),
@@ -239,14 +246,14 @@ struct EVRoutePDFGenerator {
                 currentY = drawCard(context: context, x: margin, y: currentY, width: contentWidth) { cardX, cardY, cardW in
                     var y = cardY
                     y = drawText(context: context,
-                                 text: "⚡ Charging Stop \(stop.stopNumber) — Mile \(String(format: "%.0f", stop.distanceMiles))",
+                                 text: "⚡ Charging Stop \(stop.stopNumber) — \(distStr(stop.distanceMiles))",
                                  x: cardX, y: y, width: cardW,
                                  font: font(13, weight: .bold), color: accentYellow)
                     y -= 4
 
                     // Section stats
                     y = drawText(context: context,
-                                 text: "Section \(stop.stopNumber): \(String(format: "%.1f mi", stop.sectionDistanceMiles)) • \(String(format: "%.1f kWh", stop.sectionEnergyKwh)) • \(String(format: "%.1f mi/kWh", stop.sectionEfficiency))",
+                                 text: "Section \(stop.stopNumber): \(distStr(stop.sectionDistanceMiles)) • \(String(format: "%.1f kWh", stop.sectionEnergyKwh)) • \(effStr(stop.sectionEfficiency))",
                                  x: cardX, y: y, width: cardW,
                                  font: font(10, weight: .medium), color: textPrimary)
                     y -= 2
@@ -289,7 +296,7 @@ struct EVRoutePDFGenerator {
                                  font: font(13, weight: .bold), color: textPrimary)
                     y -= 4
                     y = drawText(context: context,
-                                 text: "\(String(format: "%.1f mi", finalSec.distanceMiles)) • \(String(format: "%.1f kWh", finalSec.energyKwh)) • \(String(format: "%.1f mi/kWh", finalSec.efficiency))",
+                                 text: "\(distStr(finalSec.distanceMiles)) • \(String(format: "%.1f kWh", finalSec.energyKwh)) • \(effStr(finalSec.efficiency))",
                                  x: cardX, y: y, width: cardW,
                                  font: font(10, weight: .medium), color: textPrimary)
                     y -= 2
@@ -621,8 +628,10 @@ struct EVRoutePDFGenerator {
 
         // X-axis labels
         let xLabelAttr: [NSAttributedString.Key: Any] = [.font: font(7), .foregroundColor: textSecondary]
-        let startLabel = NSAttributedString(string: "0 mi", attributes: xLabelAttr)
-        let endLabel = NSAttributedString(string: "\(String(format: "%.0f", maxDist)) mi", attributes: xLabelAttr)
+        let startLabel = NSAttributedString(string: useMiles ? "0 mi" : "0 km", attributes: xLabelAttr)
+        let endDist = String(format: "%.0f", useMiles ? maxDist : maxDist * EVConstants.kmPerMile)
+        let endUnit = useMiles ? "mi" : "km"
+        let endLabel = NSAttributedString(string: endDist + " " + endUnit, attributes: xLabelAttr)
         context.textPosition = CGPoint(x: chartX, y: graphRect.minY + 4)
         CTLineDraw(CTLineCreateWithAttributedString(startLabel), context)
         let endLine = CTLineCreateWithAttributedString(endLabel)
@@ -795,10 +804,10 @@ struct EVRoutePDFGenerator {
             context.addPath(barPath)
             context.fillPath()
 
-            // Value label
+            // Value label — show explicit sign for regen (negative = recovery)
             let valStr: String
             if value < 0 {
-                valStr = String(format: "%.1f kWh", value)
+                valStr = String(format: "−%.1f kWh", abs(value))   // minus sign
             } else {
                 valStr = String(format: "%.1f kWh", value)
             }
