@@ -5,7 +5,7 @@ struct EVRoutePlannerView: View {
     @StateObject private var settings = EVSettingsManager.shared
     @State private var routeService = EVRouteService()
     @State private var chargerService = EVChargerService()
-    @State private var selectedVehicle: EVVehicle = EVDatabase.vehicles[0]
+    @State private var selectedVehicle: EVVehicle = EVDatabase.defaultVehicle
     @State private var originText = ""
     @State private var originCoord: CLLocationCoordinate2D?
     // routeStops: all stops in order — last entry is always the destination
@@ -48,15 +48,22 @@ struct EVRoutePlannerView: View {
         guard let route = selectedRoute, route.needsCharging else { return filtered }
         let radiusMeters = settings.maxDetourMiles * EVConstants.metersPerMile
 
-        // Pre-compute stop locations once (avoid reallocating CLLocation per charger)
-        let stopLocs = route.chargingStops
+        // Pre-compute stop coords for fast Haversine proximity check
+        let stopCoords = route.chargingStops
             .filter { $0.coordinate.latitude != 0 || $0.coordinate.longitude != 0 }
-            .map { CLLocation(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude) }
-        guard !stopLocs.isEmpty else { return filtered }
+            .map { $0.coordinate }
+        guard !stopCoords.isEmpty else { return filtered }
 
         return filtered.filter { charger in
-            let loc = CLLocation(latitude: charger.coordinate.latitude, longitude: charger.coordinate.longitude)
-            return stopLocs.contains { $0.distance(from: loc) <= radiusMeters }
+            let cLat = charger.coordinate.latitude, cLon = charger.coordinate.longitude
+            return stopCoords.contains { stop in
+                let dlat = (stop.latitude  - cLat) * .pi / 180
+                let dlon = (stop.longitude - cLon) * .pi / 180
+                let ml = cLat * .pi / 180
+                let a = dlat*dlat + cos(ml)*cos(ml)*dlon*dlon
+                let dist = 6_371_000 * 2 * atan2(sqrt(a), sqrt(1-a))
+                return dist <= radiusMeters
+            }
         }
     }
 

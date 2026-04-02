@@ -189,7 +189,6 @@ struct EVRoutePDFGenerator {
                 profile: route.elevationProfile,
                 vehicle: vehicle,
                 chargingStops: route.chargingStops,
-                avgSpeedMps: (route.distanceMiles * EVConstants.metersPerMile) / max(1, route.durationMinutes * 60),
                 x: margin, y: currentY, width: contentWidth, height: 140
             )
         }
@@ -206,7 +205,6 @@ struct EVRoutePDFGenerator {
                 profile: route.elevationProfile,
                 vehicle: vehicle,
                 chargingStops: route.chargingStops,
-                avgSpeedMps: (route.distanceMiles * EVConstants.metersPerMile) / max(1, route.durationMinutes * 60),
                 x: margin, y: currentY, width: contentWidth, height: 130
             )
         }
@@ -321,7 +319,7 @@ struct EVRoutePDFGenerator {
 
         let baseDriving = route.distanceMiles * vehicle.effKwhMi
         let climbingKwh = route.elevationGain > 0
-            ? (vehicle.weightKg * EVConstants.gravity * route.elevationGain) / (EVConstants.joulesPerKwh * 0.85)
+            ? (vehicle.weightKg * EVConstants.gravity * route.elevationGain) / (EVConstants.joulesPerKwh * EVConstants.drivetrainEfficiency)
             : 0
 
         let breakdownItems: [(String, Double, UIColor)] = [
@@ -521,7 +519,6 @@ struct EVRoutePDFGenerator {
         profile: [ElevationPoint],
         vehicle: EVVehicle,
         chargingStops: [ChargingStop],
-        avgSpeedMps: Double,
         x: CGFloat, y: CGFloat, width: CGFloat, height: CGFloat
     ) -> CGFloat {
         guard profile.count >= 2 else { return y }
@@ -657,7 +654,6 @@ struct EVRoutePDFGenerator {
         profile: [ElevationPoint],
         vehicle: EVVehicle,
         chargingStops: [ChargingStop],
-        avgSpeedMps: Double,
         x: CGFloat, y: CGFloat, width: CGFloat, height: CGFloat
     ) -> CGFloat {
         guard profile.count >= 2 else { return y }

@@ -101,6 +101,11 @@ enum EVDatabase {
                   batteryKwh: 112, epaKwhPer100Mi: 25.7, effKwhMi: 0.270, weightKg: 2360, regenEff: 0.48, epaMiles: 516),
     ]
 
+    /// Default vehicle — used as initial selection and fallback (Tesla Model Y LR)
+    static var defaultVehicle: EVVehicle {
+        vehicles.first { $0.id == "modely_lr" } ?? vehicles[0]
+    }
+
     static var groupedByBrand: [(brand: String, vehicles: [EVVehicle])] {
         let grouped = Dictionary(grouping: vehicles, by: \.brand)
         return grouped.sorted { $0.key < $1.key }.map { (brand: $0.key, vehicles: $0.value) }
