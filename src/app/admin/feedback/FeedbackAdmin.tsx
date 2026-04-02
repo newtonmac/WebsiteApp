@@ -46,16 +46,20 @@ export default function FeedbackAdmin() {
     const desc = (document.getElementById(`sug-d-${s.id}`) as HTMLTextAreaElement)?.value || s.description;
     try {
       await proxy({ action: 'approve', title, description: desc, status, suggestedBy: s.name || s.city });
-      // Remove from suggestions after approving
       await proxy({ action: 'dismiss', id: s.id }).catch(() => {});
-      showToast('Approved & moved to Updates'); loadSuggestions(); loadUpdates();
+      // Optimistically remove from UI (don't rely on KV re-fetch which has eventual consistency)
+      setSuggestions(prev => prev.filter(x => x.id !== s.id));
+      showToast('Approved & moved to Updates'); loadUpdates();
     } catch (e: any) { alert('Failed: ' + e.message); }
   };
 
   const dismissSuggestion = async (id: string) => {
     if (!confirm('Dismiss this suggestion?')) return;
-    try { await proxy({ action: 'dismiss', id }); showToast('Dismissed'); loadSuggestions(); }
-    catch (e: any) { alert('Failed: ' + e.message); }
+    try {
+      await proxy({ action: 'dismiss', id });
+      setSuggestions(prev => prev.filter(x => x.id !== id));
+      showToast('Dismissed');
+    } catch (e: any) { alert('Failed: ' + e.message); }
   };
 
   const addUpdate = async () => {
