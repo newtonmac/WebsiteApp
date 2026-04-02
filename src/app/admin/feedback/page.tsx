@@ -1,11 +1,5 @@
-'use client';
+import FeedbackAdmin from './FeedbackAdmin';
 
-export default function FeedbackAdmin() {
-  return (
-    <iframe
-      src="/updates-admin.html"
-      className="w-full h-screen border-0"
-      allow="clipboard-write"
-    />
-  );
+export default function FeedbackAdminPage() {
+  return <FeedbackAdmin />;
 }
