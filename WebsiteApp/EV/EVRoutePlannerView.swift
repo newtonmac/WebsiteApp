@@ -14,8 +14,7 @@ struct EVRoutePlannerView: View {
     @State private var showingVehiclePicker = false
     @State private var showingRouteDetail: RouteResult?
     @State private var showingSettings = false
-    @State private var isRoundTrip = false
-    @State private var showChargers = false
+    @State private var waypoints: [WaypointEntry] = []
     @State private var panelExpanded = true
     @State private var selectedCharger: EVCharger?
     @State private var mapStyle: EVMapStyle = .standard
@@ -24,11 +23,6 @@ struct EVRoutePlannerView: View {
     @State private var keyboardOffset: CGFloat = 0
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-
-    // True for iPhone landscape OR iPad (regular horizontal size class needs wide layout too)
-    private var useWideLayout: Bool {
-        verticalSizeClass == .compact || horizontalSizeClass == .regular
-    }
 
     @GestureState private var dragOffset: CGFloat = 0
     @State private var mapCameraPosition: MapCameraPosition = .region(
@@ -40,7 +34,6 @@ struct EVRoutePlannerView: View {
     private let collapsedFraction: CGFloat = 0.10
 
     private var mapChargers: [EVCharger] {
-        guard showChargers else { return [] }
         var filtered = chargerService.chargers.filter { selectedNetworks.contains($0.network) }
 
         // Filter by preferred minimum charger speed
@@ -153,60 +146,25 @@ struct EVRoutePlannerView: View {
 
                 if panelExpanded || dragOffset < -30 {
                     ScrollView {
-                        if useWideLayout {
-                            // Landscape: two-column layout with results below
-                            VStack(spacing: 14) {
-                                HStack(alignment: .top, spacing: 14) {
-                                    // Left column: inputs + vehicle + plan button
-                                    VStack(spacing: 10) {
-                                        inputSection
-                                        vehicleSection
-                                        planButton
-                                    }
-                                    .frame(maxWidth: .infinity)
+                        VStack(spacing: 14) {
+                            inputSection
+                            networkFilterSection
+                            vehicleSection
+                            planButton
 
-                                    // Right column: toggles + networks
-                                    VStack(spacing: 10) {
-                                        togglesSection
-                                    }
-                                    .frame(maxWidth: .infinity)
-                                }
-
-                                // Route results span full width below both columns
-                                if !routeService.routes.isEmpty {
-                                    routeResultsSection
-                                }
-
-                                if let error = routeService.errorMessage {
-                                    Text(error)
-                                        .font(.caption)
-                                        .foregroundStyle(EVTheme.accentRed)
-                                }
+                            if !routeService.routes.isEmpty {
+                                routeResultsSection
                             }
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 100)
-                        } else {
-                            // Portrait: single-column layout
-                            VStack(spacing: 14) {
-                                inputSection
-                                togglesSection
-                                vehicleSection
-                                planButton
 
-                                if !routeService.routes.isEmpty {
-                                    routeResultsSection
-                                }
-
-                                if let error = routeService.errorMessage {
-                                    Text(error)
-                                        .font(.caption)
-                                        .foregroundStyle(EVTheme.accentRed)
-                                        .padding(.horizontal)
-                                }
+                            if let error = routeService.errorMessage {
+                                Text(error)
+                                    .font(.caption)
+                                    .foregroundStyle(EVTheme.accentRed)
+                                    .padding(.horizontal)
                             }
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 100)
                         }
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 100)
                     }
                 }
             }
@@ -272,11 +230,12 @@ struct EVRoutePlannerView: View {
     // MARK: - Input Section
 
     private var inputSection: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 8) {
+            // Origin — full width
             HStack(spacing: 8) {
-                Circle()
-                    .fill(EVTheme.accentGreen)
-                    .frame(width: 10, height: 10)
+                Image(systemName: "circle.fill")
+                    .font(.system(size: 10))
+                    .foregroundStyle(EVTheme.accentGreen)
                 EVLocationSearchField(
                     text: $originText,
                     placeholder: "Origin",
@@ -285,49 +244,54 @@ struct EVRoutePlannerView: View {
                 )
             }
 
+            // Waypoints (up to 4, added between origin and destination)
+            ForEach(waypoints.indices, id: \.self) { index in
+                HStack(spacing: 8) {
+                    Image(systemName: "smallcircle.filled.circle")
+                        .font(.system(size: 10))
+                        .foregroundStyle(EVTheme.accentYellow)
+                    EVLocationSearchField(
+                        text: $waypoints[index].text,
+                        placeholder: "Stop \(index + 1)",
+                        coordinate: $waypoints[index].coordinate
+                    )
+                    Button {
+                        waypoints.remove(at: index)
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 18))
+                            .foregroundStyle(EVTheme.textSecondary)
+                    }
+                }
+            }
+
+            // Destination — full width
             HStack(spacing: 8) {
-                Circle()
-                    .fill(EVTheme.accentRed)
-                    .frame(width: 10, height: 10)
+                Image(systemName: "mappin.circle.fill")
+                    .font(.system(size: 10))
+                    .foregroundStyle(EVTheme.accentRed)
                 EVLocationSearchField(
                     text: $destinationText,
                     placeholder: "Destination",
                     coordinate: $destinationCoord
                 )
             }
-        }
-    }
 
-    // MARK: - Toggles Section
-
-    private var togglesSection: some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 12) {
-                // Round trip toggle
-                EVToggleRow(
-                    label: "Round Trip",
-                    icon: "arrow.triangle.2.circlepath",
-                    isOn: $isRoundTrip
-                )
-
-                // Show chargers toggle
-                EVToggleRow(
-                    label: "EV Chargers",
-                    icon: "bolt.fill",
-                    isOn: $showChargers
-                )
-            }
-            .onChange(of: showChargers) { _, isOn in
-                if isOn, let route = selectedRoute, let mkRoute = route.route, chargerService.chargers.isEmpty {
-                    Task {
-                        await chargerService.findChargersAlongRoute(mkRoute)
+            // Add stop button
+            if waypoints.count < 4 {
+                Button {
+                    waypoints.append(WaypointEntry())
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 14))
+                        Text("Add Stop")
+                            .font(.system(size: 13, weight: .medium))
                     }
+                    .foregroundStyle(EVTheme.accentBlue)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 2)
                 }
-            }
-
-            // Network filter chips
-            if showChargers {
-                networkFilterSection
             }
         }
     }
@@ -489,7 +453,7 @@ struct EVRoutePlannerView: View {
                             selectedRoute = route
                         }
                         fitMapToRoute(route)
-                        if showChargers, let mkRoute = route.route {
+                        if let mkRoute = route.route {
                             Task {
                                 await chargerService.findChargersAlongRoute(mkRoute)
                             }
@@ -833,8 +797,9 @@ struct EVRoutePlannerView: View {
     private func planRoute() async {
         guard let origin = originCoord, let dest = destinationCoord else { return }
 
+        let stops = waypoints.compactMap { $0.coordinate }
         await routeService.planRoute(
-            from: origin, to: dest, vehicle: selectedVehicle,
+            from: origin, to: dest, stops: stops, vehicle: selectedVehicle,
             startBattery: settings.startChargePct,
             minBattery: settings.minArrivalPct,
             chargeTarget: settings.chargeTargetPct,
@@ -851,6 +816,7 @@ struct EVRoutePlannerView: View {
                 await chargerService.findChargersAlongRoute(mkRoute)
             }
         }
+
     }
 
     private func fitMapToRoute(_ route: RouteResult) {
@@ -879,6 +845,14 @@ struct EVRoutePlannerView: View {
         let urlStr = "https://www.waze.com/ul?ll=\(dest.latitude),\(dest.longitude)&navigate=yes"
         return URL(string: urlStr)
     }
+}
+
+// MARK: - Waypoint Entry
+
+struct WaypointEntry: Identifiable {
+    let id = UUID()
+    var text: String = ""
+    var coordinate: CLLocationCoordinate2D?
 }
 
 // MARK: - Toggle Row (matches web app style)
