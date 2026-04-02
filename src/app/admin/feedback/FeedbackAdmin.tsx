@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 
 const UPDATES_API = 'https://updates.newtonmac.workers.dev';
 const SUGGEST_API = 'https://suggestions.newtonmac.workers.dev';
+const PROXY = '/api/admin-feedback';
 
 interface Suggestion { id: string; title: string; description: string; name: string; email: string; club: string; craft: string; city: string; country: string; notify: boolean; timestamp: string; }
 interface Update { id: string; title: string; description: string; status: string; suggestedBy?: string; createdAt: string; updatedAt: string; }
@@ -14,98 +15,66 @@ export default function FeedbackAdmin() {
   const [tab, setTab] = useState<'suggestions'|'updates'>('suggestions');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [updates, setUpdates] = useState<Update[]>([]);
-  const [adminKey, setAdminKey] = useState('');
-  const [keyInput, setKeyInput] = useState('');
   const [toast, setToast] = useState('');
-  // Add form
   const [addTitle, setAddTitle] = useState('');
   const [addDesc, setAddDesc] = useState('');
   const [addStatus, setAddStatus] = useState('planned');
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
-  const loadSuggestions = useCallback(async () => {
-    try { const res = await fetch(`${SUGGEST_API}/suggestions`); const d = await res.json(); setSuggestions(d.suggestions || []); } catch { setSuggestions([]); }
-  }, []);
-
-  const loadUpdates = useCallback(async () => {
-    try { const res = await fetch(`${UPDATES_API}/updates`); const d = await res.json(); setUpdates(d.updates || []); } catch { setUpdates([]); }
-  }, []);
-
-  const connect = () => {
-    if (!keyInput.trim()) return;
-    setAdminKey(keyInput.trim());
-    loadSuggestions(); loadUpdates();
+  // Proxy helper — all admin actions go through /api/admin-feedback (uses CF_ADMIN_KEY server-side)
+  const proxy = async (body: Record<string, any>) => {
+    const res = await fetch(PROXY, { method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `HTTP ${res.status}`); }
+    return res.json();
   };
+
+  // Public reads (no auth needed)
+  const loadSuggestions = useCallback(async () => {
+    try { const r = await fetch(`${SUGGEST_API}/suggestions`); const d = await r.json(); setSuggestions(d.suggestions || []); } catch { setSuggestions([]); }
+  }, []);
+  const loadUpdates = useCallback(async () => {
+    try { const r = await fetch(`${UPDATES_API}/updates`); const d = await r.json(); setUpdates(d.updates || []); } catch { setUpdates([]); }
+  }, []);
 
   useEffect(() => { loadSuggestions(); loadUpdates(); }, [loadSuggestions, loadUpdates]);
 
+  // Admin actions via proxy
   const approveSuggestion = async (s: Suggestion, status: string) => {
     const title = (document.getElementById(`sug-t-${s.id}`) as HTMLInputElement)?.value || s.title;
     const desc = (document.getElementById(`sug-d-${s.id}`) as HTMLTextAreaElement)?.value || s.description;
     try {
-      const res = await fetch(`${UPDATES_API}/admin/updates`, { method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminKey}` },
-        body: JSON.stringify({ title, description: desc, status, suggestedBy: s.name || s.city }) });
-      if (res.status === 401) { alert('Invalid admin key'); return; }
+      await proxy({ action: 'approve', title, description: desc, status, suggestedBy: s.name || s.city });
       showToast('Approved → Updates'); loadSuggestions(); loadUpdates();
-    } catch { alert('Failed to approve'); }
+    } catch (e: any) { alert('Failed: ' + e.message); }
   };
 
   const dismissSuggestion = async (id: string) => {
     if (!confirm('Dismiss this suggestion?')) return;
-    try {
-      await fetch(`${SUGGEST_API}/admin/suggestions/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${adminKey}` } });
-      showToast('Dismissed'); loadSuggestions();
-    } catch { alert('Failed'); }
+    try { await proxy({ action: 'dismiss', id }); showToast('Dismissed'); loadSuggestions(); }
+    catch (e: any) { alert('Failed: ' + e.message); }
   };
 
   const addUpdate = async () => {
     if (!addTitle.trim()) return;
     try {
-      const res = await fetch(`${UPDATES_API}/admin/updates`, { method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminKey}` },
-        body: JSON.stringify({ title: addTitle, description: addDesc, status: addStatus }) });
-      if (res.status === 401) { alert('Invalid admin key'); return; }
+      await proxy({ action: 'add_update', title: addTitle, description: addDesc, status: addStatus });
       setAddTitle(''); setAddDesc(''); setAddStatus('planned');
       showToast('Update added'); loadUpdates();
-    } catch { alert('Failed'); }
+    } catch (e: any) { alert('Failed: ' + e.message); }
   };
 
   const changeStatus = async (id: string, status: string) => {
-    try {
-      await fetch(`${UPDATES_API}/admin/updates/${id}`, { method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminKey}` },
-        body: JSON.stringify({ status }) });
-      loadUpdates();
-    } catch { alert('Failed'); }
+    try { await proxy({ action: 'change_status', id, status }); loadUpdates(); }
+    catch (e: any) { alert('Failed: ' + e.message); }
   };
 
   const deleteUpdate = async (id: string) => {
     if (!confirm('Delete this update?')) return;
-    try {
-      await fetch(`${UPDATES_API}/admin/updates/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${adminKey}` } });
-      showToast('Deleted'); loadUpdates();
-    } catch { alert('Failed'); }
+    try { await proxy({ action: 'delete_update', id }); showToast('Deleted'); loadUpdates(); }
+    catch (e: any) { alert('Failed: ' + e.message); }
   };
-
-  // If no admin key yet, show connect form
-  if (!adminKey) {
-    return (
-      <div className="p-6">
-        <h2 className="text-2xl font-bold text-white mb-4">💬 Feedback & Updates</h2>
-        <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 max-w-sm">
-          <p className="text-sm text-slate-400 mb-3">Enter Cloudflare Worker admin key to manage suggestions and updates.</p>
-          <div className="flex gap-2">
-            <input value={keyInput} onChange={e => setKeyInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && connect()}
-              placeholder="Admin key" type="password"
-              className="flex-1 px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-emerald-500" />
-            <button onClick={connect} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-lg">Connect</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="p-6">
@@ -169,7 +138,6 @@ export default function FeedbackAdmin() {
       {/* Updates Panel */}
       {tab === 'updates' && (
         <div>
-          {/* Add form */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 mb-4">
             <h3 className="text-sm font-bold text-white mb-3">Add New Update</h3>
             <input value={addTitle} onChange={e => setAddTitle(e.target.value)} placeholder="Title *"
@@ -184,8 +152,6 @@ export default function FeedbackAdmin() {
               <button onClick={addUpdate} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-lg">Add Update</button>
             </div>
           </div>
-
-          {/* Updates list */}
           <div className="space-y-2">
             {updates.length === 0 && <p className="text-slate-500 text-sm py-8 text-center">No updates yet.</p>}
             {updates.map(u => (
@@ -212,12 +178,7 @@ export default function FeedbackAdmin() {
         </div>
       )}
 
-      {/* Toast */}
-      {toast && (
-        <div className="fixed bottom-6 right-6 bg-emerald-500 text-white px-5 py-3 rounded-xl text-sm font-semibold shadow-lg z-50">
-          {toast}
-        </div>
-      )}
+      {toast && <div className="fixed bottom-6 right-6 bg-emerald-500 text-white px-5 py-3 rounded-xl text-sm font-semibold shadow-lg z-50">{toast}</div>}
     </div>
   );
 }
