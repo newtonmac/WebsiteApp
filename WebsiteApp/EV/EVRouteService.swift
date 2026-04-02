@@ -153,6 +153,13 @@ class EVRouteService {
     private var chargeTargetPct = 80.0
     private var startBatteryPct = 100.0
 
+    // Elevation cache: keyed by "lat,lon" grid (rounded to 2 decimal places ~1km grid)
+    private var elevationCache: [String: Double] = [:]
+
+    private func cacheKey(_ coord: CLLocationCoordinate2D) -> String {
+        String(format: "%.2f,%.2f", coord.latitude, coord.longitude)
+    }
+
     func planRoute(from origin: CLLocationCoordinate2D,
                    to destination: CLLocationCoordinate2D,
                    stops: [CLLocationCoordinate2D] = [],
@@ -621,24 +628,51 @@ class EVRouteService {
     // MARK: - Elevation (Open Elevation API — no key required)
 
     private func fetchElevations(for points: [CLLocationCoordinate2D]) async -> [Double] {
-        // Open Elevation API accepts up to ~500 points per POST
+        // Check cache first — skip API for already-known coordinates
+        var result: [Double] = Array(repeating: 0, count: points.count)
+        var uncachedIndices: [Int] = []
+        var uncachedPoints: [CLLocationCoordinate2D] = []
+
+        for (i, pt) in points.enumerated() {
+            if let cached = elevationCache[cacheKey(pt)] {
+                result[i] = cached
+            } else {
+                uncachedIndices.append(i)
+                uncachedPoints.append(pt)
+            }
+        }
+
+        if uncachedPoints.isEmpty {
+            evLog("Elevation: all \(points.count) points served from cache")
+            return result
+        }
+
+        evLog("Elevation: \(points.count - uncachedPoints.count) cached, \(uncachedPoints.count) to fetch")
+
+        // Fetch uncached points
         let chunkSize = 200
-        var allElevations: [Double] = []
-
-        for chunkStart in stride(from: 0, to: points.count, by: chunkSize) {
-            let chunkEnd = min(chunkStart + chunkSize, points.count)
-            let chunk = Array(points[chunkStart..<chunkEnd])
-            let elevations = await fetchElevationOpenElevation(chunk)
-            allElevations.append(contentsOf: elevations)
+        var fetchedElevations: [Double] = []
+        for chunkStart in stride(from: 0, to: uncachedPoints.count, by: chunkSize) {
+            let chunkEnd = min(chunkStart + chunkSize, uncachedPoints.count)
+            let chunk = Array(uncachedPoints[chunkStart..<chunkEnd])
+            let elevs = await fetchElevationOpenElevation(chunk)
+            fetchedElevations.append(contentsOf: elevs)
         }
 
-        // If all zeros, try Open-Meteo as fallback
-        if allElevations.allSatisfy({ $0 == 0 }) {
+        // Fallback if all zeros
+        if fetchedElevations.allSatisfy({ $0 == 0 }) {
             evLog("Open Elevation returned all zeros, trying Open-Meteo fallback...")
-            return await fetchElevationsOpenMeteo(points)
+            fetchedElevations = await fetchElevationsOpenMeteo(uncachedPoints)
         }
 
-        return allElevations
+        // Store in cache and merge into result
+        for (i, idx) in uncachedIndices.enumerated() {
+            let elev = i < fetchedElevations.count ? fetchedElevations[i] : 0
+            result[idx] = elev
+            elevationCache[cacheKey(uncachedPoints[i])] = elev
+        }
+
+        return result
     }
 
     /// Primary: Open Elevation API (POST, no API key)
@@ -837,8 +871,9 @@ class EVRouteService {
     // MARK: - Route Scoring
 
     private func computeScore(energy: EnergyResult, route: MKRoute) -> Double {
+        // Weights: 80% energy efficiency, 15% time, 5% peak grade = 100%
         let energyScore = energy.totalKwh * 0.80
-        let timeScore = (route.expectedTravelTime / 3600) * 0.10
+        let timeScore = (route.expectedTravelTime / 3600) * 0.15
         let gradeScore = energy.peakGrade * 0.05
         return energyScore + timeScore + gradeScore
     }

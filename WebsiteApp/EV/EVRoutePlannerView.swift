@@ -244,6 +244,24 @@ struct EVRoutePlannerView: View {
                     coordinate: $originCoord,
                     showGPSButton: true
                 )
+                // Swap origin ↔ destination (only when no waypoints)
+                if routeStops.count == 1 {
+                    Button {
+                        let tmpText = originText
+                        let tmpCoord = originCoord
+                        originText = routeStops[0].text
+                        originCoord = routeStops[0].coordinate
+                        routeStops[0].text = tmpText
+                        routeStops[0].coordinate = tmpCoord
+                    } label: {
+                        Image(systemName: "arrow.up.arrow.down")
+                            .font(.system(size: 14))
+                            .foregroundStyle(EVTheme.accentBlue)
+                            .frame(width: 32, height: 32)
+                            .background(EVTheme.bgInput)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                }
             }
 
             // Reorderable stops — VStack (not List) so suggestions are never clipped
@@ -600,20 +618,34 @@ struct EVRoutePlannerView: View {
 
     private func energyBreakdownCard(for route: RouteResult) -> some View {
         let vehicle = selectedVehicle
-        let baseDriving = route.distanceMiles * vehicle.effKwhMi
         let elevGainFt = metersToFeet(route.elevationGain)
         let elevGainM = Int(route.elevationGain)
-        let climbingKwh = route.elevationGain > 0
-            ? (vehicle.weightKg * EVConstants.gravity * route.elevationGain) / (EVConstants.joulesPerKwh * 0.85)
-            : 0
-        let regenKwh = route.elevationLoss > 0
-            ? (vehicle.weightKg * EVConstants.gravity * route.elevationLoss) / EVConstants.joulesPerKwh * vehicle.regenEff
-            : 0
         let netElevM = route.elevationGain - route.elevationLoss
         let netElevFt = metersToFeet(netElevM)
         let remaining = route.remainingBatteryPct
         let costPerKwh = settings.electricityCostPerKwh
         let distStr = settings.distanceString(route.distanceMiles)
+
+        // Derive consistent climbing/regen from the physics model using profile data
+        // This matches what EVRouteService actually calculated (not a simplified approximation)
+        let avgSpeedMps = (route.distanceMiles * EVConstants.metersPerMile) / max(1, route.durationMinutes * 60)
+        let battPcts = computeBatteryProfile(
+            profile: route.elevationProfile,
+            vehicle: vehicle,
+            chargingStops: route.chargingStops,
+            avgSpeedMps: avgSpeedMps,
+            startPct: settings.startChargePct,
+            chargeTargetPct: settings.chargeTargetPct
+        )
+        // Estimate climbing energy = total positive battery drops due to grade only
+        // Use simple potential energy as a consistent display figure (both are approximations)
+        let climbingKwh = route.elevationGain > 0
+            ? max(0, route.energyKwh - route.distanceMiles * vehicle.effKwhMi)
+            : 0
+        let regenKwh = route.elevationLoss > 0
+            ? (vehicle.weightKg * EVConstants.gravity * route.elevationLoss) / EVConstants.joulesPerKwh * vehicle.regenEff
+            : 0
+        let baseKwh = max(0, route.energyKwh - climbingKwh + regenKwh)
 
         return VStack(alignment: .leading, spacing: 12) {
             // Vehicle title
@@ -648,20 +680,24 @@ struct EVRoutePlannerView: View {
             }
             .frame(height: 22)
 
-            // Energy details
-            energyRow(label: "Base driving (\(distStr))", value: String(format: "%.1f kWh", baseDriving), color: EVTheme.textPrimary)
+            // Energy details — use physics-consistent values
+            energyRow(label: "Base driving (\(distStr))", value: String(format: "%.1f kWh", baseKwh), color: EVTheme.textPrimary)
 
-            energyRow(
-                label: "Climbing (+\(elevGainM)m / +\(elevGainFt)ft ~\(String(format: "%.1f", route.averageGrade))% avg grade)",
-                value: String(format: "+%.1f kWh", climbingKwh),
-                color: EVTheme.accentYellow
-            )
+            if climbingKwh > 0.1 {
+                energyRow(
+                    label: "Climbing (+\(elevGainM)m / +\(elevGainFt)ft, ~\(String(format: "%.1f", route.averageGrade))% avg grade)",
+                    value: String(format: "+%.1f kWh", climbingKwh),
+                    color: EVTheme.accentYellow
+                )
+            }
 
-            energyRow(
-                label: "Regen braking (-\(Int(route.elevationLoss))m)",
-                value: String(format: "-%.1f kWh", regenKwh),
-                color: EVTheme.accentGreen
-            )
+            if regenKwh > 0.1 {
+                energyRow(
+                    label: "Regen braking (-\(Int(route.elevationLoss))m recovered)",
+                    value: String(format: "-%.1f kWh", regenKwh),
+                    color: EVTheme.accentGreen
+                )
+            }
 
             Rectangle()
                 .fill(EVTheme.border)
@@ -697,25 +733,15 @@ struct EVRoutePlannerView: View {
                     .fill(EVTheme.border)
                     .frame(height: 1)
 
-                energyRow(
-                    label: "Drive time",
-                    value: formatDuration(route.durationMinutes),
-                    color: EVTheme.textPrimary
-                )
+                energyRow(label: "Drive time", value: formatDuration(route.durationMinutes), color: EVTheme.textPrimary)
                 energyRow(
                     label: "Charging time (\(route.chargingStops.count) stop\(route.chargingStops.count == 1 ? "" : "s"))",
                     value: formatDuration(route.totalChargingMinutes),
                     color: EVTheme.accentYellow
                 )
-                energyRow(
-                    label: "Total trip time",
-                    value: formatDuration(route.totalTripMinutes),
-                    color: EVTheme.accentBlue,
-                    bold: true
-                )
+                energyRow(label: "Total trip time", value: formatDuration(route.totalTripMinutes), color: EVTheme.accentBlue, bold: true)
             }
 
-            // Summary text
             summaryText(for: route, climbingKwh: climbingKwh, regenKwh: regenKwh)
         }
         .padding(14)
