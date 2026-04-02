@@ -8,17 +8,72 @@
 import SwiftUI
 
 struct ContentView: View {
+    @State private var showSplash = true
+
     var body: some View {
-        TabView {
-            OilPriceDashboardView()
-                .tabItem {
-                    Label("Oil Tracker", systemImage: "drop.fill")
+        ZStack {
+            EVRoutePlannerView()
+
+            if showSplash {
+                SplashScreen()
+                    .transition(.opacity)
+                    .zIndex(1)
+            }
+        }
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                withAnimation(.easeOut(duration: 0.4)) {
+                    showSplash = false
+                }
+            }
+        }
+    }
+}
+
+struct SplashScreen: View {
+    @State private var scale: CGFloat = 0.8
+    @State private var opacity: Double = 0
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            VStack(spacing: 16) {
+                if let iconName = Bundle.main.object(forInfoDictionaryKey: "CFBundleIcons") as? [String: Any],
+                   let primaryIcon = iconName["CFBundlePrimaryIcon"] as? [String: Any],
+                   let iconFiles = primaryIcon["CFBundleIconFiles"] as? [String],
+                   let lastIcon = iconFiles.last,
+                   let uiImage = UIImage(named: lastIcon) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 120, height: 120)
+                        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+                } else if let uiImage = UIImage(named: "AppIcon60x60") ?? UIImage(named: "AppIcon76x76") {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 120, height: 120)
+                        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+                } else {
+                    Image(systemName: "bolt.car.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(.green)
                 }
 
-            EVRoutePlannerView()
-                .tabItem {
-                    Label("EV Planner", systemImage: "bolt.car.fill")
-                }
+                Text("EV Route Planner")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+            }
+            .scaleEffect(scale)
+            .opacity(opacity)
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.5)) {
+                scale = 1.0
+                opacity = 1.0
+            }
         }
     }
 }

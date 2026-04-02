@@ -5,106 +5,145 @@ struct EVRouteCard: View {
     let vehicle: EVVehicle
     let isBest: Bool
     let isSelected: Bool
+    var onInfoTap: (() -> Void)? = nil
+    var onCardTap: (() -> Void)? = nil
+    private let settings = EVSettingsManager.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // Header
+            // Header with info button
             HStack {
                 if isBest {
-                    Text("BEST")
+                    Text("EV BEST")
                         .font(.system(size: 10, weight: .bold))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 2)
-                        .background(Color.green.opacity(0.2))
-                        .foregroundStyle(.green)
+                        .background(EVTheme.badgeBest)
+                        .foregroundStyle(EVTheme.accentGreen)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                } else {
+                    Text("ALT")
+                        .font(.system(size: 10, weight: .bold))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(EVTheme.border)
+                        .foregroundStyle(EVTheme.textSecondary)
                         .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
-                Text(route.route.name)
+
+                Text(settings.distanceString(route.distanceMiles))
                     .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
-                Spacer()
-            }
+                    .foregroundStyle(EVTheme.textPrimary)
 
-            // Stats grid
-            HStack(spacing: 0) {
-                StatItem(
-                    value: String(format: "%.1f", route.distanceMiles),
-                    unit: "mi",
-                    label: "DISTANCE"
-                )
                 Spacer()
-                StatItem(
-                    value: formatDuration(route.durationMinutes),
-                    unit: "",
-                    label: "TIME"
-                )
-                Spacer()
-                StatItem(
-                    value: String(format: "%.1f", route.elevationGain * 3.28084),
-                    unit: "ft",
-                    label: "ELEV GAIN"
+
+                // Info button (i)
+                ZStack {
+                    Circle()
+                        .stroke(EVTheme.textSecondary.opacity(0.5), lineWidth: 1)
+                        .frame(width: 26, height: 26)
+                    Text("i")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(EVTheme.textSecondary)
+                }
+                .contentShape(Circle())
+                .highPriorityGesture(
+                    TapGesture().onEnded {
+                        onInfoTap?()
+                    }
                 )
             }
 
-            Divider()
-
-            // Energy stats
+            // Stats row
             HStack(spacing: 0) {
-                StatItem(
+                if route.needsCharging {
+                    EVStatItem(
+                        value: formatDuration(route.totalTripMinutes),
+                        unit: "",
+                        label: "TOTAL TIME"
+                    )
+                } else {
+                    EVStatItem(
+                        value: formatDuration(route.durationMinutes),
+                        unit: "",
+                        label: "DRIVE TIME"
+                    )
+                }
+                Spacer()
+                EVStatItem(
                     value: String(format: "%.1f", route.energyKwh),
                     unit: "kWh",
-                    label: "ENERGY",
-                    valueColor: .primary
+                    label: "ENERGY"
                 )
                 Spacer()
-                StatItem(
-                    value: String(format: "%.0f%%", route.batteryPctUsed),
+                EVStatItem(
+                    value: String(format: "%.0f%%", route.remainingBatteryPct),
                     unit: "",
-                    label: "BATTERY USED",
+                    label: "BATT LEFT",
                     valueColor: batteryColor
                 )
-                Spacer()
-                StatItem(
-                    value: String(format: "%.1f", route.efficiency),
-                    unit: "mi/kWh",
-                    label: "EFFICIENCY",
-                    valueColor: .primary
-                )
+            }
+
+            // Charging stops indicator
+            if route.needsCharging {
+                VStack(spacing: 4) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "bolt.circle.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(EVTheme.accentYellow)
+                        Text("\(route.chargingStops.count) charging stop\(route.chargingStops.count == 1 ? "" : "s") needed")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(EVTheme.accentYellow)
+                        Spacer()
+                        Text("Arrives \(Int(route.finalBatteryPct))%")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(EVTheme.accentGreen)
+                    }
+                    HStack(spacing: 6) {
+                        Image(systemName: "clock")
+                            .font(.system(size: 11))
+                            .foregroundStyle(EVTheme.textSecondary)
+                        Text("Drive \(formatDuration(route.durationMinutes)) + \(formatDuration(route.totalChargingMinutes)) charging")
+                            .font(.system(size: 11))
+                            .foregroundStyle(EVTheme.textSecondary)
+                        Spacer()
+                    }
+                }
+                .padding(8)
+                .background(EVTheme.accentYellow.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
             }
 
             // Battery bar
             BatteryBarView(
                 vehicleName: vehicle.displayName,
-                batteryPctUsed: route.batteryPctUsed
+                batteryPctUsed: 100 - route.finalBatteryPct
             )
         }
         .padding(14)
-        .background(.thinMaterial)
+        .background(EVTheme.bgInput)
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .overlay(
             RoundedRectangle(cornerRadius: 14)
-                .stroke(isSelected ? Color.green : Color.clear, lineWidth: 2)
+                .stroke(isSelected ? EVTheme.accentGreen : EVTheme.border, lineWidth: isSelected ? 2 : 1)
         )
+        .shadow(color: isSelected ? EVTheme.accentGreen.opacity(0.15) : .clear, radius: 8)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onCardTap?()
+        }
     }
 
     private var batteryColor: Color {
-        if route.batteryPctUsed > 80 { return .red }
-        if route.batteryPctUsed > 60 { return .yellow }
-        return .green
-    }
-
-    private func formatDuration(_ minutes: Double) -> String {
-        let hrs = Int(minutes) / 60
-        let mins = Int(minutes) % 60
-        return hrs > 0 ? "\(hrs)h \(mins)m" : "\(mins)m"
+        batteryLevelColor(route.remainingBatteryPct)
     }
 }
 
-struct StatItem: View {
+struct EVStatItem: View {
     let value: String
     let unit: String
     let label: String
-    var valueColor: Color = .primary
+    var valueColor: Color = EVTheme.textPrimary
 
     var body: some View {
         VStack(spacing: 2) {
@@ -115,12 +154,12 @@ struct StatItem: View {
                 if !unit.isEmpty {
                     Text(unit)
                         .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(EVTheme.textSecondary)
                 }
             }
             Text(label)
                 .font(.system(size: 9, weight: .medium))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(EVTheme.textSecondary)
         }
     }
 }
@@ -134,7 +173,7 @@ struct BatteryBarView: View {
             HStack {
                 Text(vehicleName)
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(EVTheme.textSecondary)
                 Spacer()
                 Text("\(Int(max(0, 100 - batteryPctUsed)))%")
                     .font(.caption.weight(.bold))
@@ -143,22 +182,35 @@ struct BatteryBarView: View {
 
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(Color.gray.opacity(0.2))
+                    RoundedRectangle(cornerRadius: 9)
+                        .fill(EVTheme.border)
 
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(remainingColor.gradient)
-                        .frame(width: geo.size.width * max(0, 100 - batteryPctUsed) / 100)
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 9)
+                            .fill(remainingColor)
+                            .frame(width: geo.size.width * max(0, 100 - batteryPctUsed) / 100)
+
+                        Text("\(Int(max(0, 100 - batteryPctUsed)))% remaining")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(.white)
+                            .shadow(color: .black.opacity(0.5), radius: 1, y: 1)
+                    }
                 }
             }
-            .frame(height: 14)
+            .frame(height: 18)
         }
+        .padding(.top, 4)
+        .padding(10)
+        .background(EVTheme.bgCard.opacity(0.5))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(EVTheme.border.opacity(0.4), lineWidth: 1)
+        )
     }
 
     private var remainingColor: Color {
-        let remaining = 100 - batteryPctUsed
-        if remaining < 20 { return .red }
-        if remaining < 40 { return .yellow }
-        return .green
+        batteryLevelColor(100 - batteryPctUsed)
     }
 }
+
