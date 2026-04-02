@@ -1,11 +1,5 @@
-'use client';
+import EventsAdmin from './EventsAdmin';
 
-export default function EventsAdmin() {
-  return (
-    <iframe
-      src="/paddle-events-admin.html"
-      className="w-full h-screen border-0"
-      allow="clipboard-write"
-    />
-  );
+export default function EventsAdminPage() {
+  return <EventsAdmin />;
 }
