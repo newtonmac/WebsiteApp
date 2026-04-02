@@ -371,15 +371,13 @@ struct EVRoutePlannerView: View {
                                 }
                             }
                         } label: {
-                            HStack(spacing: isLandscape ? 6 : 2) {
-                                NetworkIconView(network: network, size: 16)
-                                if isLandscape {
-                                    Text(network.shortName)
-                                        .font(.system(size: 11, weight: .bold))
-                                }
+                            HStack(spacing: 5) {
+                                NetworkIconView(network: network, size: 18)
+                                Text(network.shortName)
+                                    .font(.system(size: 12, weight: .bold))
                             }
-                            .padding(.horizontal, isLandscape ? 10 : 6)
-                            .padding(.vertical, 6)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
                             .background(isSelected ? network.colorValue.opacity(0.2) : EVTheme.bgInput)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8)
@@ -399,7 +397,7 @@ struct EVRoutePlannerView: View {
                     .stroke(EVTheme.border, lineWidth: 1)
             )
         }
-        .frame(height: 80)
+        .frame(height: horizontalSizeClass == .regular ? 110 : 80)
     }
 
     // MARK: - Vehicle Section
@@ -890,37 +888,40 @@ struct EVToggleRow: View {
     let label: String
     let icon: String
     @Binding var isOn: Bool
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    private var isIPad: Bool { horizontalSizeClass == .regular }
 
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: icon)
-                .font(.system(size: 14))
+                .font(.system(size: isIPad ? 18 : 14))
                 .foregroundStyle(isOn ? EVTheme.accentGreen : EVTheme.textSecondary)
-                .frame(width: 20)
+                .frame(width: isIPad ? 26 : 20)
 
             Text(label)
-                .font(.system(size: 13))
+                .font(.system(size: isIPad ? 16 : 13))
                 .foregroundStyle(EVTheme.textSecondary)
 
             Spacer()
 
             // Custom toggle switch matching web app style
             ZStack(alignment: isOn ? .trailing : .leading) {
-                RoundedRectangle(cornerRadius: 10)
+                RoundedRectangle(cornerRadius: isIPad ? 14 : 10)
                     .fill(isOn ? EVTheme.accentGreen.opacity(0.25) : EVTheme.border)
-                    .frame(width: 36, height: 20)
+                    .frame(width: isIPad ? 50 : 36, height: isIPad ? 28 : 20)
 
                 Circle()
                     .fill(isOn ? EVTheme.accentGreen : EVTheme.textSecondary)
-                    .frame(width: 16, height: 16)
-                    .padding(.horizontal, 2)
+                    .frame(width: isIPad ? 22 : 16, height: isIPad ? 22 : 16)
+                    .padding(.horizontal, 3)
             }
             .animation(.easeInOut(duration: 0.2), value: isOn)
             .onTapGesture {
                 isOn.toggle()
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, isIPad ? 8 : 4)
     }
 }
 
