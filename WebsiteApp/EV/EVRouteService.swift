@@ -62,6 +62,8 @@ struct RouteResult: Identifiable {
     let chargingStops: [ChargingStop]
     let finalBatteryPct: Double     // battery % at destination (after charging stops)
     let finalSection: FinalSection?         // stats for last stop → destination
+    let waypointDistancesMiles: [Double]    // cumulative distances where user stops occur
+    let waypointNames: [String]             // user-typed stop names
 
     var remainingBatteryPct: Double { finalBatteryPct }
     var needsCharging: Bool { !chargingStops.isEmpty }
@@ -81,9 +83,12 @@ struct RouteResult: Identifiable {
          batteryPctUsed: Double, efficiency: Double, averageGrade: Double, peakGrade: Double,
          elevationProfile: [ElevationPoint], score: Double, chargingStops: [ChargingStop],
          finalBatteryPct: Double, finalSection: FinalSection? = nil,
-         customPolyline: MKPolyline? = nil) {
+         customPolyline: MKPolyline? = nil,
+         waypointDistancesMiles: [Double] = [], waypointNames: [String] = []) {
         self.route = route
         self.customPolyline = customPolyline
+        self.waypointDistancesMiles = waypointDistancesMiles
+        self.waypointNames = waypointNames
         self.routeName = route.name
         self.distanceMiles = route.distance * EVConstants.milesPerMeter
         self.durationMinutes = route.expectedTravelTime / 60
@@ -107,9 +112,12 @@ struct RouteResult: Identifiable {
          batteryPctUsed: Double, efficiency: Double, averageGrade: Double, peakGrade: Double,
          elevationProfile: [ElevationPoint], score: Double, chargingStops: [ChargingStop],
          finalBatteryPct: Double, finalSection: FinalSection? = nil,
-         customPolyline: MKPolyline? = nil) {
+         customPolyline: MKPolyline? = nil,
+         waypointDistancesMiles: [Double] = [], waypointNames: [String] = []) {
         self.route = nil
         self.customPolyline = customPolyline
+        self.waypointDistancesMiles = waypointDistancesMiles
+        self.waypointNames = waypointNames
         self.routeName = routeName
         self.distanceMiles = distanceMiles
         self.durationMinutes = durationMinutes
@@ -148,6 +156,7 @@ class EVRouteService {
     func planRoute(from origin: CLLocationCoordinate2D,
                    to destination: CLLocationCoordinate2D,
                    stops: [CLLocationCoordinate2D] = [],
+                   stopNames: [String] = [],
                    vehicle: EVVehicle,
                    startBattery: Double = 100,
                    minBattery: Double = 15,
@@ -215,6 +224,7 @@ class EVRouteService {
                 let waypoints = [origin] + stops + [destination]
                 if let result = try await fetchMultiLegRoute(
                     waypoints: waypoints,
+                    waypointNames: stopNames,
                     vehicle: vehicle,
                     avoidHighways: avoidHighways,
                     avoidTolls: avoidTolls,
@@ -416,6 +426,7 @@ class EVRouteService {
     /// Elevation is fetched concurrently across all legs to avoid sequential API delays.
     private func fetchMultiLegRoute(
         waypoints: [CLLocationCoordinate2D],
+        waypointNames: [String] = [],
         vehicle: EVVehicle,
         avoidHighways: Bool,
         avoidTolls: Bool,
@@ -474,6 +485,7 @@ class EVRouteService {
         var totalTimeS: Double = 0
         var combinedProfile: [ElevationPoint] = []
         var distanceOffsetMiles: Double = 0
+        var waypointDistances: [Double] = []  // cumulative miles at each stop junction
 
         for i in 0..<legCount {
             guard let leg = legs[i] else { continue }
@@ -501,6 +513,10 @@ class EVRouteService {
             totalDistanceM += leg.distance
             totalTimeS += leg.expectedTravelTime
             distanceOffsetMiles += leg.distance * EVConstants.milesPerMeter
+            // Record junction distance for all legs except the last (destination)
+            if i < legCount - 1 {
+                waypointDistances.append(distanceOffsetMiles)
+            }
         }
 
         guard !combinedProfile.isEmpty else { return nil }
@@ -538,7 +554,9 @@ class EVRouteService {
             chargingStops: chargingPlan.stops,
             finalBatteryPct: chargingPlan.finalBatteryPct,
             finalSection: chargingPlan.finalSection,
-            customPolyline: combinedPolyline
+            customPolyline: combinedPolyline,
+            waypointDistancesMiles: waypointDistances,
+            waypointNames: waypointNames
         )
     }
 

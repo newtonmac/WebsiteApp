@@ -17,15 +17,17 @@ struct EVRouteDetailView: View {
     let route: RouteResult
     let vehicle: EVVehicle
     let chargers: [EVCharger]
+    var waypointNames: [String] = []
     @Environment(\.dismiss) private var dismiss
     private let settings = EVSettingsManager.shared
 
     private let groupedChargers: [StopChargers]
 
-    init(route: RouteResult, vehicle: EVVehicle, chargers: [EVCharger]) {
+    init(route: RouteResult, vehicle: EVVehicle, chargers: [EVCharger], waypointNames: [String] = []) {
         self.route = route
         self.vehicle = vehicle
         self.chargers = chargers
+        self.waypointNames = waypointNames
 
         let radiusMeters: Double = 50 * EVConstants.metersPerMile
         let maxPerStop = 5
@@ -184,6 +186,14 @@ struct EVRouteDetailView: View {
             if route.needsCharging {
                 warningItem("Requires **\(route.chargingStops.count) charging stop\(route.chargingStops.count == 1 ? "" : "s")** — battery exceeds single-charge range")
                 checkItem("Arrives with **\(Int(route.finalBatteryPct))% battery** after charging", color: EVTheme.accentGreen)
+            }
+
+            // User-defined waypoint stops
+            ForEach(Array(route.waypointDistancesMiles.enumerated()), id: \.offset) { i, dist in
+                let name = i < waypointNames.count && !waypointNames[i].isEmpty
+                    ? waypointNames[i] : "Stop \(i + 1)"
+                let pct = Int((dist / max(1, route.distanceMiles)) * 100)
+                checkItem("Stop \(i + 1): **\(name)** at \(settings.distanceString(dist)) (\(pct)% into the trip)", color: EVTheme.accentYellow)
             }
         }
     }
@@ -431,6 +441,8 @@ struct EVRouteDetailView: View {
                     profile: route.elevationProfile,
                     vehicle: vehicle,
                     chargingStops: route.chargingStops,
+                    waypointDistancesMiles: route.waypointDistancesMiles,
+                    waypointNames: waypointNames,
                     avgSpeedMps: (route.distanceMiles * EVConstants.metersPerMile) / max(1, route.durationMinutes * 60)
                 )
                     .frame(height: 160)
@@ -686,6 +698,8 @@ struct ElevationChartView: View {
     let profile: [ElevationPoint]
     var vehicle: EVVehicle? = nil
     var chargingStops: [ChargingStop] = []
+    var waypointDistancesMiles: [Double] = []
+    var waypointNames: [String] = []
     var avgSpeedMps: Double = 26.8 // ~60 mph default if no route available
 
     private var minElevFt: Double {
@@ -875,6 +889,30 @@ struct ElevationChartView: View {
                             dashPath.addLine(to: CGPoint(x: x, y: cHeight))
                             context.stroke(dashPath, with: .color(EVTheme.accentYellow.opacity(0.5)),
                                          style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                        }
+
+                        // Waypoint stop markers — solid vertical line with numbered dot
+                        for (idx, dist) in waypointDistancesMiles.enumerated() {
+                            let x = CGFloat((dist / maxDist) * cWidth)
+
+                            // Vertical line
+                            var linePath = Path()
+                            linePath.move(to: CGPoint(x: x, y: 0))
+                            linePath.addLine(to: CGPoint(x: x, y: cHeight))
+                            context.stroke(linePath, with: .color(EVTheme.accentYellow),
+                                         style: StrokeStyle(lineWidth: 1.5, dash: [3, 2]))
+
+                            // Numbered dot at the elevation line position
+                            let profile_idx = profile.indices.min(by: { abs(profile[$0].distance - dist) < abs(profile[$1].distance - dist) }) ?? 0
+                            let elevFt = profile[profile_idx].elevation * EVConstants.feetPerMeter
+                            let dotY = cHeight - ((elevFt - minElevFt) / elevRange) * cHeight
+                            let dotRect = CGRect(x: x - 8, y: dotY - 8, width: 16, height: 16)
+                            context.fill(Path(ellipseIn: dotRect), with: .color(EVTheme.accentYellow))
+
+                            let text = Text("\(idx + 1)")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(Color.black)
+                            context.draw(text, at: CGPoint(x: x, y: dotY))
                         }
                     }
                 }

@@ -187,7 +187,8 @@ struct EVRoutePlannerView: View {
             EVVehiclePickerView(selectedVehicle: $selectedVehicle)
         }
         .sheet(item: $showingRouteDetail) { route in
-            EVRouteDetailView(route: route, vehicle: selectedVehicle, chargers: chargerService.chargers)
+            EVRouteDetailView(route: route, vehicle: selectedVehicle, chargers: chargerService.chargers,
+                              waypointNames: routeStops.dropLast().map { $0.text })
         }
         .sheet(item: $selectedCharger) { charger in
             ChargerDetailSheet(charger: charger)
@@ -792,6 +793,8 @@ struct EVRoutePlannerView: View {
                     profile: route.elevationProfile,
                     vehicle: selectedVehicle,
                     chargingStops: route.chargingStops,
+                    waypointDistancesMiles: route.waypointDistancesMiles,
+                    waypointNames: routeStops.dropLast().map { $0.text },
                     avgSpeedMps: (route.distanceMiles * EVConstants.metersPerMile) / max(1, route.durationMinutes * 60)
                 )
                     .frame(height: 160)
@@ -819,8 +822,9 @@ struct EVRoutePlannerView: View {
         guard let origin = originCoord, let dest = routeStops.last?.coordinate else { return }
 
         let waypoints = Array(routeStops.dropLast()).compactMap { $0.coordinate }
+        let stopNames = Array(routeStops.dropLast()).map { $0.text }
         await routeService.planRoute(
-            from: origin, to: dest, stops: waypoints, vehicle: selectedVehicle,
+            from: origin, to: dest, stops: waypoints, stopNames: stopNames, vehicle: selectedVehicle,
             startBattery: settings.startChargePct,
             minBattery: settings.minArrivalPct,
             chargeTarget: settings.chargeTargetPct,
