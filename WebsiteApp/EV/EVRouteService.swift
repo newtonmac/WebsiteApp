@@ -799,43 +799,45 @@ class EVRouteService {
         let peakGrade: Double
     }
 
-    // MARK: - Per-Segment Physics Energy
+    // MARK: - Per-Segment Energy (EPA-calibrated baseline + physics grade correction)
 
-    /// Compute energy (kWh) for a single segment using physics:
-    ///   F_roll  = Crr × m × g × cos(θ)
-    ///   F_aero  = 0.5 × ρ × Cd × A × v²
-    ///   F_grade = m × g × sin(θ)
+    /// Two-component energy model:
     ///
-    /// Speed comes from MKRoute.expectedTravelTime (Apple uses speed limits),
-    /// adjusted per-segment for steep grades.
+    /// 1. FLAT BASELINE: segDistMiles × vehicle.effKwhMi
+    ///    — Uses the vehicle's real-world combined efficiency rating.
+    ///    — Already includes rolling resistance, aero drag, and auxiliary loads
+    ///      (HVAC, thermal management, accessories) at typical driving conditions.
+    ///    — This eliminates the systematic underestimation of the pure physics model
+    ///      which previously omitted ~3-5 kW of constant auxiliary loads.
+    ///
+    /// 2. GRADE CORRECTION: physics-based potential energy change
+    ///    — Climbing: extra energy = m × g × Δh / (J/kWh × drivetrain_efficiency)
+    ///    — Descending: energy saved = m × g × |Δh| / J/kWh × regen_efficiency
+    ///
+    /// This gives accurate results for both flat routes (matches EPA rating)
+    /// and hilly routes (correctly penalizes climbs / credits descents).
     private func segmentEnergy(
         profile: [ElevationPoint], index i: Int,
         vehicle: EVVehicle, avgSpeedMps: Double
     ) -> Double {
         let segDistMiles = profile[i].distance - profile[i - 1].distance
-        let segDistMeters = segDistMiles * EVConstants.metersPerMile
-        let gradePct = profile[i].grade
-        let theta = atan(gradePct / 100.0)
+        let elevDiff = profile[i].elevation - profile[i - 1].elevation  // meters, positive = climb
 
-        // Adjust speed for steep grades
-        let gradeSpeedFactor: Double
-        if gradePct > 6 { gradeSpeedFactor = 0.75 }
-        else if gradePct > 3 { gradeSpeedFactor = 0.88 }
-        else if gradePct < -6 { gradeSpeedFactor = 0.90 }
-        else { gradeSpeedFactor = 1.0 }
-        let segSpeed = avgSpeedMps * gradeSpeedFactor
+        // Flat baseline — EPA-calibrated real-world consumption
+        let flatEnergyKwh = segDistMiles * vehicle.effKwhMi
 
-        let fRoll = vehicle.rollingResistance * vehicle.weightKg * EVConstants.gravity * cos(theta)
-        let fAero = 0.5 * EVConstants.airDensity * vehicle.dragCoeff * vehicle.frontalArea * segSpeed * segSpeed
-        let fGrade = vehicle.weightKg * EVConstants.gravity * sin(theta)
-        let fTotal = fRoll + fAero + fGrade
+        // Grade energy — potential energy physics
+        let gradeEnergyJoules = vehicle.weightKg * EVConstants.gravity * elevDiff
 
-        let segEnergyJoules = fTotal * segDistMeters
-
-        if segEnergyJoules > 0 {
-            return segEnergyJoules / (EVConstants.joulesPerKwh * EVConstants.drivetrainEfficiency)
+        if elevDiff > 0 {
+            // Climbing: add extra energy on top of flat baseline
+            let climbingExtra = gradeEnergyJoules / (EVConstants.joulesPerKwh * EVConstants.drivetrainEfficiency)
+            return flatEnergyKwh + climbingExtra
         } else {
-            return segEnergyJoules / EVConstants.joulesPerKwh * vehicle.regenEff
+            // Descending: recover some energy via regen, but never go below 0
+            // regenEff accounts for motor power limits, friction braking, regen losses
+            let regenRecovery = abs(gradeEnergyJoules) / EVConstants.joulesPerKwh * vehicle.regenEff
+            return max(0, flatEnergyKwh - regenRecovery)
         }
     }
 
