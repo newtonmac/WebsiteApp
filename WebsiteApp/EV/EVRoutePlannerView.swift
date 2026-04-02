@@ -7,14 +7,13 @@ struct EVRoutePlannerView: View {
     @State private var chargerService = EVChargerService()
     @State private var selectedVehicle: EVVehicle = EVDatabase.vehicles[0]
     @State private var originText = ""
-    @State private var destinationText = ""
     @State private var originCoord: CLLocationCoordinate2D?
-    @State private var destinationCoord: CLLocationCoordinate2D?
+    // routeStops: all stops in order — last entry is always the destination
+    @State private var routeStops: [WaypointEntry] = [WaypointEntry(placeholder: "Destination")]
     @State private var selectedRoute: RouteResult?
     @State private var showingVehiclePicker = false
     @State private var showingRouteDetail: RouteResult?
     @State private var showingSettings = false
-    @State private var waypoints: [WaypointEntry] = []
     @State private var panelExpanded = true
     @State private var selectedCharger: EVCharger?
     @State private var mapStyle: EVMapStyle = .standard
@@ -77,7 +76,7 @@ struct EVRoutePlannerView: View {
                 selectedRoute: selectedRoute,
                 chargers: mapChargers,
                 origin: originCoord,
-                destination: destinationCoord,
+                destination: routeStops.last?.coordinate,
                 selectedCharger: $selectedCharger,
                 mapStyle: $mapStyle,
                 panelHeight: panelHeight
@@ -199,11 +198,9 @@ struct EVRoutePlannerView: View {
                 .presentationDragIndicator(.visible)
         }
         .onAppear {
-            // Restore saved vehicle
             if let saved = settings.lastVehicle {
                 selectedVehicle = saved
             }
-            // Restore saved default networks
             selectedNetworks = settings.defaultNetworks.isEmpty ? [.tesla, .electrifyAmerica] : settings.defaultNetworks
         }
         .onChange(of: selectedVehicle) { _, newVehicle in
@@ -231,7 +228,7 @@ struct EVRoutePlannerView: View {
 
     private var inputSection: some View {
         VStack(spacing: 8) {
-            // Origin — full width
+            // Origin — always fixed at top
             HStack(spacing: 8) {
                 Image(systemName: "circle.fill")
                     .font(.system(size: 10))
@@ -244,43 +241,54 @@ struct EVRoutePlannerView: View {
                 )
             }
 
-            // Waypoints (up to 4, added between origin and destination)
-            ForEach(waypoints.indices, id: \.self) { index in
-                HStack(spacing: 8) {
-                    Image(systemName: "smallcircle.filled.circle")
-                        .font(.system(size: 10))
-                        .foregroundStyle(EVTheme.accentYellow)
-                    EVLocationSearchField(
-                        text: $waypoints[index].text,
-                        placeholder: "Stop \(index + 1)",
-                        coordinate: $waypoints[index].coordinate
-                    )
-                    Button {
-                        waypoints.remove(at: index)
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 18))
-                            .foregroundStyle(EVTheme.textSecondary)
+            // Reorderable stops (waypoints + destination)
+            // Each row has a drag handle; the last entry is always the destination
+            List {
+                ForEach($routeStops) { $stop in
+                    let isDestination = stop.id == routeStops.last?.id
+                    let stopIndex = routeStops.firstIndex(where: { $0.id == stop.id }) ?? 0
+                    let waypointNumber = stopIndex + 1
+
+                    HStack(spacing: 8) {
+                        Image(systemName: isDestination ? "mappin.circle.fill" : "smallcircle.filled.circle")
+                            .font(.system(size: 10))
+                            .foregroundStyle(isDestination ? EVTheme.accentRed : EVTheme.accentYellow)
+                        EVLocationSearchField(
+                            text: $stop.text,
+                            placeholder: isDestination ? "Destination" : "Stop \(waypointNumber)",
+                            coordinate: $stop.coordinate
+                        )
+                        // Remove button — only for non-destination waypoints
+                        if !isDestination {
+                            Button {
+                                routeStops.removeAll { $0.id == stop.id }
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 18))
+                                    .foregroundStyle(EVTheme.textSecondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                    .listRowSeparator(.hidden)
+                }
+                .onMove { from, to in
+                    routeStops.move(fromOffsets: from, toOffset: to)
                 }
             }
+            .listStyle(.plain)
+            .scrollDisabled(true)
+            .environment(\.editMode, .constant(.active))
+            .frame(height: CGFloat(routeStops.count) * 52)
 
-            // Destination — full width
-            HStack(spacing: 8) {
-                Image(systemName: "mappin.circle.fill")
-                    .font(.system(size: 10))
-                    .foregroundStyle(EVTheme.accentRed)
-                EVLocationSearchField(
-                    text: $destinationText,
-                    placeholder: "Destination",
-                    coordinate: $destinationCoord
-                )
-            }
-
-            // Add stop button
-            if waypoints.count < 4 {
+            // Add stop button (up to 4 stops total including destination)
+            if routeStops.count < 5 {
                 Button {
-                    waypoints.append(WaypointEntry())
+                    // Insert new waypoint before destination (before last item)
+                    let insertIndex = max(0, routeStops.count - 1)
+                    routeStops.insert(WaypointEntry(), at: insertIndex)
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "plus.circle.fill")
@@ -417,7 +425,7 @@ struct EVRoutePlannerView: View {
     }
 
     private var canPlan: Bool {
-        originCoord != nil && destinationCoord != nil
+        originCoord != nil && routeStops.last?.coordinate != nil
     }
 
     // MARK: - Route Results
@@ -520,7 +528,7 @@ struct EVRoutePlannerView: View {
                     route: route,
                     vehicle: selectedVehicle,
                     origin: originText,
-                    destination: destinationText,
+                    destination: routeStops.last?.text ?? "",
                     chargers: chargerService.chargers
                 )
                 summaryPDFItem = PDFItem(data: pdfData)
@@ -780,11 +788,11 @@ struct EVRoutePlannerView: View {
     // MARK: - Actions
 
     private func planRoute() async {
-        guard let origin = originCoord, let dest = destinationCoord else { return }
+        guard let origin = originCoord, let dest = routeStops.last?.coordinate else { return }
 
-        let stops = waypoints.compactMap { $0.coordinate }
+        let waypoints = Array(routeStops.dropLast()).compactMap { $0.coordinate }
         await routeService.planRoute(
-            from: origin, to: dest, stops: stops, vehicle: selectedVehicle,
+            from: origin, to: dest, stops: waypoints, vehicle: selectedVehicle,
             startBattery: settings.startChargePct,
             minBattery: settings.minArrivalPct,
             chargeTarget: settings.chargeTargetPct,
@@ -814,19 +822,19 @@ struct EVRoutePlannerView: View {
     // MARK: - Deep Links
 
     private func googleMapsURL(for route: RouteResult) -> URL? {
-        guard let origin = originCoord, let dest = destinationCoord else { return nil }
+        guard let origin = originCoord, let dest = routeStops.last?.coordinate else { return nil }
         let urlStr = "https://www.google.com/maps/dir/?api=1&origin=\(origin.latitude),\(origin.longitude)&destination=\(dest.latitude),\(dest.longitude)&travelmode=driving"
         return URL(string: urlStr)
     }
 
     private func appleMapsURL(for route: RouteResult) -> URL? {
-        guard let origin = originCoord, let dest = destinationCoord else { return nil }
+        guard let origin = originCoord, let dest = routeStops.last?.coordinate else { return nil }
         let urlStr = "https://maps.apple.com/?saddr=\(origin.latitude),\(origin.longitude)&daddr=\(dest.latitude),\(dest.longitude)&dirflg=d"
         return URL(string: urlStr)
     }
 
     private func wazeURL(for route: RouteResult) -> URL? {
-        guard let dest = destinationCoord else { return nil }
+        guard let dest = routeStops.last?.coordinate else { return nil }
         let urlStr = "https://www.waze.com/ul?ll=\(dest.latitude),\(dest.longitude)&navigate=yes"
         return URL(string: urlStr)
     }
@@ -838,6 +846,11 @@ struct WaypointEntry: Identifiable {
     let id = UUID()
     var text: String = ""
     var coordinate: CLLocationCoordinate2D?
+    var placeholder: String = ""
+
+    init(placeholder: String = "") {
+        self.placeholder = placeholder
+    }
 }
 
 // MARK: - Toggle Row (matches web app style)
