@@ -301,7 +301,7 @@ struct EVRoutePlannerView: View {
     private var networkFilterSection: some View {
         GeometryReader { geo in
             let isLandscape = geo.size.width > geo.size.height
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .center, spacing: 8) {
                 HStack {
                     Text("Networks")
                         .font(.system(size: 12, weight: .semibold))
@@ -322,7 +322,7 @@ struct EVRoutePlannerView: View {
                     }
                 }
 
-                FlowLayout(spacing: 6) {
+                FlowLayout(spacing: 6, alignment: .center) {
                     ForEach(ChargerNetwork.allCases, id: \.self) { network in
                         let isSelected = selectedNetworks.contains(network)
                         Button {
@@ -997,6 +997,7 @@ struct NetworkIconView: View {
 
 struct FlowLayout: Layout {
     var spacing: CGFloat = 6
+    var alignment: HorizontalAlignment = .leading
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let maxWidth = proposal.width ?? .infinity
@@ -1019,20 +1020,43 @@ struct FlowLayout: Layout {
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        var currentX: CGFloat = bounds.minX
-        var currentY: CGFloat = bounds.minY
-        var lineHeight: CGFloat = 0
+        // Group subviews into rows first
+        var rows: [[LayoutSubview]] = []
+        var currentRow: [LayoutSubview] = []
+        var currentX: CGFloat = 0
 
         for subview in subviews {
             let size = subview.sizeThatFits(.unspecified)
-            if currentX + size.width > bounds.maxX && currentX > bounds.minX {
-                currentX = bounds.minX
-                currentY += lineHeight + spacing
-                lineHeight = 0
+            if currentX + size.width > bounds.width && !currentRow.isEmpty {
+                rows.append(currentRow)
+                currentRow = []
+                currentX = 0
             }
-            subview.place(at: CGPoint(x: currentX, y: currentY), proposal: .unspecified)
+            currentRow.append(subview)
             currentX += size.width + spacing
-            lineHeight = max(lineHeight, size.height)
+        }
+        if !currentRow.isEmpty { rows.append(currentRow) }
+
+        // Place each row with the requested alignment
+        var currentY = bounds.minY
+        for row in rows {
+            let rowWidth = row.reduce(0) { $0 + $1.sizeThatFits(.unspecified).width } + CGFloat(max(0, row.count - 1)) * spacing
+            let rowHeight = row.map { $0.sizeThatFits(.unspecified).height }.max() ?? 0
+
+            let startX: CGFloat
+            switch alignment {
+            case .center:  startX = bounds.minX + (bounds.width - rowWidth) / 2
+            case .trailing: startX = bounds.maxX - rowWidth
+            default:       startX = bounds.minX
+            }
+
+            var x = startX
+            for subview in row {
+                let size = subview.sizeThatFits(.unspecified)
+                subview.place(at: CGPoint(x: x, y: currentY), proposal: .unspecified)
+                x += size.width + spacing
+            }
+            currentY += rowHeight + spacing
         }
     }
 }
