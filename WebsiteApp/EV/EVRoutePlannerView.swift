@@ -628,12 +628,10 @@ struct EVRoutePlannerView: View {
 
         // Derive consistent climbing/regen from the physics model using profile data
         // This matches what EVRouteService actually calculated (not a simplified approximation)
-        let avgSpeedMps = (route.distanceMiles * EVConstants.metersPerMile) / max(1, route.durationMinutes * 60)
         let battPcts = computeBatteryProfile(
             profile: route.elevationProfile,
             vehicle: vehicle,
             chargingStops: route.chargingStops,
-            avgSpeedMps: avgSpeedMps,
             startPct: settings.startChargePct,
             chargeTargetPct: settings.chargeTargetPct
         )
@@ -837,7 +835,6 @@ struct EVRoutePlannerView: View {
                     chargingStops: route.chargingStops,
                     waypointDistancesMiles: route.waypointDistancesMiles,
                     waypointNames: routeStops.dropLast().map { $0.text },
-                    avgSpeedMps: (route.distanceMiles * EVConstants.metersPerMile) / max(1, route.durationMinutes * 60)
                 )
                     .frame(height: 160)
                     .clipShape(RoundedRectangle(cornerRadius: 10))

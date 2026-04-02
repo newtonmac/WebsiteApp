@@ -23,7 +23,6 @@ enum EVConstants {
     static let kmPerMile: Double = 1.60934
 
     // Physics
-    static let airDensity: Double = 1.225       // kg/m³ at sea level
     static let drivetrainEfficiency: Double = 0.88
     static let gravity: Double = 9.81           // m/s²
 
@@ -82,15 +81,17 @@ func nearestCharger(to coordinate: CLLocationCoordinate2D, from chargers: [EVCha
     return best
 }
 
-// MARK: - Physics-Based Battery Profile
+// MARK: - Battery Profile (matches EVRouteService.segmentEnergy exactly)
 
-/// Compute battery percentage at each elevation profile point using physics model.
-/// Shared between ElevationChartView and EVRoutePDFGenerator.
+/// Compute battery percentage at each elevation profile point.
+/// Uses the same EPA-calibrated two-component model as EVRouteService.segmentEnergy:
+///   1. Flat baseline: segDistMiles × vehicle.effKwhMi
+///   2. Grade correction: physics-based potential energy change
+/// Shared between ElevationChartView, EVRoutePlannerView, and EVRoutePDFGenerator.
 func computeBatteryProfile(
     profile: [ElevationPoint],
     vehicle: EVVehicle,
     chargingStops: [ChargingStop],
-    avgSpeedMps: Double,
     startPct: Double,
     chargeTargetPct: Double
 ) -> [Double] {
@@ -102,38 +103,28 @@ func computeBatteryProfile(
 
     for i in 1..<profile.count {
         let segDistMiles = profile[i].distance - profile[i - 1].distance
-        let segDistMeters = segDistMiles * EVConstants.metersPerMile
-        let gradePct = profile[i].grade
-        let theta = atan(gradePct / 100.0)
+        let elevDiff = profile[i].elevation - profile[i - 1].elevation  // meters
 
-        let gradeSpeedFactor: Double
-        if gradePct > 6 { gradeSpeedFactor = 0.75 }
-        else if gradePct > 3 { gradeSpeedFactor = 0.88 }
-        else if gradePct < -6 { gradeSpeedFactor = 0.90 }
-        else { gradeSpeedFactor = 1.0 }
-        let segSpeed = avgSpeedMps * gradeSpeedFactor
+        // Flat baseline — EPA-calibrated (same as segmentEnergy)
+        let flatKwh = segDistMiles * vehicle.effKwhMi
 
-        let fRoll = vehicle.rollingResistance * vehicle.weightKg * EVConstants.gravity * cos(theta)
-        let fAero = 0.5 * EVConstants.airDensity * vehicle.dragCoeff * vehicle.frontalArea * segSpeed * segSpeed
-        let fGrade = vehicle.weightKg * EVConstants.gravity * sin(theta)
-        let fTotal = fRoll + fAero + fGrade
-
-        let segEnergyJoules = fTotal * segDistMeters
-        let segEnergyKwh: Double
-        if segEnergyJoules > 0 {
-            segEnergyKwh = segEnergyJoules / (EVConstants.joulesPerKwh * EVConstants.drivetrainEfficiency)
+        // Grade correction — potential energy physics
+        let gradeJ = vehicle.weightKg * EVConstants.gravity * elevDiff
+        let segKwh: Double
+        if elevDiff > 0 {
+            segKwh = flatKwh + gradeJ / (EVConstants.joulesPerKwh * EVConstants.drivetrainEfficiency)
         } else {
-            segEnergyKwh = segEnergyJoules / EVConstants.joulesPerKwh * vehicle.regenEff
+            segKwh = max(0, flatKwh - abs(gradeJ) / EVConstants.joulesPerKwh * vehicle.regenEff)
         }
 
-        let segPct = (max(0, segEnergyKwh) / vehicle.batteryKwh) * 100
-
+        // Apply charging stops (battery jumps to chargeTargetPct at stop distances)
         for stopDist in stopDistances {
             if stopDist > profile[i - 1].distance && stopDist <= profile[i].distance {
                 currentPct = chargeTargetPct
             }
         }
 
+        let segPct = (max(0, segKwh) / vehicle.batteryKwh) * 100
         currentPct -= segPct
         currentPct = max(0, min(100, currentPct))
         batteryPcts.append(currentPct)

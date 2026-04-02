@@ -188,6 +188,11 @@ class EVRouteService {
                     from: origin, to: destination,
                     avoidHighways: avoidHighways, avoidTolls: avoidTolls
                 )
+                guard !mkRoutes.isEmpty else {
+                    errorMessage = "No routes found between these locations."
+                    isLoading = false
+                    return
+                }
                 var results: [RouteResult] = []
 
                 for route in mkRoutes {
@@ -325,7 +330,7 @@ class EVRouteService {
 
         for i in 1..<profile.count {
             let segKwh = segmentEnergy(
-                profile: profile, index: i, vehicle: vehicle, avgSpeedMps: avgSpeedMps
+                profile: profile, index: i, vehicle: vehicle
             )
             let clampedKwh = max(0, segKwh)
             segmentEnergyKwh.append(clampedKwh)
@@ -547,6 +552,29 @@ class EVRouteService {
         let stopCount = waypoints.count - 2
         let stopLabel = stopCount == 1 ? "1 stop" : "\(stopCount) stops"
 
+        // Fix charging stop coordinates: interpolate real positions from combined polyline
+        let totalRouteMiles = distanceOffsetMiles
+        let enrichedStops = chargingPlan.stops.map { stop -> ChargingStop in
+            let coord = coordinateAlongPolyline(
+                coords: allPolylineCoords,
+                targetMiles: stop.distanceMiles,
+                totalMiles: totalRouteMiles
+            )
+            return ChargingStop(
+                distanceMiles: stop.distanceMiles,
+                coordinate: coord,
+                arrivalBatteryPct: stop.arrivalBatteryPct,
+                departureBatteryPct: stop.departureBatteryPct,
+                energyToAddKwh: stop.energyToAddKwh,
+                stopNumber: stop.stopNumber,
+                estimatedChargeMinutes: stop.estimatedChargeMinutes,
+                sectionDistanceMiles: stop.sectionDistanceMiles,
+                sectionEnergyKwh: stop.sectionEnergyKwh,
+                sectionElevationGain: stop.sectionElevationGain,
+                sectionElevationLoss: stop.sectionElevationLoss
+            )
+        }
+
         return RouteResult(
             routeName: "Via \(stopLabel)",
             distanceMiles: totalDistanceM * EVConstants.milesPerMeter,
@@ -560,7 +588,7 @@ class EVRouteService {
             peakGrade: energy.peakGrade,
             elevationProfile: combinedProfile,
             score: energy.totalKwh * 0.8 + (totalTimeS / 3600) * 0.1,
-            chargingStops: chargingPlan.stops,
+            chargingStops: enrichedStops,
             finalBatteryPct: chargingPlan.finalBatteryPct,
             finalSection: chargingPlan.finalSection,
             customPolyline: combinedPolyline,
@@ -584,7 +612,7 @@ class EVRouteService {
             peakGrade = max(peakGrade, absGrade)
             if elevDiff > 0 { totalGain += elevDiff }
             else { totalLoss += abs(elevDiff) }
-            totalEnergy += segmentEnergy(profile: profile, index: i, vehicle: vehicle, avgSpeedMps: avgSpeedMps)
+            totalEnergy += segmentEnergy(profile: profile, index: i, vehicle: vehicle)
         }
 
         let totalKwh = max(0.1, totalEnergy)
@@ -617,7 +645,7 @@ class EVRouteService {
             profile: profile,
             points: fakePoints,
             route: nil,
-            avgSpeedMpsOverride: avgSpeedMps,  // pass correct speed so aero drag is calculated
+            avgSpeedMpsOverride: avgSpeedMps,
             vehicle: vehicle,
             totalEnergyKwh: totalEnergyKwh,
             preferredChargerSpeedKw: preferredChargerSpeedKw,
@@ -818,7 +846,7 @@ class EVRouteService {
     /// and hilly routes (correctly penalizes climbs / credits descents).
     private func segmentEnergy(
         profile: [ElevationPoint], index i: Int,
-        vehicle: EVVehicle, avgSpeedMps: Double
+        vehicle: EVVehicle
     ) -> Double {
         let segDistMiles = profile[i].distance - profile[i - 1].distance
         let elevDiff = profile[i].elevation - profile[i - 1].elevation  // meters, positive = climb
@@ -860,7 +888,7 @@ class EVRouteService {
             else if elevDiff < 0 { totalLoss += abs(elevDiff) }
 
             totalEnergy += segmentEnergy(
-                profile: profile, index: i, vehicle: vehicle, avgSpeedMps: avgSpeedMps
+                profile: profile, index: i, vehicle: vehicle
             )
         }
 
@@ -878,6 +906,45 @@ class EVRouteService {
         let timeScore = (route.expectedTravelTime / 3600) * 0.15
         let gradeScore = energy.peakGrade * 0.05
         return energyScore + timeScore + gradeScore
+    }
+
+    /// Interpolate a geographic coordinate at a given distance (miles) along a polyline
+    private func coordinateAlongPolyline(
+        coords: [CLLocationCoordinate2D],
+        targetMiles: Double,
+        totalMiles: Double
+    ) -> CLLocationCoordinate2D {
+        guard coords.count >= 2, totalMiles > 0 else {
+            return coords.first ?? CLLocationCoordinate2D(latitude: 0, longitude: 0)
+        }
+        let targetMeters = targetMiles * EVConstants.metersPerMile
+
+        // Build cumulative distance array
+        var cumDist: [Double] = [0]
+        for i in 1..<coords.count {
+            let d = CLLocation(latitude: coords[i-1].latitude, longitude: coords[i-1].longitude)
+                .distance(from: CLLocation(latitude: coords[i].latitude, longitude: coords[i].longitude))
+            cumDist.append(cumDist[i-1] + d)
+        }
+
+        let totalMeters = cumDist.last ?? 1
+        let clampedTarget = min(targetMeters, totalMeters)
+
+        // Binary search for the segment containing targetMeters
+        var lo = 0, hi = cumDist.count - 2
+        while lo < hi {
+            let mid = (lo + hi) / 2
+            if cumDist[mid + 1] < clampedTarget { lo = mid + 1 } else { hi = mid }
+        }
+
+        let segLen = cumDist[lo + 1] - cumDist[lo]
+        let t = segLen > 0 ? (clampedTarget - cumDist[lo]) / segLen : 0
+        let p1 = coords[lo]
+        let p2 = coords[min(lo + 1, coords.count - 1)]
+        return CLLocationCoordinate2D(
+            latitude: p1.latitude + t * (p2.latitude - p1.latitude),
+            longitude: p1.longitude + t * (p2.longitude - p1.longitude)
+        )
     }
 }
 

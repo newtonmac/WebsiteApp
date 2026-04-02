@@ -443,7 +443,6 @@ struct EVRouteDetailView: View {
                     chargingStops: route.chargingStops,
                     waypointDistancesMiles: route.waypointDistancesMiles,
                     waypointNames: waypointNames,
-                    avgSpeedMps: (route.distanceMiles * EVConstants.metersPerMile) / max(1, route.durationMinutes * 60)
                 )
                     .frame(height: 160)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -700,7 +699,7 @@ struct ElevationChartView: View {
     var chargingStops: [ChargingStop] = []
     var waypointDistancesMiles: [Double] = []
     var waypointNames: [String] = []
-    var avgSpeedMps: Double = 26.8 // ~60 mph default if no route available
+
 
     private var minElevFt: Double {
         ((profile.map(\.elevation).min() ?? 0) * EVConstants.feetPerMeter) - 20
@@ -722,7 +721,6 @@ struct ElevationChartView: View {
             profile: profile,
             vehicle: vehicle,
             chargingStops: chargingStops,
-            avgSpeedMps: avgSpeedMps,
             startPct: EVSettingsManager.shared.startChargePct,
             chargeTargetPct: EVSettingsManager.shared.chargeTargetPct
         )

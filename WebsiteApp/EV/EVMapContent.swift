@@ -111,9 +111,9 @@ struct EVMapContent: View {
                 }
             }
 
-            // Charging stop markers (for selected route)
+            // Charging stop markers (for selected route) — skip fake (0,0) coordinates
             if let selected = selectedRoute {
-                ForEach(selected.chargingStops) { stop in
+                ForEach(selected.chargingStops.filter { $0.coordinate.latitude != 0 || $0.coordinate.longitude != 0 }) { stop in
                     Annotation("Charge Stop \(stop.stopNumber)", coordinate: stop.coordinate) {
                         ZStack {
                             Circle()

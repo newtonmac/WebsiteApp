@@ -664,7 +664,6 @@ struct EVRoutePDFGenerator {
 
         let battPcts = computeBatteryProfile(
                     profile: profile, vehicle: vehicle, chargingStops: chargingStops,
-                    avgSpeedMps: avgSpeedMps,
                     startPct: EVSettingsManager.shared.startChargePct,
                     chargeTargetPct: EVSettingsManager.shared.chargeTargetPct)
         guard battPcts.count == profile.count else { return y }
