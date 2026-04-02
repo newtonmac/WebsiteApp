@@ -348,9 +348,14 @@ struct EVRoutePlannerView: View {
                                 } else {
                                     selectedNetworks.insert(network)
                                     // Fetch chargers now that user picked a network
-                                    if let route = selectedRoute, let mkRoute = route.route,
-                                       chargerService.chargers.isEmpty {
-                                        Task { await chargerService.findChargersAlongRoute(mkRoute) }
+                                    if let route = selectedRoute, chargerService.chargers.isEmpty {
+                                        Task {
+                                            if let mkRoute = route.route {
+                                                await chargerService.findChargersAlongRoute(mkRoute)
+                                            } else if let poly = route.customPolyline {
+                                                await chargerService.findChargersAlongPolyline(poly)
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -475,9 +480,13 @@ struct EVRoutePlannerView: View {
                             selectedRoute = route
                         }
                         fitMapToRoute(route)
-                        if !selectedNetworks.isEmpty, let mkRoute = route.route {
+                        if !selectedNetworks.isEmpty {
                             Task {
-                                await chargerService.findChargersAlongRoute(mkRoute)
+                                if let mkRoute = route.route {
+                                    await chargerService.findChargersAlongRoute(mkRoute)
+                                } else if let poly = route.customPolyline {
+                                    await chargerService.findChargersAlongPolyline(poly)
+                                }
                             }
                         }
                     }
@@ -838,8 +847,12 @@ struct EVRoutePlannerView: View {
             selectedRoute = best
             fitMapToRoute(best)
             // Only fetch chargers if the user has selected at least one network
-            if !selectedNetworks.isEmpty, let mkRoute = best.route {
-                await chargerService.findChargersAlongRoute(mkRoute)
+            if !selectedNetworks.isEmpty {
+                if let mkRoute = best.route {
+                    await chargerService.findChargersAlongRoute(mkRoute)
+                } else if let poly = best.customPolyline {
+                    await chargerService.findChargersAlongPolyline(poly)
+                }
             }
         }
 

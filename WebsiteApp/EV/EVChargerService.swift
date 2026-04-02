@@ -122,6 +122,51 @@ class EVChargerService {
     private var cache: [String: [NRELStation]] = [:]
     private var ocmCache: [String: [OCMStation]] = [:]
 
+    /// Search along a raw polyline (for multi-leg routes where MKRoute is nil)
+    func findChargersAlongPolyline(_ polyline: MKPolyline) async {
+        isLoading = true
+        chargers = []
+
+        let totalMeters = stride(from: 1, to: polyline.pointCount, by: 1).reduce(0.0) { acc, i in
+            let pts = polyline.points()
+            let p1 = pts[i-1].coordinate
+            let p2 = pts[i].coordinate
+            return acc + CLLocation(latitude: p1.latitude, longitude: p1.longitude)
+                .distance(from: CLLocation(latitude: p2.latitude, longitude: p2.longitude))
+        }
+        let routeMiles = totalMeters * EVConstants.milesPerMeter
+        let sampleCount = max(3, min(40, Int(routeMiles / 7) + 2))
+        let searchPoints = samplePolylinePoints(polyline: polyline, count: sampleCount)
+        let routeCheckPoints = samplePolylinePoints(polyline: polyline, count: min(200, max(50, Int(routeMiles))))
+        let searchRadius = 5.0
+
+        let fetchedChargers: [EVCharger] = await withTaskGroup(of: [EVCharger].self) { group in
+            for point in searchPoints {
+                group.addTask { await self.fetchNRELChargers(near: point, radiusMiles: searchRadius) }
+            }
+            var results: [EVCharger] = []
+            for await batch in group { results.append(contentsOf: batch) }
+            return results
+        }
+
+        let maxMeters = 2.0 * EVConstants.metersPerMile
+        var seenIds = Set<String>()
+        var allChargers: [EVCharger] = []
+        for charger in fetchedChargers {
+            guard !seenIds.contains(charger.id) else { continue }
+            seenIds.insert(charger.id)
+            let chargerLoc = CLLocation(latitude: charger.coordinate.latitude, longitude: charger.coordinate.longitude)
+            let isNear = routeCheckPoints.contains {
+                chargerLoc.distance(from: CLLocation(latitude: $0.latitude, longitude: $0.longitude)) <= maxMeters
+            }
+            if isNear { allChargers.append(charger) }
+        }
+
+        let ocmPoints = stride(from: 0, to: searchPoints.count, by: 3).map { searchPoints[$0] }
+        chargers = await enrichWithOCMSpeeds(chargers: allChargers, searchPoints: ocmPoints)
+        isLoading = false
+    }
+
     /// Search for chargers along the route, sampling every ~15 miles with a 5-mile search radius.
     /// Uses concurrent fetches with a timeout to prevent stalling.
     func findChargersAlongRoute(_ route: MKRoute) async {

@@ -192,3 +192,41 @@ func sampleRoutePoints(route: MKRoute, count: Int) -> [CLLocationCoordinate2D] {
 
     return sampled
 }
+
+/// Evenly sample points along a raw MKPolyline (used for multi-leg routes where MKRoute is nil)
+func samplePolylinePoints(polyline: MKPolyline, count: Int) -> [CLLocationCoordinate2D] {
+    let pointCount = polyline.pointCount
+    guard pointCount > 1, count > 0 else { return [] }
+    let mapPoints = polyline.points()
+
+    var cumDist: [Double] = [0]
+    for i in 1..<pointCount {
+        let p1 = mapPoints[i-1].coordinate
+        let p2 = mapPoints[i].coordinate
+        let d = CLLocation(latitude: p1.latitude, longitude: p1.longitude)
+            .distance(from: CLLocation(latitude: p2.latitude, longitude: p2.longitude))
+        cumDist.append((cumDist.last ?? 0) + d)
+    }
+
+    let totalDist = cumDist.last ?? 1
+    var sampled: [CLLocationCoordinate2D] = []
+
+    for i in 0..<count {
+        let targetDist = totalDist * Double(i) / Double(max(1, count - 1))
+        var segIdx = 0
+        while segIdx < cumDist.count - 1 && cumDist[segIdx + 1] < targetDist { segIdx += 1 }
+        if segIdx >= pointCount - 1 {
+            sampled.append(mapPoints[pointCount - 1].coordinate)
+            continue
+        }
+        let segLen = cumDist[segIdx + 1] - cumDist[segIdx]
+        let t = segLen > 0 ? (targetDist - cumDist[segIdx]) / segLen : 0
+        let p1 = mapPoints[segIdx].coordinate
+        let p2 = mapPoints[segIdx + 1].coordinate
+        sampled.append(CLLocationCoordinate2D(
+            latitude: p1.latitude + t * (p2.latitude - p1.latitude),
+            longitude: p1.longitude + t * (p2.longitude - p1.longitude)
+        ))
+    }
+    return sampled
+}
