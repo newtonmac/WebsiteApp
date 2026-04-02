@@ -127,8 +127,9 @@ class EVChargerService {
         isLoading = true
         chargers = []
 
+        // Call .points() once outside the loop — calling inside is O(n²)
+        let pts = polyline.points()
         let totalMeters = stride(from: 1, to: polyline.pointCount, by: 1).reduce(0.0) { acc, i in
-            let pts = polyline.points()
             let p1 = pts[i-1].coordinate
             let p2 = pts[i].coordinate
             return acc + CLLocation(latitude: p1.latitude, longitude: p1.longitude)
@@ -162,9 +163,36 @@ class EVChargerService {
             if isNear { allChargers.append(charger) }
         }
 
+        // Cap chargers per ~10-mile segment (same logic as route-based search)
+        let capped = capChargersBySegment(allChargers, searchPoints: routeCheckPoints, routeMiles: routeMiles)
         let ocmPoints = stride(from: 0, to: searchPoints.count, by: 3).map { searchPoints[$0] }
-        chargers = await enrichWithOCMSpeeds(chargers: allChargers, searchPoints: ocmPoints)
+        chargers = await enrichWithOCMSpeeds(chargers: capped, searchPoints: ocmPoints)
         isLoading = false
+    }
+
+    /// Cap chargers per geographic segment to avoid clustering (used for polyline-based search)
+    private func capChargersBySegment(_ chargers: [EVCharger], searchPoints: [CLLocationCoordinate2D], routeMiles: Double) -> [EVCharger] {
+        guard !chargers.isEmpty else { return chargers }
+        let segmentMiles = 10.0
+        let segmentCount = max(1, Int(ceil(routeMiles / segmentMiles)))
+        let segmentSize = max(1, searchPoints.count / segmentCount)
+        var segments: [[EVCharger]] = Array(repeating: [], count: segmentCount)
+
+        for charger in chargers {
+            let chargerLoc = CLLocation(latitude: charger.coordinate.latitude, longitude: charger.coordinate.longitude)
+            var bestSeg = 0
+            var bestDist = Double.greatestFiniteMagnitude
+            for s in 0..<segmentCount {
+                let midIdx = min(s * segmentSize + segmentSize / 2, searchPoints.count - 1)
+                let d = chargerLoc.distance(from: CLLocation(latitude: searchPoints[midIdx].latitude, longitude: searchPoints[midIdx].longitude))
+                if d < bestDist { bestDist = d; bestSeg = s }
+            }
+            segments[bestSeg].append(charger)
+        }
+
+        return segments.flatMap { seg in
+            seg.count <= 30 ? seg : Array(seg.sorted { chargerPriority($0) > chargerPriority($1) }.prefix(30))
+        }
     }
 
     /// Search for chargers along the route, sampling every ~15 miles with a 5-mile search radius.

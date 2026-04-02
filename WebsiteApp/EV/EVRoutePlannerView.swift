@@ -333,10 +333,17 @@ struct EVRoutePlannerView: View {
         GeometryReader { geo in
             let isLandscape = geo.size.width > geo.size.height
             VStack(alignment: .center, spacing: 8) {
-                Text("Networks")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(EVTheme.textSecondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
+                HStack(spacing: 6) {
+                    Text("Networks")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(EVTheme.textSecondary)
+                    if chargerService.isLoading {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                            .tint(EVTheme.accentGreen)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
 
                 FlowLayout(spacing: 6, alignment: .center) {
                     ForEach(ChargerNetwork.allCases, id: \.self) { network in
@@ -859,9 +866,16 @@ struct EVRoutePlannerView: View {
     }
 
     private func fitMapToRoute(_ route: RouteResult) {
-        guard let mkRoute = route.route else { return }
-        let rect = mkRoute.polyline.boundingMapRect
-        let padded = rect.insetBy(dx: -rect.size.width * 0.1, dy: -rect.size.height * 0.1)
+        // Use customPolyline for multi-leg routes, MKRoute polyline for single-leg
+        let polyline: MKPolyline?
+        if let mkRoute = route.route {
+            polyline = mkRoute.polyline
+        } else {
+            polyline = route.customPolyline
+        }
+        guard let poly = polyline else { return }
+        let rect = poly.boundingMapRect
+        let padded = rect.insetBy(dx: -rect.size.width * 0.15, dy: -rect.size.height * 0.15)
         mapCameraPosition = .rect(padded)
     }
 
@@ -869,13 +883,24 @@ struct EVRoutePlannerView: View {
 
     private func googleMapsURL(for route: RouteResult) -> URL? {
         guard let origin = originCoord, let dest = routeStops.last?.coordinate else { return nil }
-        let urlStr = "https://www.google.com/maps/dir/?api=1&origin=\(origin.latitude),\(origin.longitude)&destination=\(dest.latitude),\(dest.longitude)&travelmode=driving"
-        return URL(string: urlStr)
+        let waypoints = routeStops.dropLast().compactMap { $0.coordinate }
+        var urlStr = "https://www.google.com/maps/dir/?api=1&origin=\(origin.latitude),\(origin.longitude)&destination=\(dest.latitude),\(dest.longitude)&travelmode=driving"
+        if !waypoints.isEmpty {
+            let waypointStr = waypoints.map { "\($0.latitude),\($0.longitude)" }.joined(separator: "|")
+            urlStr += "&waypoints=\(waypointStr)"
+        }
+        return URL(string: urlStr.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? urlStr)
     }
 
     private func appleMapsURL(for route: RouteResult) -> URL? {
         guard let origin = originCoord, let dest = routeStops.last?.coordinate else { return nil }
-        let urlStr = "https://maps.apple.com/?saddr=\(origin.latitude),\(origin.longitude)&daddr=\(dest.latitude),\(dest.longitude)&dirflg=d"
+        // Apple Maps supports multiple daddr params for waypoints
+        let waypoints = routeStops.dropLast().compactMap { $0.coordinate }
+        var urlStr = "https://maps.apple.com/?saddr=\(origin.latitude),\(origin.longitude)"
+        for wp in waypoints {
+            urlStr += "&daddr=\(wp.latitude),\(wp.longitude)"
+        }
+        urlStr += "&daddr=\(dest.latitude),\(dest.longitude)&dirflg=d"
         return URL(string: urlStr)
     }
 

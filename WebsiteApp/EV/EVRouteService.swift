@@ -287,7 +287,8 @@ class EVRouteService {
     private func calculateChargingStops(
         profile: [ElevationPoint],
         points: [CLLocationCoordinate2D],
-        route: MKRoute,
+        route: MKRoute? = nil,
+        avgSpeedMpsOverride: Double? = nil,
         vehicle: EVVehicle,
         totalEnergyKwh: Double,
         preferredChargerSpeedKw: Double = 150,
@@ -312,7 +313,8 @@ class EVRouteService {
         let segmentCount = profile.count - 1
         var segmentEnergyKwh: [Double] = []
         var segmentEnergyPcts: [Double] = []
-        let avgSpeedMps = route.distance / max(1, route.expectedTravelTime)
+        // Use override speed (for multi-leg) or derive from MKRoute
+        let avgSpeedMps = avgSpeedMpsOverride ?? (route.map { $0.distance / max(1, $0.expectedTravelTime) } ?? 25.0)
 
         for i in 1..<profile.count {
             let segKwh = segmentEnergy(
@@ -601,14 +603,14 @@ class EVRouteService {
             return ChargingPlan(stops: [], finalBatteryPct: startBatteryPct - totalBatteryPct, finalSection: nil)
         }
 
-        // Build approximate coordinate list from profile distance markers
-        // Use evenly-spaced fake coordinates for stop placement (not shown on map)
+        // Use profile-distributed coordinate placeholders (coordinates unused for display)
         let fakePoints = profile.map { _ in CLLocationCoordinate2D(latitude: 0, longitude: 0) }
 
         return calculateChargingStops(
             profile: profile,
             points: fakePoints,
-            route: MKRoute(), // unused — we pass avgSpeedMps directly in segmentEnergy
+            route: nil,
+            avgSpeedMpsOverride: avgSpeedMps,  // pass correct speed so aero drag is calculated
             vehicle: vehicle,
             totalEnergyKwh: totalEnergyKwh,
             preferredChargerSpeedKw: preferredChargerSpeedKw,
