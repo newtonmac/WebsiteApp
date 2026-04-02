@@ -80,6 +80,7 @@ struct EVRoutePlannerView: View {
                 chargers: mapChargers,
                 origin: originCoord,
                 destination: routeStops.last?.coordinate,
+                waypoints: routeStops.dropLast().compactMap { $0.coordinate },
                 selectedCharger: $selectedCharger,
                 mapStyle: $mapStyle,
                 panelHeight: panelHeight

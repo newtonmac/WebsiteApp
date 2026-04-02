@@ -30,6 +30,7 @@ struct EVMapContent: View {
     let chargers: [EVCharger]
     let origin: CLLocationCoordinate2D?
     let destination: CLLocationCoordinate2D?
+    let waypoints: [CLLocationCoordinate2D]
     @Binding var selectedCharger: EVCharger?
     @Binding var mapStyle: EVMapStyle
     let panelHeight: CGFloat
@@ -92,6 +93,21 @@ struct EVMapContent: View {
                             .frame(width: 10, height: 10)
                     }
                     .shadow(color: EVTheme.accentRed.opacity(0.4), radius: 4)
+                }
+            }
+
+            // Waypoint markers (stops between origin and destination)
+            ForEach(Array(waypoints.enumerated()), id: \.offset) { index, coord in
+                Annotation("Stop \(index + 1)", coordinate: coord) {
+                    ZStack {
+                        Circle()
+                            .fill(EVTheme.accentYellow)
+                            .frame(width: 26, height: 26)
+                        Text("\(index + 1)")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(.black)
+                    }
+                    .shadow(color: EVTheme.accentYellow.opacity(0.5), radius: 4)
                 }
             }
 
