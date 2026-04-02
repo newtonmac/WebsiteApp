@@ -14,7 +14,8 @@ struct EVSettingsView: View {
                     routePreferencesSection
                     chargingNetworksSection
                     displaySection
-                    // appInfoSection — hidden until site is ready
+                    appInfoSection
+                    legalSection
                     resetSection
                 }
                 .padding(.horizontal, 16)
@@ -252,83 +253,79 @@ struct EVSettingsView: View {
                 infoRow(label: "Build", value: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1")
                 Divider().overlay(EVTheme.border)
 
-                if let siteURL = URL(string: "https://evrouteplanner.org/") {
-                    Link(destination: siteURL) {
-                        HStack {
-                            Image(systemName: "globe")
-                                .font(.system(size: 14))
-                                .foregroundStyle(EVTheme.accentBlue)
-                            Text("Website")
-                                .font(.system(size: 14))
-                                .foregroundStyle(EVTheme.textPrimary)
-                            Spacer()
-                            Image(systemName: "arrow.up.right")
-                                .font(.system(size: 11))
-                                .foregroundStyle(EVTheme.textSecondary)
-                        }
-                    }
-                }
-
-                Divider().overlay(EVTheme.border)
-
-                if let privacyURL = URL(string: "https://evrouteplanner.org/privacy") {
-                    Link(destination: privacyURL) {
-                        HStack {
-                            Image(systemName: "hand.raised.fill")
-                                .font(.system(size: 14))
-                                .foregroundStyle(EVTheme.accentBlue)
-                            Text("Privacy Policy")
-                                .font(.system(size: 14))
-                                .foregroundStyle(EVTheme.textPrimary)
-                            Spacer()
-                            Image(systemName: "arrow.up.right")
-                                .font(.system(size: 11))
-                                .foregroundStyle(EVTheme.textSecondary)
-                        }
-                    }
-                }
-
-                Divider().overlay(EVTheme.border)
-
                 Button {
-                    if let url = URL(string: "mailto:feedback@evrouteplanner.org?subject=EV%20Route%20Planner%20Feedback") {
+                    if let url = URL(string: "mailto:support@evrouteplanner.org?subject=EV%20Route%20Planner%20Feedback") {
                         UIApplication.shared.open(url)
                     }
                 } label: {
-                    HStack {
-                        Image(systemName: "envelope.fill")
-                            .font(.system(size: 14))
-                            .foregroundStyle(EVTheme.accentGreen)
-                        Text("Send Feedback")
-                            .font(.system(size: 14))
-                            .foregroundStyle(EVTheme.textPrimary)
-                        Spacer()
-                        Image(systemName: "arrow.up.right")
-                            .font(.system(size: 11))
-                            .foregroundStyle(EVTheme.textSecondary)
-                    }
+                    settingsLinkRow(icon: "envelope.fill", iconColor: EVTheme.accentGreen, label: "Send Feedback")
                 }
 
                 Divider().overlay(EVTheme.border)
 
-                Button {
-                    requestAppReview()
-                } label: {
-                    HStack {
-                        Image(systemName: "star.fill")
-                            .font(.system(size: 14))
-                            .foregroundStyle(EVTheme.accentYellow)
-                        Text("Rate the App")
-                            .font(.system(size: 14))
-                            .foregroundStyle(EVTheme.textPrimary)
-                        Spacer()
-                        Image(systemName: "arrow.up.right")
-                            .font(.system(size: 11))
-                            .foregroundStyle(EVTheme.textSecondary)
-                    }
+                Button { requestAppReview() } label: {
+                    settingsLinkRow(icon: "star.fill", iconColor: EVTheme.accentYellow, label: "Rate EV Route Planner")
                 }
             }
         }
+    }
+
+    // MARK: - Legal
+
+    private var legalSection: some View {
+        SettingsCard(title: "LEGAL & PRIVACY", icon: "shield.fill") {
+            VStack(spacing: 0) {
+
+                NavigationLink {
+                    DisclaimerView()
+                } label: {
+                    settingsLinkRow(icon: "exclamationmark.triangle.fill", iconColor: EVTheme.accentYellow, label: "Accuracy Disclaimer")
+                }
+
+                Divider().overlay(EVTheme.border).padding(.vertical, 4)
+
+                NavigationLink {
+                    PrivacyPolicyView()
+                } label: {
+                    settingsLinkRow(icon: "hand.raised.fill", iconColor: EVTheme.accentBlue, label: "Privacy Policy")
+                }
+
+                Divider().overlay(EVTheme.border).padding(.vertical, 4)
+
+                NavigationLink {
+                    TermsOfUseView()
+                } label: {
+                    settingsLinkRow(icon: "doc.text.fill", iconColor: EVTheme.accentBlue, label: "Terms of Use")
+                }
+
+                Divider().overlay(EVTheme.border).padding(.vertical, 4)
+
+                NavigationLink {
+                    DataSourcesView()
+                } label: {
+                    settingsLinkRow(icon: "server.rack", iconColor: EVTheme.accentGreen, label: "Data Sources & Attribution")
+                }
+            }
+        }
+    }
+
+    // MARK: - Shared Link Row
+
+    private func settingsLinkRow(icon: String, iconColor: Color, label: String) -> some View {
+        HStack {
+            Image(systemName: icon)
+                .font(.system(size: 14))
+                .foregroundStyle(iconColor)
+                .frame(width: 20)
+            Text(label)
+                .font(.system(size: 14))
+                .foregroundStyle(EVTheme.textPrimary)
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(EVTheme.textSecondary)
+        }
+        .padding(.vertical, 4)
     }
 
     // MARK: - Reset

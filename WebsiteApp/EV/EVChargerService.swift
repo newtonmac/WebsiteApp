@@ -115,7 +115,8 @@ class EVChargerService {
     var chargers: [EVCharger] = []
     var isLoading = false
 
-    private let nrelAPIKey = "S8BQYZzqG6TBnADBFb60EYDUiLsRcxgJovLJ76Bg"
+    // API key stored in Info.plist — keeps it out of source control
+    private let nrelAPIKey = Bundle.main.object(forInfoDictionaryKey: "EV_NREL_API_KEY") as? String ?? ""
     private var cache: [String: [NRELStation]] = [:]
     private var ocmCache: [String: [OCMStation]] = [:]
 
