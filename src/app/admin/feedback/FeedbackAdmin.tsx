@@ -72,14 +72,16 @@ export default function FeedbackAdmin() {
   };
 
   const changeStatus = async (id: string, status: string) => {
-    try { await proxy({ action: 'change_status', id, status }); loadUpdates(); }
-    catch (e: any) { alert('Failed: ' + e.message); }
+    setUpdates(prev => prev.map(u => u.id === id ? { ...u, status } : u));
+    try { await proxy({ action: 'change_status', id, status }); }
+    catch (e: any) { alert('Failed: ' + e.message); loadUpdates(); }
   };
 
   const deleteUpdate = async (id: string) => {
     if (!confirm('Delete this update?')) return;
-    try { await proxy({ action: 'delete_update', id }); showToast('Deleted'); loadUpdates(); }
-    catch (e: any) { alert('Failed: ' + e.message); }
+    setUpdates(prev => prev.filter(u => u.id !== id));
+    try { await proxy({ action: 'delete_update', id }); showToast('Deleted'); }
+    catch (e: any) { alert('Failed: ' + e.message); loadUpdates(); }
   };
 
   return (
