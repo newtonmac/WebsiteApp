@@ -899,12 +899,6 @@ struct EVToggleRow: View {
                 .foregroundStyle(isOn ? EVTheme.accentGreen : EVTheme.textSecondary)
                 .frame(width: isIPad ? 26 : 20)
 
-            Text(label)
-                .font(.system(size: isIPad ? 16 : 13))
-                .foregroundStyle(EVTheme.textSecondary)
-
-            Spacer()
-
             // Custom toggle switch matching web app style
             ZStack(alignment: isOn ? .trailing : .leading) {
                 RoundedRectangle(cornerRadius: isIPad ? 14 : 10)
@@ -920,6 +914,10 @@ struct EVToggleRow: View {
             .onTapGesture {
                 isOn.toggle()
             }
+
+            Text(label)
+                .font(.system(size: isIPad ? 16 : 13))
+                .foregroundStyle(EVTheme.textSecondary)
         }
         .padding(.vertical, isIPad ? 8 : 4)
     }
