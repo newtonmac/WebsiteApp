@@ -1,11 +1,5 @@
-'use client';
+import GearAdmin from './GearAdmin';
 
-export default function GearAdmin() {
-  return (
-    <iframe
-      src="/paddle-gear-admin.html"
-      className="w-full h-screen border-0"
-      allow="clipboard-write"
-    />
-  );
+export default function GearAdminPage() {
+  return <GearAdmin />;
 }
