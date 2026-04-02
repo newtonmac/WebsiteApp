@@ -21,7 +21,7 @@ struct EVRoutePlannerView: View {
     @State private var selectedCharger: EVCharger?
     @State private var mapStyle: EVMapStyle = .standard
     @State private var summaryPDFItem: PDFItem?
-    @State private var selectedNetworks: Set<ChargerNetwork> = [.tesla, .electrifyAmerica]
+    @State private var selectedNetworks: Set<ChargerNetwork> = []
     @State private var keyboardOffset: CGFloat = 0
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -204,7 +204,7 @@ struct EVRoutePlannerView: View {
             if let saved = settings.lastVehicle {
                 selectedVehicle = saved
             }
-            selectedNetworks = settings.defaultNetworks.isEmpty ? [.tesla, .electrifyAmerica] : settings.defaultNetworks
+            selectedNetworks = settings.defaultNetworks
         }
         .onChange(of: selectedVehicle) { _, newVehicle in
             settings.lastVehicleId = newVehicle.id
@@ -345,6 +345,11 @@ struct EVRoutePlannerView: View {
                                     selectedNetworks.remove(network)
                                 } else {
                                     selectedNetworks.insert(network)
+                                    // Fetch chargers now that user picked a network
+                                    if let route = selectedRoute, let mkRoute = route.route,
+                                       chargerService.chargers.isEmpty {
+                                        Task { await chargerService.findChargersAlongRoute(mkRoute) }
+                                    }
                                 }
                             }
                         } label: {
@@ -468,7 +473,7 @@ struct EVRoutePlannerView: View {
                             selectedRoute = route
                         }
                         fitMapToRoute(route)
-                        if let mkRoute = route.route {
+                        if !selectedNetworks.isEmpty, let mkRoute = route.route {
                             Task {
                                 await chargerService.findChargersAlongRoute(mkRoute)
                             }
@@ -827,7 +832,8 @@ struct EVRoutePlannerView: View {
         if let best = routeService.routes.first {
             selectedRoute = best
             fitMapToRoute(best)
-            if let mkRoute = best.route {
+            // Only fetch chargers if the user has selected at least one network
+            if !selectedNetworks.isEmpty, let mkRoute = best.route {
                 await chargerService.findChargersAlongRoute(mkRoute)
             }
         }
