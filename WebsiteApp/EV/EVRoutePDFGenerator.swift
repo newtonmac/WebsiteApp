@@ -277,8 +277,41 @@ struct EVRoutePDFGenerator {
                                      value: String(format: "$%.2f @ $%.2f/kWh", cost, price),
                                      x: cardX, y: y, width: cardW, valueColor: accentGreen)
                     if let nearest = nearest {
-                        y = drawKeyValue(context: context, key: "Nearest Charger", value: "\(nearest.network.shortName) — \(nearest.name)",
+                        // Full charger detail inside the stop card
+                        y -= 4
+                        y = drawText(context: context,
+                                     text: "Nearest Charger",
+                                     x: cardX, y: y, width: cardW,
+                                     font: font(9, weight: .semibold), color: textSecondary)
+                        y -= 2
+                        y = drawKeyValue(context: context, key: "Name", value: nearest.name,
                                          x: cardX, y: y, width: cardW, valueColor: textPrimary)
+                        y = drawKeyValue(context: context, key: "Network", value: nearest.network.shortName,
+                                         x: cardX, y: y, width: cardW, valueColor: textPrimary)
+                        y = drawKeyValue(context: context, key: "Address", value: nearest.address,
+                                         x: cardX, y: y, width: cardW, valueColor: textSecondary)
+                        if let speed = nearest.speedKw {
+                            y = drawKeyValue(context: context, key: "Max Speed",
+                                             value: String(format: "%.0f kW", speed),
+                                             x: cardX, y: y, width: cardW,
+                                             valueColor: speed >= 150 ? accentGreen : accentYellow)
+                        }
+                        if let dc = nearest.dcFastCount, dc > 0 {
+                            y = drawKeyValue(context: context, key: "DC Fast Stalls", value: "\(dc)",
+                                             x: cardX, y: y, width: cardW, valueColor: accentBlue)
+                        }
+                        if !nearest.connectors.isEmpty {
+                            y = drawKeyValue(context: context, key: "Connectors",
+                                             value: nearest.connectors.joined(separator: " · "),
+                                             x: cardX, y: y, width: cardW, valueColor: textSecondary)
+                        }
+                        if let hours = nearest.hours, !hours.isEmpty {
+                            y = drawKeyValue(context: context, key: "Hours", value: hours,
+                                             x: cardX, y: y, width: cardW, valueColor: textSecondary)
+                        }
+                        y = drawKeyValue(context: context, key: "Price",
+                                         value: String(format: "$%.2f/kWh", nearest.pricePerKwh),
+                                         x: cardX, y: y, width: cardW, valueColor: accentGreen)
                     }
                     return y
                 }
@@ -341,6 +374,66 @@ struct EVRoutePDFGenerator {
             x: margin, y: currentY, width: contentWidth, barHeight: 22
         )
         currentY -= 20
+
+        // MARK: - Charger Directory
+
+        if !chargers.isEmpty {
+            ensureSpace(60)
+            currentY = drawSectionTitle(context: context, text: "Chargers Along Route", x: margin, y: currentY)
+            currentY -= 4
+            currentY = drawText(context: context,
+                                text: "\(chargers.count) DC fast charger\(chargers.count == 1 ? "" : "s") found within 2 miles of route",
+                                x: margin, y: currentY, width: contentWidth,
+                                font: font(10), color: textSecondary)
+            currentY -= 8
+
+            for charger in chargers.prefix(20) {  // cap at 20 to avoid runaway pages
+                ensureSpace(80)
+                currentY = drawCard(context: context, x: margin, y: currentY, width: contentWidth) { cardX, cardY, cardW in
+                    var y = cardY
+                    // Header row: network badge concept via text + name
+                    let headerText = "[\(charger.network.shortName.uppercased())]  \(charger.name)"
+                    y = drawText(context: context, text: headerText,
+                                 x: cardX, y: y, width: cardW,
+                                 font: font(11, weight: .bold), color: textPrimary)
+                    y -= 2
+                    y = drawText(context: context, text: charger.address,
+                                 x: cardX, y: y, width: cardW,
+                                 font: font(9), color: textSecondary)
+                    y -= 4
+                    // Stats row
+                    var stats: [String] = []
+                    if let speed = charger.speedKw { stats.append(String(format: "%.0f kW", speed)) }
+                    if let dc = charger.dcFastCount, dc > 0 { stats.append("\(dc) DC fast") }
+                    if let l2 = charger.level2Count, l2 > 0 { stats.append("\(l2) L2") }
+                    if !charger.connectors.isEmpty { stats.append(charger.connectors.joined(separator: " · ")) }
+                    if !stats.isEmpty {
+                        y = drawText(context: context, text: stats.joined(separator: "  ·  "),
+                                     x: cardX, y: y, width: cardW,
+                                     font: font(9, weight: .medium), color: textPrimary)
+                        y -= 2
+                    }
+                    // Price + hours
+                    var meta: [String] = []
+                    meta.append(String(format: "$%.2f/kWh", charger.pricePerKwh))
+                    if let hours = charger.hours, !hours.isEmpty { meta.append(hours) }
+                    y = drawText(context: context, text: meta.joined(separator: "  ·  "),
+                                 x: cardX, y: y, width: cardW,
+                                 font: font(9), color: textSecondary)
+                    return y
+                }
+                currentY -= 6
+            }
+
+            if chargers.count > 20 {
+                currentY = drawText(context: context,
+                                    text: "+ \(chargers.count - 20) more chargers not shown",
+                                    x: margin, y: currentY, width: contentWidth,
+                                    font: font(9), color: textSecondary)
+                currentY -= 8
+            }
+            currentY -= 12
+        }
 
         // MARK: - Footer
 
