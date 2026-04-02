@@ -34,12 +34,16 @@ struct EVRouteDetailView: View {
         var groups: [StopChargers] = []
 
         for stop in route.chargingStops {
-            let stopLocation = CLLocation(latitude: stop.coordinate.latitude, longitude: stop.coordinate.longitude)
+            let sLat = stop.coordinate.latitude, sLon = stop.coordinate.longitude
             var nearby: [NearbyCharger] = []
 
             for charger in chargers {
-                let chargerLocation = CLLocation(latitude: charger.coordinate.latitude, longitude: charger.coordinate.longitude)
-                let dist = stopLocation.distance(from: chargerLocation)
+                // Fast Haversine — avoids CLLocation allocation per charger per stop
+                let dlat = (charger.coordinate.latitude - sLat) * .pi / 180
+                let dlon = (charger.coordinate.longitude - sLon) * .pi / 180
+                let ml = sLat * .pi / 180
+                let a = dlat*dlat + cos(ml)*cos(ml)*dlon*dlon
+                let dist = 6_371_000 * 2 * atan2(sqrt(a), sqrt(1-a))
                 if dist <= radiusMeters {
                     nearby.append(NearbyCharger(id: charger.id, charger: charger, distanceMiles: dist / EVConstants.metersPerMile))
                 }
@@ -442,7 +446,7 @@ struct EVRouteDetailView: View {
                     vehicle: vehicle,
                     chargingStops: route.chargingStops,
                     waypointDistancesMiles: route.waypointDistancesMiles,
-                    waypointNames: waypointNames,
+                    waypointNames: waypointNames
                 )
                     .frame(height: 160)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -934,6 +938,9 @@ struct ElevationChartView: View {
                 .frame(width: chartWidth)
             }
         }
+        .onAppear { recomputeBatteryProfile() }
+        .onChange(of: profile.count) { recomputeBatteryProfile() }
+        .onChange(of: chargingStops.count) { recomputeBatteryProfile() }
     }
 }
 

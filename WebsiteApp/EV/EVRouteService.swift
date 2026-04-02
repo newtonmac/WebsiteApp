@@ -569,7 +569,6 @@ class EVRouteService {
 
         // Fix charging stop coordinates: interpolate real positions from combined polyline.
         // Precompute cumDist ONCE for all stops — avoids O(n) rebuild per stop.
-        let totalRouteMiles = distanceOffsetMiles
         let polyCumDist: [Double] = {
             var d: [Double] = [0]
             d.reserveCapacity(allPolylineCoords.count)
@@ -729,10 +728,10 @@ class EVRouteService {
             fetchedElevations = await fetchElevationsOpenMeteo(uncachedPoints)
         }
 
-        // Store in cache and merge into result (evict oldest 100 if cache exceeds 500)
-        if elevationCache.count + uncachedPoints.count > 500 {
-            let excess = elevationCache.count + uncachedPoints.count - 500
-            elevationCache = Dictionary(uniqueKeysWithValues: Array(elevationCache.dropFirst(excess)))
+        // Evict oldest entries if cache exceeds 500 (keep last 400)
+        if elevationCache.count > 400 {
+            let toRemove = elevationCache.keys.prefix(elevationCache.count - 400)
+            toRemove.forEach { elevationCache.removeValue(forKey: $0) }
         }
         for (i, idx) in uncachedIndices.enumerated() {
             let elev = i < fetchedElevations.count ? fetchedElevations[i] : 0
@@ -798,7 +797,10 @@ class EVRouteService {
             let lats = chunk.map { String($0.latitude) }.joined(separator: ",")
             let lngs = chunk.map { String($0.longitude) }.joined(separator: ",")
 
-            var components = URLComponents(string: "https://api.open-meteo.com/v1/elevation")!
+            guard var components = URLComponents(string: "https://api.open-meteo.com/v1/elevation") else {
+                allElevations.append(contentsOf: Array(repeating: 0, count: chunk.count))
+                continue
+            }
             components.queryItems = [
                 URLQueryItem(name: "latitude", value: lats),
                 URLQueryItem(name: "longitude", value: lngs)

@@ -341,7 +341,7 @@ class EVChargerService {
             return cached.map { mapStationToCharger($0) }
         }
 
-        var components = URLComponents(string: "https://developer.nrel.gov/api/alt-fuel-stations/v1/nearest.json")!
+        guard var components = URLComponents(string: "https://developer.nrel.gov/api/alt-fuel-stations/v1/nearest.json") else { return [] }
         components.queryItems = [
             URLQueryItem(name: "api_key", value: nrelAPIKey),
             URLQueryItem(name: "latitude", value: "\(point.latitude)"),
