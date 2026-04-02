@@ -10,6 +10,7 @@ struct EVRoutePlannerView: View {
     @State private var originCoord: CLLocationCoordinate2D?
     // routeStops: all stops in order — last entry is always the destination
     @State private var routeStops: [WaypointEntry] = [WaypointEntry(placeholder: "Destination")]
+    @State private var routeTask: Task<Void, Never>? = nil
     @State private var draggingID: UUID? = nil
     @State private var stopDragOffset: CGFloat = 0
     @State private var selectedRoute: RouteResult?
@@ -417,7 +418,8 @@ struct EVRoutePlannerView: View {
     private var planButton: some View {
         Button {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-            Task { await planRoute() }
+            routeTask?.cancel()
+            routeTask = Task { await planRoute() }
         } label: {
             HStack {
                 if routeService.isLoading {

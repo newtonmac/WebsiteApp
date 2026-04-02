@@ -413,6 +413,7 @@ class EVRouteService {
 
     /// Multi-leg directions: calculates each leg separately and stitches results.
     /// MapKit does not support waypoints natively, so we chain separate requests.
+    /// Elevation is fetched concurrently across all legs to avoid sequential API delays.
     private func fetchMultiLegRoute(
         waypoints: [CLLocationCoordinate2D],
         vehicle: EVVehicle,
@@ -422,68 +423,93 @@ class EVRouteService {
         minStopMinutes: Double
     ) async throws -> RouteResult? {
         guard waypoints.count >= 2 else { return nil }
+        let legCount = waypoints.count - 1
 
+        // Step 1: Calculate all MKRoute legs concurrently
+        var legs: [MKRoute?] = Array(repeating: nil, count: legCount)
+        try await withThrowingTaskGroup(of: (Int, MKRoute?).self) { group in
+            for i in 0..<legCount {
+                group.addTask {
+                    let req = MKDirections.Request()
+                    req.source = MKMapItem(placemark: MKPlacemark(coordinate: waypoints[i]))
+                    req.destination = MKMapItem(placemark: MKPlacemark(coordinate: waypoints[i + 1]))
+                    req.transportType = .automobile
+                    if avoidHighways { req.highwayPreference = .avoid }
+                    if avoidTolls { req.tollPreference = .avoid }
+                    let response = try await MKDirections(request: req).calculate()
+                    return (i, response.routes.first)
+                }
+            }
+            for try await (idx, route) in group {
+                legs[idx] = route
+            }
+        }
+
+        // Step 2: Sample points for each leg (fewer points per leg = faster elevation fetch)
+        let pointsPerLeg = max(15, 40 / legCount)
+        var legPointSets: [[CLLocationCoordinate2D]] = []
+        for leg in legs {
+            guard let leg = leg else { legPointSets.append([]); continue }
+            legPointSets.append(sampleRoutePoints(route: leg, count: pointsPerLeg))
+        }
+
+        // Step 3: Fetch elevations for all legs CONCURRENTLY
+        var allLegElevations: [[Double]] = Array(repeating: [], count: legCount)
+        await withTaskGroup(of: (Int, [Double]).self) { group in
+            for (i, pts) in legPointSets.enumerated() {
+                guard !pts.isEmpty else { continue }
+                group.addTask {
+                    let elevs = await self.fetchElevations(for: pts)
+                    return (i, elevs)
+                }
+            }
+            for await (idx, elevs) in group {
+                allLegElevations[idx] = elevs
+            }
+        }
+
+        // Step 4: Build combined polyline + elevation profile
         var allPolylineCoords: [CLLocationCoordinate2D] = []
         var totalDistanceM: Double = 0
         var totalTimeS: Double = 0
         var combinedProfile: [ElevationPoint] = []
         var distanceOffsetMiles: Double = 0
 
-        for i in 0..<waypoints.count - 1 {
-            let request = MKDirections.Request()
-            request.source = MKMapItem(placemark: MKPlacemark(coordinate: waypoints[i]))
-            request.destination = MKMapItem(placemark: MKPlacemark(coordinate: waypoints[i + 1]))
-            request.transportType = .automobile
-            if avoidHighways { request.highwayPreference = .avoid }
-            if avoidTolls { request.tollPreference = .avoid }
+        for i in 0..<legCount {
+            guard let leg = legs[i] else { continue }
+            let pts = legPointSets[i]
+            let elevs = allLegElevations[i]
 
-            let directions = MKDirections(request: request)
-            let response = try await directions.calculate()
-
-            guard let bestLeg = response.routes.first else { continue }
-
-            // Collect polyline points (skip first point of each leg after the first to avoid duplicates)
-            let pointCount = bestLeg.polyline.pointCount
-            let pts = bestLeg.polyline.points()
+            // Collect polyline coords (skip first point after leg 0 to avoid duplicates)
+            let pCount = leg.polyline.pointCount
+            let mapPts = leg.polyline.points()
             let startIdx = i == 0 ? 0 : 1
-            for j in startIdx..<pointCount {
-                allPolylineCoords.append(pts[j].coordinate)
+            for j in startIdx..<pCount {
+                allPolylineCoords.append(mapPts[j].coordinate)
             }
 
-            // Sample elevation for this leg
-            let legPoints = sampleRoutePoints(route: bestLeg, count: 40)
-            let legElevations = await fetchElevations(for: legPoints)
-            var legProfile = buildElevationProfile(
-                points: legPoints,
-                elevations: legElevations,
-                totalDistance: bestLeg.distance
-            )
-
-            // Offset distances so profile is continuous across all legs
+            // Build this leg's elevation profile, offset by cumulative distance
+            var legProfile = buildElevationProfile(points: pts, elevations: elevs, totalDistance: leg.distance)
             if distanceOffsetMiles > 0 {
                 legProfile = legProfile.map {
                     ElevationPoint(distance: $0.distance + distanceOffsetMiles, elevation: $0.elevation, grade: $0.grade)
                 }
-                // Skip first point to avoid duplicate junction
                 legProfile = Array(legProfile.dropFirst())
             }
             combinedProfile.append(contentsOf: legProfile)
 
-            totalDistanceM += bestLeg.distance
-            totalTimeS += bestLeg.expectedTravelTime
-            distanceOffsetMiles += bestLeg.distance * EVConstants.milesPerMeter
+            totalDistanceM += leg.distance
+            totalTimeS += leg.expectedTravelTime
+            distanceOffsetMiles += leg.distance * EVConstants.milesPerMeter
         }
 
         guard !combinedProfile.isEmpty else { return nil }
 
         let combinedPolyline = MKPolyline(coordinates: allPolylineCoords, count: allPolylineCoords.count)
         let avgSpeedMps = totalDistanceM / max(1, totalTimeS)
-
-        // Calculate energy using combined profile
         let energy = estimateEnergyFromProfile(combinedProfile, avgSpeedMps: avgSpeedMps, vehicle: vehicle)
         let totalBatteryPct = (energy.totalKwh / vehicle.batteryKwh) * 100
 
-        // Simple charging plan based on total energy
         let chargingPlan = calculateChargingStopsFromProfile(
             profile: combinedProfile,
             avgSpeedMps: avgSpeedMps,
