@@ -19,7 +19,7 @@ struct EVRoutePlannerView: View {
     @State private var selectedCharger: EVCharger?
     @State private var mapStyle: EVMapStyle = .standard
     @State private var summaryPDFItem: PDFItem?
-    @State private var selectedNetworks: Set<ChargerNetwork> = Set(ChargerNetwork.allCases)
+    @State private var selectedNetworks: Set<ChargerNetwork> = [.tesla, .electrifyAmerica]
     @State private var keyboardOffset: CGFloat = 0
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -204,7 +204,7 @@ struct EVRoutePlannerView: View {
                 selectedVehicle = saved
             }
             // Restore saved default networks
-            selectedNetworks = settings.defaultNetworks
+            selectedNetworks = settings.defaultNetworks.isEmpty ? [.tesla, .electrifyAmerica] : settings.defaultNetworks
         }
         .onChange(of: selectedVehicle) { _, newVehicle in
             settings.lastVehicleId = newVehicle.id
@@ -302,25 +302,10 @@ struct EVRoutePlannerView: View {
         GeometryReader { geo in
             let isLandscape = geo.size.width > geo.size.height
             VStack(alignment: .center, spacing: 8) {
-                HStack {
-                    Text("Networks")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(EVTheme.textSecondary)
-                    Spacer()
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            if selectedNetworks.count == ChargerNetwork.allCases.count {
-                                selectedNetworks.removeAll()
-                            } else {
-                                selectedNetworks = Set(ChargerNetwork.allCases)
-                            }
-                        }
-                    } label: {
-                        Text(selectedNetworks.count == ChargerNetwork.allCases.count ? "None" : "All")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(EVTheme.accentBlue)
-                    }
-                }
+                Text("Networks")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(EVTheme.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
 
                 FlowLayout(spacing: 6, alignment: .center) {
                     ForEach(ChargerNetwork.allCases, id: \.self) { network in
