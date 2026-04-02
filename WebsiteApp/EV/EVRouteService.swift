@@ -22,9 +22,6 @@ struct ChargingStop: Identifiable {
         sectionEnergyKwh > 0 ? sectionDistanceMiles / sectionEnergyKwh : 0
     }
 
-    var sectionKwhPerMile: Double {     // kWh/mi for this leg
-        sectionDistanceMiles > 0 ? sectionEnergyKwh / sectionDistanceMiles : 0
-    }
 }
 
 /// Stats for the final section (last stop → destination)

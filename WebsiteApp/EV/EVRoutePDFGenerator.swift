@@ -1,6 +1,5 @@
 import UIKit
 import CoreGraphics
-import CoreLocation
 
 /// Generates a professional PDF report for an EV route with graphs and section breakdowns.
 struct EVRoutePDFGenerator {
