@@ -10,6 +10,8 @@ struct EVRoutePlannerView: View {
     @State private var originCoord: CLLocationCoordinate2D?
     // routeStops: all stops in order — last entry is always the destination
     @State private var routeStops: [WaypointEntry] = [WaypointEntry(placeholder: "Destination")]
+    @State private var draggingID: UUID? = nil
+    @State private var stopDragOffset: CGFloat = 0
     @State private var selectedRoute: RouteResult?
     @State private var showingVehiclePicker = false
     @State private var showingRouteDetail: RouteResult?
@@ -228,7 +230,7 @@ struct EVRoutePlannerView: View {
 
     private var inputSection: some View {
         VStack(spacing: 8) {
-            // Origin — always fixed at top
+            // Origin — always fixed at top, not reorderable
             HStack(spacing: 8) {
                 Image(systemName: "circle.fill")
                     .font(.system(size: 10))
@@ -241,54 +243,72 @@ struct EVRoutePlannerView: View {
                 )
             }
 
-            // Reorderable stops (waypoints + destination)
-            // Each row has a drag handle; the last entry is always the destination
-            List {
-                ForEach($routeStops) { $stop in
-                    let isDestination = stop.id == routeStops.last?.id
-                    let stopIndex = routeStops.firstIndex(where: { $0.id == stop.id }) ?? 0
-                    let waypointNumber = stopIndex + 1
+            // Reorderable stops — VStack (not List) so suggestions are never clipped
+            ForEach(Array(routeStops.enumerated()), id: \.element.id) { index, stop in
+                let isDestination = stop.id == routeStops.last?.id
+                let waypointNumber = index + 1
 
-                    HStack(spacing: 8) {
-                        Image(systemName: isDestination ? "mappin.circle.fill" : "smallcircle.filled.circle")
-                            .font(.system(size: 10))
-                            .foregroundStyle(isDestination ? EVTheme.accentRed : EVTheme.accentYellow)
-                        EVLocationSearchField(
-                            text: $stop.text,
-                            placeholder: isDestination ? "Destination" : "Stop \(waypointNumber)",
-                            coordinate: $stop.coordinate
+                HStack(spacing: 8) {
+                    Image(systemName: isDestination ? "mappin.circle.fill" : "smallcircle.filled.circle")
+                        .font(.system(size: 10))
+                        .foregroundStyle(isDestination ? EVTheme.accentRed : EVTheme.accentYellow)
+
+                    EVLocationSearchField(
+                        text: $routeStops[index].text,
+                        placeholder: isDestination ? "Destination" : "Stop \(waypointNumber)",
+                        coordinate: $routeStops[index].coordinate
+                    )
+
+                    // Drag handle
+                    Image(systemName: "line.3.horizontal")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(EVTheme.textSecondary)
+                        .gesture(
+                            DragGesture()
+                                .onChanged { value in
+                                    draggingID = stop.id
+                                    stopDragOffset = value.translation.height
+                                }
+                                .onEnded { value in
+                                    let rowH: CGFloat = 50
+                                    let delta = Int((value.translation.height / rowH).rounded())
+                                    if delta != 0 {
+                                        let newIdx = max(0, min(routeStops.count - 1, index + delta))
+                                        withAnimation(.spring(response: 0.3)) {
+                                            routeStops.move(fromOffsets: IndexSet(integer: index),
+                                                            toOffset: newIdx > index ? newIdx + 1 : newIdx)
+                                        }
+                                    }
+                                    draggingID = nil
+                                    stopDragOffset = 0
+                                }
                         )
-                        // Remove button — only for non-destination waypoints
-                        if !isDestination {
-                            Button {
+
+                    // Remove button — waypoints only, not destination
+                    if !isDestination {
+                        Button {
+                            withAnimation {
                                 routeStops.removeAll { $0.id == stop.id }
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .font(.system(size: 18))
-                                    .foregroundStyle(EVTheme.textSecondary)
                             }
-                            .buttonStyle(.plain)
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 18))
+                                .foregroundStyle(EVTheme.textSecondary)
                         }
                     }
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
-                    .listRowSeparator(.hidden)
                 }
-                .onMove { from, to in
-                    routeStops.move(fromOffsets: from, toOffset: to)
-                }
+                .offset(y: draggingID == stop.id ? stopDragOffset : 0)
+                .zIndex(draggingID == stop.id ? 1 : 0)
+                .animation(.interactiveSpring(), value: draggingID)
             }
-            .listStyle(.plain)
-            .scrollDisabled(true)
-            .environment(\.editMode, .constant(.active))
-            .frame(height: CGFloat(routeStops.count) * 52)
 
-            // Add stop button (up to 4 stops total including destination)
+            // Add stop button (max 4 stops including destination)
             if routeStops.count < 5 {
                 Button {
-                    // Insert new waypoint before destination (before last item)
                     let insertIndex = max(0, routeStops.count - 1)
-                    routeStops.insert(WaypointEntry(), at: insertIndex)
+                    withAnimation {
+                        routeStops.insert(WaypointEntry(), at: insertIndex)
+                    }
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "plus.circle.fill")
