@@ -207,7 +207,6 @@ class EVRouteService {
                     let chargingPlan = calculateChargingStops(
                         profile: profile,
                         points: points,
-                        route: route,
                         vehicle: vehicle,
                         totalEnergyKwh: energy.totalKwh,
                         preferredChargerSpeedKw: preferredChargerSpeedKw,
@@ -300,8 +299,6 @@ class EVRouteService {
     private func calculateChargingStops(
         profile: [ElevationPoint],
         points: [CLLocationCoordinate2D],
-        route: MKRoute? = nil,
-        avgSpeedMpsOverride: Double? = nil,
         vehicle: EVVehicle,
         totalEnergyKwh: Double,
         preferredChargerSpeedKw: Double = 150,
@@ -322,12 +319,9 @@ class EVRouteService {
             return ChargingPlan(stops: [], finalBatteryPct: max(0, startBatteryPct - totalBatteryPct), finalSection: nil)
         }
 
-        // Pre-compute per-segment energy (kWh) and store for leg aggregation
         let segmentCount = profile.count - 1
         var segmentEnergyKwh: [Double] = []
         var segmentEnergyPcts: [Double] = []
-        // Use override speed (for multi-leg) or derive from MKRoute
-        let avgSpeedMps = avgSpeedMpsOverride ?? (route.map { $0.distance / max(1, $0.expectedTravelTime) } ?? 25.0)
 
         for i in 1..<profile.count {
             let segKwh = segmentEnergy(
@@ -538,12 +532,11 @@ class EVRouteService {
 
         let combinedPolyline = MKPolyline(coordinates: allPolylineCoords, count: allPolylineCoords.count)
         let avgSpeedMps = totalDistanceM / max(1, totalTimeS)
-        let energy = estimateEnergyFromProfile(combinedProfile, avgSpeedMps: avgSpeedMps, vehicle: vehicle)
+        let energy = estimateEnergyFromProfile(combinedProfile, vehicle: vehicle)
         let totalBatteryPct = (energy.totalKwh / vehicle.batteryKwh) * 100
 
         let chargingPlan = calculateChargingStopsFromProfile(
             profile: combinedProfile,
-            avgSpeedMps: avgSpeedMps,
             vehicle: vehicle,
             totalEnergyKwh: energy.totalKwh,
             preferredChargerSpeedKw: preferredChargerSpeedKw,
@@ -588,7 +581,7 @@ class EVRouteService {
             averageGrade: energy.avgGrade,
             peakGrade: energy.peakGrade,
             elevationProfile: combinedProfile,
-            score: energy.totalKwh * 0.8 + (totalTimeS / 3600) * 0.1,
+            score: energy.totalKwh * 0.80 + (totalTimeS / 3600) * 0.15,  // matches computeScore weights
             chargingStops: enrichedStops,
             finalBatteryPct: chargingPlan.finalBatteryPct,
             finalSection: chargingPlan.finalSection,
@@ -598,8 +591,8 @@ class EVRouteService {
         )
     }
 
-    /// Energy estimation from a profile + speed (no MKRoute needed).
-    private func estimateEnergyFromProfile(_ profile: [ElevationPoint], avgSpeedMps: Double, vehicle: EVVehicle) -> EnergyResult {
+    /// Energy estimation from a profile (no MKRoute needed).
+    private func estimateEnergyFromProfile(_ profile: [ElevationPoint], vehicle: EVVehicle) -> EnergyResult {
         var totalEnergy = 0.0
         var totalGain = 0.0
         var totalLoss = 0.0
@@ -624,7 +617,6 @@ class EVRouteService {
     /// Charging stop calculation that works from a profile + speed (no MKRoute needed).
     private func calculateChargingStopsFromProfile(
         profile: [ElevationPoint],
-        avgSpeedMps: Double,
         vehicle: EVVehicle,
         totalEnergyKwh: Double,
         preferredChargerSpeedKw: Double,
@@ -645,8 +637,6 @@ class EVRouteService {
         return calculateChargingStops(
             profile: profile,
             points: fakePoints,
-            route: nil,
-            avgSpeedMpsOverride: avgSpeedMps,
             vehicle: vehicle,
             totalEnergyKwh: totalEnergyKwh,
             preferredChargerSpeedKw: preferredChargerSpeedKw,
@@ -797,9 +787,15 @@ class EVRouteService {
                                         totalDistance: Double) -> [ElevationPoint] {
         guard points.count == elevations.count, points.count >= 3 else { return [] }
 
+        // Three-pass smoothing — suppresses GPS noise and elevation API spikes
+        // that would otherwise create unrealistic grade values
         var smoothed = elevations
-        for i in 1..<(elevations.count - 1) {
-            smoothed[i] = (elevations[i-1] + elevations[i] + elevations[i+1]) / 3.0
+        for _ in 0..<3 {
+            var pass = smoothed
+            for i in 1..<(smoothed.count - 1) {
+                pass[i] = (smoothed[i-1] + smoothed[i] + smoothed[i+1]) / 3.0
+            }
+            smoothed = pass
         }
 
         let totalMiles = totalDistance * EVConstants.milesPerMeter
@@ -809,9 +805,12 @@ class EVRouteService {
             let dist = totalMiles * Double(i) / Double(points.count - 1)
             var grade = 0.0
             if i > 0 {
-                let loc1 = CLLocation(latitude: points[i-1].latitude, longitude: points[i-1].longitude)
-                let loc2 = CLLocation(latitude: points[i].latitude, longitude: points[i].longitude)
-                let segDist = loc1.distance(from: loc2)
+                // Fast flat-earth approximation — avoids CLLocation allocation in hot loop
+                let dlat = (points[i].latitude  - points[i-1].latitude)  * .pi / 180
+                let dlon = (points[i].longitude - points[i-1].longitude) * .pi / 180
+                let midLat = points[i-1].latitude * .pi / 180
+                let a = dlat*dlat + cos(midLat) * cos(midLat) * dlon*dlon
+                let segDist = 6_371_000 * 2 * atan2(sqrt(a), sqrt(1-a))
                 if segDist > 0 {
                     grade = ((smoothed[i] - smoothed[i-1]) / segDist) * 100
                 }
@@ -924,12 +923,14 @@ class EVRouteService {
         }
         let targetMeters = targetMiles * EVConstants.metersPerMile
 
-        // Build cumulative distance array
+        // Build cumulative distance using fast Haversine (avoids CLLocation allocation)
         var cumDist: [Double] = [0]
         for i in 1..<coords.count {
-            let d = CLLocation(latitude: coords[i-1].latitude, longitude: coords[i-1].longitude)
-                .distance(from: CLLocation(latitude: coords[i].latitude, longitude: coords[i].longitude))
-            cumDist.append(cumDist[i-1] + d)
+            let dlat = (coords[i].latitude  - coords[i-1].latitude)  * .pi / 180
+            let dlon = (coords[i].longitude - coords[i-1].longitude) * .pi / 180
+            let midLat = coords[i-1].latitude * .pi / 180
+            let a = dlat*dlat + cos(midLat)*cos(midLat)*dlon*dlon
+            cumDist.append(cumDist[i-1] + 6_371_000 * 2 * atan2(sqrt(a), sqrt(1-a)))
         }
 
         let totalMeters = cumDist.last ?? 1

@@ -2,6 +2,12 @@ import Foundation
 import MapKit
 import Observation
 
+/// Pre-compiled regex for parsing kWh pricing strings — compiled once at app launch
+private let evPriceRegex = try? NSRegularExpression(
+    pattern: #"\$?(\d+\.?\d*)\s*(?:/\s*kwh|per\s*kwh|\/kwh)"#,
+    options: .caseInsensitive
+)
+
 struct EVCharger: Identifiable, Hashable {
     let id: String
     let name: String
@@ -20,24 +26,19 @@ struct EVCharger: Identifiable, Hashable {
         (level2Count ?? 0) + (dcFastCount ?? 0)
     }
 
-    /// Parse price per kWh from NREL pricing string, fallback to network default
+    /// Parse price per kWh from NREL pricing string, fallback to network default.
+    /// Uses a static pre-compiled regex to avoid recompilation on each access.
     var pricePerKwh: Double {
-        if let pricing = pricing, !pricing.isEmpty {
-            // Try to extract a $/kWh value from the free-text pricing string
-            // Common patterns: "$0.35/kWh", "$0.48 per kWh", "0.39/kWh"
-            let lower = pricing.lowercased()
-            if lower.contains("kwh") || lower.contains("kw") {
-                let pattern = #"\$?(\d+\.?\d*)\s*(?:/\s*kwh|per\s*kwh|\/kwh)"#
-                if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
-                   let match = regex.firstMatch(in: pricing, range: NSRange(pricing.startIndex..., in: pricing)),
-                   let range = Range(match.range(at: 1), in: pricing),
-                   let value = Double(pricing[range]),
-                   value > 0 && value < 5.0 {
-                    return value
-                }
-            }
+        guard let pricing = pricing, !pricing.isEmpty,
+              pricing.lowercased().contains("kwh") || pricing.lowercased().contains("kw"),
+              let regex = evPriceRegex,
+              let match = regex.firstMatch(in: pricing, range: NSRange(pricing.startIndex..., in: pricing)),
+              let range = Range(match.range(at: 1), in: pricing),
+              let value = Double(pricing[range]),
+              value > 0, value < 5.0 else {
+            return network.defaultPricePerKwh
         }
-        return network.defaultPricePerKwh
+        return value
     }
 
     /// Estimate charging cost for a given number of kWh
@@ -123,6 +124,12 @@ class EVChargerService {
     private var cache: [String: [NRELStation]] = [:]
     private var ocmCache: [String: [OCMStation]] = [:]
 
+    /// Compiled once — avoids re-compiling on every pricePerKwh access
+    private static let priceRegex = try? NSRegularExpression(
+        pattern: #"\$?(\d+\.?\d*)\s*(?:/\s*kwh|per\s*kwh|\/kwh)"#,
+        options: .caseInsensitive
+    )
+
     /// Search along a raw polyline (for multi-leg routes where MKRoute is nil)
     func findChargersAlongPolyline(_ polyline: MKPolyline) async {
         isLoading = true
@@ -151,17 +158,18 @@ class EVChargerService {
             return results
         }
 
+        // Build spatial grid from route check points for O(1) proximity lookup
+        // instead of O(n) linear scan per charger
         let maxMeters = 2.0 * EVConstants.metersPerMile
+        let routeGrid = SpatialGrid(points: routeCheckPoints, radiusMeters: maxMeters)
         var seenIds = Set<String>()
         var allChargers: [EVCharger] = []
         for charger in fetchedChargers {
             guard !seenIds.contains(charger.id) else { continue }
             seenIds.insert(charger.id)
-            let chargerLoc = CLLocation(latitude: charger.coordinate.latitude, longitude: charger.coordinate.longitude)
-            let isNear = routeCheckPoints.contains {
-                chargerLoc.distance(from: CLLocation(latitude: $0.latitude, longitude: $0.longitude)) <= maxMeters
+            if routeGrid.hasPoint(near: charger.coordinate) {
+                allChargers.append(charger)
             }
-            if isNear { allChargers.append(charger) }
         }
 
         // Cap chargers per ~10-mile segment (same logic as route-based search)
@@ -229,17 +237,13 @@ class EVChargerService {
             return results
         }
 
-        // Deduplicate and filter to within 2 miles of route using pre-sampled points
+        // Deduplicate and filter using spatial grid — O(1) per charger instead of O(n)
         let maxMeters = 2.0 * EVConstants.metersPerMile
+        let routeGrid = SpatialGrid(points: routeCheckPoints, radiusMeters: maxMeters)
         for charger in fetchedChargers {
             guard !seenIds.contains(charger.id) else { continue }
             seenIds.insert(charger.id)
-
-            let chargerLoc = CLLocation(latitude: charger.coordinate.latitude, longitude: charger.coordinate.longitude)
-            let isNearRoute = routeCheckPoints.contains { pt in
-                chargerLoc.distance(from: CLLocation(latitude: pt.latitude, longitude: pt.longitude)) <= maxMeters
-            }
-            if isNearRoute {
+            if routeGrid.hasPoint(near: charger.coordinate) {
                 allChargers.append(charger)
             }
         }
@@ -347,6 +351,7 @@ class EVChargerService {
             URLQueryItem(name: "longitude", value: "\(point.longitude)"),
             URLQueryItem(name: "radius", value: "\(radiusMiles)"),
             URLQueryItem(name: "fuel_type", value: "ELEC"),
+            URLQueryItem(name: "ev_charging_level", value: "dc_fast"),  // DC fast only — excludes slow L2
             URLQueryItem(name: "limit", value: "50"),
             URLQueryItem(name: "status", value: "E")
         ]
@@ -532,6 +537,53 @@ class EVChargerService {
         }
     }
 
+}
+
+// MARK: - Spatial Grid (O(1) proximity lookup for route filtering)
+
+/// Buckets coordinates into a lat/lon grid for fast proximity checks.
+/// Eliminates O(n*m) charger × route-point comparisons.
+struct SpatialGrid {
+    private var cells: [String: [CLLocationCoordinate2D]] = [:]
+    private let radiusMeters: Double
+    private let cellSizeDeg: Double  // degrees per cell
+
+    init(points: [CLLocationCoordinate2D], radiusMeters: Double) {
+        self.radiusMeters = radiusMeters
+        // ~111km per degree latitude; cell size = 2× radius to guarantee coverage
+        self.cellSizeDeg = (radiusMeters * 2) / 111_000
+        for pt in points {
+            let key = cellKey(pt)
+            cells[key, default: []].append(pt)
+        }
+    }
+
+    func hasPoint(near coord: CLLocationCoordinate2D) -> Bool {
+        let lat = coord.latitude, lon = coord.longitude
+        let cellLat = floor(lat / cellSizeDeg)
+        let cellLon = floor(lon / cellSizeDeg)
+
+        // Check 3×3 grid of neighboring cells
+        for dLat in -1...1 {
+            for dLon in -1...1 {
+                let key = "\(Int(cellLat) + dLat),\(Int(cellLon) + dLon)"
+                guard let pts = cells[key] else { continue }
+                for pt in pts {
+                    let dlat = (pt.latitude  - lat) * .pi / 180
+                    let dlon = (pt.longitude - lon) * .pi / 180
+                    let midLat = lat * .pi / 180
+                    let a = dlat*dlat + cos(midLat)*cos(midLat)*dlon*dlon
+                    let dist = 6_371_000 * 2 * atan2(sqrt(a), sqrt(1-a))
+                    if dist <= radiusMeters { return true }
+                }
+            }
+        }
+        return false
+    }
+
+    private func cellKey(_ coord: CLLocationCoordinate2D) -> String {
+        "\(Int(floor(coord.latitude / cellSizeDeg))),\(Int(floor(coord.longitude / cellSizeDeg)))"
+    }
 }
 
 // MARK: - NREL API Models

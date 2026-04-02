@@ -81,7 +81,7 @@ struct EVRoutePlannerView: View {
                 chargers: mapChargers,
                 origin: originCoord,
                 destination: routeStops.last?.coordinate,
-                waypoints: routeStops.dropLast().compactMap { $0.coordinate },
+                waypoints: waypointCoordinates,
                 selectedCharger: $selectedCharger,
                 mapStyle: $mapStyle,
                 panelHeight: panelHeight
@@ -189,7 +189,7 @@ struct EVRoutePlannerView: View {
         }
         .sheet(item: $showingRouteDetail) { route in
             EVRouteDetailView(route: route, vehicle: selectedVehicle, chargers: chargerService.chargers,
-                              waypointNames: routeStops.dropLast().map { $0.text })
+                              waypointNames: waypointStopNames)
         }
         .sheet(item: $selectedCharger) { charger in
             ChargerDetailSheet(charger: charger)
@@ -478,6 +478,12 @@ struct EVRoutePlannerView: View {
         originCoord != nil && routeStops.last?.coordinate != nil
     }
 
+    /// Names of intermediate stops (all entries except destination)
+    private var waypointStopNames: [String] { routeStops.dropLast().map { $0.text } }
+
+    /// Coordinates of intermediate stops (all entries except destination)  
+    private var waypointCoordinates: [CLLocationCoordinate2D] { routeStops.dropLast().compactMap { $0.coordinate } }
+
     // MARK: - Route Results
 
     private var routeResultsSection: some View {
@@ -611,17 +617,7 @@ struct EVRoutePlannerView: View {
         let costPerKwh = settings.electricityCostPerKwh
         let distStr = settings.distanceString(route.distanceMiles)
 
-        // Derive consistent climbing/regen from the physics model using profile data
-        // This matches what EVRouteService actually calculated (not a simplified approximation)
-        let battPcts = computeBatteryProfile(
-            profile: route.elevationProfile,
-            vehicle: vehicle,
-            chargingStops: route.chargingStops,
-            startPct: settings.startChargePct,
-            chargeTargetPct: settings.chargeTargetPct
-        )
-        // Estimate climbing energy = total positive battery drops due to grade only
-        // Use simple potential energy as a consistent display figure (both are approximations)
+        // Estimate climbing/regen as display-only breakdown figures
         let climbingKwh = route.elevationGain > 0
             ? max(0, route.energyKwh - route.distanceMiles * vehicle.effKwhMi)
             : 0
@@ -819,7 +815,7 @@ struct EVRoutePlannerView: View {
                     vehicle: selectedVehicle,
                     chargingStops: route.chargingStops,
                     waypointDistancesMiles: route.waypointDistancesMiles,
-                    waypointNames: routeStops.dropLast().map { $0.text }
+                    waypointNames: waypointStopNames
                 )
                     .frame(height: 160)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -857,8 +853,8 @@ struct EVRoutePlannerView: View {
     private func planRoute() async {
         guard let origin = originCoord, let dest = routeStops.last?.coordinate else { return }
 
-        let waypoints = Array(routeStops.dropLast()).compactMap { $0.coordinate }
-        let stopNames = Array(routeStops.dropLast()).map { $0.text }
+        let waypoints = waypointCoordinates
+        let stopNames = waypointStopNames
         await routeService.planRoute(
             from: origin, to: dest, stops: waypoints, stopNames: stopNames, vehicle: selectedVehicle,
             startBattery: settings.startChargePct,
@@ -899,7 +895,7 @@ struct EVRoutePlannerView: View {
 
     private func googleMapsURL(for route: RouteResult) -> URL? {
         guard let origin = originCoord, let dest = routeStops.last?.coordinate else { return nil }
-        let waypoints = routeStops.dropLast().compactMap { $0.coordinate }
+        let waypoints = waypointCoordinates
         var urlStr = "https://www.google.com/maps/dir/?api=1&origin=\(origin.latitude),\(origin.longitude)&destination=\(dest.latitude),\(dest.longitude)&travelmode=driving"
         if !waypoints.isEmpty {
             let waypointStr = waypoints.map { "\($0.latitude),\($0.longitude)" }.joined(separator: "|")
@@ -911,7 +907,7 @@ struct EVRoutePlannerView: View {
     private func appleMapsURL(for route: RouteResult) -> URL? {
         guard let origin = originCoord, let dest = routeStops.last?.coordinate else { return nil }
         // Apple Maps supports multiple daddr params for waypoints
-        let waypoints = routeStops.dropLast().compactMap { $0.coordinate }
+        let waypoints = waypointCoordinates
         var urlStr = "https://maps.apple.com/?saddr=\(origin.latitude),\(origin.longitude)"
         for wp in waypoints {
             urlStr += "&daddr=\(wp.latitude),\(wp.longitude)"
@@ -937,47 +933,6 @@ struct WaypointEntry: Identifiable {
 
     init(placeholder: String = "") {
         self.placeholder = placeholder
-    }
-}
-
-// MARK: - Toggle Row (matches web app style)
-
-struct EVToggleRow: View {
-    let label: String
-    let icon: String
-    @Binding var isOn: Bool
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-
-    private var isIPad: Bool { horizontalSizeClass == .regular }
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.system(size: isIPad ? 18 : 14))
-                .foregroundStyle(isOn ? EVTheme.accentGreen : EVTheme.textSecondary)
-                .frame(width: isIPad ? 26 : 20)
-
-            // Custom toggle switch matching web app style
-            ZStack(alignment: isOn ? .trailing : .leading) {
-                RoundedRectangle(cornerRadius: isIPad ? 14 : 10)
-                    .fill(isOn ? EVTheme.accentGreen.opacity(0.25) : EVTheme.border)
-                    .frame(width: isIPad ? 50 : 36, height: isIPad ? 28 : 20)
-
-                Circle()
-                    .fill(isOn ? EVTheme.accentGreen : EVTheme.textSecondary)
-                    .frame(width: isIPad ? 22 : 16, height: isIPad ? 22 : 16)
-                    .padding(.horizontal, 3)
-            }
-            .animation(.easeInOut(duration: 0.2), value: isOn)
-            .onTapGesture {
-                isOn.toggle()
-            }
-
-            Text(label)
-                .font(.system(size: isIPad ? 16 : 13))
-                .foregroundStyle(EVTheme.textSecondary)
-        }
-        .padding(.vertical, isIPad ? 8 : 4)
     }
 }
 
