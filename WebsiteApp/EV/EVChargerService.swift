@@ -455,6 +455,10 @@ class EVChargerService {
             request.setValue("application/json", forHTTPHeaderField: "Accept")
             let (data, _) = try await URLSession.shared.data(for: request)
             let stations = try JSONDecoder().decode([OCMStation].self, from: data)
+            // Evict oldest entry if OCM cache exceeds 100
+            if ocmCache.count > 100, let oldest = ocmCache.keys.first {
+                ocmCache.removeValue(forKey: oldest)
+            }
             ocmCache[cacheKey] = stations
             evLog("OCM: \(stations.count) stations near \(String(format: "%.3f", point.latitude)),\(String(format: "%.3f", point.longitude))")
             return stations
@@ -499,16 +503,20 @@ class EVChargerService {
 
         evLog("OCM: \(allOCM.count) unique stations for speed matching")
 
-        // Match each NREL charger to nearest OCM station within 200m
+        // Match each NREL charger to nearest OCM station within 200m (fast Haversine)
         return chargers.map { charger in
-            let chargerLoc = CLLocation(latitude: charger.coordinate.latitude, longitude: charger.coordinate.longitude)
+            let cLat = charger.coordinate.latitude, cLon = charger.coordinate.longitude
             var bestMatch: OCMStation?
             var bestDist = Double.greatestFiniteMagnitude
 
             for ocm in allOCM {
                 guard let lat = ocm.AddressInfo?.Latitude, let lon = ocm.AddressInfo?.Longitude else { continue }
-                let dist = chargerLoc.distance(from: CLLocation(latitude: lat, longitude: lon))
-                if dist < bestDist && dist < 200 { // within 200 meters
+                let dlat = (lat - cLat) * .pi / 180
+                let dlon = (lon - cLon) * .pi / 180
+                let ml = cLat * .pi / 180
+                let a = dlat*dlat + cos(ml)*cos(ml)*dlon*dlon
+                let dist = 6_371_000 * 2 * atan2(sqrt(a), sqrt(1-a))
+                if dist < bestDist && dist < 200 {
                     bestDist = dist
                     bestMatch = ocm
                 }
