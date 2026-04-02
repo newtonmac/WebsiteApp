@@ -359,6 +359,14 @@ class EVRouteService {
                 // Need to charge before this segment
                 let pointIdx = min(i, points.count - 1)
                 let arrivalPct = currentBatteryPct
+
+                // Skip stop if already at or above charge target (e.g. downhill regen)
+                guard arrivalPct < chargeTargetPct else {
+                    currentBatteryPct -= energyNeeded
+                    currentBatteryPct = max(0, currentBatteryPct)
+                    continue
+                }
+
                 let energyToAdd = (chargeTargetPct - arrivalPct) / 100.0 * vehicle.batteryKwh
 
                 // Compute per-section stats for the section ending at this stop
@@ -546,13 +554,25 @@ class EVRouteService {
         let stopCount = waypoints.count - 2
         let stopLabel = stopCount == 1 ? "1 stop" : "\(stopCount) stops"
 
-        // Fix charging stop coordinates: interpolate real positions from combined polyline
+        // Fix charging stop coordinates: interpolate real positions from combined polyline.
+        // Precompute cumDist ONCE for all stops — avoids O(n) rebuild per stop.
         let totalRouteMiles = distanceOffsetMiles
+        let polyCumDist: [Double] = {
+            var d: [Double] = [0]
+            for i in 1..<allPolylineCoords.count {
+                let dlat = (allPolylineCoords[i].latitude  - allPolylineCoords[i-1].latitude)  * .pi / 180
+                let dlon = (allPolylineCoords[i].longitude - allPolylineCoords[i-1].longitude) * .pi / 180
+                let ml = allPolylineCoords[i-1].latitude * .pi / 180
+                let a = dlat*dlat + cos(ml)*cos(ml)*dlon*dlon
+                d.append(d[i-1] + 6_371_000 * 2 * atan2(sqrt(a), sqrt(1-a)))
+            }
+            return d
+        }()
         let enrichedStops = chargingPlan.stops.map { stop -> ChargingStop in
-            let coord = coordinateAlongPolyline(
+            let coord = interpolateCoordinate(
                 coords: allPolylineCoords,
-                targetMiles: stop.distanceMiles,
-                totalMiles: totalRouteMiles
+                cumDist: polyCumDist,
+                targetMiles: stop.distanceMiles
             )
             return ChargingStop(
                 distanceMiles: stop.distanceMiles,
@@ -668,14 +688,25 @@ class EVRouteService {
 
         evLog("Elevation: \(points.count - uncachedPoints.count) cached, \(uncachedPoints.count) to fetch")
 
-        // Fetch uncached points
+        // Fetch uncached points — chunks run concurrently for lower latency
         let chunkSize = 200
-        var fetchedElevations: [Double] = []
-        for chunkStart in stride(from: 0, to: uncachedPoints.count, by: chunkSize) {
-            let chunkEnd = min(chunkStart + chunkSize, uncachedPoints.count)
-            let chunk = Array(uncachedPoints[chunkStart..<chunkEnd])
-            let elevs = await fetchElevationOpenElevation(chunk)
-            fetchedElevations.append(contentsOf: elevs)
+        let chunkCount = Int(ceil(Double(uncachedPoints.count) / Double(chunkSize)))
+        var fetchedElevations: [Double] = Array(repeating: 0, count: uncachedPoints.count)
+
+        await withTaskGroup(of: (Int, [Double]).self) { group in
+            for ci in 0..<chunkCount {
+                let start = ci * chunkSize
+                let end = min(start + chunkSize, uncachedPoints.count)
+                let chunk = Array(uncachedPoints[start..<end])
+                group.addTask {
+                    return (start, await self.fetchElevationOpenElevation(chunk))
+                }
+            }
+            for await (start, elevs) in group {
+                for (j, e) in elevs.enumerated() where start + j < fetchedElevations.count {
+                    fetchedElevations[start + j] = e
+                }
+            }
         }
 
         // Fallback if all zeros
@@ -813,6 +844,7 @@ class EVRouteService {
                 let segDist = 6_371_000 * 2 * atan2(sqrt(a), sqrt(1-a))
                 if segDist > 0 {
                     grade = ((smoothed[i] - smoothed[i-1]) / segDist) * 100
+                    grade = max(-30, min(30, grade))  // clamp: GPS/API spikes can produce impossible grades
                 }
             }
             profile.append(ElevationPoint(distance: dist, elevation: smoothed[i], grade: grade))
@@ -853,6 +885,7 @@ class EVRouteService {
         vehicle: EVVehicle
     ) -> Double {
         let segDistMiles = profile[i].distance - profile[i - 1].distance
+        guard segDistMiles > 0 else { return 0 }  // skip degenerate segments
         let elevDiff = profile[i].elevation - profile[i - 1].elevation  // meters, positive = climb
 
         // Flat baseline — EPA-calibrated real-world consumption
@@ -912,31 +945,19 @@ class EVRouteService {
         return energyScore + timeScore + gradeScore
     }
 
-    /// Interpolate a geographic coordinate at a given distance (miles) along a polyline
-    private func coordinateAlongPolyline(
+    /// Interpolate a coordinate at targetMiles along a polyline with pre-built cumDist.
+    /// Caller should compute cumDist once and reuse across multiple stops.
+    private func interpolateCoordinate(
         coords: [CLLocationCoordinate2D],
-        targetMiles: Double,
-        totalMiles: Double
+        cumDist: [Double],
+        targetMiles: Double
     ) -> CLLocationCoordinate2D {
-        guard coords.count >= 2, totalMiles > 0 else {
+        guard coords.count >= 2, let totalMeters = cumDist.last, totalMeters > 0 else {
             return coords.first ?? CLLocationCoordinate2D(latitude: 0, longitude: 0)
         }
-        let targetMeters = targetMiles * EVConstants.metersPerMile
+        let clampedTarget = min(targetMiles * EVConstants.metersPerMile, totalMeters)
 
-        // Build cumulative distance using fast Haversine (avoids CLLocation allocation)
-        var cumDist: [Double] = [0]
-        for i in 1..<coords.count {
-            let dlat = (coords[i].latitude  - coords[i-1].latitude)  * .pi / 180
-            let dlon = (coords[i].longitude - coords[i-1].longitude) * .pi / 180
-            let midLat = coords[i-1].latitude * .pi / 180
-            let a = dlat*dlat + cos(midLat)*cos(midLat)*dlon*dlon
-            cumDist.append(cumDist[i-1] + 6_371_000 * 2 * atan2(sqrt(a), sqrt(1-a)))
-        }
-
-        let totalMeters = cumDist.last ?? 1
-        let clampedTarget = min(targetMeters, totalMeters)
-
-        // Binary search for the segment containing targetMeters
+        // Binary search
         var lo = 0, hi = cumDist.count - 2
         while lo < hi {
             let mid = (lo + hi) / 2
@@ -945,10 +966,9 @@ class EVRouteService {
 
         let segLen = cumDist[lo + 1] - cumDist[lo]
         let t = segLen > 0 ? (clampedTarget - cumDist[lo]) / segLen : 0
-        let p1 = coords[lo]
-        let p2 = coords[min(lo + 1, coords.count - 1)]
+        let p1 = coords[lo], p2 = coords[min(lo + 1, coords.count - 1)]
         return CLLocationCoordinate2D(
-            latitude: p1.latitude + t * (p2.latitude - p1.latitude),
+            latitude:  p1.latitude  + t * (p2.latitude  - p1.latitude),
             longitude: p1.longitude + t * (p2.longitude - p1.longitude)
         )
     }

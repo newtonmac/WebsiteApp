@@ -715,9 +715,12 @@ struct ElevationChartView: View {
     }
 
     /// Calculate battery % at each point using shared physics-based model.
-    private var batteryProfile: [Double] {
-        guard let vehicle = vehicle else { return [] }
-        return computeBatteryProfile(
+    /// Cached battery profile — recomputed only when inputs change, not on every redraw.
+    @State private var cachedBatteryProfile: [Double] = []
+
+    private func recomputeBatteryProfile() {
+        guard let vehicle = vehicle else { cachedBatteryProfile = []; return }
+        cachedBatteryProfile = computeBatteryProfile(
             profile: profile,
             vehicle: vehicle,
             chargingStops: chargingStops,
@@ -727,7 +730,7 @@ struct ElevationChartView: View {
     }
 
     var body: some View {
-        let battPcts = batteryProfile
+        let battPcts = cachedBatteryProfile
         let hasBattery = !battPcts.isEmpty
         let chartRight: CGFloat = hasBattery ? 35 : 8
 

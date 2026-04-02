@@ -41,12 +41,7 @@ struct EVCharger: Identifiable, Hashable {
         return value
     }
 
-    /// Estimate charging cost for a given number of kWh
-    func estimatedCost(forKwh kwh: Double) -> Double {
-        kwh * pricePerKwh
-    }
-
-    static func == (lhs: EVCharger, rhs: EVCharger) -> Bool {
+static func == (lhs: EVCharger, rhs: EVCharger) -> Bool {
         lhs.id == rhs.id
     }
 

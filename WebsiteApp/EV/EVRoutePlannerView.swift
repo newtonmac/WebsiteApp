@@ -61,8 +61,12 @@ struct EVRoutePlannerView: View {
     }
 
     private var panelHeight: CGFloat {
-        let screenH = UIScreen.main.bounds.height
-        let screenW = UIScreen.main.bounds.width
+        // Use UIWindowScene instead of deprecated UIScreen.main.bounds
+        let screenBounds = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first?.screen.bounds ?? UIScreen.main.bounds
+        let screenH = screenBounds.height
+        let screenW = screenBounds.width
         let isLandscape = screenW > screenH
         let expandFraction: CGFloat = isLandscape ? 0.65 : expandedFraction
         let collapseFraction: CGFloat = isLandscape ? 0.15 : collapsedFraction
@@ -214,7 +218,8 @@ struct EVRoutePlannerView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { notification in
             if let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
-                let screenH = UIScreen.main.bounds.height
+                let screenH = (UIApplication.shared.connectedScenes
+                    .compactMap { $0 as? UIWindowScene }.first?.screen.bounds ?? UIScreen.main.bounds).height
                 // Cap offset so panel top doesn't go above the screen
                 let maxOffset = max(0, screenH - panelHeight)
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
