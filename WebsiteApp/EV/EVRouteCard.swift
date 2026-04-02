@@ -77,7 +77,7 @@ struct EVRouteCard: View {
                 )
                 Spacer()
                 EVStatItem(
-                    value: settings.efficiencyString(kwhPerMile: route.energyKwh / max(0.1, route.distanceMiles)),
+                    value: settings.efficiencyInverse(miPerKwh: route.efficiency),
                     unit: "",
                     label: "EFFICIENCY"
                 )
