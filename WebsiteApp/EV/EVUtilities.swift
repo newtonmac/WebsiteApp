@@ -100,6 +100,7 @@ func computeBatteryProfile(
     guard profile.count >= 2 else { return [] }
 
     var batteryPcts: [Double] = [startPct]
+    batteryPcts.reserveCapacity(profile.count)
     var currentPct = startPct
     let stopDistances = chargingStops.map { $0.distanceMiles }
 
@@ -160,7 +161,8 @@ func samplePolylinePoints(polyline: MKPolyline, count: Int) -> [CLLocationCoordi
         // Fast Haversine approximation for short segments (avoids CLLocation allocation)
         let dlat = (p2.latitude  - p1.latitude)  * .pi / 180
         let dlon = (p2.longitude - p1.longitude) * .pi / 180
-        let a = dlat*dlat + cos(p1.latitude * .pi/180) * cos(p2.latitude * .pi/180) * dlon*dlon
+        let midLat = (p1.latitude + p2.latitude) * 0.5 * .pi / 180
+        let a = dlat*dlat + cos(midLat) * cos(midLat) * dlon*dlon
         let d = 6_371_000 * 2 * atan2(sqrt(a), sqrt(1-a))
         cumDist.append(cumDist[i-1] + d)
     }

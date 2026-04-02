@@ -119,6 +119,16 @@ class EVChargerService {
     private var cache: [String: [NRELStation]] = [:]
     private var ocmCache: [String: [OCMStation]] = [:]
 
+    // Shared session for charger API calls — persists TCP connections across
+    // concurrent NREL/OCM requests (20-40 calls per route plan)
+    private let chargerSession: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.httpMaximumConnectionsPerHost = 8
+        config.timeoutIntervalForRequest = 10
+        config.timeoutIntervalForResource = 30
+        return URLSession(configuration: config)
+    }()
+
     /// Search along a raw polyline (for multi-leg routes where MKRoute is nil)
     func findChargersAlongPolyline(_ polyline: MKPolyline) async {
         isLoading = true
@@ -177,6 +187,7 @@ class EVChargerService {
         let segmentCount = max(1, Int(ceil(routeMiles / segmentMiles)))
         let segmentSize = max(1, searchPoints.count / segmentCount)
         var segments: [[EVCharger]] = Array(repeating: [], count: segmentCount)
+        for i in 0..<segmentCount { segments[i].reserveCapacity(30) }
 
         for charger in chargers {
             var bestSeg = 0
@@ -358,7 +369,7 @@ class EVChargerService {
         do {
             var request = URLRequest(url: url)
             request.timeoutInterval = 10 // 10-second timeout per request
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await chargerSession.data(for: request)
             if let httpResponse = response as? HTTPURLResponse {
                 evLog("NREL HTTP \(httpResponse.statusCode) for \(String(format: "%.3f", point.latitude)),\(String(format: "%.3f", point.longitude))")
             }
@@ -453,7 +464,7 @@ class EVChargerService {
             var request = URLRequest(url: url)
             request.timeoutInterval = 8 // 8-second timeout
             request.setValue("application/json", forHTTPHeaderField: "Accept")
-            let (data, _) = try await URLSession.shared.data(for: request)
+            let (data, _) = try await chargerSession.data(for: request)
             let stations = try JSONDecoder().decode([OCMStation].self, from: data)
             // Evict oldest entry if OCM cache exceeds 100
             if ocmCache.count > 100, let oldest = ocmCache.keys.first {
@@ -503,22 +514,32 @@ class EVChargerService {
 
         evLog("OCM: \(allOCM.count) unique stations for speed matching")
 
-        // Match each NREL charger to nearest OCM station within 200m (fast Haversine)
+        // Build a coord→OCMStation lookup for fast proximity matching.
+        // Avoids O(chargers × OCM) Haversine loop — instead O(chargers) grid lookups.
+        struct OCMEntry {
+            let lat: Double, lon: Double
+            let station: OCMStation
+        }
+        let ocmEntries: [OCMEntry] = allOCM.compactMap { ocm in
+            guard let lat = ocm.AddressInfo?.Latitude,
+                  let lon = ocm.AddressInfo?.Longitude else { return nil }
+            return OCMEntry(lat: lat, lon: lon, station: ocm)
+        }
+
         return chargers.map { charger in
             let cLat = charger.coordinate.latitude, cLon = charger.coordinate.longitude
             var bestMatch: OCMStation?
             var bestDist = Double.greatestFiniteMagnitude
 
-            for ocm in allOCM {
-                guard let lat = ocm.AddressInfo?.Latitude, let lon = ocm.AddressInfo?.Longitude else { continue }
-                let dlat = (lat - cLat) * .pi / 180
-                let dlon = (lon - cLon) * .pi / 180
+            for entry in ocmEntries {
+                let dlat = (entry.lat - cLat) * .pi / 180
+                let dlon = (entry.lon - cLon) * .pi / 180
                 let ml = cLat * .pi / 180
                 let a = dlat*dlat + cos(ml)*cos(ml)*dlon*dlon
                 let dist = 6_371_000 * 2 * atan2(sqrt(a), sqrt(1-a))
                 if dist < bestDist && dist < 200 {
                     bestDist = dist
-                    bestMatch = ocm
+                    bestMatch = entry.station
                 }
             }
 

@@ -151,6 +151,16 @@ class EVRouteService {
     // Elevation cache: keyed by "lat,lon" grid (rounded to 2 decimal places ~1km grid)
     private var elevationCache: [String: Double] = [:]
 
+    // Dedicated URL session for elevation requests — keeps TCP connections alive
+    // across concurrent chunk fetches, cutting connection overhead per request
+    private let elevationSession: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.httpMaximumConnectionsPerHost = 6
+        config.timeoutIntervalForRequest = 30
+        config.timeoutIntervalForResource = 60
+        return URLSession(configuration: config)
+    }()
+
     private func cacheKey(_ coord: CLLocationCoordinate2D) -> String {
         String(format: "%.2f,%.2f", coord.latitude, coord.longitude)
     }
@@ -331,7 +341,9 @@ class EVRouteService {
 
         let segmentCount = profile.count - 1
         var segmentEnergyKwh: [Double] = []
+        segmentEnergyKwh.reserveCapacity(segmentCount)
         var segmentEnergyPcts: [Double] = []
+        segmentEnergyPcts.reserveCapacity(segmentCount)
 
         for i in 1..<profile.count {
             let segKwh = segmentEnergy(
@@ -508,9 +520,13 @@ class EVRouteService {
 
         // Step 4: Build combined polyline + elevation profile
         var allPolylineCoords: [CLLocationCoordinate2D] = []
+        // Reserve capacity: sum of all leg polyline point counts
+        allPolylineCoords.reserveCapacity(legs.compactMap { $0?.polyline.pointCount }.reduce(0, +))
         var totalDistanceM: Double = 0
         var totalTimeS: Double = 0
         var combinedProfile: [ElevationPoint] = []
+        let estimatedProfileCount = legPointSets.reduce(0) { $0 + max(0, $1.count - 1) } + 1
+        combinedProfile.reserveCapacity(estimatedProfileCount)
         var distanceOffsetMiles: Double = 0
         var waypointDistances: [Double] = []  // cumulative miles at each stop junction
 
@@ -568,10 +584,11 @@ class EVRouteService {
         let polyCumDist: [Double] = {
             var d: [Double] = [0]
             d.reserveCapacity(allPolylineCoords.count)
+            let deg2rad = Double.pi / 180
             for i in 1..<allPolylineCoords.count {
-                let dlat = (allPolylineCoords[i].latitude  - allPolylineCoords[i-1].latitude)  * .pi / 180
-                let dlon = (allPolylineCoords[i].longitude - allPolylineCoords[i-1].longitude) * .pi / 180
-                let ml = allPolylineCoords[i-1].latitude * .pi / 180
+                let dlat = (allPolylineCoords[i].latitude  - allPolylineCoords[i-1].latitude)  * deg2rad
+                let dlon = (allPolylineCoords[i].longitude - allPolylineCoords[i-1].longitude) * deg2rad
+                let ml = allPolylineCoords[i-1].latitude * deg2rad
                 let a = dlat*dlat + cos(ml)*cos(ml)*dlon*dlon
                 d.append(d[i-1] + 6_371_000 * 2 * atan2(sqrt(a), sqrt(1-a)))
             }
@@ -626,6 +643,7 @@ class EVRouteService {
         var totalGain = 0.0
         var totalLoss = 0.0
         var grades: [Double] = []
+        grades.reserveCapacity(profile.count)
         var peakGrade = 0.0
 
         for i in 1..<profile.count {
@@ -762,7 +780,7 @@ class EVRouteService {
         evLog("Open Elevation: requesting \(points.count) points")
 
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await elevationSession.data(for: request)
 
             if let httpResponse = response as? HTTPURLResponse {
                 evLog("Open Elevation HTTP \(httpResponse.statusCode)")
@@ -785,6 +803,7 @@ class EVRouteService {
         // Open-Meteo accepts comma-separated lat/lng lists via GET
         let chunkSize = 100
         var allElevations: [Double] = []
+        allElevations.reserveCapacity(points.count)
 
         for chunkStart in stride(from: 0, to: points.count, by: chunkSize) {
             let chunkEnd = min(chunkStart + chunkSize, points.count)
@@ -810,7 +829,7 @@ class EVRouteService {
             evLog("Open-Meteo: requesting \(chunk.count) points")
 
             do {
-                let (data, _) = try await URLSession.shared.data(from: url)
+                let (data, _) = try await elevationSession.data(from: url)
                 let decoded = try JSONDecoder().decode(OpenMeteoElevationResponse.self, from: data)
                 evLog("Open-Meteo: got \(decoded.elevation.count) elevations")
                 allElevations.append(contentsOf: decoded.elevation)
@@ -831,18 +850,19 @@ class EVRouteService {
         guard points.count == elevations.count, points.count >= 3 else { return [] }
 
         // Three-pass smoothing — suppresses GPS noise and elevation API spikes
-        // that would otherwise create unrealistic grade values
+        // Ping-pong between two buffers to avoid 3× array allocation
         var smoothed = elevations
+        var buffer = elevations
         for _ in 0..<3 {
-            var pass = smoothed
             for i in 1..<(smoothed.count - 1) {
-                pass[i] = (smoothed[i-1] + smoothed[i] + smoothed[i+1]) / 3.0
+                buffer[i] = (smoothed[i-1] + smoothed[i] + smoothed[i+1]) / 3.0
             }
-            smoothed = pass
+            swap(&smoothed, &buffer)
         }
 
         let totalMiles = totalDistance * EVConstants.milesPerMeter
         var profile: [ElevationPoint] = []
+        profile.reserveCapacity(points.count)
 
         for i in 0..<points.count {
             let dist = totalMiles * Double(i) / Double(points.count - 1)
@@ -924,6 +944,7 @@ class EVRouteService {
         var totalGain = 0.0
         var totalLoss = 0.0
         var grades: [Double] = []
+        grades.reserveCapacity(profile.count)
         var peakGrade = 0.0
 
         for i in 1..<profile.count {

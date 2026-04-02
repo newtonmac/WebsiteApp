@@ -56,13 +56,13 @@ struct EVRoutePlannerView: View {
 
         return filtered.filter { charger in
             let cLat = charger.coordinate.latitude, cLon = charger.coordinate.longitude
+            // .contains stops at first match — stops checking remaining stop coords
             return stopCoords.contains { stop in
                 let dlat = (stop.latitude  - cLat) * .pi / 180
                 let dlon = (stop.longitude - cLon) * .pi / 180
                 let ml = cLat * .pi / 180
                 let a = dlat*dlat + cos(ml)*cos(ml)*dlon*dlon
-                let dist = 6_371_000 * 2 * atan2(sqrt(a), sqrt(1-a))
-                return dist <= radiusMeters
+                return 6_371_000 * 2 * atan2(sqrt(a), sqrt(1-a)) <= radiusMeters
             }
         }
     }
