@@ -139,7 +139,7 @@ struct EVSettingsView: View {
     private var chargingNetworksSection: some View {
         SettingsCard(title: "DEFAULT NETWORKS", icon: "bolt.fill") {
             VStack(spacing: 10) {
-                Text("Networks selected here will be enabled by default when you open the app.")
+                Text("Select which networks appear by default when you open the app. None selected means you choose each time.")
                     .font(.system(size: 12))
                     .foregroundStyle(EVTheme.textSecondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
