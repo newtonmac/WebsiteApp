@@ -32,7 +32,7 @@ struct EVVehicle: Identifiable, Hashable {
 }
 
 enum EVDatabase {
-    // Cd = drag coefficient, A = frontal area (m²), Crr = rolling resistance
+    // Source: fueleconomy.gov vehicles.csv — EPA combE values × 1.05 real-world factor
     static let vehicles: [EVVehicle] = [
         // Tesla
         EVVehicle(id: "model3_sr", brand: "Tesla", model: "Model 3",

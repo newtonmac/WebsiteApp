@@ -41,7 +41,7 @@ struct EVCharger: Identifiable, Hashable {
         return value
     }
 
-static func == (lhs: EVCharger, rhs: EVCharger) -> Bool {
+    static func == (lhs: EVCharger, rhs: EVCharger) -> Bool {
         lhs.id == rhs.id
     }
 
@@ -119,12 +119,6 @@ class EVChargerService {
     private var cache: [String: [NRELStation]] = [:]
     private var ocmCache: [String: [OCMStation]] = [:]
 
-    /// Compiled once — avoids re-compiling on every pricePerKwh access
-    private static let priceRegex = try? NSRegularExpression(
-        pattern: #"\$?(\d+\.?\d*)\s*(?:/\s*kwh|per\s*kwh|\/kwh)"#,
-        options: .caseInsensitive
-    )
-
     /// Search along a raw polyline (for multi-leg routes where MKRoute is nil)
     func findChargersAlongPolyline(_ polyline: MKPolyline) async {
         isLoading = true
@@ -133,10 +127,12 @@ class EVChargerService {
         // Call .points() once outside the loop — calling inside is O(n²)
         let pts = polyline.points()
         let totalMeters = stride(from: 1, to: polyline.pointCount, by: 1).reduce(0.0) { acc, i in
-            let p1 = pts[i-1].coordinate
-            let p2 = pts[i].coordinate
-            return acc + CLLocation(latitude: p1.latitude, longitude: p1.longitude)
-                .distance(from: CLLocation(latitude: p2.latitude, longitude: p2.longitude))
+            let p1 = pts[i-1].coordinate, p2 = pts[i].coordinate
+            let dlat = (p2.latitude - p1.latitude) * .pi / 180
+            let dlon = (p2.longitude - p1.longitude) * .pi / 180
+            let ml = p1.latitude * .pi / 180
+            let a = dlat*dlat + cos(ml)*cos(ml)*dlon*dlon
+            return acc + 6_371_000 * 2 * atan2(sqrt(a), sqrt(1-a))
         }
         let routeMiles = totalMeters * EVConstants.milesPerMeter
         let sampleCount = max(3, min(40, Int(routeMiles / 7) + 2))
@@ -183,12 +179,17 @@ class EVChargerService {
         var segments: [[EVCharger]] = Array(repeating: [], count: segmentCount)
 
         for charger in chargers {
-            let chargerLoc = CLLocation(latitude: charger.coordinate.latitude, longitude: charger.coordinate.longitude)
             var bestSeg = 0
             var bestDist = Double.greatestFiniteMagnitude
+            let cLat = charger.coordinate.latitude, cLon = charger.coordinate.longitude
             for s in 0..<segmentCount {
                 let midIdx = min(s * segmentSize + segmentSize / 2, searchPoints.count - 1)
-                let d = chargerLoc.distance(from: CLLocation(latitude: searchPoints[midIdx].latitude, longitude: searchPoints[midIdx].longitude))
+                let pt = searchPoints[midIdx]
+                let dlat = (pt.latitude - cLat) * .pi / 180
+                let dlon = (pt.longitude - cLon) * .pi / 180
+                let ml = cLat * .pi / 180
+                let a = dlat*dlat + cos(ml)*cos(ml)*dlon*dlon
+                let d = 6_371_000 * 2 * atan2(sqrt(a), sqrt(1-a))
                 if d < bestDist { bestDist = d; bestSeg = s }
             }
             segments[bestSeg].append(charger)
@@ -276,19 +277,20 @@ class EVChargerService {
         var segments: [[EVCharger]] = Array(repeating: [], count: segmentCount)
 
         for charger in chargers {
-            let chargerLoc = CLLocation(latitude: charger.coordinate.latitude, longitude: charger.coordinate.longitude)
+            let cLat = charger.coordinate.latitude, cLon = charger.coordinate.longitude
             var bestSegment = 0
             var bestDist = Double.greatestFiniteMagnitude
 
             for i in 0..<segmentCount {
-                // Use midpoint of segment
-                let midLat = (segmentPoints[i].latitude + segmentPoints[min(i + 1, segmentPoints.count - 1)].latitude) / 2
-                let midLon = (segmentPoints[i].longitude + segmentPoints[min(i + 1, segmentPoints.count - 1)].longitude) / 2
-                let dist = chargerLoc.distance(from: CLLocation(latitude: midLat, longitude: midLon))
-                if dist < bestDist {
-                    bestDist = dist
-                    bestSegment = i
-                }
+                let next = min(i + 1, segmentPoints.count - 1)
+                let midLat = (segmentPoints[i].latitude + segmentPoints[next].latitude) / 2
+                let midLon = (segmentPoints[i].longitude + segmentPoints[next].longitude) / 2
+                let dlat = (midLat - cLat) * .pi / 180
+                let dlon = (midLon - cLon) * .pi / 180
+                let ml = cLat * .pi / 180
+                let a = dlat*dlat + cos(ml)*cos(ml)*dlon*dlon
+                let dist = 6_371_000 * 2 * atan2(sqrt(a), sqrt(1-a))
+                if dist < bestDist { bestDist = dist; bestSegment = i }
             }
             segments[bestSegment].append(charger)
         }

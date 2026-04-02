@@ -539,7 +539,6 @@ class EVRouteService {
         guard !combinedProfile.isEmpty else { return nil }
 
         let combinedPolyline = MKPolyline(coordinates: allPolylineCoords, count: allPolylineCoords.count)
-        let avgSpeedMps = totalDistanceM / max(1, totalTimeS)
         let energy = estimateEnergyFromProfile(combinedProfile, vehicle: vehicle)
         let totalBatteryPct = (energy.totalKwh / vehicle.batteryKwh) * 100
 
@@ -559,6 +558,7 @@ class EVRouteService {
         let totalRouteMiles = distanceOffsetMiles
         let polyCumDist: [Double] = {
             var d: [Double] = [0]
+            d.reserveCapacity(allPolylineCoords.count)
             for i in 1..<allPolylineCoords.count {
                 let dlat = (allPolylineCoords[i].latitude  - allPolylineCoords[i-1].latitude)  * .pi / 180
                 let dlon = (allPolylineCoords[i].longitude - allPolylineCoords[i-1].longitude) * .pi / 180
@@ -908,8 +908,6 @@ class EVRouteService {
 
     /// Physics-based total energy estimation for a route.
     private func estimateEnergy(profile: [ElevationPoint], route: MKRoute, vehicle: EVVehicle) -> EnergyResult {
-        let avgSpeedMps = route.distance / max(1, route.expectedTravelTime)
-
         var totalEnergy = 0.0
         var totalGain = 0.0
         var totalLoss = 0.0

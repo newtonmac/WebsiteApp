@@ -69,15 +69,16 @@ extension ChargerNetwork {
 
 /// Find the nearest charger to a coordinate from a list
 func nearestCharger(to coordinate: CLLocationCoordinate2D, from chargers: [EVCharger]) -> EVCharger? {
-    let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
     var best: EVCharger?
     var bestDist = Double.greatestFiniteMagnitude
+    let lat = coordinate.latitude, lon = coordinate.longitude
     for charger in chargers {
-        let dist = location.distance(from: CLLocation(latitude: charger.coordinate.latitude, longitude: charger.coordinate.longitude))
-        if dist < bestDist {
-            bestDist = dist
-            best = charger
-        }
+        let dlat = (charger.coordinate.latitude - lat) * .pi / 180
+        let dlon = (charger.coordinate.longitude - lon) * .pi / 180
+        let ml = lat * .pi / 180
+        let a = dlat*dlat + cos(ml)*cos(ml)*dlon*dlon
+        let dist = 6_371_000 * 2 * atan2(sqrt(a), sqrt(1-a))
+        if dist < bestDist { bestDist = dist; best = charger }
     }
     return best
 }
@@ -104,6 +105,7 @@ func computeBatteryProfile(
 
     for i in 1..<profile.count {
         let segDistMiles = profile[i].distance - profile[i - 1].distance
+        guard segDistMiles > 0 else { batteryPcts.append(currentPct); continue }
         let elevDiff = profile[i].elevation - profile[i - 1].elevation  // meters
 
         // Flat baseline — EPA-calibrated (same as segmentEnergy)
