@@ -252,35 +252,39 @@ struct EVSettingsView: View {
                 infoRow(label: "Build", value: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1")
                 Divider().overlay(EVTheme.border)
 
-                Link(destination: URL(string: "https://evrouteplanner.org/")!) {
-                    HStack {
-                        Image(systemName: "globe")
-                            .font(.system(size: 14))
-                            .foregroundStyle(EVTheme.accentBlue)
-                        Text("Website")
-                            .font(.system(size: 14))
-                            .foregroundStyle(EVTheme.textPrimary)
-                        Spacer()
-                        Image(systemName: "arrow.up.right")
-                            .font(.system(size: 11))
-                            .foregroundStyle(EVTheme.textSecondary)
+                if let siteURL = URL(string: "https://evrouteplanner.org/") {
+                    Link(destination: siteURL) {
+                        HStack {
+                            Image(systemName: "globe")
+                                .font(.system(size: 14))
+                                .foregroundStyle(EVTheme.accentBlue)
+                            Text("Website")
+                                .font(.system(size: 14))
+                                .foregroundStyle(EVTheme.textPrimary)
+                            Spacer()
+                            Image(systemName: "arrow.up.right")
+                                .font(.system(size: 11))
+                                .foregroundStyle(EVTheme.textSecondary)
+                        }
                     }
                 }
 
                 Divider().overlay(EVTheme.border)
 
-                Link(destination: URL(string: "https://evrouteplanner.org/privacy")!) {
-                    HStack {
-                        Image(systemName: "hand.raised.fill")
-                            .font(.system(size: 14))
-                            .foregroundStyle(EVTheme.accentBlue)
-                        Text("Privacy Policy")
-                            .font(.system(size: 14))
-                            .foregroundStyle(EVTheme.textPrimary)
-                        Spacer()
-                        Image(systemName: "arrow.up.right")
-                            .font(.system(size: 11))
-                            .foregroundStyle(EVTheme.textSecondary)
+                if let privacyURL = URL(string: "https://evrouteplanner.org/privacy") {
+                    Link(destination: privacyURL) {
+                        HStack {
+                            Image(systemName: "hand.raised.fill")
+                                .font(.system(size: 14))
+                                .foregroundStyle(EVTheme.accentBlue)
+                            Text("Privacy Policy")
+                                .font(.system(size: 14))
+                                .foregroundStyle(EVTheme.textPrimary)
+                            Spacer()
+                            Image(systemName: "arrow.up.right")
+                                .font(.system(size: 11))
+                                .foregroundStyle(EVTheme.textSecondary)
+                        }
                     }
                 }
 

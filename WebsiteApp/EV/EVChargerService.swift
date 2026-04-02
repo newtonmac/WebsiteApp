@@ -364,6 +364,10 @@ class EVChargerService {
             }
             let nrelResponse = try JSONDecoder().decode(NRELResponse.self, from: data)
             evLog("NREL: \(nrelResponse.fuel_stations.count) stations found")
+            // Evict oldest entry if cache exceeds 200 (NREL data is session-stable)
+            if cache.count > 200, let oldest = cache.keys.first {
+                cache.removeValue(forKey: oldest)
+            }
             cache[cacheKey] = nrelResponse.fuel_stations
             return nrelResponse.fuel_stations.map { mapStationToCharger($0) }
         } catch {
