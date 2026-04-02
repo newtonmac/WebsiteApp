@@ -22,6 +22,7 @@ struct EVRouteDetailView: View {
     @ObservedObject private var settings = EVSettingsManager.shared
 
     private let groupedChargers: [StopChargers]
+    private let cachedTotalChargingCost: Double
 
     init(route: RouteResult, vehicle: EVVehicle, chargers: [EVCharger], waypointNames: [String] = []) {
         self.route = route
@@ -29,7 +30,7 @@ struct EVRouteDetailView: View {
         self.chargers = chargers
         self.waypointNames = waypointNames
 
-        let radiusMeters: Double = 50 * EVConstants.metersPerMile
+        let radiusMeters: Double = 5 * EVConstants.metersPerMile  // 5-mile radius around each charging stop
         let maxPerStop = 5
         var groups: [StopChargers] = []
 
@@ -57,6 +58,13 @@ struct EVRouteDetailView: View {
         }
 
         self.groupedChargers = groups
+
+        // Compute total charging cost once — avoids repeated O(stops × chargers) work
+        self.cachedTotalChargingCost = route.chargingStops.reduce(0.0) { total, stop in
+            let price = nearestCharger(to: stop.coordinate, from: chargers)?.pricePerKwh
+                ?? ChargerNetwork.electrifyAmerica.defaultPricePerKwh
+            return total + stop.energyToAddKwh * price
+        }
     }
 
     var body: some View {
@@ -210,12 +218,8 @@ struct EVRouteDetailView: View {
             ?? ChargerNetwork.electrifyAmerica.defaultPricePerKwh
     }
 
-    /// Total estimated charging cost for all stops
-    private var totalChargingCost: Double {
-        route.chargingStops.reduce(0.0) { total, stop in
-            total + stop.energyToAddKwh * pricePerKwhForStop(stop)
-        }
-    }
+    /// Total estimated charging cost — precomputed in init to avoid repeated O(n) work
+    private var totalChargingCost: Double { cachedTotalChargingCost }
 
     private var chargingPlanSection: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -926,11 +930,12 @@ struct ElevationChartView: View {
 
                 // X-axis labels
                 HStack {
-                    Text("0 mi")
+                    Text(EVSettingsManager.shared.useMiles ? "0 mi" : "0 km")
                         .font(.system(size: 8))
                         .foregroundStyle(EVTheme.textSecondary)
                     Spacer()
-                    Text("\(String(format: "%.0f", maxDist)) mi")
+                    let endDist = EVSettingsManager.shared.useMiles ? maxDist : maxDist * EVConstants.kmPerMile
+                    Text("\(String(format: "%.0f", endDist)) \(EVSettingsManager.shared.useMiles ? "mi" : "km")")
                         .font(.system(size: 8))
                         .foregroundStyle(EVTheme.textSecondary)
                 }
@@ -939,7 +944,9 @@ struct ElevationChartView: View {
             }
         }
         .onAppear { recomputeBatteryProfile() }
-        .onChange(of: profile.count) { recomputeBatteryProfile() }
+        // Use last distance + stop count as key — fires when a new route of the same
+        // point count is planned, not just when the count itself changes.
+        .onChange(of: profile.last?.distance) { recomputeBatteryProfile() }
         .onChange(of: chargingStops.count) { recomputeBatteryProfile() }
     }
 }

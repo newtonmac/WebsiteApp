@@ -7,7 +7,7 @@ enum PreviewMock {
 
     // MARK: - Vehicle
 
-    static let vehicle = EVDatabase.vehicles.first { $0.id == "modely_lr" }!
+    static let vehicle = EVDatabase.vehicles.first { $0.id == "modely_lr" } ?? EVDatabase.vehicles[0]
 
     // MARK: - Coordinates (San Diego → Los Angeles)
 
@@ -23,7 +23,7 @@ enum PreviewMock {
             network: .tesla,
             coordinate: CLLocationCoordinate2D(latitude: 33.4270, longitude: -117.6120),
             address: "101 Avenida Del Mar, San Clemente, CA",
-            connectors: ["Tesla"],
+            connectors: ["NACS/Tesla"],
             speedKw: 250,
             hours: "24/7",
             pricing: "$0.35/kWh",
@@ -37,7 +37,7 @@ enum PreviewMock {
             network: .electrifyAmerica,
             coordinate: CLLocationCoordinate2D(latitude: 33.5560, longitude: -117.6630),
             address: "555 The Shops at Mission Viejo, Mission Viejo, CA",
-            connectors: ["CCS/SAE", "CHAdeMO"],
+            connectors: ["CCS", "CHAdeMO"],
             speedKw: 350,
             hours: "24/7",
             pricing: "$0.48/kWh",
@@ -51,7 +51,7 @@ enum PreviewMock {
             network: .evgo,
             coordinate: CLLocationCoordinate2D(latitude: 33.6490, longitude: -117.7400),
             address: "670 Spectrum Center Dr, Irvine, CA",
-            connectors: ["CCS/SAE", "CHAdeMO"],
+            connectors: ["CCS", "CHAdeMO"],
             speedKw: 200,
             hours: "24/7",
             pricing: nil,
@@ -65,7 +65,7 @@ enum PreviewMock {
             network: .chargePoint,
             coordinate: CLLocationCoordinate2D(latitude: 33.8366, longitude: -117.9143),
             address: "321 W Katella Ave, Anaheim, CA",
-            connectors: ["CCS/SAE"],
+            connectors: ["CCS"],
             speedKw: 62,
             hours: "6:00 AM - 11:00 PM",
             pricing: nil,
@@ -79,7 +79,7 @@ enum PreviewMock {
             network: .tesla,
             coordinate: CLLocationCoordinate2D(latitude: 33.9425, longitude: -118.1320),
             address: "12050 Lakewood Blvd, Downey, CA",
-            connectors: ["Tesla"],
+            connectors: ["NACS/Tesla"],
             speedKw: 250,
             hours: "24/7",
             pricing: "$0.36/kWh",

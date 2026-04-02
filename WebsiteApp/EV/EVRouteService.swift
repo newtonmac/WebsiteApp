@@ -35,9 +35,6 @@ struct FinalSection {
         energyKwh > 0 ? distanceMiles / energyKwh : 0
     }
 
-    var kwhPerMile: Double {
-        distanceMiles > 0 ? energyKwh / distanceMiles : 0
-    }
 }
 
 struct RouteResult: Identifiable {
