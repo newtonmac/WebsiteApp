@@ -7,7 +7,7 @@ struct EVRouteCard: View {
     let isSelected: Bool
     var onInfoTap: (() -> Void)? = nil
     var onCardTap: (() -> Void)? = nil
-    private let settings = EVSettingsManager.shared
+    @ObservedObject private var settings = EVSettingsManager.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -168,6 +168,8 @@ struct BatteryBarView: View {
     let vehicleName: String
     let batteryPctUsed: Double
 
+    private var remainingPct: Double { max(0, 100 - batteryPctUsed) }
+
     var body: some View {
         VStack(spacing: 4) {
             HStack {
@@ -175,7 +177,7 @@ struct BatteryBarView: View {
                     .font(.caption2)
                     .foregroundStyle(EVTheme.textSecondary)
                 Spacer()
-                Text("\(Int(max(0, 100 - batteryPctUsed)))%")
+                Text("\(Int(remainingPct))%")
                     .font(.caption.weight(.bold))
                     .foregroundStyle(remainingColor)
             }
@@ -188,9 +190,9 @@ struct BatteryBarView: View {
                     ZStack {
                         RoundedRectangle(cornerRadius: 9)
                             .fill(remainingColor)
-                            .frame(width: geo.size.width * max(0, 100 - batteryPctUsed) / 100)
+                            .frame(width: geo.size.width * remainingPct / 100)
 
-                        Text("\(Int(max(0, 100 - batteryPctUsed)))% remaining")
+                        Text("\(Int(remainingPct))% remaining")
                             .font(.system(size: 9, weight: .bold))
                             .foregroundStyle(.white)
                             .shadow(color: .black.opacity(0.5), radius: 1, y: 1)
@@ -210,7 +212,7 @@ struct BatteryBarView: View {
     }
 
     private var remainingColor: Color {
-        batteryLevelColor(100 - batteryPctUsed)
+        batteryLevelColor(remainingPct)
     }
 }
 

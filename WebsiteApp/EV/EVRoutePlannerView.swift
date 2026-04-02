@@ -11,6 +11,7 @@ struct EVRoutePlannerView: View {
     // routeStops: all stops in order — last entry is always the destination
     @State private var routeStops: [WaypointEntry] = [WaypointEntry(placeholder: "Destination")]
     @State private var routeTask: Task<Void, Never>? = nil
+    @State private var chargerTask: Task<Void, Never>? = nil
     @State private var draggingID: UUID? = nil
     @State private var stopDragOffset: CGFloat = 0
     @State private var selectedRoute: RouteResult?
@@ -36,27 +37,27 @@ struct EVRoutePlannerView: View {
     private let collapsedFraction: CGFloat = 0.10
 
     private var mapChargers: [EVCharger] {
+        // Filter by selected networks and minimum speed — stable inputs only
         var filtered = chargerService.chargers.filter { selectedNetworks.contains($0.network) }
-
-        // Filter by preferred minimum charger speed
         let minSpeed = settings.preferredChargerSpeedKw
         if minSpeed > 0 {
             filtered = filtered.filter { ($0.speedKw ?? 0) >= minSpeed }
         }
 
-        // If a route with charging stops is selected, only show chargers within detour distance of stops
-        if let route = selectedRoute, route.needsCharging {
-            let radiusMeters = settings.maxDetourMiles * EVConstants.metersPerMile
-            let stopLocations = route.chargingStops.map {
-                CLLocation(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude)
-            }
-            return filtered.filter { charger in
-                let chargerLoc = CLLocation(latitude: charger.coordinate.latitude, longitude: charger.coordinate.longitude)
-                return stopLocations.contains { $0.distance(from: chargerLoc) <= radiusMeters }
-            }
-        }
+        // If a route with charging stops is selected, only show chargers near those stops
+        guard let route = selectedRoute, route.needsCharging else { return filtered }
+        let radiusMeters = settings.maxDetourMiles * EVConstants.metersPerMile
 
-        return filtered
+        // Pre-compute stop locations once (avoid reallocating CLLocation per charger)
+        let stopLocs = route.chargingStops
+            .filter { $0.coordinate.latitude != 0 || $0.coordinate.longitude != 0 }
+            .map { CLLocation(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude) }
+        guard !stopLocs.isEmpty else { return filtered }
+
+        return filtered.filter { charger in
+            let loc = CLLocation(latitude: charger.coordinate.latitude, longitude: charger.coordinate.longitude)
+            return stopLocs.contains { $0.distance(from: loc) <= radiusMeters }
+        }
     }
 
     private var panelHeight: CGFloat {
@@ -348,69 +349,59 @@ struct EVRoutePlannerView: View {
     // MARK: - Network Filter
 
     private var networkFilterSection: some View {
-        GeometryReader { geo in
-            let isLandscape = geo.size.width > geo.size.height
-            VStack(alignment: .center, spacing: 8) {
-                HStack(spacing: 6) {
-                    Text("Networks")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(EVTheme.textSecondary)
-                    if chargerService.isLoading {
-                        ProgressView()
-                            .scaleEffect(0.7)
-                            .tint(EVTheme.accentGreen)
-                    }
+        VStack(alignment: .center, spacing: 8) {
+            HStack(spacing: 6) {
+                Text("Networks")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(EVTheme.textSecondary)
+                if chargerService.isLoading {
+                    ProgressView()
+                        .scaleEffect(0.7)
+                        .tint(EVTheme.accentGreen)
                 }
-                .frame(maxWidth: .infinity, alignment: .center)
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
 
-                FlowLayout(spacing: 6, alignment: .center) {
-                    ForEach(ChargerNetwork.allCases, id: \.self) { network in
-                        let isSelected = selectedNetworks.contains(network)
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.15)) {
-                                if isSelected {
-                                    selectedNetworks.remove(network)
-                                } else {
-                                    selectedNetworks.insert(network)
-                                    // Fetch chargers now that user picked a network
-                                    if let route = selectedRoute, chargerService.chargers.isEmpty {
-                                        Task {
-                                            if let mkRoute = route.route {
-                                                await chargerService.findChargersAlongRoute(mkRoute)
-                                            } else if let poly = route.customPolyline {
-                                                await chargerService.findChargersAlongPolyline(poly)
-                                            }
-                                        }
-                                    }
+            FlowLayout(spacing: 6, alignment: .center) {
+                ForEach(ChargerNetwork.allCases, id: \.self) { network in
+                    let isSelected = selectedNetworks.contains(network)
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            if isSelected {
+                                selectedNetworks.remove(network)
+                            } else {
+                                selectedNetworks.insert(network)
+                                if let route = selectedRoute, chargerService.chargers.isEmpty {
+                                    fetchChargers(for: route)
                                 }
                             }
-                        } label: {
-                            HStack(spacing: 5) {
-                                NetworkIconView(network: network, size: 18)
-                                Text(network.shortName)
-                                    .font(.system(size: 12, weight: .bold))
-                            }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 7)
-                            .background(isSelected ? network.colorValue.opacity(0.2) : EVTheme.bgInput)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(isSelected ? network.colorValue : EVTheme.border, lineWidth: 1)
-                            )
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .foregroundStyle(isSelected ? network.colorValue : EVTheme.textSecondary)
                         }
+                    } label: {
+                        HStack(spacing: 5) {
+                            NetworkIconView(network: network, size: 18)
+                            Text(network.shortName)
+                                .font(.system(size: 12, weight: .bold))
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(isSelected ? network.colorValue.opacity(0.2) : EVTheme.bgInput)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(isSelected ? network.colorValue : EVTheme.border, lineWidth: 1)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .foregroundStyle(isSelected ? network.colorValue : EVTheme.textSecondary)
                     }
                 }
             }
-            .padding(10)
-            .background(EVTheme.bgInput)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(EVTheme.border, lineWidth: 1)
-            )
         }
+        .padding(10)
+        .background(EVTheme.bgInput)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(EVTheme.border, lineWidth: 1)
+        )
         .frame(height: horizontalSizeClass == .regular ? 110 : 80)
     }
 
@@ -506,13 +497,7 @@ struct EVRoutePlannerView: View {
                         }
                         fitMapToRoute(route)
                         if !selectedNetworks.isEmpty {
-                            Task {
-                                if let mkRoute = route.route {
-                                    await chargerService.findChargersAlongRoute(mkRoute)
-                                } else if let poly = route.customPolyline {
-                                    await chargerService.findChargersAlongPolyline(poly)
-                                }
-                            }
+                            fetchChargers(for: route)
                         }
                     }
                 )
@@ -834,7 +819,7 @@ struct EVRoutePlannerView: View {
                     vehicle: selectedVehicle,
                     chargingStops: route.chargingStops,
                     waypointDistancesMiles: route.waypointDistancesMiles,
-                    waypointNames: routeStops.dropLast().map { $0.text },
+                    waypointNames: routeStops.dropLast().map { $0.text }
                 )
                     .frame(height: 160)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -857,6 +842,18 @@ struct EVRoutePlannerView: View {
 
     // MARK: - Actions
 
+    /// Cancel any in-flight charger fetch and start a new one for the given route.
+    private func fetchChargers(for route: RouteResult) {
+        chargerTask?.cancel()
+        chargerTask = Task {
+            if let mkRoute = route.route {
+                await chargerService.findChargersAlongRoute(mkRoute)
+            } else if let poly = route.customPolyline {
+                await chargerService.findChargersAlongPolyline(poly)
+            }
+        }
+    }
+
     private func planRoute() async {
         guard let origin = originCoord, let dest = routeStops.last?.coordinate else { return }
 
@@ -878,11 +875,7 @@ struct EVRoutePlannerView: View {
             fitMapToRoute(best)
             // Only fetch chargers if the user has selected at least one network
             if !selectedNetworks.isEmpty {
-                if let mkRoute = best.route {
-                    await chargerService.findChargersAlongRoute(mkRoute)
-                } else if let poly = best.customPolyline {
-                    await chargerService.findChargersAlongPolyline(poly)
-                }
+                fetchChargers(for: best)
             }
         }
 

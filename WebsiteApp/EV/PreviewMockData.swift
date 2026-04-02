@@ -138,9 +138,7 @@ enum PreviewMock {
         )
     ]
 
-    // MARK: - Route Results (requires MKRoute — use for views that don't need it)
-
-    // MARK: - Route Results (using preview init, no MKRoute needed)
+    // MARK: - Route Results (preview init, no MKRoute needed)
 
     /// Long trip: San Diego → Los Angeles, needs 1 charging stop
     static let longTripRoute = RouteResult(

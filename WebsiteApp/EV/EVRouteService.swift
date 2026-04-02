@@ -143,6 +143,7 @@ struct ElevationPoint {
 }
 
 @Observable
+@MainActor
 class EVRouteService {
     var routes: [RouteResult] = []
     var isLoading = false
@@ -693,7 +694,11 @@ class EVRouteService {
             fetchedElevations = await fetchElevationsOpenMeteo(uncachedPoints)
         }
 
-        // Store in cache and merge into result
+        // Store in cache and merge into result (evict oldest 100 if cache exceeds 500)
+        if elevationCache.count + uncachedPoints.count > 500 {
+            let excess = elevationCache.count + uncachedPoints.count - 500
+            elevationCache = Dictionary(uniqueKeysWithValues: Array(elevationCache.dropFirst(excess)))
+        }
         for (i, idx) in uncachedIndices.enumerated() {
             let elev = i < fetchedElevations.count ? fetchedElevations[i] : 0
             result[idx] = elev

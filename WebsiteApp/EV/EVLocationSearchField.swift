@@ -45,8 +45,9 @@ struct EVLocationSearchField: View {
 
             if isShowingSuggestions && !searchCompleter.results.isEmpty {
                 VStack(alignment: .leading, spacing: 0) {
-                    ForEach(searchCompleter.results.prefix(5), id: \.self) { suggestion in
-                        Button {
+                    let suggestions = Array(searchCompleter.results.prefix(5))
+                ForEach(suggestions, id: \.self) { suggestion in
+                    Button {
                             selectSuggestion(suggestion)
                         } label: {
                             VStack(alignment: .leading, spacing: 2) {
@@ -63,9 +64,11 @@ struct EVLocationSearchField: View {
                             .padding(.vertical, 8)
                             .padding(.horizontal, 12)
                         }
-                        Rectangle()
-                            .fill(EVTheme.border)
-                            .frame(height: 1)
+                    if suggestion != suggestions.last {
+                            Rectangle()
+                                .fill(EVTheme.border)
+                                .frame(height: 1)
+                        }
                     }
                 }
                 .background(EVTheme.bgInput)

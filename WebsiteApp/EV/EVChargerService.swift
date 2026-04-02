@@ -114,6 +114,7 @@ enum ChargerNetwork: String, CaseIterable {
 }
 
 @Observable
+@MainActor
 class EVChargerService {
     var chargers: [EVCharger] = []
     var isLoading = false

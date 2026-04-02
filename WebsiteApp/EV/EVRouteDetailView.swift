@@ -19,7 +19,7 @@ struct EVRouteDetailView: View {
     let chargers: [EVCharger]
     var waypointNames: [String] = []
     @Environment(\.dismiss) private var dismiss
-    private let settings = EVSettingsManager.shared
+    @ObservedObject private var settings = EVSettingsManager.shared
 
     private let groupedChargers: [StopChargers]
 
