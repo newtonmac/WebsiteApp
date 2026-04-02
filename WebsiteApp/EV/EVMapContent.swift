@@ -44,19 +44,25 @@ struct EVMapContent: View {
 
     var body: some View {
         Map(position: $cameraPosition) {
-            // Route polylines — alternatives first, selected on top
+            // Route polylines — use customPolyline for multi-stop routes
             ForEach(routes) { route in
                 let isSelected = route.id == selectedRoute?.id
-                if !isSelected, let mkRoute = route.route {
-                    MapPolyline(mkRoute.polyline)
-                        .stroke(Color.gray.opacity(0.4), lineWidth: 3)
+                if !isSelected {
+                    if let poly = route.customPolyline {
+                        MapPolyline(poly).stroke(Color.gray.opacity(0.4), lineWidth: 3)
+                    } else if let mkRoute = route.route {
+                        MapPolyline(mkRoute.polyline).stroke(Color.gray.opacity(0.4), lineWidth: 3)
+                    }
                 }
             }
 
             // Selected route on top
-            if let selected = selectedRoute, let mkRoute = selected.route {
-                MapPolyline(mkRoute.polyline)
-                    .stroke(EVTheme.accentBlue, lineWidth: 5)
+            if let selected = selectedRoute {
+                if let poly = selected.customPolyline {
+                    MapPolyline(poly).stroke(EVTheme.accentBlue, lineWidth: 5)
+                } else if let mkRoute = selected.route {
+                    MapPolyline(mkRoute.polyline).stroke(EVTheme.accentBlue, lineWidth: 5)
+                }
             }
 
             // Origin marker

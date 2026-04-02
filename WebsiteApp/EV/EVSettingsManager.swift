@@ -44,7 +44,7 @@ final class EVSettingsManager: ObservableObject {
 
     // MARK: - Charging Networks (stored as comma-separated raw values)
 
-    @AppStorage("ev_defaultNetworks") var defaultNetworksRaw: String = ""
+    @AppStorage("ev_defaultNetworks_v2") var defaultNetworksRaw: String = ""
 
     /// Decoded set of default networks; empty string means "all"
     var defaultNetworks: Set<ChargerNetwork> {
