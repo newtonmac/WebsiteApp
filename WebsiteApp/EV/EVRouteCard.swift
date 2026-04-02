@@ -54,7 +54,7 @@ struct EVRouteCard: View {
                 )
             }
 
-            // Stats row
+            // Stats row: TIME | ENERGY | EFFICIENCY | BATT
             HStack(spacing: 0) {
                 if route.needsCharging {
                     EVStatItem(
@@ -74,6 +74,12 @@ struct EVRouteCard: View {
                     value: String(format: "%.1f", route.energyKwh),
                     unit: "kWh",
                     label: "ENERGY"
+                )
+                Spacer()
+                EVStatItem(
+                    value: settings.efficiencyString(kwhPerMile: route.energyKwh / max(0.1, route.distanceMiles)),
+                    unit: "",
+                    label: "EFFICIENCY"
                 )
                 Spacer()
                 EVStatItem(

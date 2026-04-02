@@ -194,11 +194,25 @@ class EVRouteService {
                     isLoading = false
                     return
                 }
-                var results: [RouteResult] = []
+                // Sample points for all routes first (fast, no network)
+                let allPoints = mkRoutes.map { sampleRoutePoints(route: $0, count: 80) }
 
-                for route in mkRoutes {
-                    let points = sampleRoutePoints(route: route, count: 80)
-                    let elevations = await fetchElevations(for: points)
+                // Fetch elevations for ALL alternate routes CONCURRENTLY
+                // Previously serial: route1 → route2 → route3 (3× wait time)
+                // Now parallel: all routes fetch elevation simultaneously
+                var allElevations: [[Double]] = Array(repeating: [], count: mkRoutes.count)
+                await withTaskGroup(of: (Int, [Double]).self) { group in
+                    for (i, pts) in allPoints.enumerated() {
+                        group.addTask { (i, await self.fetchElevations(for: pts)) }
+                    }
+                    for await (i, elevs) in group { allElevations[i] = elevs }
+                }
+
+                // Build results (CPU-only, instant)
+                var results: [RouteResult] = []
+                for (i, route) in mkRoutes.enumerated() {
+                    let points = allPoints[i]
+                    let elevations = allElevations[i]
                     let profile = buildElevationProfile(points: points, elevations: elevations, totalDistance: route.distance)
                     let energy = estimateEnergy(profile: profile, route: route, vehicle: vehicle)
                     let score = computeScore(energy: energy, route: route)
