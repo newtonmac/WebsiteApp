@@ -23,6 +23,13 @@ struct EVRoutePlannerView: View {
     @State private var selectedNetworks: Set<ChargerNetwork> = Set(ChargerNetwork.allCases)
     @State private var keyboardOffset: CGFloat = 0
     @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    // True for iPhone landscape OR iPad (regular horizontal size class needs wide layout too)
+    private var useWideLayout: Bool {
+        verticalSizeClass == .compact || horizontalSizeClass == .regular
+    }
+
     @GestureState private var dragOffset: CGFloat = 0
     @State private var mapCameraPosition: MapCameraPosition = .region(
         MKCoordinateRegion(center: EVConstants.defaultCoordinate,
@@ -146,7 +153,7 @@ struct EVRoutePlannerView: View {
 
                 if panelExpanded || dragOffset < -30 {
                     ScrollView {
-                        if verticalSizeClass == .compact {
+                        if useWideLayout {
                             // Landscape: two-column layout with results below
                             VStack(spacing: 14) {
                                 HStack(alignment: .top, spacing: 14) {
@@ -203,6 +210,7 @@ struct EVRoutePlannerView: View {
                     }
                 }
             }
+            .frame(maxWidth: horizontalSizeClass == .regular ? 600 : .infinity)
             .frame(height: panelHeight)
             .background(EVTheme.bgCard)
             .clipShape(.rect(topLeadingRadius: 20, topTrailingRadius: 20))
