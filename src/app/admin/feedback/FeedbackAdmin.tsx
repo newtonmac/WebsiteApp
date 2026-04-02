@@ -46,7 +46,9 @@ export default function FeedbackAdmin() {
     const desc = (document.getElementById(`sug-d-${s.id}`) as HTMLTextAreaElement)?.value || s.description;
     try {
       await proxy({ action: 'approve', title, description: desc, status, suggestedBy: s.name || s.city });
-      showToast('Approved → Updates'); loadSuggestions(); loadUpdates();
+      // Remove from suggestions after approving
+      await proxy({ action: 'dismiss', id: s.id }).catch(() => {});
+      showToast('Approved & moved to Updates'); loadSuggestions(); loadUpdates();
     } catch (e: any) { alert('Failed: ' + e.message); }
   };
 

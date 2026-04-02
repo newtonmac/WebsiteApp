@@ -4,3 +4,4 @@
 models/*.bin
 models/*.gltf
 node_modules/
+.vercel
