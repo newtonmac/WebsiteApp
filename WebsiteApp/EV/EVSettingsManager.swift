@@ -46,10 +46,10 @@ final class EVSettingsManager: ObservableObject {
 
     @AppStorage("ev_defaultNetworks_v2") var defaultNetworksRaw: String = ""
 
-    /// Decoded set of default networks; empty string means "all"
+    /// Decoded set of default networks; empty string means "all networks selected" (default state)
     var defaultNetworks: Set<ChargerNetwork> {
         get {
-            if defaultNetworksRaw.isEmpty { return [] }
+            if defaultNetworksRaw.isEmpty { return Set(ChargerNetwork.allCases) }
             let ids = defaultNetworksRaw.split(separator: ",").map(String.init)
             return Set(ids.compactMap { id in ChargerNetwork.allCases.first { $0.rawValue == id } })
         }
