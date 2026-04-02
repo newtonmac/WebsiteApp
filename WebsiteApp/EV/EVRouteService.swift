@@ -46,6 +46,7 @@ struct FinalSection {
 struct RouteResult: Identifiable {
     let id = UUID()
     let route: MKRoute?
+    let customPolyline: MKPolyline?   // used for multi-stop routes instead of route.polyline
     let routeName: String
     let distanceMiles: Double
     let durationMinutes: Double      // driving time only
@@ -79,8 +80,10 @@ struct RouteResult: Identifiable {
     init(route: MKRoute, elevationGain: Double, elevationLoss: Double, energyKwh: Double,
          batteryPctUsed: Double, efficiency: Double, averageGrade: Double, peakGrade: Double,
          elevationProfile: [ElevationPoint], score: Double, chargingStops: [ChargingStop],
-         finalBatteryPct: Double, finalSection: FinalSection? = nil) {
+         finalBatteryPct: Double, finalSection: FinalSection? = nil,
+         customPolyline: MKPolyline? = nil) {
         self.route = route
+        self.customPolyline = customPolyline
         self.routeName = route.name
         self.distanceMiles = route.distance * EVConstants.milesPerMeter
         self.durationMinutes = route.expectedTravelTime / 60
@@ -103,8 +106,10 @@ struct RouteResult: Identifiable {
          elevationGain: Double, elevationLoss: Double, energyKwh: Double,
          batteryPctUsed: Double, efficiency: Double, averageGrade: Double, peakGrade: Double,
          elevationProfile: [ElevationPoint], score: Double, chargingStops: [ChargingStop],
-         finalBatteryPct: Double, finalSection: FinalSection? = nil) {
+         finalBatteryPct: Double, finalSection: FinalSection? = nil,
+         customPolyline: MKPolyline? = nil) {
         self.route = nil
+        self.customPolyline = customPolyline
         self.routeName = routeName
         self.distanceMiles = distanceMiles
         self.durationMinutes = durationMinutes
@@ -161,49 +166,64 @@ class EVRouteService {
         self.chargeTargetPct = chargeTarget
 
         do {
-            let mkRoutes = try await fetchDirections(
-                from: origin, to: destination, stops: stops,
-                avoidHighways: avoidHighways, avoidTolls: avoidTolls
-            )
-            var results: [RouteResult] = []
+            if stops.isEmpty {
+                // Simple origin → destination, show alternate routes
+                let mkRoutes = try await fetchDirections(
+                    from: origin, to: destination,
+                    avoidHighways: avoidHighways, avoidTolls: avoidTolls
+                )
+                var results: [RouteResult] = []
 
-            for route in mkRoutes {
-                let points = sampleRoutePoints(route: route, count: 80)
-                let elevations = await fetchElevations(for: points)
-                let profile = buildElevationProfile(points: points, elevations: elevations, totalDistance: route.distance)
-                let energy = estimateEnergy(profile: profile, route: route, vehicle: vehicle)
-                let score = computeScore(energy: energy, route: route)
-                let totalBatteryPct = (energy.totalKwh / vehicle.batteryKwh) * 100
+                for route in mkRoutes {
+                    let points = sampleRoutePoints(route: route, count: 80)
+                    let elevations = await fetchElevations(for: points)
+                    let profile = buildElevationProfile(points: points, elevations: elevations, totalDistance: route.distance)
+                    let energy = estimateEnergy(profile: profile, route: route, vehicle: vehicle)
+                    let score = computeScore(energy: energy, route: route)
+                    let totalBatteryPct = (energy.totalKwh / vehicle.batteryKwh) * 100
 
-                // Calculate charging stops if needed
-                let chargingPlan = calculateChargingStops(
-                    profile: profile,
-                    points: points,
-                    route: route,
+                    let chargingPlan = calculateChargingStops(
+                        profile: profile,
+                        points: points,
+                        route: route,
+                        vehicle: vehicle,
+                        totalEnergyKwh: energy.totalKwh,
+                        preferredChargerSpeedKw: preferredChargerSpeedKw,
+                        minStopMinutes: preferredStopMinutes
+                    )
+
+                    results.append(RouteResult(
+                        route: route,
+                        elevationGain: energy.gain,
+                        elevationLoss: energy.loss,
+                        energyKwh: energy.totalKwh,
+                        batteryPctUsed: totalBatteryPct,
+                        efficiency: (route.distance * EVConstants.milesPerMeter) / max(energy.totalKwh, 0.01),
+                        averageGrade: energy.avgGrade,
+                        peakGrade: energy.peakGrade,
+                        elevationProfile: profile,
+                        score: score,
+                        chargingStops: chargingPlan.stops,
+                        finalBatteryPct: chargingPlan.finalBatteryPct,
+                        finalSection: chargingPlan.finalSection
+                    ))
+                }
+                routes = results.sorted { $0.score < $1.score }
+
+            } else {
+                // Multi-stop: chain legs through each waypoint
+                let waypoints = [origin] + stops + [destination]
+                if let result = try await fetchMultiLegRoute(
+                    waypoints: waypoints,
                     vehicle: vehicle,
-                    totalEnergyKwh: energy.totalKwh,
+                    avoidHighways: avoidHighways,
+                    avoidTolls: avoidTolls,
                     preferredChargerSpeedKw: preferredChargerSpeedKw,
                     minStopMinutes: preferredStopMinutes
-                )
-
-                results.append(RouteResult(
-                    route: route,
-                    elevationGain: energy.gain,
-                    elevationLoss: energy.loss,
-                    energyKwh: energy.totalKwh,
-                    batteryPctUsed: totalBatteryPct,
-                    efficiency: (route.distance * EVConstants.milesPerMeter) / max(energy.totalKwh, 0.01),
-                    averageGrade: energy.avgGrade,
-                    peakGrade: energy.peakGrade,
-                    elevationProfile: profile,
-                    score: score,
-                    chargingStops: chargingPlan.stops,
-                    finalBatteryPct: chargingPlan.finalBatteryPct,
-                    finalSection: chargingPlan.finalSection
-                ))
+                ) {
+                    routes = [result]
+                }
             }
-
-            routes = results.sorted { $0.score < $1.score }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -373,9 +393,9 @@ class EVRouteService {
 
     // MARK: - MapKit Directions
 
+    /// Single-leg directions (origin → destination, no stops). Returns alternate routes.
     private func fetchDirections(from origin: CLLocationCoordinate2D,
                                   to destination: CLLocationCoordinate2D,
-                                  stops: [CLLocationCoordinate2D],
                                   avoidHighways: Bool = false,
                                   avoidTolls: Bool = false) async throws -> [MKRoute] {
         let request = MKDirections.Request()
@@ -389,6 +409,167 @@ class EVRouteService {
         let directions = MKDirections(request: request)
         let response = try await directions.calculate()
         return response.routes
+    }
+
+    /// Multi-leg directions: calculates each leg separately and stitches results.
+    /// MapKit does not support waypoints natively, so we chain separate requests.
+    private func fetchMultiLegRoute(
+        waypoints: [CLLocationCoordinate2D],
+        vehicle: EVVehicle,
+        avoidHighways: Bool,
+        avoidTolls: Bool,
+        preferredChargerSpeedKw: Double,
+        minStopMinutes: Double
+    ) async throws -> RouteResult? {
+        guard waypoints.count >= 2 else { return nil }
+
+        var allPolylineCoords: [CLLocationCoordinate2D] = []
+        var totalDistanceM: Double = 0
+        var totalTimeS: Double = 0
+        var combinedProfile: [ElevationPoint] = []
+        var distanceOffsetMiles: Double = 0
+
+        for i in 0..<waypoints.count - 1 {
+            let request = MKDirections.Request()
+            request.source = MKMapItem(placemark: MKPlacemark(coordinate: waypoints[i]))
+            request.destination = MKMapItem(placemark: MKPlacemark(coordinate: waypoints[i + 1]))
+            request.transportType = .automobile
+            if avoidHighways { request.highwayPreference = .avoid }
+            if avoidTolls { request.tollPreference = .avoid }
+
+            let directions = MKDirections(request: request)
+            let response = try await directions.calculate()
+
+            guard let bestLeg = response.routes.first else { continue }
+
+            // Collect polyline points (skip first point of each leg after the first to avoid duplicates)
+            let pointCount = bestLeg.polyline.pointCount
+            let pts = bestLeg.polyline.points()
+            let startIdx = i == 0 ? 0 : 1
+            for j in startIdx..<pointCount {
+                allPolylineCoords.append(pts[j].coordinate)
+            }
+
+            // Sample elevation for this leg
+            let legPoints = sampleRoutePoints(route: bestLeg, count: 40)
+            let legElevations = await fetchElevations(for: legPoints)
+            var legProfile = buildElevationProfile(
+                points: legPoints,
+                elevations: legElevations,
+                totalDistance: bestLeg.distance
+            )
+
+            // Offset distances so profile is continuous across all legs
+            if distanceOffsetMiles > 0 {
+                legProfile = legProfile.map {
+                    ElevationPoint(distance: $0.distance + distanceOffsetMiles, elevation: $0.elevation, grade: $0.grade)
+                }
+                // Skip first point to avoid duplicate junction
+                legProfile = Array(legProfile.dropFirst())
+            }
+            combinedProfile.append(contentsOf: legProfile)
+
+            totalDistanceM += bestLeg.distance
+            totalTimeS += bestLeg.expectedTravelTime
+            distanceOffsetMiles += bestLeg.distance * EVConstants.milesPerMeter
+        }
+
+        guard !combinedProfile.isEmpty else { return nil }
+
+        let combinedPolyline = MKPolyline(coordinates: allPolylineCoords, count: allPolylineCoords.count)
+        let avgSpeedMps = totalDistanceM / max(1, totalTimeS)
+
+        // Calculate energy using combined profile
+        let energy = estimateEnergyFromProfile(combinedProfile, avgSpeedMps: avgSpeedMps, vehicle: vehicle)
+        let totalBatteryPct = (energy.totalKwh / vehicle.batteryKwh) * 100
+
+        // Simple charging plan based on total energy
+        let chargingPlan = calculateChargingStopsFromProfile(
+            profile: combinedProfile,
+            avgSpeedMps: avgSpeedMps,
+            vehicle: vehicle,
+            totalEnergyKwh: energy.totalKwh,
+            preferredChargerSpeedKw: preferredChargerSpeedKw,
+            minStopMinutes: minStopMinutes
+        )
+
+        let stopCount = waypoints.count - 2
+        let stopLabel = stopCount == 1 ? "1 stop" : "\(stopCount) stops"
+
+        return RouteResult(
+            routeName: "Via \(stopLabel)",
+            distanceMiles: totalDistanceM * EVConstants.milesPerMeter,
+            durationMinutes: totalTimeS / 60,
+            elevationGain: energy.gain,
+            elevationLoss: energy.loss,
+            energyKwh: energy.totalKwh,
+            batteryPctUsed: totalBatteryPct,
+            efficiency: distanceOffsetMiles / max(energy.totalKwh, 0.01),
+            averageGrade: energy.avgGrade,
+            peakGrade: energy.peakGrade,
+            elevationProfile: combinedProfile,
+            score: energy.totalKwh * 0.8 + (totalTimeS / 3600) * 0.1,
+            chargingStops: chargingPlan.stops,
+            finalBatteryPct: chargingPlan.finalBatteryPct,
+            finalSection: chargingPlan.finalSection,
+            customPolyline: combinedPolyline
+        )
+    }
+
+    /// Energy estimation from a profile + speed (no MKRoute needed).
+    private func estimateEnergyFromProfile(_ profile: [ElevationPoint], avgSpeedMps: Double, vehicle: EVVehicle) -> EnergyResult {
+        var totalEnergy = 0.0
+        var totalGain = 0.0
+        var totalLoss = 0.0
+        var grades: [Double] = []
+        var peakGrade = 0.0
+
+        for i in 1..<profile.count {
+            let elevDiff = profile[i].elevation - profile[i - 1].elevation
+            let absGrade = abs(profile[i].grade)
+            grades.append(absGrade)
+            peakGrade = max(peakGrade, absGrade)
+            if elevDiff > 0 { totalGain += elevDiff }
+            else { totalLoss += abs(elevDiff) }
+            totalEnergy += segmentEnergy(profile: profile, index: i, vehicle: vehicle, avgSpeedMps: avgSpeedMps)
+        }
+
+        let totalKwh = max(0.1, totalEnergy)
+        let avgGrade = grades.isEmpty ? 0 : grades.reduce(0, +) / Double(grades.count)
+        return EnergyResult(totalKwh: totalKwh, gain: totalGain, loss: totalLoss, avgGrade: avgGrade, peakGrade: peakGrade)
+    }
+
+    /// Charging stop calculation that works from a profile + speed (no MKRoute needed).
+    private func calculateChargingStopsFromProfile(
+        profile: [ElevationPoint],
+        avgSpeedMps: Double,
+        vehicle: EVVehicle,
+        totalEnergyKwh: Double,
+        preferredChargerSpeedKw: Double,
+        minStopMinutes: Double
+    ) -> ChargingPlan {
+        guard profile.count >= 2 else {
+            return ChargingPlan(stops: [], finalBatteryPct: max(0, startBatteryPct - (totalEnergyKwh / vehicle.batteryKwh) * 100), finalSection: nil)
+        }
+
+        let totalBatteryPct = (totalEnergyKwh / vehicle.batteryKwh) * 100
+        if totalBatteryPct <= (startBatteryPct - minBatteryPct) {
+            return ChargingPlan(stops: [], finalBatteryPct: startBatteryPct - totalBatteryPct, finalSection: nil)
+        }
+
+        // Build approximate coordinate list from profile distance markers
+        // Use evenly-spaced fake coordinates for stop placement (not shown on map)
+        let fakePoints = profile.map { _ in CLLocationCoordinate2D(latitude: 0, longitude: 0) }
+
+        return calculateChargingStops(
+            profile: profile,
+            points: fakePoints,
+            route: MKRoute(), // unused — we pass avgSpeedMps directly in segmentEnergy
+            vehicle: vehicle,
+            totalEnergyKwh: totalEnergyKwh,
+            preferredChargerSpeedKw: preferredChargerSpeedKw,
+            minStopMinutes: minStopMinutes
+        )
     }
 
     // MARK: - Elevation (Open Elevation API — no key required)
