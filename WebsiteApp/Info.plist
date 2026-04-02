@@ -2,11 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>remote-notification</string>
-	</array>
-
 	<!-- Location — used only for setting your origin when planning a route -->
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>EV Route Planner uses your location to set your starting point when planning a route. Your location is never stored or shared.</string>
