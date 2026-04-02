@@ -83,6 +83,19 @@ enum ChargerNetwork: String, CaseIterable {
         }
     }
 
+    /// Shortened name for compact filter chips — keeps all 7 networks on 2 rows
+    var chipName: String {
+        switch self {
+        case .tesla: return "Tesla"
+        case .electrifyAmerica: return "Electrify"   // "America" dropped — brand is unambiguous
+        case .evgo: return "EVgo"
+        case .chargePoint: return "ChargePoint"
+        case .blink: return "Blink"
+        case .evConnect: return "EV Connect"
+        case .shell: return "Shell"
+        }
+    }
+
     var color: String {
         switch self {
         case .tesla: return "#e31937"

@@ -361,19 +361,7 @@ struct EVRoutePlannerView: View {
     // MARK: - Network Filter
 
     private var networkFilterSection: some View {
-        VStack(alignment: .center, spacing: 8) {
-            HStack(spacing: 6) {
-                Text("Networks")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(EVTheme.textSecondary)
-                if chargerService.isLoading {
-                    ProgressView()
-                        .scaleEffect(0.7)
-                        .tint(EVTheme.accentGreen)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .center)
-
+        ZStack(alignment: .topTrailing) {
             FlowLayout(spacing: 6, alignment: .center) {
                 ForEach(ChargerNetwork.allCases, id: \.self) { network in
                     let isSelected = selectedNetworks.contains(network)
@@ -389,12 +377,12 @@ struct EVRoutePlannerView: View {
                             }
                         }
                     } label: {
-                        HStack(spacing: 5) {
-                            NetworkIconView(network: network, size: 18)
-                            Text(network.shortName)
+                        HStack(spacing: 4) {
+                            NetworkIconView(network: network, size: 15)
+                            Text(network.chipName)
                                 .font(.system(size: 12, weight: .bold))
                         }
-                        .padding(.horizontal, 10)
+                        .padding(.horizontal, 9)
                         .padding(.vertical, 7)
                         .background(isSelected ? network.colorValue.opacity(0.2) : EVTheme.bgInput)
                         .overlay(
@@ -406,6 +394,14 @@ struct EVRoutePlannerView: View {
                     }
                 }
             }
+            .frame(maxWidth: .infinity)
+
+            // Loading spinner — top-right corner, only while fetching
+            if chargerService.isLoading {
+                ProgressView()
+                    .scaleEffect(0.65)
+                    .tint(EVTheme.accentGreen)
+            }
         }
         .padding(10)
         .background(EVTheme.bgInput)
@@ -414,7 +410,6 @@ struct EVRoutePlannerView: View {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(EVTheme.border, lineWidth: 1)
         )
-        .frame(height: horizontalSizeClass == .regular ? 110 : 80)
     }
 
     // MARK: - Vehicle Section
