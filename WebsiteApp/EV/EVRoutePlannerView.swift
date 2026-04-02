@@ -210,7 +210,6 @@ struct EVRoutePlannerView: View {
                     }
                 }
             }
-            .frame(maxWidth: horizontalSizeClass == .regular ? 600 : .infinity)
             .frame(height: panelHeight)
             .background(EVTheme.bgCard)
             .clipShape(.rect(topLeadingRadius: 20, topTrailingRadius: 20))
