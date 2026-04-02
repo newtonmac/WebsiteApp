@@ -45,7 +45,10 @@ export default function FeedbackAdmin() {
     const title = (document.getElementById(`sug-t-${s.id}`) as HTMLInputElement)?.value || s.title;
     const desc = (document.getElementById(`sug-d-${s.id}`) as HTMLTextAreaElement)?.value || s.description;
     try {
-      await proxy({ action: 'approve', title, description: desc, status, suggestedBy: s.name || s.city });
+      // Append contact info to description
+      const contactInfo = [s.name && 'From: ' + s.name, s.email && 'Email: ' + s.email, s.club && 'Club: ' + s.club, s.craft && 'Craft: ' + s.craft, (s.city || '') + ', ' + (s.country || '')].filter(Boolean).join(' | ');
+      const fullDesc = desc + (contactInfo ? '\\n\\nSubmitted by: ' + contactInfo : '');
+      await proxy({ action: 'approve', title, description: fullDesc, status, suggestedBy: s.name || s.city });
       await proxy({ action: 'dismiss', id: s.id }).catch(() => {});
       // Optimistically remove from UI (don't rely on KV re-fetch which has eventual consistency)
       setSuggestions(prev => prev.filter(x => x.id !== s.id));
