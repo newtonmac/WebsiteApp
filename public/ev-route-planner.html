@@ -3375,7 +3375,7 @@ async function searchChargersAlongRoute(route) {
 
     const SEARCH_RADIUS_MI = 10; // miles — tighter radius with more search points
     const seenStationIds = new Set();
-    const showOnMap = document.getElementById('chargerCb').checked;
+    const showOnMap = true; // chargers always on — no toggle needed
 
     console.log(`[EV Chargers] Searching ${searchPoints.length} points along ${totalMi.toFixed(0)}mi route, radius=${SEARCH_RADIUS_MI}mi`);
 
