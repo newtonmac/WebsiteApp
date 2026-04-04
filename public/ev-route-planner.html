@@ -3375,7 +3375,7 @@ async function searchChargersAlongRoute(route) {
 
     const SEARCH_RADIUS_MI = 10; // miles — tighter radius with more search points
     const seenStationIds = new Set();
-    const showOnMap = true; // chargers always on — no toggle needed
+    const showOnMap = true; // chargers are fetched always; visibility controlled by enabledNetworks
 
     console.log(`[EV Chargers] Searching ${searchPoints.length} points along ${totalMi.toFixed(0)}mi route, radius=${SEARCH_RADIUS_MI}mi`);
 
@@ -3464,7 +3464,7 @@ async function searchChargersAlongRoute(route) {
 
                 const marker = new google.maps.Marker({
                     position: pos,
-                    map: showOnMap ? map : null,
+                    map: enabledNetworks.has(station.ev_network) ? map : null,
                     icon: makeChargerIcon(network),
                     title: station.station_name,
                     zIndex: 10
