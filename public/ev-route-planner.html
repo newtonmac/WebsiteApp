@@ -3160,8 +3160,8 @@ const CHARGER_QUERIES = [
 const NREL_NETWORK_MAP = {};
 CHARGER_QUERIES.forEach(n => { NREL_NETWORK_MAP[n.nrelKey] = n; });
 
-// Track which networks are enabled (all on by default)
-const enabledNetworks = new Set(CHARGER_QUERIES.map(n => n.nrelKey));
+// Track which networks are enabled — start empty, user selects after route is planned
+const enabledNetworks = new Set();
 
 function buildNetworkFilterChips() {
     const container = document.getElementById('networkFilters');
