@@ -598,6 +598,43 @@
         .ri-legend-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
         .ri-legend-swatch { width: 20px; height: 3px; border-radius: 2px; }
 
+        /* battery bar — mirrors iOS BatteryBarView */
+        .rc-battery-bar {
+            margin-top: 10px;
+        }
+        .rc-battery-bar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        .rc-battery-vehicle {
+            font-size: 10px;
+            color: #8b8fa3;
+        }
+        .rc-battery-pct {
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .rc-battery-track {
+            height: 10px;
+            background: #2d3040;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .rc-battery-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.5s ease;
+        }
+
+        /* 2-row stats divider */
+        .rc-stats-divider {
+            height: 1px;
+            background: #2d3040;
+            margin: 8px 0;
+        }
+
         /* score bar */
         .score-bar {
             margin-top: 8px;
@@ -2301,12 +2338,35 @@ function buildRouteCards(routes, tripEstimates, container, legPrefix, selectFn) 
             ? `<div class="rc-charge-badge">${trip.chargingStops} charge stop${trip.chargingStops > 1 ? 's' : ''} needed &middot; ~$${trip.chargingCostTotal.toFixed(2)}</div>`
             : '';
 
+        const elevGainFt = Math.round((r.gain || 0) * 3.281);
+        const efficiency = trip.efficiency ? trip.efficiency.toFixed(1) : (r.distMi / Math.max(0.1, trip.totalEnergy)).toFixed(1);
+        const battUsed = Math.round(trip.batteryPct);
+        const battUsedClass = battUsed > 80 ? 'warn' : battUsed > 60 ? '' : 'good';
+        const battFillColor = arrPct > 40 ? '#34d399' : arrPct > 20 ? '#fbbf24' : '#ef4444';
+        const ev = getSelectedEV();
+        const evName = ev ? ev.name.replace(/^(Tesla|Rivian|Ford|Hyundai|Kia|VW|BMW|Mercedes|Chevrolet|Nissan|Polestar|Lucid)\s+/, '') : '';
+
         card.innerHTML = `
             <div class="rc-header">${badge} <span class="rc-name">${fmtDist(r.distMi)}</span><button class="rc-info-btn" title="Route info">i</button></div>
             <div class="rc-stats">
                 <div class="rc-stat"><div class="val ${timeClass}">${formatDuration(r.durMin)}</div><div class="lbl">Time</div></div>
-                <div class="rc-stat"><div class="val ${energyClass}">${trip.totalEnergy.toFixed(1)}</div><div class="lbl">kWh</div></div>
+                <div class="rc-stat"><div class="val">${elevGainFt > 0 ? '+' : ''}${elevGainFt.toLocaleString()} ft</div><div class="lbl">Elev Gain</div></div>
+                <div class="rc-stat"><div class="val good">${efficiency}</div><div class="lbl">mi/kWh</div></div>
+            </div>
+            <div class="rc-stats-divider"></div>
+            <div class="rc-stats">
+                <div class="rc-stat"><div class="val ${energyClass}">${trip.totalEnergy.toFixed(1)} kWh</div><div class="lbl">Energy</div></div>
+                <div class="rc-stat"><div class="val ${battUsedClass}">${battUsed}%</div><div class="lbl">Batt Used</div></div>
                 <div class="rc-stat"><div class="val ${battClass}">${arrPct}%</div><div class="lbl">Arrival</div></div>
+            </div>
+            <div class="rc-battery-bar">
+                <div class="rc-battery-bar-header">
+                    <span class="rc-battery-vehicle">${evName}</span>
+                    <span class="rc-battery-pct" style="color:${battFillColor};">${arrPct}% remaining</span>
+                </div>
+                <div class="rc-battery-track">
+                    <div class="rc-battery-fill" style="width:${arrPct}%; background:${battFillColor};"></div>
+                </div>
             </div>
             ${chargeStopHtml}
             <div class="score-bar"><div class="score-bar-fill" style="width:${scoreNorm}%; background:${barColor};"></div></div>
