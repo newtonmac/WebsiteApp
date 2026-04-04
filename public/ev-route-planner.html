@@ -1655,10 +1655,17 @@ function estimateTripEnergy(route, ev) {
     const CHARGE_TARGET_PCT = settings.chargeTargetPct;
     const START_PCT = settings.startChargePct;
 
-    // Average speed from route duration
-    const avgSpeedMs = distM / Math.max(1, route.durMin * 60); // m/s
+    // ── STEP 1: EPA BASELINE ─────────────────────────────────────────────────
+    // Use official EPA combined efficiency as the flat-road energy baseline.
+    // EPA testing naturally captures aerodynamic drag, rolling resistance,
+    // speed mix, temperature effects and accessories — all the hard-to-model
+    // real-world factors. Elevation is the key deviation EPA doesn't capture.
+    // Matches iOS EVRouteService: baseEnergy = distMiles * vehicle.effKwhMi
+    const baseEnergy = distMi * ev.effKwhMi;
 
-    let baseEnergy = 0;
+    // ── STEP 2: ELEVATION PHYSICS CORRECTION (m × g × Δh) ───────────────────
+    // On top of EPA baseline, apply potential energy physics for grade effects.
+    // Climbs cost extra energy beyond flat-road EPA; descents recover some via regen.
     let elevEnergy = 0;
     let regenEnergy = 0;
     let avgGradePct = 0;
@@ -1666,55 +1673,32 @@ function estimateTripEnergy(route, ev) {
 
     if (elev.length >= 2 && sampled.length >= 2) {
         const segDistM = distM / (sampled.length - 1);
-        let totalUpRun = 0;
+        let gradeSum = 0;
+        let gradeCount = 0;
 
         for (let i = 1; i < elev.length; i++) {
-            const rise = elev[i] - elev[i - 1];
-            const grade = rise / segDistM; // dimensionless
-            const absGrade = Math.abs(grade);
-            const gradePct = absGrade * 100;
-            const theta = Math.atan(grade);
+            const rise = elev[i] - elev[i - 1];        // meters, signed
+            const segGradePct = Math.abs(rise / segDistM) * 100;
+            gradeSum += segGradePct;
+            gradeCount++;
+            if (segGradePct > peakGradePct) peakGradePct = segGradePct;
 
-            // Speed adjustment per grade (like iOS app)
-            let speedFactor = 1.0;
-            if (gradePct > 6) speedFactor = rise > 0 ? 0.75 : 0.90;
-            else if (gradePct > 3 && rise > 0) speedFactor = 0.88;
-            const v = avgSpeedMs * speedFactor;
-
-            // Forces
-            const fRoll = ev.crr * ev.weightKg * GRAVITY * Math.cos(theta);
-            const fAero = 0.5 * AIR_DENSITY * ev.cd * ev.frontalArea * v * v;
-            const fGrade = ev.weightKg * GRAVITY * Math.sin(theta);
-            const fTotal = fRoll + fAero + fGrade;
-
-            if (fTotal >= 0) {
-                // Positive force — energy consumed
-                const segEnergy = (fTotal * segDistM) / (JOULES_PER_KWH * DRIVETRAIN_EFF);
-                if (rise > 0) { elevEnergy += (fGrade * segDistM) / (JOULES_PER_KWH * DRIVETRAIN_EFF); }
-                baseEnergy += ((fRoll + fAero) * segDistM) / (JOULES_PER_KWH * DRIVETRAIN_EFF);
-            } else {
-                // Negative force — regen recovery
-                const segRegen = (Math.abs(fTotal) * segDistM) / JOULES_PER_KWH * ev.regenEff;
-                regenEnergy += segRegen;
-                // Still account for rolling + aero as base consumption
-                baseEnergy += ((fRoll + fAero) * segDistM) / (JOULES_PER_KWH * DRIVETRAIN_EFF);
+            if (rise > 0) {
+                // Climbing: motor efficiency degrades on steep grades
+                // iOS: motorEff = max(0.60, 0.88 - gradePct * 0.015)
+                const motorEff = Math.max(0.60, DRIVETRAIN_EFF - segGradePct * 0.015);
+                elevEnergy += (ev.weightKg * GRAVITY * rise) / (JOULES_PER_KWH * motorEff);
+            } else if (rise < 0) {
+                // Descending: regen recovery, efficiency drops on very steep grades
+                // iOS: regenPenalty = max(0.30, regenEff - gradePct * 0.02)
+                const regenPenalty = Math.max(0.30, ev.regenEff - segGradePct * 0.02);
+                regenEnergy += (ev.weightKg * GRAVITY * Math.abs(rise)) / JOULES_PER_KWH * regenPenalty;
             }
-
-            if (rise > 0) totalUpRun += segDistM;
-            if (gradePct > peakGradePct) peakGradePct = gradePct;
         }
-
-        if (route.gain > 0 && totalUpRun > 0) {
-            avgGradePct = (route.gain / totalUpRun) * 100;
-        }
-    } else {
-        // Fallback: EPA-based
-        baseEnergy = distMi * ev.effKwhMi;
-        elevEnergy = (ev.weightKg * GRAVITY * route.gain) / (JOULES_PER_KWH * DRIVETRAIN_EFF);
-        regenEnergy = (ev.weightKg * GRAVITY * route.loss) / JOULES_PER_KWH * ev.regenEff;
+        avgGradePct = gradeCount > 0 ? gradeSum / gradeCount : 0;
     }
 
-    const totalEnergy = Math.max(0, baseEnergy + elevEnergy - regenEnergy);
+    const totalEnergy = Math.max(0.1, baseEnergy + elevEnergy - regenEnergy);
     const batteryPct = (totalEnergy / ev.batteryKwh) * 100;
 
     // ── Charging stop calculation with DC fast charging curve ──
@@ -2242,44 +2226,17 @@ function calcElevation(elevations) {
 function scoreRoutes(routes) {
     if (!routes.length) return;
     const ev = getSelectedEV();
-    const fastestDur = Math.min(...routes.map(r => r.durMin));
 
     const energies = routes.map(r => estimateTripEnergy(r, ev));
 
-    // Auxiliary power draw: HVAC + electronics ≈ 1-2 kW while driving
-    const auxKw = 1.5;
-
+    // iOS scoring formula: energyScore * 0.80 + timeScore * 0.10 + gradeScore * 0.05
+    // Energy dominates (80%), time is a small tiebreaker (10%), steep grade nudge (5%)
     routes.forEach((r, i) => {
-        const tripEnergy = energies[i].totalEnergy;
-
-        // ── Time cost: extra minutes × auxiliary power ──
-        // Every extra minute on the road costs real energy (HVAC, lights, etc.)
-        // This naturally discourages long detours without a hard cutoff
-        const extraMin = r.durMin - fastestDur;
-        const timeCost = (extraMin / 60) * auxKw;
-
-        // ── Steep-grade tiebreaker ──
-        // Only a nudge — the energy model already penalizes steep climbs.
-        // This breaks ties by preferring gradual grades when energy is close.
-        let steepNudge = 0;
-        if (r.elevations.length >= 2 && r.sampled.length >= 2) {
-            const segDistM = (r.distMi * 1609.34) / (r.sampled.length - 1);
-            let peakGrade = 0;
-            for (let j = 1; j < r.elevations.length; j++) {
-                const rise = r.elevations[j] - r.elevations[j-1];
-                if (rise > 0) {
-                    const gradePct = (rise / segDistM) * 100;
-                    if (gradePct > peakGrade) peakGrade = gradePct;
-                }
-            }
-            // Tiny tiebreaker — only matters when routes have nearly identical energy.
-            // Capped at 0.15 kWh so it never overrides a real energy difference.
-            if (peakGrade > 5) {
-                steepNudge = Math.min((peakGrade - 5) * 0.02, 0.15);
-            }
-        }
-
-        r.score = tripEnergy + timeCost + steepNudge;
+        const trip = energies[i];
+        const energyScore = trip.totalEnergy * 0.80;
+        const timeScore  = (r.durMin / 60) * 0.10;
+        const gradeScore = trip.peakGradePct * 0.05;
+        r.score = energyScore + timeScore + gradeScore;
     });
 }
 
