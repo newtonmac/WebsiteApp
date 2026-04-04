@@ -1159,21 +1159,7 @@
             </div>
             <div id="stopsContainer"></div>
             <button class="add-stop-btn" id="addStopBtn" type="button">+ Add Stop</button>
-            <div class="round-trip-toggle">
-                <label class="toggle-label" for="roundTripCb">
-                    <input type="checkbox" id="roundTripCb" />
-                    <span class="toggle-switch"></span>
-                    Round Trip
-                </label>
-            </div>
-            <div class="round-trip-toggle charger-toggle">
-                <label class="toggle-label" for="chargerCb">
-                    <input type="checkbox" id="chargerCb" />
-                    <span class="toggle-switch"></span>
-                    Show EV Chargers
-                </label>
-                <div id="networkFilters" class="network-filters" style="display:none;"></div>
-            </div>
+            <div id="networkFilters" class="network-filters"></div>
             <div class="ev-select-group">
                 <label>Your EV</label>
                 <select id="evModelSelect">
@@ -1364,10 +1350,7 @@ function initApp() {
     planBtn.addEventListener('click', planRoutes);
     document.getElementById('shareCopy').addEventListener('click', handleCopyLink);
     document.getElementById('gpsBtn').addEventListener('click', useMyLocation);
-    document.getElementById('roundTripCb').addEventListener('change', () => {
-        planBtn.textContent = document.getElementById('roundTripCb').checked
-            ? 'Plan Round Trip' : 'Plan EV-Efficient Route';
-    });
+    // Round trip disabled — always plan one-way
 
     // Legend toggle button (mobile)
     document.getElementById('legendToggleBtn').addEventListener('click', () => {
@@ -1442,14 +1425,9 @@ function initApp() {
         picker.addEventListener('click', e => e.stopPropagation());
     })();
 
-    // Charger toggle
+    // Charger network filter chips — always visible, chargers load automatically
     buildNetworkFilterChips();
-    document.getElementById('chargerCb').addEventListener('change', function() {
-        if (this.checked && routesData.length && !chargerSearchDone) {
-            searchChargersAlongRoute(routesData[selectedRouteIdx]);
-        }
-        toggleChargers(this.checked);
-    });
+    toggleChargers(true);
 
     // Waze: try deep link, hide button if app not installed
     document.getElementById('wazeLink').addEventListener('click', function(e) {
@@ -2141,7 +2119,7 @@ async function planRoutes() {
     if (!originCoord || !destCoord) return;
     if (!stops.every(s => s.coord !== null)) return;
 
-    isRoundTrip = document.getElementById('roundTripCb').checked;
+    isRoundTrip = false;
     showLoading('Fetching routes...');
     clearRoutes();
     document.getElementById('emptyState').style.display = 'none';
@@ -2678,6 +2656,12 @@ function displayRoutes(routes) {
     document.getElementById('routeResults').style.display = 'block';
     document.getElementById('mapLegend').style.display = 'block';
     showMobileMap();
+
+    // Auto-load chargers along best route (no toggle needed — always on)
+    if (routesData.length) {
+        chargerSearchDone = false;
+        searchChargersAlongRoute(routesData[0]);
+    }
 }
 
 function selectReturnRoute(idx) {
@@ -2736,10 +2720,8 @@ function selectRoute(idx) {
     // Build map app links with waypoints to follow this route
     updateMapLinks(routesData[idx]);
 
-    // Refresh chargers if toggle is on
-    if (document.getElementById('chargerCb').checked) {
-        searchChargersAlongRoute(routesData[idx]);
-    }
+    // Always refresh chargers for selected route
+    searchChargersAlongRoute(routesData[idx]);
 }
 
 // ─── Elevation-colored route overlay ───
