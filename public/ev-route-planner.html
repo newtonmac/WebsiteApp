@@ -3191,10 +3191,10 @@ function buildNetworkFilterChips() {
 }
 
 function applyNetworkFilter() {
-    const chargerVisible = document.getElementById('chargerCb').checked;
+    // Chargers are always on — no toggle checkbox needed
     chargerMarkers.forEach(m => {
         const nrelKey = m.chargerData && m.chargerData.nrelKey;
-        const show = chargerVisible && enabledNetworks.has(nrelKey);
+        const show = enabledNetworks.has(nrelKey);
         m.setMap(show ? map : null);
     });
 }
@@ -3532,8 +3532,7 @@ function toggleChargers(show) {
     if (!show && chargerInfoWindow) chargerInfoWindow.close();
     const legend = document.getElementById('chargerLegend');
     if (legend) legend.style.display = show ? 'block' : 'none';
-    const filters = document.getElementById('networkFilters');
-    if (filters) filters.style.display = show ? 'flex' : 'none';
+    // networkFilters chips are always visible — no toggle
 }
 
 function clearRoutes() {
