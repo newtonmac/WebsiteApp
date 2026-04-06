@@ -287,6 +287,7 @@ struct EVMapContent: View {
 
 struct ChargerMarkerView: View {
     let charger: EVCharger
+    private let showL2 = EVSettingsManager.shared.showLevel2Counts
 
     var body: some View {
         ZStack {
@@ -302,15 +303,42 @@ struct ChargerMarkerView: View {
         }
         .shadow(color: networkColor.opacity(0.4), radius: 2, y: 1)
         .overlay(alignment: .topTrailing) {
-            if charger.totalChargers > 0 {
-                Text("\(charger.totalChargers)")
-                    .font(.system(size: 6, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(minWidth: 10, minHeight: 10)
-                    .background(Circle().fill(EVTheme.accentBlue))
-                    .offset(x: 5, y: -5)
-            }
+            badgeView
         }
+    }
+
+    @ViewBuilder
+    private var badgeView: some View {
+        let dc = charger.dcFastCount ?? 0
+        let l2 = charger.level2Count ?? 0
+
+        if showL2 && dc > 0 && l2 > 0 {
+            // Show both: "DC/L2" e.g. "4/12"
+            Text("\(dc)/\(l2)")
+                .font(.system(size: 5, weight: .bold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 2)
+                .frame(minHeight: 10)
+                .background(Capsule().fill(EVTheme.accentBlue))
+                .offset(x: 8, y: -5)
+        } else if dc > 0 {
+            // DC only
+            Text("\(dc)")
+                .font(.system(size: 6, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(minWidth: 10, minHeight: 10)
+                .background(Circle().fill(EVTheme.accentBlue))
+                .offset(x: 5, y: -5)
+        } else if showL2 && l2 > 0 {
+            // L2 only
+            Text("\(l2)")
+                .font(.system(size: 6, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(minWidth: 10, minHeight: 10)
+                .background(Circle().fill(EVTheme.accentYellow))
+                .offset(x: 5, y: -5)
+        }
+    }
     }
 
     private var networkColor: Color {

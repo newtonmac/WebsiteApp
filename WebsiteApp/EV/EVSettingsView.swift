@@ -84,6 +84,13 @@ struct EVSettingsView: View {
                     unit: " kW",
                     description: "Prefer chargers at or above this speed (0 = any)"
                 )
+
+                SettingsToggleRow(
+                    label: "Show Level 2 Counts",
+                    icon: "ev.plug.ac.type.2",
+                    isOn: $settings.showLevel2Counts,
+                    description: "Show Level 2 charger count on map badges alongside DC Fast"
+                )
             }
         }
     }

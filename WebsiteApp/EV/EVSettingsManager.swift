@@ -20,6 +20,9 @@ final class EVSettingsManager: ObservableObject {
     /// Preferred minimum charger speed in kW (0 = no preference)
     @AppStorage("ev_preferredChargerSpeedKw") var preferredChargerSpeedKw: Double = 50
 
+    /// Show Level 2 charger counts alongside DC Fast on map badges
+    @AppStorage("ev_showLevel2Counts") var showLevel2Counts: Bool = true
+
     // MARK: - Route Preferences
 
     /// Avoid highways when requesting directions
@@ -113,6 +116,7 @@ final class EVSettingsManager: ObservableObject {
         minArrivalPct = 15
         chargeTargetPct = 80
         preferredChargerSpeedKw = 50
+        showLevel2Counts = true
         avoidHighways = false
         avoidTolls = false
         maxDetourMiles = 15

@@ -353,8 +353,8 @@ class EVChargerService {
         case .chargePoint: score += 15
         default: score += 5
         }
-        // Prefer more stalls
-        score += charger.totalChargers
+        // Prefer more DC fast stalls (not L2 — those inflate ChargePoint scores)
+        score += charger.dcFastCount ?? 0
         return score
     }
 
