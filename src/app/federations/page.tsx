@@ -4,6 +4,7 @@ import { FederationsList } from './FederationsList';
 
 export const metadata: Metadata = {
   title: 'Federations',
+  alternates: { canonical: '/federations' },
   description: '181 paddling federations worldwide — national, continental, and international organizations governing canoe, kayak, SUP, and outrigger sports.',
   openGraph: { title: 'PaddlePoint — Federations', description: 'Paddling federations worldwide' },
 };
@@ -43,7 +44,7 @@ export default async function FederationsPage() {
               <a key={f.id} href={f.website || '#'} target="_blank" rel="noopener noreferrer"
                 className="bg-gradient-to-br from-slate-700 to-slate-800 text-white rounded-xl p-5 no-underline hover:shadow-lg transition-shadow">
                 <h4 className="font-bold text-lg mb-1">{f.name}</h4>
-                <p className="text-sm opacity-70">{f.member_countries} member countries</p>
+                <p className="text-sm opacity-70">{f.member_countries ? `${f.member_countries} member countries` : 'Continental association'}</p>
                 {f.website && <p className="text-xs opacity-50 mt-1">{f.website.replace(/https?:\/\//, '').replace(/\/$/, '')}</p>}
               </a>
             ))}

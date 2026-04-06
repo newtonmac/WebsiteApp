@@ -2,10 +2,29 @@ User-agent: *
 Allow: /
 
 Disallow: /api/
+Disallow: /admin/
 Disallow: /pp-admin.html
 Disallow: /paddle-clubs-admin.html
 Disallow: /paddle-events-admin.html
 Disallow: /paddle-gear-admin.html
 Disallow: /paddle-traffic.html
+Disallow: /updates-admin.html
+Disallow: /analytics.html
+Disallow: /bitcoin-tracker.html
+Disallow: /currency-tracker.html
+Disallow: /earthquake-tracker.html
+Disallow: /ev-route-planner.html
+Disallow: /flight-tracker.html
+Disallow: /gold-tracker.html
+Disallow: /industrial-furniture.html
+Disallow: /live-tracker.html
+Disallow: /oil-tracker.html
+Disallow: /powerwall-dashboard.html
+Disallow: /quoteview-3d.html
+Disallow: /silver-tracker.html
+Disallow: /sky-tracker.html
+Disallow: /tech-stocks-tracker.html
+Disallow: /traffic-dashboard.html
+Disallow: /webcam-dashboard.html
 
 Sitemap: https://paddlepoint.org/sitemap.xml

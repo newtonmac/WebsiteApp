@@ -4,6 +4,7 @@ import { GearList } from './GearList';
 
 export const metadata: Metadata = {
   title: 'Gear',
+  alternates: { canonical: '/gear' },
   description: 'Paddle equipment brands and manufacturers. SUP boards, surfskis, kayaks, outrigger canoes, paddles, and PFDs from 50+ brands worldwide.',
   openGraph: { title: 'PaddlePoint — Gear', description: 'Paddle gear brands worldwide' },
 };

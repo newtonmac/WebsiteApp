@@ -4,6 +4,7 @@ import { ClubsMap } from './ClubsMap';
 
 export const metadata: Metadata = {
   title: 'Paddle Clubs',
+  alternates: { canonical: '/clubs' },
   description: '7,700+ paddle clubs worldwide. Find kayak, SUP, outrigger, canoe, and dragon boat clubs near you with maps, reviews, and contact info.',
   openGraph: { title: 'PaddlePoint — Paddle Clubs', description: '7,700+ paddle clubs worldwide on an interactive map' },
 };

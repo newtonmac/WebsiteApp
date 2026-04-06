@@ -5,6 +5,7 @@ import { RecentlyAdded } from './RecentlyAdded';
 
 export const metadata: Metadata = {
   title: 'Events',
+  alternates: { canonical: '/events' },
   description: 'Paddling events worldwide — regattas, races, festivals, and championships for kayak, canoe, SUP, outrigger, and dragon boat.',
   openGraph: { title: 'PaddlePoint — Events', description: 'Paddling events worldwide' },
 };
