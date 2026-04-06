@@ -112,13 +112,22 @@ func computeBatteryProfile(
         // Flat baseline — EPA-calibrated (same as segmentEnergy)
         let flatKwh = segDistMiles * vehicle.effKwhMi
 
-        // Grade correction — potential energy physics
+        // Grade correction — potential energy physics with grade-dependent efficiency
         let gradeJ = vehicle.weightKg * EVConstants.gravity * elevDiff
+        let segDistMeters = segDistMiles * EVConstants.metersPerMile
+        let gradePct = segDistMeters > 0 ? abs(elevDiff / segDistMeters) * 100 : 0
         let segKwh: Double
         if elevDiff > 0 {
-            segKwh = flatKwh + gradeJ / (EVConstants.joulesPerKwh * EVConstants.drivetrainEfficiency)
+            let motorEff = max(0.60, EVConstants.drivetrainEfficiency - gradePct * 0.015)
+            segKwh = flatKwh + gradeJ / (EVConstants.joulesPerKwh * motorEff)
         } else {
-            segKwh = max(0, flatKwh - abs(gradeJ) / EVConstants.joulesPerKwh * vehicle.regenEff)
+            // Regen threshold: below 0.5% grade the vehicle is coasting
+            if gradePct < 0.5 {
+                segKwh = flatKwh
+            } else {
+                let regenEff = max(0.30, vehicle.regenEff - gradePct * 0.02)
+                segKwh = max(0, flatKwh - abs(gradeJ) / EVConstants.joulesPerKwh * regenEff)
+            }
         }
 
         // Apply charging stops (battery jumps to chargeTargetPct at stop distances)

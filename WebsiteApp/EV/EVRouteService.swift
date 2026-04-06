@@ -927,13 +927,22 @@ class EVRouteService {
         let gradeEnergyJoules = vehicle.weightKg * EVConstants.gravity * elevDiff
 
         if elevDiff > 0 {
-            // Climbing: add extra energy on top of flat baseline
-            let climbingExtra = gradeEnergyJoules / (EVConstants.joulesPerKwh * EVConstants.drivetrainEfficiency)
+            // Climbing: motor efficiency degrades on steep grades
+            let segDistMeters = segDistMiles * EVConstants.metersPerMile
+            let gradePct = segDistMeters > 0 ? abs(elevDiff / segDistMeters) * 100 : 0
+            let motorEff = max(0.60, EVConstants.drivetrainEfficiency - gradePct * 0.015)
+            let climbingExtra = gradeEnergyJoules / (EVConstants.joulesPerKwh * motorEff)
             return flatEnergyKwh + climbingExtra
         } else {
-            // Descending: recover some energy via regen, but never go below 0
-            // regenEff accounts for motor power limits, friction braking, regen losses
-            let regenRecovery = abs(gradeEnergyJoules) / EVConstants.joulesPerKwh * vehicle.regenEff
+            // Descending: regen with grade-dependent efficiency
+            let segDistMeters = segDistMiles * EVConstants.metersPerMile
+            let gradePct = segDistMeters > 0 ? abs(elevDiff / segDistMeters) * 100 : 0
+            // Regen threshold: below 0.5% grade the vehicle is coasting, not regenerating
+            if gradePct < 0.5 {
+                return flatEnergyKwh
+            }
+            let regenEff = max(0.30, vehicle.regenEff - gradePct * 0.02)
+            let regenRecovery = abs(gradeEnergyJoules) / EVConstants.joulesPerKwh * regenEff
             return max(0, flatEnergyKwh - regenRecovery)
         }
     }

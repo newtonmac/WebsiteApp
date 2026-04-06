@@ -162,7 +162,7 @@ class EVChargerService {
         let sampleCount = max(3, min(40, Int(routeMiles / 7) + 2))
         let searchPoints = samplePolylinePoints(polyline: polyline, count: sampleCount)
         let routeCheckPoints = samplePolylinePoints(polyline: polyline, count: min(200, max(50, Int(routeMiles))))
-        let searchRadius = 5.0
+        let searchRadius = 15.0
 
         let fetchedChargers: [EVCharger] = await withTaskGroup(of: [EVCharger].self) { group in
             for point in searchPoints {
@@ -175,7 +175,7 @@ class EVChargerService {
 
         // Build spatial grid from route check points for O(1) proximity lookup
         // instead of O(n) linear scan per charger
-        let maxMeters = 2.0 * EVConstants.metersPerMile
+        let maxMeters = 5.0 * EVConstants.metersPerMile
         let routeGrid = SpatialGrid(points: routeCheckPoints, radiusMeters: maxMeters)
         var seenIds = Set<String>()
         var allChargers: [EVCharger] = []
@@ -225,7 +225,7 @@ class EVChargerService {
         }
     }
 
-    /// Search for chargers along the route, sampling every ~15 miles with a 5-mile search radius.
+    /// Search for chargers along the route with full corridor coverage.
     /// Uses concurrent fetches with a timeout to prevent stalling.
     func findChargersAlongRoute(_ route: MKRoute) async {
         isLoading = true
@@ -235,7 +235,7 @@ class EVChargerService {
         // Sample every ~7 miles, min 3 points, max 40 — balances coverage vs API calls
         let sampleCount = max(3, min(40, Int(routeMiles / 7) + 2))
         let searchPoints = sampleRoutePoints(route: route, count: sampleCount)
-        let searchRadius = 5.0 // wider radius with fewer points
+        let searchRadius = 15.0 // 15-mile radius ensures no gaps between search circles
 
         var allChargers: [EVCharger] = []
         var seenIds = Set<String>()
@@ -259,7 +259,7 @@ class EVChargerService {
         }
 
         // Deduplicate and filter using spatial grid — O(1) per charger instead of O(n)
-        let maxMeters = 2.0 * EVConstants.metersPerMile
+        let maxMeters = 5.0 * EVConstants.metersPerMile
         let routeGrid = SpatialGrid(points: routeCheckPoints, radiusMeters: maxMeters)
         for charger in fetchedChargers {
             guard !seenIds.contains(charger.id) else { continue }
@@ -269,7 +269,7 @@ class EVChargerService {
             }
         }
 
-        evLog("EV Chargers: \(allChargers.count) stations within 2mi of route (\(String(format: "%.0f", routeMiles))mi, \(sampleCount) search points)")
+        evLog("EV Chargers: \(allChargers.count) stations within 5mi of route (\(String(format: "%.0f", routeMiles))mi, \(sampleCount) search points, \(searchRadius)mi radius)")
 
         // Distribute evenly along route to prevent clustering
         let distributed = distributeEvenly(allChargers, alongRoute: route, maxPerSegmentMile: 3)

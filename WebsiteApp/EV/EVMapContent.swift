@@ -289,26 +289,26 @@ struct ChargerMarkerView: View {
     let charger: EVCharger
 
     var body: some View {
-        VStack(spacing: 1) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(networkColor)
-                    .frame(width: 28, height: 22)
-                    .shadow(color: networkColor.opacity(0.4), radius: 3)
-                Text(charger.network.abbreviation)
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(charger.network == .shell ? .black : .white)
-            }
-            .overlay(alignment: .topTrailing) {
-                // Charger count badge
-                if charger.totalChargers > 0 {
-                    Text("\(charger.totalChargers)")
-                        .font(.system(size: 7, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(minWidth: 12, minHeight: 12)
-                        .background(Circle().fill(EVTheme.accentBlue))
-                        .offset(x: 6, y: -6)
-                }
+        ZStack {
+            Circle()
+                .fill(networkColor)
+                .frame(width: 18, height: 18)
+            Circle()
+                .stroke(.white, lineWidth: 1.5)
+                .frame(width: 18, height: 18)
+            Text(charger.network.abbreviation)
+                .font(.system(size: 7, weight: .heavy))
+                .foregroundStyle(charger.network == .shell ? .black : .white)
+        }
+        .shadow(color: networkColor.opacity(0.4), radius: 2, y: 1)
+        .overlay(alignment: .topTrailing) {
+            if charger.totalChargers > 0 {
+                Text("\(charger.totalChargers)")
+                    .font(.system(size: 6, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(minWidth: 10, minHeight: 10)
+                    .background(Circle().fill(EVTheme.accentBlue))
+                    .offset(x: 5, y: -5)
             }
         }
     }

@@ -37,34 +37,13 @@ struct EVRoutePlannerView: View {
     private let collapsedFraction: CGFloat = 0.10
 
     private var mapChargers: [EVCharger] {
-        // Filter by selected networks and minimum speed — stable inputs only
+        // Filter by selected networks and minimum speed
         var filtered = chargerService.chargers.filter { selectedNetworks.contains($0.network) }
         let minSpeed = settings.preferredChargerSpeedKw
         if minSpeed > 0 {
             filtered = filtered.filter { ($0.speedKw ?? 0) >= minSpeed }
         }
-
-        // If a route with charging stops is selected, only show chargers near those stops
-        guard let route = selectedRoute, route.needsCharging else { return filtered }
-        let radiusMeters = settings.maxDetourMiles * EVConstants.metersPerMile
-
-        // Pre-compute stop coords for fast Haversine proximity check
-        let stopCoords = route.chargingStops
-            .filter { $0.coordinate.latitude != 0 || $0.coordinate.longitude != 0 }
-            .map { $0.coordinate }
-        guard !stopCoords.isEmpty else { return filtered }
-
-        return filtered.filter { charger in
-            let cLat = charger.coordinate.latitude, cLon = charger.coordinate.longitude
-            // .contains stops at first match — stops checking remaining stop coords
-            return stopCoords.contains { stop in
-                let dlat = (stop.latitude  - cLat) * .pi / 180
-                let dlon = (stop.longitude - cLon) * .pi / 180
-                let ml = cLat * .pi / 180
-                let a = dlat*dlat + cos(ml)*cos(ml)*dlon*dlon
-                return 6_371_000 * 2 * atan2(sqrt(a), sqrt(1-a)) <= radiusMeters
-            }
-        }
+        return filtered
     }
 
     private var panelHeight: CGFloat {
@@ -362,7 +341,7 @@ struct EVRoutePlannerView: View {
 
     private var networkFilterSection: some View {
         ZStack(alignment: .topTrailing) {
-            FlowLayout(spacing: 6, alignment: .center) {
+            FlowLayout(spacing: 4, alignment: .center) {
                 ForEach(ChargerNetwork.allCases, id: \.self) { network in
                     let isSelected = selectedNetworks.contains(network)
                     Button {
@@ -377,13 +356,13 @@ struct EVRoutePlannerView: View {
                             }
                         }
                     } label: {
-                        HStack(spacing: 4) {
-                            NetworkIconView(network: network, size: 15)
+                        HStack(spacing: 3) {
+                            NetworkIconView(network: network, size: 12)
                             Text(network.chipName)
-                                .font(.system(size: 12, weight: .bold))
+                                .font(.system(size: 10, weight: .bold))
                         }
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 7)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 5)
                         .background(isSelected ? network.colorValue.opacity(0.2) : EVTheme.bgInput)
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
