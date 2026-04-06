@@ -351,7 +351,6 @@ struct ChargerMarkerView: View {
                 .offset(x: 5, y: -5)
         }
     }
-    }
 
     private var networkColor: Color {
         charger.network.colorValue

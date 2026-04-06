@@ -141,7 +141,7 @@ struct EVRoutePlannerView: View {
 
                 if panelExpanded || dragOffset < -30 {
                     ScrollView {
-                        VStack(spacing: 14) {
+                        VStack(spacing: 10) {
                             inputSection
                             networkFilterSection
                             vehicleSection
@@ -226,7 +226,7 @@ struct EVRoutePlannerView: View {
 
     private var inputSection: some View {
         VStack(spacing: 8) {
-            // Origin — always fixed at top, not reorderable
+            // Origin
             HStack(spacing: 8) {
                 Image(systemName: "circle.fill")
                     .font(.system(size: 10))
@@ -237,24 +237,6 @@ struct EVRoutePlannerView: View {
                     coordinate: $originCoord,
                     showGPSButton: true
                 )
-                // Swap origin ↔ destination (only when no waypoints)
-                if routeStops.count == 1 {
-                    Button {
-                        let tmpText = originText
-                        let tmpCoord = originCoord
-                        originText = routeStops[0].text
-                        originCoord = routeStops[0].coordinate
-                        routeStops[0].text = tmpText
-                        routeStops[0].coordinate = tmpCoord
-                    } label: {
-                        Image(systemName: "arrow.up.arrow.down")
-                            .font(.system(size: 14))
-                            .foregroundStyle(EVTheme.accentBlue)
-                            .frame(width: 32, height: 32)
-                            .background(EVTheme.bgInput)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                    }
-                }
             }
 
             // Reorderable stops — VStack (not List) so suggestions are never clipped
