@@ -31,28 +31,63 @@ function daysAway(dateStr: string) {
 }
 
 
-// Deduplicate events with similar names on the same dates
+// Normalize an event name for dedup comparison
+function normalizeName(name: string): string {
+  return name
+    .replace(/^\d{4}\s+/, '')
+    .replace(/\b(nz)\b/gi, 'new zealand')
+    .replace(/\b(uk)\b/gi, 'united kingdom')
+    .replace(/\b(usa?)\b/gi, 'united states')
+    .replace(/[^a-z0-9\s]/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+// Check if two date ranges overlap (within 2 days tolerance)
+function datesOverlap(a: Event, b: Event): boolean {
+  const twoDay = 2 * 86400000;
+  const aStart = new Date(a.start_date).getTime();
+  const aEnd = new Date(a.end_date || a.start_date).getTime();
+  const bStart = new Date(b.start_date).getTime();
+  const bEnd = new Date(b.end_date || b.start_date).getTime();
+  return aStart <= bEnd + twoDay && bStart <= aEnd + twoDay;
+}
+
+// Deduplicate events: exact match, containment, or high word overlap on overlapping dates
 function deduplicateEvents(events: Event[]): Event[] {
-  const seen = new Map<string, Event>();
+  const result: Event[] = [];
   for (const e of events) {
-    // Normalize: strip year prefixes, lowercase, collapse whitespace
-    const normName = e.name
-      .replace(/^\d{4}\s+/, '')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .toLowerCase();
-    const key = `${normName}|${e.start_date}|${e.end_date}`;
-    if (!seen.has(key)) {
-      seen.set(key, e);
-    } else {
-      // Keep the one with more info (longer name or has website)
-      const existing = seen.get(key)!;
-      if ((!existing.website && e.website) || (!existing.description && e.description)) {
-        seen.set(key, e);
+    const normE = normalizeName(e.name);
+    const wordsE = new Set(normE.split(' ').filter(w => w.length > 2));
+    let isDupe = false;
+    for (let i = 0; i < result.length; i++) {
+      const r = result[i];
+      if (!datesOverlap(e, r)) continue;
+      const normR = normalizeName(r.name);
+      if (normE === normR) { isDupe = true; break; }
+      if (normE.includes(normR) || normR.includes(normE)) {
+        if ((!r.website && e.website) || (!r.description && e.description) || e.name.length > r.name.length) {
+          result[i] = e;
+        }
+        isDupe = true; break;
+      }
+      const wordsR = new Set(normR.split(' ').filter(w => w.length > 2));
+      const smaller = Math.min(wordsE.size, wordsR.size);
+      if (smaller >= 3) {
+        let overlap = 0;
+        for (const w of wordsE) { if (wordsR.has(w)) overlap++; }
+        if (overlap / smaller >= 0.8) {
+          if ((!r.website && e.website) || (!r.description && e.description) || e.name.length > r.name.length) {
+            result[i] = e;
+          }
+          isDupe = true; break;
+        }
       }
     }
+    if (!isDupe) result.push(e);
   }
-  return [...seen.values()];
+  return result;
 }
 
 export function EventsList({ events: rawEvents }: { events: Event[] }) {

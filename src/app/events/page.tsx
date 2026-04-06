@@ -51,8 +51,52 @@ export default async function EventsPage() {
     return d > latest ? d : latest;
   }, new Date(0));
 
+  // Generate JSON-LD for upcoming events (max 50 for performance)
+  const now = new Date();
+  const upcomingForSchema = events
+    .filter(e => new Date(e.end_date || e.start_date) >= now)
+    .slice(0, 50);
+
+  const eventsJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'Paddling Events Worldwide',
+    description: 'Upcoming races, regattas, festivals and championships for paddle sports.',
+    numberOfItems: upcomingForSchema.length,
+    itemListElement: upcomingForSchema.map((e, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      item: {
+        '@type': 'Event',
+        name: e.name,
+        startDate: e.start_date,
+        ...(e.end_date && { endDate: e.end_date }),
+        ...(e.website && { url: e.website }),
+        ...(e.description && { description: e.description }),
+        ...(e.registration_status === 'open' && {
+          eventStatus: 'https://schema.org/EventScheduled',
+          eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+        }),
+        location: {
+          '@type': 'Place',
+          name: [e.venue, e.city, e.state, e.country].filter(Boolean).join(', '),
+          address: {
+            '@type': 'PostalAddress',
+            ...(e.city && { addressLocality: e.city }),
+            ...(e.state && { addressRegion: e.state }),
+            ...(e.country && { addressCountry: e.country }),
+          },
+        },
+        ...(e.organizer && {
+          organizer: { '@type': 'Organization', name: e.organizer },
+        }),
+      },
+    })),
+  };
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(eventsJsonLd) }} />
       {/* Hero */}
       <section className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-16 text-center">
         <h2 className="text-4xl font-extrabold mb-2">🏁 Paddling Events</h2>
