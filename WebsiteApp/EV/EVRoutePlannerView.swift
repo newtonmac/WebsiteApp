@@ -145,7 +145,6 @@ struct EVRoutePlannerView: View {
                             inputSection
                             networkFilterSection
                             vehicleSection
-                            planButton
 
                             if !routeService.routes.isEmpty {
                                 routeResultsSection
@@ -159,8 +158,13 @@ struct EVRoutePlannerView: View {
                             }
                         }
                         .padding(.horizontal, 20)
-                        .padding(.bottom, 120)
+                        .padding(.bottom, 16)
                     }
+
+                    // Plan Route button pinned below scroll — always visible, never clipped
+                    planButton
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 34)
                 }
             }
             .frame(height: panelHeight)
