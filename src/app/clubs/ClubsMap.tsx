@@ -27,6 +27,7 @@ export function ClubsMap({ totalClubs, totalCountries, craftTypes }: Props) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
+  const clustererRef = useRef<any>(null);
   const locationInputRef = useRef<HTMLInputElement>(null);
   const [clubs, setClubs] = useState<Club[]>([]);
   const [selected, setSelected] = useState<Club | null>(null);
@@ -43,8 +44,13 @@ export function ClubsMap({ totalClubs, totalCountries, craftTypes }: Props) {
   useEffect(() => {
     if (window.google?.maps) { initMap(); return; }
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}&libraries=places&callback=__initMap`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}&libraries=places,marker&callback=__initMap`;
     script.async = true; script.defer = true;
+    // Load MarkerClusterer library
+    const mcScript = document.createElement('script');
+    mcScript.src = 'https://unpkg.com/@googlemaps/markerclusterer@2.5.3/dist/index.min.js';
+    mcScript.async = true;
+    document.head.appendChild(mcScript);
     (window as any).__initMap = () => initMap();
     document.head.appendChild(script);
     return () => { delete (window as any).__initMap; };
@@ -99,7 +105,11 @@ export function ClubsMap({ totalClubs, totalCountries, craftTypes }: Props) {
     const map = mapInstanceRef.current;
     if (!map || clubs.length === 0) return;
 
-    // Clear old markers
+    // Clear old markers and clusterer
+    if (clustererRef.current) {
+      clustererRef.current.clearMarkers();
+      clustererRef.current = null;
+    }
     markersRef.current.forEach(m => (m as any).setMap(null));
     markersRef.current = [];
 
@@ -117,10 +127,10 @@ export function ClubsMap({ totalClubs, totalCountries, craftTypes }: Props) {
       return true;
     });
 
+    const newMarkers: google.maps.Marker[] = [];
     filtered.forEach(club => {
       const marker = new google.maps.Marker({
         position: { lat: club.la, lng: club.lo },
-        map,
         icon,
         title: club.n,
       });
@@ -129,8 +139,31 @@ export function ClubsMap({ totalClubs, totalCountries, craftTypes }: Props) {
         setSelected(club);
         map.panTo({ lat: club.la, lng: club.lo });
       });
+      newMarkers.push(marker);
       markersRef.current.push(marker as any);
     });
+
+    // Use MarkerClusterer if available
+    if ((window as any).markerClusterer?.MarkerClusterer) {
+      clustererRef.current = new (window as any).markerClusterer.MarkerClusterer({
+        map,
+        markers: newMarkers,
+        renderer: {
+          render: ({ count, position }: { count: number; position: google.maps.LatLng }) => {
+            const size = count > 500 ? 50 : count > 100 ? 42 : count > 20 ? 36 : 30;
+            const color = count > 500 ? '#dc2626' : count > 100 ? '#f59e0b' : count > 20 ? '#3b82f6' : '#10b981';
+            const svgC = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${size/2}" cy="${size/2}" r="${size/2-1}" fill="${color}" opacity="0.85" stroke="white" stroke-width="2"/><text x="${size/2}" y="${size/2}" text-anchor="middle" dy="0.35em" fill="white" font-size="${size > 40 ? 13 : 11}" font-weight="bold" font-family="system-ui">${count > 999 ? Math.round(count/1000) + 'k' : count}</text></svg>`;
+            return new google.maps.Marker({
+              position,
+              icon: { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svgC), scaledSize: new google.maps.Size(size, size), anchor: new google.maps.Point(size/2, size/2) },
+              zIndex: 1000 + count,
+            });
+          },
+        },
+      });
+    } else {
+      newMarkers.forEach(m => m.setMap(map));
+    }
 
     updateVisibleCount();
   }, [clubs, craftFilter, search, searchMode]);

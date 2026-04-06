@@ -12,7 +12,7 @@ const ALLOWED_ORIGINS = [
 // In-memory cache (lives for the life of the serverless instance)
 let cachedData = null;
 let cacheTime = 0;
-const CACHE_TTL = 30 * 1000; // 30 seconds — short enough for admin edits to appear fast
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes — short enough for admin edits to appear fast
 
 // State abbreviation → full name
 const STATE_MAP = {

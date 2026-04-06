@@ -1,0 +1,13 @@
+{
+  "name": "PaddlePoint",
+  "short_name": "PaddlePoint",
+  "description": "Paddle conditions, clubs & events for SUP, kayak, outrigger & canoe paddlers",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#10b981",
+  "icons": [
+    { "src": "/paddle-pin.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ],
+  "categories": ["sports", "weather", "navigation"]
+}
