@@ -1531,44 +1531,66 @@ const DRIVETRAIN_EFF = 0.88;     // motor + transmission losses
 const JOULES_PER_KWH = 3600000;
 const METERS_PER_MILE = 1609.34;
 
+// Three-pass 3-point moving average — suppresses GPS/DEM noise
+// Matches iOS EVRouteService.buildElevationProfile smoothing
+function smoothElevations(elev) {
+    if (elev.length < 3) return elev;
+    let a = [...elev];
+    let b = [...elev];
+    for (let pass = 0; pass < 3; pass++) {
+        for (let i = 1; i < a.length - 1; i++) {
+            b[i] = (a[i - 1] + a[i] + a[i + 1]) / 3;
+        }
+        const tmp = a; a = b; b = tmp;
+    }
+    return a;
+}
+
 const evModels = {
-    // Tesla — Cd, frontalArea (m²), Crr added for physics model
-    model3_lr:    { name: 'Tesla Model 3 Long Range',     batteryKwh: 75,  effKwhMi: 0.26, weightKg: 1830, regenEff: 0.65, epaMiles: 358, cd: 0.219, frontalArea: 2.22, crr: 0.007 },
-    model3_sr:    { name: 'Tesla Model 3 Standard Range',  batteryKwh: 57,  effKwhMi: 0.25, weightKg: 1760, regenEff: 0.65, epaMiles: 272, cd: 0.219, frontalArea: 2.22, crr: 0.007 },
-    modelY_lr:    { name: 'Tesla Model Y Long Range',      batteryKwh: 75,  effKwhMi: 0.28, weightKg: 1979, regenEff: 0.65, epaMiles: 318, cd: 0.230, frontalArea: 2.58, crr: 0.008 },
-    modelY_sr:    { name: 'Tesla Model Y Standard Range',  batteryKwh: 57,  effKwhMi: 0.27, weightKg: 1909, regenEff: 0.65, epaMiles: 260, cd: 0.230, frontalArea: 2.58, crr: 0.008 },
-    modelS_lr:    { name: 'Tesla Model S Long Range',      batteryKwh: 100, effKwhMi: 0.30, weightKg: 2162, regenEff: 0.65, epaMiles: 405, cd: 0.208, frontalArea: 2.34, crr: 0.008 },
-    modelX_lr:    { name: 'Tesla Model X Long Range',      batteryKwh: 100, effKwhMi: 0.34, weightKg: 2352, regenEff: 0.60, epaMiles: 348, cd: 0.250, frontalArea: 2.95, crr: 0.009 },
-    cybertruck_awd:{ name: 'Tesla Cybertruck AWD',         batteryKwh: 123, effKwhMi: 0.41, weightKg: 3104, regenEff: 0.55, epaMiles: 318, cd: 0.340, frontalArea: 3.40, crr: 0.010 },
-    // Rivian
-    r1t_lg:       { name: 'Rivian R1T Large Pack',         batteryKwh: 135, effKwhMi: 0.48, weightKg: 3180, regenEff: 0.55, epaMiles: 328, cd: 0.330, frontalArea: 3.26, crr: 0.010 },
-    r1t_max:      { name: 'Rivian R1T Max Pack',           batteryKwh: 180, effKwhMi: 0.48, weightKg: 3400, regenEff: 0.55, epaMiles: 410, cd: 0.330, frontalArea: 3.26, crr: 0.010 },
-    r1s_lg:       { name: 'Rivian R1S Large Pack',         batteryKwh: 135, effKwhMi: 0.47, weightKg: 3200, regenEff: 0.55, epaMiles: 321, cd: 0.330, frontalArea: 3.26, crr: 0.010 },
-    r1t_quad:     { name: 'Rivian R1T Quad Motor Max',    batteryKwh: 135, effKwhMi: 0.48, weightKg: 3230, regenEff: 0.55, epaMiles: 314, cd: 0.330, frontalArea: 3.26, crr: 0.010 },
+    // ── Vehicle Database (calibrated April 2026) ──────────────────────────
+    // effKwhMi = (EPA kWh/100mi / 100) × 1.05 empirical fit (battery-side)
+    // regenEff = calibrated per vehicle class (heavier → lower regen)
+    // cd, frontalArea, crr retained for reference but not used in v1 energy model
+    // ──────────────────────────────────────────────────────────────────────
+    // Tesla
+    model3_lr:    { name: 'Tesla Model 3 Long Range',     batteryKwh: 75,  effKwhMi: 0.27, weightKg: 1830, regenEff: 0.50, epaMiles: 358, cd: 0.219, frontalArea: 2.22, crr: 0.007 },
+    model3_sr:    { name: 'Tesla Model 3 Standard Range',  batteryKwh: 57,  effKwhMi: 0.27, weightKg: 1760, regenEff: 0.50, epaMiles: 272, cd: 0.219, frontalArea: 2.22, crr: 0.007 },
+    modelY_lr:    { name: 'Tesla Model Y Long Range',      batteryKwh: 75,  effKwhMi: 0.30, weightKg: 1979, regenEff: 0.50, epaMiles: 318, cd: 0.230, frontalArea: 2.58, crr: 0.008 },
+    modelY_sr:    { name: 'Tesla Model Y Standard Range',  batteryKwh: 57,  effKwhMi: 0.29, weightKg: 1909, regenEff: 0.50, epaMiles: 260, cd: 0.230, frontalArea: 2.58, crr: 0.008 },
+    modelS_lr:    { name: 'Tesla Model S Long Range',      batteryKwh: 100, effKwhMi: 0.32, weightKg: 2162, regenEff: 0.48, epaMiles: 405, cd: 0.208, frontalArea: 2.34, crr: 0.008 },
+    modelX_lr:    { name: 'Tesla Model X Long Range',      batteryKwh: 100, effKwhMi: 0.37, weightKg: 2352, regenEff: 0.46, epaMiles: 348, cd: 0.250, frontalArea: 2.95, crr: 0.009 },
+    cybertruck_awd:{ name: 'Tesla Cybertruck AWD',         batteryKwh: 123, effKwhMi: 0.45, weightKg: 3104, regenEff: 0.40, epaMiles: 318, cd: 0.340, frontalArea: 3.40, crr: 0.010 },
+    // Rivian — owner reports 1.8-2.2 mi/kWh → 0.50 kWh/mi midpoint
+    r1t_lg:       { name: 'Rivian R1T Large Pack',         batteryKwh: 135, effKwhMi: 0.50, weightKg: 3180, regenEff: 0.38, epaMiles: 328, cd: 0.330, frontalArea: 3.26, crr: 0.010 },
+    r1t_max:      { name: 'Rivian R1T Max Pack',           batteryKwh: 180, effKwhMi: 0.50, weightKg: 3400, regenEff: 0.38, epaMiles: 410, cd: 0.330, frontalArea: 3.26, crr: 0.010 },
+    r1s_lg:       { name: 'Rivian R1S Large Pack',         batteryKwh: 135, effKwhMi: 0.50, weightKg: 3200, regenEff: 0.38, epaMiles: 321, cd: 0.330, frontalArea: 3.26, crr: 0.010 },
+    r1t_quad:     { name: 'Rivian R1T Quad Motor Max',    batteryKwh: 135, effKwhMi: 0.50, weightKg: 3230, regenEff: 0.38, epaMiles: 314, cd: 0.330, frontalArea: 3.26, crr: 0.010 },
     // Volkswagen
-    id4_pro:      { name: 'VW ID.4 Pro S',                 batteryKwh: 82,  effKwhMi: 0.32, weightKg: 2124, regenEff: 0.55, epaMiles: 275, cd: 0.280, frontalArea: 2.77, crr: 0.009 },
-    id4_std:      { name: 'VW ID.4 Standard',              batteryKwh: 62,  effKwhMi: 0.30, weightKg: 1984, regenEff: 0.55, epaMiles: 209, cd: 0.280, frontalArea: 2.77, crr: 0.009 },
-    egolf:        { name: 'VW e-Golf',                      batteryKwh: 35.8,effKwhMi: 0.26, weightKg: 1615, regenEff: 0.50, epaMiles: 125, cd: 0.270, frontalArea: 2.22, crr: 0.008 },
+    id4_pro:      { name: 'VW ID.4 Pro S',                 batteryKwh: 82,  effKwhMi: 0.33, weightKg: 2124, regenEff: 0.46, epaMiles: 275, cd: 0.280, frontalArea: 2.77, crr: 0.009 },
+    id4_std:      { name: 'VW ID.4 Standard',              batteryKwh: 62,  effKwhMi: 0.31, weightKg: 1984, regenEff: 0.46, epaMiles: 209, cd: 0.280, frontalArea: 2.77, crr: 0.009 },
+    egolf:        { name: 'VW e-Golf',                      batteryKwh: 35.8,effKwhMi: 0.28, weightKg: 1615, regenEff: 0.45, epaMiles: 125, cd: 0.270, frontalArea: 2.22, crr: 0.008 },
     // Ford
-    mache_ext:    { name: 'Mustang Mach-E Extended',       batteryKwh: 91,  effKwhMi: 0.33, weightKg: 2100, regenEff: 0.55, epaMiles: 312, cd: 0.270, frontalArea: 2.63, crr: 0.009 },
-    f150_ext:     { name: 'F-150 Lightning Extended',      batteryKwh: 131, effKwhMi: 0.50, weightKg: 2950, regenEff: 0.50, epaMiles: 320, cd: 0.380, frontalArea: 3.35, crr: 0.011 },
-    f150_std:     { name: 'F-150 Lightning Standard',      batteryKwh: 98,  effKwhMi: 0.49, weightKg: 2800, regenEff: 0.50, epaMiles: 240, cd: 0.380, frontalArea: 3.35, crr: 0.011 },
+    mache_ext:    { name: 'Mustang Mach-E Extended',       batteryKwh: 91,  effKwhMi: 0.36, weightKg: 2100, regenEff: 0.46, epaMiles: 312, cd: 0.270, frontalArea: 2.63, crr: 0.009 },
+    f150_ext:     { name: 'F-150 Lightning Extended',      batteryKwh: 131, effKwhMi: 0.50, weightKg: 2950, regenEff: 0.38, epaMiles: 320, cd: 0.380, frontalArea: 3.35, crr: 0.011 },
+    f150_std:     { name: 'F-150 Lightning Standard',      batteryKwh: 98,  effKwhMi: 0.50, weightKg: 2800, regenEff: 0.38, epaMiles: 240, cd: 0.380, frontalArea: 3.35, crr: 0.011 },
     // Hyundai / Kia
-    ioniq5_lr:    { name: 'Hyundai Ioniq 5 Long Range',    batteryKwh: 77,  effKwhMi: 0.30, weightKg: 2000, regenEff: 0.60, epaMiles: 303, cd: 0.288, frontalArea: 2.63, crr: 0.008 },
-    ioniq6_lr:    { name: 'Hyundai Ioniq 6 Long Range',    batteryKwh: 77,  effKwhMi: 0.26, weightKg: 1950, regenEff: 0.60, epaMiles: 361, cd: 0.210, frontalArea: 2.28, crr: 0.007 },
-    ev6_lr:       { name: 'Kia EV6 Long Range',            batteryKwh: 77,  effKwhMi: 0.30, weightKg: 2055, regenEff: 0.60, epaMiles: 310, cd: 0.280, frontalArea: 2.58, crr: 0.008 },
+    ioniq5_lr:    { name: 'Hyundai Ioniq 5 Long Range',    batteryKwh: 77,  effKwhMi: 0.31, weightKg: 2000, regenEff: 0.48, epaMiles: 303, cd: 0.288, frontalArea: 2.63, crr: 0.008 },
+    ioniq6_lr:    { name: 'Hyundai Ioniq 6 Long Range',    batteryKwh: 77,  effKwhMi: 0.27, weightKg: 1950, regenEff: 0.50, epaMiles: 361, cd: 0.210, frontalArea: 2.28, crr: 0.007 },
+    ev6_lr:       { name: 'Kia EV6 Long Range',            batteryKwh: 77,  effKwhMi: 0.31, weightKg: 2055, regenEff: 0.48, epaMiles: 310, cd: 0.280, frontalArea: 2.58, crr: 0.008 },
     // BMW / Mercedes
-    ix_50:        { name: 'BMW iX xDrive50',               batteryKwh: 105, effKwhMi: 0.33, weightKg: 2510, regenEff: 0.55, epaMiles: 324, cd: 0.250, frontalArea: 2.88, crr: 0.009 },
-    eqs_450:      { name: 'Mercedes EQS 450+',             batteryKwh: 108, effKwhMi: 0.30, weightKg: 2480, regenEff: 0.60, epaMiles: 350, cd: 0.200, frontalArea: 2.51, crr: 0.008 },
-    // Other
-    bolt_ev:      { name: 'Chevrolet Bolt EV',             batteryKwh: 65,  effKwhMi: 0.28, weightKg: 1616, regenEff: 0.55, epaMiles: 259, cd: 0.312, frontalArea: 2.38, crr: 0.009 },
-    leaf_plus:    { name: 'Nissan Leaf Plus',               batteryKwh: 60,  effKwhMi: 0.30, weightKg: 1670, regenEff: 0.50, epaMiles: 212, cd: 0.280, frontalArea: 2.30, crr: 0.009 },
-    polestar2_lr: { name: 'Polestar 2 Long Range',         batteryKwh: 78,  effKwhMi: 0.29, weightKg: 2040, regenEff: 0.60, epaMiles: 295, cd: 0.278, frontalArea: 2.44, crr: 0.008 },
+    ix_50:        { name: 'BMW iX xDrive50',               batteryKwh: 105, effKwhMi: 0.36, weightKg: 2510, regenEff: 0.45, epaMiles: 324, cd: 0.250, frontalArea: 2.88, crr: 0.009 },
+    eqs_450:      { name: 'Mercedes EQS 450+',             batteryKwh: 108, effKwhMi: 0.33, weightKg: 2480, regenEff: 0.46, epaMiles: 350, cd: 0.200, frontalArea: 2.51, crr: 0.008 },
+    // Chevrolet
+    bolt_ev:      { name: 'Chevrolet Bolt EV',             batteryKwh: 65,  effKwhMi: 0.31, weightKg: 1616, regenEff: 0.48, epaMiles: 259, cd: 0.312, frontalArea: 2.38, crr: 0.009 },
+    // Nissan
+    leaf_plus:    { name: 'Nissan Leaf Plus',               batteryKwh: 60,  effKwhMi: 0.33, weightKg: 1670, regenEff: 0.45, epaMiles: 212, cd: 0.280, frontalArea: 2.30, crr: 0.009 },
+    // Polestar
+    polestar2_lr: { name: 'Polestar 2 Long Range',         batteryKwh: 78,  effKwhMi: 0.31, weightKg: 2040, regenEff: 0.48, epaMiles: 295, cd: 0.278, frontalArea: 2.44, crr: 0.008 },
     // Lucid
-    lucid_air_gt: { name: 'Lucid Air Grand Touring',       batteryKwh: 112, effKwhMi: 0.26, weightKg: 2360, regenEff: 0.65, epaMiles: 516, cd: 0.197, frontalArea: 2.32, crr: 0.007 },
-    lucid_air_pure:{ name: 'Lucid Air Pure',               batteryKwh: 88,  effKwhMi: 0.27, weightKg: 2200, regenEff: 0.65, epaMiles: 419, cd: 0.197, frontalArea: 2.32, crr: 0.007 },
-    lucid_air_touring:{ name: 'Lucid Air Touring',         batteryKwh: 92,  effKwhMi: 0.27, weightKg: 2250, regenEff: 0.65, epaMiles: 425, cd: 0.197, frontalArea: 2.32, crr: 0.007 },
-    lucid_gravity: { name: 'Lucid Gravity Grand Touring',  batteryKwh: 113, effKwhMi: 0.32, weightKg: 2800, regenEff: 0.60, epaMiles: 450, cd: 0.240, frontalArea: 2.82, crr: 0.009 },
+    lucid_air_gt: { name: 'Lucid Air Grand Touring',       batteryKwh: 112, effKwhMi: 0.27, weightKg: 2360, regenEff: 0.50, epaMiles: 516, cd: 0.197, frontalArea: 2.32, crr: 0.007 },
+    lucid_air_pure:{ name: 'Lucid Air Pure',               batteryKwh: 88,  effKwhMi: 0.27, weightKg: 2200, regenEff: 0.50, epaMiles: 419, cd: 0.197, frontalArea: 2.32, crr: 0.007 },
+    lucid_air_touring:{ name: 'Lucid Air Touring',         batteryKwh: 92,  effKwhMi: 0.27, weightKg: 2250, regenEff: 0.50, epaMiles: 425, cd: 0.197, frontalArea: 2.32, crr: 0.007 },
+    lucid_gravity: { name: 'Lucid Gravity Grand Touring',  batteryKwh: 113, effKwhMi: 0.33, weightKg: 2800, regenEff: 0.46, epaMiles: 450, cd: 0.240, frontalArea: 2.82, crr: 0.009 },
 };
 
 function getSelectedEV() {
@@ -1690,9 +1712,11 @@ function estimateTripEnergy(route, ev) {
                 elevEnergy += (ev.weightKg * GRAVITY * rise) / (JOULES_PER_KWH * motorEff);
             } else if (rise < 0) {
                 // Descending: regen recovery, efficiency drops on very steep grades
-                // iOS: regenPenalty = max(0.30, regenEff - gradePct * 0.02)
-                const regenPenalty = Math.max(0.30, ev.regenEff - segGradePct * 0.02);
-                regenEnergy += (ev.weightKg * GRAVITY * Math.abs(rise)) / JOULES_PER_KWH * regenPenalty;
+                // Regen threshold: below 0.5% grade the vehicle is coasting, not regenerating
+                if (segGradePct >= 0.5) {
+                    const regenPenalty = Math.max(0.30, ev.regenEff - segGradePct * 0.02);
+                    regenEnergy += (ev.weightKg * GRAVITY * Math.abs(rise)) / JOULES_PER_KWH * regenPenalty;
+                }
             }
         }
         avgGradePct = gradeCount > 0 ? gradeSum / gradeCount : 0;
@@ -2088,8 +2112,8 @@ async function fetchAndProcessRoutes(originLL, destinationLL, waypoints, allowAl
         processed.map(r => fetchElevations(r.sampled))
     );
     processed.forEach((r, i) => {
-        r.elevations = elevResults[i];
-        const { gain, loss } = calcElevation(elevResults[i]);
+        r.elevations = smoothElevations(elevResults[i]);
+        const { gain, loss } = calcElevation(r.elevations);
         r.gain = gain;
         r.loss = loss;
     });
