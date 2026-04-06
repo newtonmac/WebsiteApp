@@ -50,7 +50,22 @@ export function EventsList({ events }: { events: Event[] }) {
     events.forEach(e => e.sports?.split(',').forEach(sp => s.add(sp.trim())));
     return [...s].filter(Boolean).sort();
   }, [events]);
-  const countries = useMemo(() => [...new Set(events.map(e => e.country).filter(Boolean))].sort(), [events]);
+  // Normalize messy country values (zip codes, state abbreviations -> proper country names)
+  const normalizeCountry = (c: string): string => {
+    if (!c) return '';
+    const trimmed = c.trim();
+    if (/^[A-Z]{2}\s+\d{4,5}$/.test(trimmed)) return 'United States';
+    if (/^\d{5}(-\d{4})?$/.test(trimmed)) return 'United States';
+    if (trimmed === 'USA') return 'United States';
+    if (/^[A-Za-z]+\s+\d{5}$/.test(trimmed)) return 'United States';
+    return trimmed;
+  };
+
+  const countries = useMemo(() => {
+    const set = new Set<string>();
+    events.forEach(e => { const c = normalizeCountry(e.country); if (c) set.add(c); });
+    return [...set].sort();
+  }, [events]);
 
   const filtered = useMemo(() => {
     return events.filter(e => {
@@ -61,7 +76,7 @@ export function EventsList({ events }: { events: Event[] }) {
       if (search && !`${e.name} ${e.city} ${e.state} ${e.country} ${e.organizer}`.toLowerCase().includes(search.toLowerCase())) return false;
       if (typeFilter && e.event_type !== typeFilter) return false;
       if (sportFilter && !e.sports?.toLowerCase().includes(sportFilter.toLowerCase())) return false;
-      if (countryFilter && e.country !== countryFilter) return false;
+      if (countryFilter && normalizeCountry(e.country) !== countryFilter) return false;
       return true;
     });
   }, [events, search, typeFilter, sportFilter, countryFilter, statusFilter, todayTs]);
