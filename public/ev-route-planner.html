@@ -166,6 +166,26 @@
             justify-content: center;
         }
         .remove-stop-btn:hover { border-color: #ef4444; background: #ef444422; }
+        .drag-handle {
+            width: 32px;
+            height: 38px;
+            border-radius: 8px;
+            border: 1px solid #2d3040;
+            background: #252836;
+            color: #8b8fa3;
+            font-size: 16px;
+            cursor: grab;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.2s;
+            user-select: none;
+        }
+        .drag-handle:hover { border-color: #60a5fa; color: #60a5fa; }
+        .drag-handle:active { cursor: grabbing; background: #60a5fa22; }
+        .stop-row.dragging { opacity: 0.4; }
+        .stop-row.drag-over { border-top: 2px solid #60a5fa; }
 
         .round-trip-toggle {
             margin-bottom: 12px;
@@ -1153,9 +1173,12 @@
                     </button>
                 </div>
             </div>
-            <div class="input-group" id="destGroup">
-                <label>Destination</label>
-                <input type="text" id="destInput" placeholder="Enter destination address..." />
+            <div class="stop-row" id="destRow" draggable="true">
+                <div class="input-group" id="destGroup">
+                    <label>Destination</label>
+                    <input type="text" id="destInput" placeholder="Enter destination address..." />
+                </div>
+                <div class="drag-handle" title="Drag to reorder">≡</div>
             </div>
             <div id="stopsContainer"></div>
             <button class="add-stop-btn" id="addStopBtn" type="button">+ Add Stop</button>
@@ -1347,6 +1370,7 @@ function initApp() {
     // ─── Wire up UI ───
     document.getElementById('evModelSelect').addEventListener('change', updateEvSpecs);
     document.getElementById('addStopBtn').addEventListener('click', addStop);
+    setupDragReorder(document.getElementById('destRow'));
     planBtn.addEventListener('click', planRoutes);
     document.getElementById('shareCopy').addEventListener('click', handleCopyLink);
     document.getElementById('gpsBtn').addEventListener('click', useMyLocation);
@@ -1986,12 +2010,14 @@ function addStop() {
     const row = document.createElement('div');
     row.className = 'stop-row';
     row.dataset.stopId = id;
+    row.draggable = true;
     row.innerHTML = `
         <div class="input-group" id="stopGroup_${id}">
             <label>${label}</label>
             <input type="text" id="stopInput_${id}" placeholder="Enter address..." />
         </div>
         <button class="remove-stop-btn" title="Remove" data-stop-id="${id}">&times;</button>
+        <div class="drag-handle" title="Drag to reorder">≡</div>
     `;
     stopsContainer.appendChild(row);
 
@@ -2008,6 +2034,7 @@ function addStop() {
     });
 
     row.querySelector('.remove-stop-btn').addEventListener('click', () => removeStop(id));
+    setupDragReorder(row);
     renumberStops();
     updatePlanBtn();
     updateAddStopBtn();
@@ -2059,6 +2086,65 @@ function renumberStops() {
         }
     });
 }
+
+// ─── Drag-and-Drop Stop Reordering ───
+let dragSrcRow = null;
+
+function setupDragReorder(row) {
+    row.addEventListener('dragstart', (e) => {
+        dragSrcRow = row;
+        row.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+    });
+    row.addEventListener('dragend', () => {
+        dragSrcRow = null;
+        row.classList.remove('dragging');
+        document.querySelectorAll('.stop-row.drag-over').forEach(r => r.classList.remove('drag-over'));
+    });
+    row.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (dragSrcRow && dragSrcRow !== row) row.classList.add('drag-over');
+    });
+    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+    row.addEventListener('drop', (e) => {
+        e.preventDefault();
+        row.classList.remove('drag-over');
+        if (!dragSrcRow || dragSrcRow === row) return;
+        // Reorder in DOM
+        const container = document.getElementById('stopsContainer');
+        const destRow = document.getElementById('destRow');
+        const allRows = [destRow, ...container.querySelectorAll('.stop-row')];
+        const fromIdx = allRows.indexOf(dragSrcRow);
+        const toIdx = allRows.indexOf(row);
+        if (fromIdx < 0 || toIdx < 0) return;
+        // Move DOM elements
+        if (toIdx < fromIdx) row.parentNode.insertBefore(dragSrcRow, row);
+        else row.parentNode.insertBefore(dragSrcRow, row.nextSibling);
+        // Sync stops array with new DOM order — rebuild from DOM
+        syncStopsFromDOM();
+        renumberStops();
+    });
+}
+
+function syncStopsFromDOM() {
+    const container = document.getElementById('stopsContainer');
+    const destRow = document.getElementById('destRow');
+    const destInput = document.getElementById('destInput');
+    // Get all stop rows in container in DOM order
+    const stopRows = [...container.querySelectorAll('.stop-row')];
+    // Rebuild stops array to match DOM order
+    const newStops = [];
+    for (const row of stopRows) {
+        const sid = row.dataset.stopId;
+        const stop = stops.find(s => String(s.id) === sid);
+        if (stop) newStops.push(stop);
+    }
+    stops.length = 0;
+    stops.push(...newStops);
+}
+
+var destCoordGlobal = null; // unused, kept for compat
 
 function updatePlanBtn() {
     const allStopsSet = stops.every(s => s.coord !== null);
