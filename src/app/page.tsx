@@ -21,6 +21,29 @@ async function getCounts(): Promise<Counts> {
   }
 }
 
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'WebSite',
+      '@id': 'https://paddlepoint.org/#website',
+      url: 'https://paddlepoint.org',
+      name: 'PaddlePoint',
+      description: 'Real-time paddle conditions, weather, clubs, events, and gear for SUP, kayak, outrigger, and canoe paddlers.',
+      publisher: { '@id': 'https://paddlepoint.org/#organization' },
+    },
+    {
+      '@type': 'Organization',
+      '@id': 'https://paddlepoint.org/#organization',
+      name: 'PaddlePoint',
+      url: 'https://paddlepoint.org',
+      logo: 'https://paddlepoint.org/paddle-pin.svg',
+      description: 'A free community resource for paddlers worldwide — no ads, no account required.',
+    },
+  ],
+};
+
 const NAV_CARDS = [
   { href: '/conditions', icon: '🌊', title: 'Water Conditions', desc: 'Live wind, waves, tides, water quality & paddle score' },
   { href: '/weather', icon: '🌤', title: 'Weather & Tides', desc: 'Triple-source forecasts, tide charts & marine conditions' },
@@ -35,6 +58,7 @@ export default async function HomePage() {
 
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       {/* Hero */}
       <section className="relative h-[70vh] md:h-[80vh] lg:h-[85vh] min-h-[500px] max-h-[1000px] flex flex-col items-center justify-center overflow-hidden">
         <picture>
