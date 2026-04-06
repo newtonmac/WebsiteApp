@@ -259,10 +259,14 @@ struct EVRoutePlannerView: View {
                         coordinate: $routeStops[index].coordinate
                     )
 
-                    // Drag handle
+                    // Drag handle — same 40×40 frame as GPS button for equal field widths
                     Image(systemName: "line.3.horizontal")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(EVTheme.textSecondary)
+                        .frame(width: 40, height: 40)
+                        .background(EVTheme.bgInput)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(EVTheme.border, lineWidth: 1))
                         .gesture(
                             DragGesture()
                                 .onChanged { value in
