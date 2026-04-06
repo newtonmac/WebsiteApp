@@ -34,12 +34,14 @@ struct EVMapContent: View {
     @Binding var selectedCharger: EVCharger?
     @Binding var mapStyle: EVMapStyle
     let panelHeight: CGFloat
+    let selectedNetworks: Set<ChargerNetwork>
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     @State private var showLookAround = false
     @State private var lookAroundScene: MKLookAroundScene?
     @State private var isLoadingLookAround = false
+    @State private var legendExpanded = false
 
     private var isLandscape: Bool { verticalSizeClass == .compact }
 
@@ -167,6 +169,16 @@ struct EVMapContent: View {
                     .padding(.leading, 12)
                     .padding(.bottom, panelHeight + 16)
             }
+        }
+        .overlay(alignment: .topLeading) {
+            MapLegendView(
+                expanded: $legendExpanded,
+                hasRoutes: !routes.isEmpty,
+                routeCount: routes.count,
+                selectedNetworks: selectedNetworks
+            )
+            .padding(.leading, 12)
+            .padding(.top, isLandscape ? 12 : 52)
         }
         .sheet(isPresented: $showLookAround) {
             if let scene = lookAroundScene {
@@ -343,6 +355,124 @@ struct ChargerMarkerView: View {
 
     private var networkColor: Color {
         charger.network.colorValue
+    }
+}
+
+// MARK: - Map Legend (collapsible, top-left)
+
+struct MapLegendView: View {
+    @Binding var expanded: Bool
+    let hasRoutes: Bool
+    let routeCount: Int
+    let selectedNetworks: Set<ChargerNetwork>
+
+    var body: some View {
+        if expanded {
+            expandedLegend
+        } else {
+            collapsedButton
+        }
+    }
+
+    private var collapsedButton: some View {
+        Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                expanded = true
+            }
+        } label: {
+            Image(systemName: "info.circle.fill")
+                .font(.system(size: 20))
+                .foregroundStyle(.white)
+                .frame(width: 36, height: 36)
+                .background(.ultraThinMaterial)
+                .clipShape(Circle())
+                .shadow(color: .black.opacity(0.2), radius: 3, y: 1)
+        }
+    }
+
+    private var expandedLegend: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Header with close
+            HStack {
+                Text("Legend")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(EVTheme.textPrimary)
+                Spacer()
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        expanded = false
+                    }
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(EVTheme.textSecondary)
+                }
+            }
+
+            // Routes section
+            if hasRoutes {
+                legendSection("Routes") {
+                    legendRow(color: EVTheme.accentGreen, label: "EV Best Route")
+                    if routeCount > 1 {
+                        legendRow(color: EVTheme.accentBlue, label: "Selected Route")
+                        legendRow(color: .gray.opacity(0.5), label: "Alternative")
+                    }
+                }
+            }
+
+            // Elevation section
+            if hasRoutes {
+                legendSection("Elevation Gradient") {
+                    legendRow(color: .green, label: "Downhill (regen)")
+                    legendRow(color: Color(red: 0.64, green: 0.93, blue: 0.21), label: "Flat")
+                    legendRow(color: .orange, label: "Slight uphill")
+                    legendRow(color: .red, label: "Steep uphill")
+                }
+            }
+
+            // Chargers section — dynamic based on selected networks
+            if !selectedNetworks.isEmpty {
+                legendSection("EV Chargers") {
+                    ForEach(ChargerNetwork.allCases.filter { selectedNetworks.contains($0) }, id: \.self) { network in
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(network.colorValue)
+                                .frame(width: 8, height: 8)
+                            Text(network.rawValue)
+                                .font(.system(size: 10))
+                                .foregroundStyle(EVTheme.textSecondary)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(12)
+        .frame(width: 170)
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+        .transition(.scale(scale: 0.5, anchor: .topLeading).combined(with: .opacity))
+    }
+
+    private func legendSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(EVTheme.textSecondary)
+                .textCase(.uppercase)
+            content()
+        }
+    }
+
+    private func legendRow(color: Color, label: String) -> some View {
+        HStack(spacing: 6) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(color)
+                .frame(width: 16, height: 3)
+            Text(label)
+                .font(.system(size: 10))
+                .foregroundStyle(EVTheme.textSecondary)
+        }
     }
 }
 

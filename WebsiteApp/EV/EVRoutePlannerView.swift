@@ -74,7 +74,8 @@ struct EVRoutePlannerView: View {
                 waypoints: waypointCoordinates,
                 selectedCharger: $selectedCharger,
                 mapStyle: $mapStyle,
-                panelHeight: panelHeight
+                panelHeight: panelHeight,
+                selectedNetworks: selectedNetworks
             )
             .ignoresSafeArea(edges: .top)
 
