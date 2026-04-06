@@ -115,7 +115,12 @@ enum PreviewMock {
                 grade = ((elev - prevElev) / segDist) * 100
             }
 
-            points.append(ElevationPoint(distance: dist, elevation: max(5, elev), grade: grade))
+            // Mock coordinate interpolated along a line
+            let lat = 32.72 + fraction * 0.5
+            let lon = -117.16 + fraction * 0.3
+            let coord = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+
+            points.append(ElevationPoint(distance: dist, elevation: max(5, elev), grade: grade, coordinate: coord))
         }
         return points
     }()

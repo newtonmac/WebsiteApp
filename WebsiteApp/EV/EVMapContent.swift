@@ -59,8 +59,19 @@ struct EVMapContent: View {
                 }
             }
 
-            // Selected route on top
-            if let selected = selectedRoute {
+            // Selected route on top — grade-colored segments
+            if let selected = selectedRoute, selected.elevationProfile.count >= 2 {
+                // Draw each segment colored by elevation grade
+                ForEach(1..<selected.elevationProfile.count, id: \.self) { i in
+                    let p1 = selected.elevationProfile[i - 1]
+                    let p2 = selected.elevationProfile[i]
+                    let coords = [p1.coordinate, p2.coordinate]
+                    let color = gradeColor(for: p2.grade)
+                    MapPolyline(coordinates: coords)
+                        .stroke(color, lineWidth: 5)
+                }
+            } else if let selected = selectedRoute {
+                // Fallback: no profile data, solid blue
                 if let poly = selected.customPolyline {
                     MapPolyline(poly).stroke(EVTheme.accentBlue, lineWidth: 5)
                 } else if let mkRoute = selected.route {
@@ -187,6 +198,17 @@ struct EVMapContent: View {
                     .presentationDragIndicator(.visible)
             }
         }
+    }
+
+    // MARK: - Grade Color (matches web elevation gradient)
+
+    private func gradeColor(for gradePct: Double) -> Color {
+        if gradePct < -2 { return .green }                                          // Downhill (regen)
+        if gradePct < -0.5 { return Color(red: 0.40, green: 0.85, blue: 0.30) }   // Gentle downhill
+        if gradePct < 0.5 { return Color(red: 0.64, green: 0.93, blue: 0.13) }    // Flat (yellow-green)
+        if gradePct < 2 { return .orange }                                          // Slight uphill
+        if gradePct < 5 { return Color(red: 1.0, green: 0.45, blue: 0.0) }        // Moderate uphill
+        return .red                                                                 // Steep uphill
     }
 
     private var currentMapStyle: MapStyle {

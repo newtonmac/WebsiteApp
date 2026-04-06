@@ -134,6 +134,7 @@ struct ElevationPoint {
     let distance: Double
     let elevation: Double
     let grade: Double
+    let coordinate: CLLocationCoordinate2D
 }
 
 @Observable
@@ -547,7 +548,7 @@ class EVRouteService {
             var legProfile = buildElevationProfile(points: pts, elevations: elevs, totalDistance: leg.distance)
             if distanceOffsetMiles > 0 {
                 legProfile = legProfile.map {
-                    ElevationPoint(distance: $0.distance + distanceOffsetMiles, elevation: $0.elevation, grade: $0.grade)
+                    ElevationPoint(distance: $0.distance + distanceOffsetMiles, elevation: $0.elevation, grade: $0.grade, coordinate: $0.coordinate)
                 }
                 legProfile = Array(legProfile.dropFirst())
             }
@@ -879,7 +880,7 @@ class EVRouteService {
                     grade = max(-30, min(30, grade))  // clamp: GPS/API spikes can produce impossible grades
                 }
             }
-            profile.append(ElevationPoint(distance: dist, elevation: smoothed[i], grade: grade))
+            profile.append(ElevationPoint(distance: dist, elevation: smoothed[i], grade: grade, coordinate: points[i]))
         }
 
         return profile
