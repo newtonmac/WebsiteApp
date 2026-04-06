@@ -1155,7 +1155,7 @@
 <div class="topbar">
     <h1>EV Route Planner</h1>
     <span class="subtitle">Minimize elevation gain &bull; Save battery</span>
-    <span class="app-version" id="appVersion">v2.0</span>
+    <span class="app-version" id="appVersion">v1.2</span>
     <button id="settingsBtn" title="Settings" style="margin-left:auto; background:none; border:1px solid #2d3040; border-radius:8px; width:36px; height:36px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#8b8fa3; font-size:20px; transition:all 0.2s;" onmouseover="this.style.borderColor='#34d399';this.style.color='#34d399'" onmouseout="this.style.borderColor='#2d3040';this.style.color='#8b8fa3'">&#9881;</button>
 </div>
 
@@ -3827,7 +3827,7 @@ function refreshDisplay() {
 }
 
 // App version & build info
-const APP_VERSION = 'v2.0';
+const APP_VERSION = 'v1.2';
 const BUILD_TIMESTAMP = '2026-03-16T' + new Date().toISOString().split('T')[1];
 
 // Initialize settings panel and version display when DOM is ready
@@ -3932,7 +3932,7 @@ function generatePDF() {
 
 <!-- Footer bar -->
 <div class="footer-bar">
-    <span>&copy; 2026 EV Route Planner &nbsp;·&nbsp; v2.0 &nbsp;·&nbsp; Build: Mar 16, 2026 &nbsp;·&nbsp; <span id="buildTimestamp" style="color:#34d399;"></span></span>
+    <span>&copy; 2026 EV Route Planner &nbsp;·&nbsp; v1.2 &nbsp;·&nbsp; Build: Mar 16, 2026 &nbsp;·&nbsp; <span id="buildTimestamp" style="color:#34d399;"></span></span>
     <button class="footer-link" data-modal="aboutModal">About</button>
     <button class="footer-link" data-modal="newsModal">News</button>
     <button class="footer-link" data-modal="legalModal">Disclaimer & Privacy</button>
@@ -3979,9 +3979,9 @@ function generatePDF() {
     <div class="modal">
         <button class="modal-close" data-close>&times;</button>
         <h3>News & Roadmap</h3>
-        <p><strong>March 2026 — v2.0 Major Update</strong></p>
+        <p><strong>March 2026 — v1.2 Major Update</strong></p>
         <p>The iOS native app is now available! We've also brought many of its advanced features back to this web version.</p>
-        <p><strong>What's New in v2.0</strong></p>
+        <p><strong>What's New in v1.2</strong></p>
         <p>&bull; <strong>Physics-based energy model</strong> — aerodynamic drag (Cd), rolling resistance (Crr), and grade forces per vehicle<br>
         &bull; <strong>Settings panel</strong> — customize start charge, arrival reserve, charge target, electricity cost, units, and more<br>
         &bull; <strong>Charging cost estimates</strong> — per-station pricing with total trip cost<br>
