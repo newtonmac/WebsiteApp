@@ -30,7 +30,33 @@ function daysAway(dateStr: string) {
   return <span className="text-orange-500">{d} days away</span>;
 }
 
-export function EventsList({ events }: { events: Event[] }) {
+
+// Deduplicate events with similar names on the same dates
+function deduplicateEvents(events: Event[]): Event[] {
+  const seen = new Map<string, Event>();
+  for (const e of events) {
+    // Normalize: strip year prefixes, lowercase, collapse whitespace
+    const normName = e.name
+      .replace(/^\d{4}\s+/, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+    const key = `${normName}|${e.start_date}|${e.end_date}`;
+    if (!seen.has(key)) {
+      seen.set(key, e);
+    } else {
+      // Keep the one with more info (longer name or has website)
+      const existing = seen.get(key)!;
+      if ((!existing.website && e.website) || (!existing.description && e.description)) {
+        seen.set(key, e);
+      }
+    }
+  }
+  return [...seen.values()];
+}
+
+export function EventsList({ events: rawEvents }: { events: Event[] }) {
+  const events = useMemo(() => deduplicateEvents(rawEvents), [rawEvents]);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [sportFilter, setSportFilter] = useState('');
