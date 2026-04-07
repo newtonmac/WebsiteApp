@@ -46,7 +46,6 @@ const jsonLd = {
 
 const NAV_CARDS = [
   { href: '/conditions', icon: '🌊', title: 'Water Conditions', desc: 'Live wind, waves, tides, water quality & paddle score' },
-  { href: '/weather', icon: '🌤', title: 'Weather & Tides', desc: 'Triple-source forecasts, tide charts & marine conditions' },
   { href: '/clubs', icon: '🛶', title: 'Paddle Clubs', desc: '7,700+ clubs across 77 countries on an interactive map' },
   { href: '/events', icon: '🏁', title: 'Events', desc: 'Races, regattas & championships worldwide' },
   { href: '/gear', icon: '🎯', title: 'Gear', desc: 'Equipment, buyer\'s guides & brand directory' },

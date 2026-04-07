@@ -9,7 +9,8 @@ const nextConfig: NextConfig = {
       { source: '/paddle-gear.html', destination: '/gear', permanent: true },
       { source: '/paddle-federations.html', destination: '/federations', permanent: true },
       { source: '/paddle-clubs.html', destination: '/clubs', permanent: true },
-      { source: '/paddle-weather.html', destination: '/weather', permanent: true },
+      { source: '/paddle-weather.html', destination: '/conditions', permanent: true },
+      { source: '/weather', destination: '/conditions', permanent: true },
       { source: '/paddle-conditions.html', destination: '/conditions', permanent: true },
     ];
   },

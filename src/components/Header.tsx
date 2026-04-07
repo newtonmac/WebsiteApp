@@ -7,7 +7,6 @@ import { useState, useRef, useEffect } from 'react';
 
 const NAV_ITEMS = [
   { href: '/conditions', label: 'Water' },
-  { href: '/weather', label: 'Weather' },
   { href: '/clubs', label: 'Clubs' },
   { href: '/events', label: 'Events' },
   { href: '/gear', label: 'Gear' },
