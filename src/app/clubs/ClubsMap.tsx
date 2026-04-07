@@ -149,7 +149,7 @@ export function ClubsMap({ totalClubs, totalCountries, craftTypes }: Props) {
         map,
         markers: newMarkers,
         renderer: {
-          render: ({ count, position }: { count: number; position: google.maps.LatLng }) => {
+          render: ({ count, position }: { count: number; position: any }) => {
             const size = count > 500 ? 50 : count > 100 ? 42 : count > 20 ? 36 : 30;
             const color = count > 500 ? '#dc2626' : count > 100 ? '#f59e0b' : count > 20 ? '#3b82f6' : '#10b981';
             const svgC = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${size/2}" cy="${size/2}" r="${size/2-1}" fill="${color}" opacity="0.85" stroke="white" stroke-width="2"/><text x="${size/2}" y="${size/2}" text-anchor="middle" dy="0.35em" fill="white" font-size="${size > 40 ? 13 : 11}" font-weight="bold" font-family="system-ui">${count > 999 ? Math.round(count/1000) + 'k' : count}</text></svg>`;
