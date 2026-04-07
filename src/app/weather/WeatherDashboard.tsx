@@ -79,9 +79,9 @@ export function WeatherDashboard() {
   const bf = bestWind != null ? beaufortFromMph(bestWind) : null;
 
   return (
-    <div className='max-w-6xl mx-auto px-4 py-4'>
+    <div>
       {/* Map Section — matches Water Conditions layout */}
-      <div className='relative w-full rounded-2xl overflow-hidden mb-4' style={{ height: 'min(760px, 75vh)' }}>
+      <div className='relative w-full overflow-hidden' style={{ height: 'min(760px, 75vh)' }}>
         <div ref={mapRef} className='w-full h-full' />
         <div className='absolute top-3 left-3 right-3 z-10 flex flex-wrap gap-2'>
           <div className='flex-1 min-w-[200px] relative'>
@@ -105,6 +105,7 @@ export function WeatherDashboard() {
         )}
       </div>
 
+      <div className='max-w-6xl mx-auto px-4'>
       {loading && <div className='text-center py-8 text-slate-500'>Loading weather data...</div>}
       {error && <div className='text-center py-4 text-red-500'>{error}</div>}
 
@@ -341,6 +342,7 @@ export function WeatherDashboard() {
       )}
 
 
+    </div>
     </div>
   );
 }
