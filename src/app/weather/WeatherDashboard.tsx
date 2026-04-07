@@ -33,7 +33,7 @@ export function WeatherDashboard() {
       center: { lat: 33.5, lng: -117 }, zoom: 8, mapTypeId: 'hybrid',
       disableDefaultUI: true, zoomControl: true,
     });
-    mapInstance.current.addListener('click', (e: any) => {
+    (mapInstance.current as any).addListener('click', (e: any) => {
       if (e.latLng) loadData(e.latLng.lat(), e.latLng.lng(), `${e.latLng.lat().toFixed(4)}, ${e.latLng.lng().toFixed(4)}`);
     });
     if (searchRef.current) {
@@ -112,15 +112,15 @@ export function WeatherDashboard() {
             {bestTemp != null && (
               <div className='bg-white border border-slate-200 rounded-xl p-4'>
                 <div className='text-xs text-slate-400 mb-1'>Temperature</div>
-                <div className='text-2xl font-bold text-slate-800'>{u.toTemp(bestTemp)}{u.tempUnit}</div>
+                <div className='text-2xl font-bold text-slate-800'>{u.toTemp(bestTemp!)}{u.tempUnit}</div>
                 <div className='text-xs text-slate-400 mt-1'>Feels {u.toTemp(c.omFeelsLike ?? bestTemp)}{u.tempUnit}</div>
               </div>
             )}
             {bestWind != null && (
               <div className='bg-white border border-slate-200 rounded-xl p-4'>
                 <div className='text-xs text-slate-400 mb-1'>Wind</div>
-                <div className='text-2xl font-bold text-slate-800'>{u.toSpeed(bestWind)} <span className='text-sm'>{u.speedUnit}</span></div>
-                <div className='text-xs text-slate-400 mt-1'>{bestWindDeg != null ? windDirection(bestWindDeg) : ''} {c.omGustsMph ? `Gusts ${u.toSpeed(c.omGustsMph)}` : ''}</div>
+                <div className='text-2xl font-bold text-slate-800'>{u.toSpeed(bestWind!)} <span className='text-sm'>{u.speedUnit}</span></div>
+                <div className='text-xs text-slate-400 mt-1'>{bestWindDeg != null ? windDirection(bestWindDeg!) : ''} {c.omGustsMph ? `Gusts ${u.toSpeed(c.omGustsMph)}` : ''}</div>
               </div>
             )}
             {bestHumidity != null && (
@@ -156,7 +156,7 @@ export function WeatherDashboard() {
             <div className='bg-white border border-slate-200 rounded-xl p-4 mb-6 flex items-center gap-3'>
               <div className='w-10 h-10 rounded-full flex items-center justify-center text-white font-bold' style={{background: bf.color}}>{bf.scale}</div>
               <div><div className='font-semibold text-slate-800'>Beaufort {bf.scale}: {bf.label}</div>
-                <div className='text-xs text-slate-500'>{u.toSpeed(bestWind)} {u.speedUnit} {bestWindDeg != null ? windDirection(bestWindDeg) : ''}</div>
+                <div className='text-xs text-slate-500'>{u.toSpeed(bestWind!)} {u.speedUnit} {bestWindDeg != null ? windDirection(bestWindDeg!) : ''}</div>
               </div>
             </div>
           )}
