@@ -33,7 +33,7 @@ export function WeatherDashboard() {
       center: { lat: 33.5, lng: -117 }, zoom: 8, mapTypeId: 'hybrid',
       disableDefaultUI: true, zoomControl: true,
     });
-    mapInstance.current.addListener('click', (e: google.maps.MapMouseEvent) => {
+    mapInstance.current.addListener('click', (e: any) => {
       if (e.latLng) loadData(e.latLng.lat(), e.latLng.lng(), `${e.latLng.lat().toFixed(4)}, ${e.latLng.lng().toFixed(4)}`);
     });
     if (searchRef.current) {
