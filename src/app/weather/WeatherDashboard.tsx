@@ -31,7 +31,8 @@ export function WeatherDashboard() {
     if (!mapRef.current || mapInstance.current) return;
     mapInstance.current = new google.maps.Map(mapRef.current, {
       center: { lat: 33.5, lng: -117 }, zoom: 8, mapTypeId: 'hybrid',
-      disableDefaultUI: true, zoomControl: true,
+      disableDefaultUI: true, zoomControl: true, mapTypeControl: true,
+      mapTypeControlOptions: { position: (window as any).google.maps.ControlPosition.BOTTOM_LEFT },
     });
     (mapInstance.current as any).addListener('click', (e: any) => {
       if (e.latLng) loadData(e.latLng.lat(), e.latLng.lng(), `${e.latLng.lat().toFixed(4)}, ${e.latLng.lng().toFixed(4)}`);
@@ -78,23 +79,31 @@ export function WeatherDashboard() {
   const bf = bestWind != null ? beaufortFromMph(bestWind) : null;
 
   return (
-    <div className='max-w-6xl mx-auto px-4 py-6'>
-      {/* Search Bar */}
-      <div className='flex flex-wrap gap-3 mb-4'>
-        <input ref={searchRef} type='text' placeholder='Search city, beach, or location...'
-          className='flex-1 min-w-[200px] px-4 py-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-emerald-400' />
-        <button onClick={locateMe} className='px-4 py-3 bg-emerald-500 text-white rounded-xl text-sm font-semibold hover:bg-emerald-600'>
-          Use My Location
-        </button>
-        <select value={units} onChange={e => setUnits(e.target.value as any)}
-          className='px-3 py-3 border border-slate-200 rounded-xl text-sm'>
-          <option value='imperial'>Imperial</option>
-          <option value='metric'>Metric</option>
-        </select>
+    <div className='max-w-6xl mx-auto px-4 py-4'>
+      {/* Map Section — matches Water Conditions layout */}
+      <div className='relative w-full rounded-2xl overflow-hidden mb-4' style={{ height: 'min(760px, 75vh)' }}>
+        <div ref={mapRef} className='w-full h-full' />
+        <div className='absolute top-3 left-3 right-3 z-10 flex flex-wrap gap-2'>
+          <div className='flex-1 min-w-[200px] relative'>
+            <span className='absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none'>&#x1F50D;</span>
+            <input ref={searchRef} type='text' placeholder='Search for a beach, lake, marina, or address...'
+              className='w-full pl-9 pr-4 py-2.5 bg-white rounded-lg shadow-md text-sm outline-none' />
+          </div>
+          <button onClick={locateMe} className='px-4 py-2.5 bg-emerald-500 text-white rounded-lg shadow-md text-sm font-semibold hover:bg-emerald-600'>
+            &#x1F4CD; Locate Me
+          </button>
+          <select value={units} onChange={e => setUnits(e.target.value as any)}
+            className='px-3 py-2.5 bg-white rounded-lg shadow-md text-sm outline-none'>
+            <option value='imperial'>Imperial</option>
+            <option value='metric'>Metric</option>
+          </select>
+        </div>
+        {!data && !loading && (
+          <div className='absolute bottom-6 left-1/2 -translate-x-1/2 z-10 bg-white/90 backdrop-blur rounded-xl px-5 py-2.5 shadow-lg text-sm text-slate-600'>
+            &#x1F4CD; Tap the map where you will be paddling
+          </div>
+        )}
       </div>
-
-      {/* Map */}
-      <div ref={mapRef} className='w-full h-[250px] rounded-xl mb-6 border border-slate-200' />
 
       {loading && <div className='text-center py-8 text-slate-500'>Loading weather data...</div>}
       {error && <div className='text-center py-4 text-red-500'>{error}</div>}
@@ -331,12 +340,7 @@ export function WeatherDashboard() {
         </>
       )}
 
-      {!data && !loading && (
-        <div className='text-center py-12 text-slate-400'>
-          <p className='text-lg mb-2'>Search a location or tap the map to see weather data</p>
-          <p className='text-sm'>Triple-source forecasts from Google Weather, Open-Meteo, and NWS</p>
-        </div>
-      )}
+
     </div>
   );
 }
