@@ -2712,7 +2712,7 @@
             if (results.length === 0) {
                 for (const regionId of [1, 2, 3]) {
                     try {
-                        const r = await fetch(`https://sdbeachinfo.com/Home/GetTargetCityByID?id=${regionId}`);
+                        const r = await fetch(`https://www.sdbeachinfo.com/Home/GetTargetCityByID?id=${regionId}`);
                         if (r.ok) {
                             const data = await r.json();
                             if (Array.isArray(data)) results.push(...data);

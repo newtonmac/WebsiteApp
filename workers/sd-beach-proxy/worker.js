@@ -5,7 +5,7 @@
 // Their API blocks CORS, so this proxy enables browser access.
 // Deploy: npx wrangler deploy
 
-const SD_BEACH_API = 'https://sdbeachinfo.com/Home/GetTargetCityByID';
+const SD_BEACH_API = 'https://www.sdbeachinfo.com/Home/GetTargetCityByID';
 const ALLOWED_ORIGINS = ['https://jmlsd.org', 'https://www.jmlsd.org', 'https://paddlepoint.org', 'https://www.paddlepoint.org', 'http://localhost:8080', 'http://127.0.0.1:8080'];
 
 // SD County DEH regions: 1=South Bay/IB, 2=City of SD, 3=North County
