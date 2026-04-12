@@ -2203,6 +2203,23 @@
         let placesService, nearbyPlace = null;
         let stationMarkers = [], stormDrainMarkers = [], stationInfoWindow = null, paddleInfoWindow = null;
         let allDEHStations = []; // All DEH stations (unfiltered) for map pins
+        let swimGuideMarkers = []; // Swim Guide bay station markers
+        let allSwimGuideStations = []; // Swim Guide bay monitoring locations
+
+        // Swim Guide San Diego Bay monitoring locations (via SD Coastkeeper)
+        // These stations are inside the bay — distinct from ocean beach DEH stations.
+        // Coordinates from Swim Guide (theswimguide.org) and SD County DEH Beach & Bay Program.
+        const SWIM_GUIDE_LOCATIONS = [
+            { id: 1938, name: 'Shelter Island', lat: 32.7130, lng: -117.2270, desc: 'Shoreline Park on the bay side of Shelter Island' },
+            { id: 10802, name: 'Spanish Landing Park', lat: 32.7275, lng: -117.2082, desc: 'Bay shore park near SD International Airport' },
+            { id: 2031, name: 'Tidelands Park', lat: 32.6856, lng: -117.1694, desc: 'Largest San Diego Bay park in Coronado' },
+            { id: 1935, name: 'Glorietta Bay', lat: 32.6806, lng: -117.1785, desc: 'Small bay adjacent to Coronado with boat ramp and beach' },
+            { id: 10812, name: 'Coronado Ferry Landing', lat: 32.6945, lng: -117.1707, desc: 'Bay waterfront at the Coronado ferry terminal' },
+            { id: 9886, name: 'Silver Strand', lat: 32.6350, lng: -117.1420, desc: 'Bay side of Silver Strand between Coronado and Imperial Beach' },
+            { id: 10001, name: 'Pepper Park', lat: 32.6486, lng: -117.1052, desc: 'National City bayfront park with fishing pier' },
+            { id: 10002, name: 'Chula Vista Bayfront', lat: 32.6249, lng: -117.0999, desc: 'South bay waterfront in Chula Vista' },
+            { id: 10003, name: 'Embarcadero Marina Park', lat: 32.7037, lng: -117.1722, desc: 'Downtown San Diego bayfront near Convention Center' },
+        ];
 
         const NOAA_TIDE_API = 'https://api.tidesandcurrents.noaa.gov/api/prod/datagetter';
         const TIDE_STATIONS = [
@@ -2739,6 +2756,37 @@
             });
             // Return nearby stations (within ~8 miles) for card display
             return allDEHStations.filter(s => s._dist < 8).sort((a, b) => a._dist - b._dist);
+        }
+
+        // Swim Guide San Diego Bay water quality — monitoring locations via SD Coastkeeper
+        // Swim Guide API requires authentication, so we use the known bay monitoring
+        // locations and cross-reference status with the nearest DEH station data.
+        function fetchSwimGuide(lat, lon) {
+            // Only show Swim Guide bay stations when viewing San Diego Bay area
+            if (lat < 32.55 || lat > 32.78 || lon < -117.28 || lon > -117.05) return [];
+
+            allSwimGuideStations = SWIM_GUIDE_LOCATIONS.map(loc => {
+                const dist = hav(lat, lon, loc.lat, loc.lng);
+                const dir = compassDir(lat, lon, loc.lat, loc.lng);
+                // Find nearest DEH station to cross-reference water quality status
+                let status = 'unknown', statusColor = '#6b7280', rgbColor = '';
+                const nearestDEH = allDEHStations
+                    .filter(s => s.TypeID !== 2) // exclude storm drains
+                    .map(s => ({ ...s, _sgDist: hav(loc.lat, loc.lng, s.Latitude, s.Longitude) }))
+                    .sort((a, b) => a._sgDist - b._sgDist)[0];
+                if (nearestDEH && nearestDEH._sgDist < 2) {
+                    rgbColor = nearestDEH.RBGColor || '';
+                    const c = rgbColor.toLowerCase();
+                    if (c.includes('red')) { status = 'CLOSED'; statusColor = '#dc2626'; }
+                    else if (c.includes('brown') || c.includes('orange')) { status = 'WARNING'; statusColor = '#d97706'; }
+                    else if (c.includes('yellow')) { status = 'ADVISORY'; statusColor = '#eab308'; }
+                    else { status = 'OPEN'; statusColor = '#22c55e'; }
+                } else {
+                    status = 'NO DATA'; statusColor = '#6b7280';
+                }
+                return { ...loc, _dist: dist, _dir: dir, _status: status, _statusColor: statusColor, _rgbColor: rgbColor, _dehStation: nearestDEH };
+            });
+            return allSwimGuideStations.filter(s => s._dist < 10).sort((a, b) => a._dist - b._dist);
         }
 
         // Beach water quality advisories from CA State Water Board via CA Open Data
@@ -3658,6 +3706,65 @@
 
         }
 
+        // ======== Swim Guide Bay Station Map Markers ========
+        function makeSwimGuideIcon(status) {
+            let fill, stroke;
+            if (status === 'CLOSED') { fill = '#dc2626'; stroke = '#991b1b'; }
+            else if (status === 'WARNING') { fill = '#d97706'; stroke = '#92400e'; }
+            else if (status === 'ADVISORY') { fill = '#eab308'; stroke = '#a16207'; }
+            else if (status === 'OPEN') { fill = '#22c55e'; stroke = '#15803d'; }
+            else { fill = '#6b7280'; stroke = '#4b5563'; } // NO DATA
+            // Wave-shaped pin to distinguish from DEH circular pins
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 26 26">` +
+                `<rect x="2" y="2" width="22" height="22" rx="5" fill="${fill}" stroke="${stroke}" stroke-width="2"/>` +
+                `<path d="M6 14 Q9 10 13 14 Q17 18 20 14" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"/>` +
+                `</svg>`;
+            return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), scaledSize: new google.maps.Size(24, 24), anchor: new google.maps.Point(12, 12) };
+        }
+
+        function addSwimGuideMarkers(stations) {
+            // Clear previous Swim Guide markers
+            swimGuideMarkers.forEach(m => m.setMap(null));
+            swimGuideMarkers = [];
+            if (!map || !stations || stations.length === 0) return;
+            if (!stationInfoWindow) stationInfoWindow = new google.maps.InfoWindow();
+
+            stations.forEach(s => {
+                const pos = { lat: s.lat, lng: s.lng };
+                const marker = new google.maps.Marker({
+                    position: pos,
+                    map,
+                    title: `Swim Guide: ${s.name}`,
+                    icon: makeSwimGuideIcon(s._status),
+                    zIndex: s._status === 'OPEN' ? 3 : 11,
+                });
+
+                const statusIcon = s._status === 'CLOSED' ? '&#x1F6D1;' : s._status === 'WARNING' ? '&#x26A0;&#xFE0F;' :
+                    s._status === 'ADVISORY' ? '&#x26A0;' : s._status === 'OPEN' ? '&#x2705;' : '&#x2753;';
+                const dehNote = s._dehStation ? `<div style="font-size:10px;color:#888;margin-top:4px;">Status via nearest DEH station: ${s._dehStation.Name || ''} (${s._dehStation._sgDist ? s._dehStation._sgDist.toFixed(1) + ' mi' : ''})</div>` : '';
+
+                const infoContent = `<div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:300px;padding:4px;">` +
+                    `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">` +
+                    `<div style="font-weight:700;font-size:14px;">&#x1F3CA; ${s.name}</div>` +
+                    `<div style="font-size:9px;color:#06b6d4;background:#06b6d410;padding:1px 6px;border-radius:8px;font-weight:600;">Swim Guide</div>` +
+                    `</div>` +
+                    `<div style="font-size:13px;font-weight:700;color:${s._statusColor};margin-bottom:4px;">${statusIcon} ${s._status}</div>` +
+                    `<div style="font-size:11px;color:#555;line-height:1.4;margin-bottom:6px;">${s.desc}</div>` +
+                    dehNote +
+                    (s._dist ? `<div style="font-size:10px;color:#999;">${s._dist.toFixed(1)} mi ${s._dir ? s._dir.a + ' ' + s._dir.l + ' ' : ''}from paddle spot</div>` : '') +
+                    `<div style="margin-top:4px;font-size:11px;">` +
+                    `<a href="https://www.theswimguide.org/beach/${s.id}" target="_blank" style="color:#06b6d4;">View on Swim Guide &rarr;</a></div>` +
+                    `</div>`;
+
+                marker.addListener('click', () => {
+                    stationInfoWindow.setContent(infoContent);
+                    stationInfoWindow.open(map, marker);
+                });
+
+                swimGuideMarkers.push(marker);
+            });
+        }
+
         function render(weather, tides, tideH, station, gWeather, gHourly, beachAdvisories, nwsAlerts, habData, caHab, riverFlow, sdBeach, coastalAccess, marineSwell, noaaWaterTemp, usgsWaterTemp) {
             const c = weather.current;
             const {score,factors,categories,tier} = calcScore(weather, sdBeach, beachAdvisories, marineSwell, riverFlow, noaaWaterTemp, usgsWaterTemp);
@@ -3672,6 +3779,11 @@
             const top5Dist = sortedDEH.length >= 5 ? sortedDEH[4]._dist : Infinity;
             const dehRadius = Math.max(2, top5Dist);
             addStationMarkers(sortedDEH.filter(s => s._dist <= dehRadius));
+
+            // Add Swim Guide San Diego Bay station pins
+            const sgStations = fetchSwimGuide(paddleLat, paddleLon);
+            addSwimGuideMarkers(sgStations);
+
             const localSrc = getLocalBeachSource(paddleLat, paddleLon);
 
             // Determine status from nearest monitoring station (not storm drains)
