@@ -45,7 +45,12 @@ module.exports = async (req, res) => {
       if (v === null || v === undefined || v === '' || v === 'None') { row[k] = null; continue; }
       if (k === 'featured') { row[k] = v ? 1 : 0; continue; }
       if (k === 'lat' || k === 'lng') { row[k] = parseFloat(v) || null; continue; }
-      row[k] = String(v).trim();
+      // Strip ISO time portion from date fields for MySQL DATE columns
+      if ((k === 'start_date' || k === 'end_date' || k === 'registration_deadline') && String(v).includes('T')) {
+        row[k] = String(v).split('T')[0];
+      } else {
+        row[k] = String(v).trim();
+      }
     }
 
     if (data.id) {
