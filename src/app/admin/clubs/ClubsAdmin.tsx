@@ -14,6 +14,17 @@ const PER_PAGE = 50;
 const CLASSIFICATIONS = ['club','federation','association','organization','school','unverified'];
 const YES_NO = [['','Unknown'],['True','Yes'],['False','No']];
 
+function Input({ label, field, type = 'text', placeholder = '', editing, setField }: {
+  label: string; field: string; type?: string; placeholder?: string;
+  editing: Partial<Club> | null; setField: (key: string, val: string | number) => void;
+}) {
+  return (
+    <div><label className="text-xs text-slate-400 mb-1 block">{label}</label>
+      <input type={type} value={(editing as any)?.[field] || ''} onChange={e => setField(field, e.target.value)} placeholder={placeholder}
+        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-cyan-500" /></div>
+  );
+}
+
 export default function ClubsAdmin() {
   const [clubs, setClubs] = useState<Club[]>([]);
   const [search, setSearch] = useState('');
@@ -78,12 +89,6 @@ export default function ClubsAdmin() {
     } catch { alert('Delete failed'); }
   };
 
-  const Input = ({ label, field, type = 'text', placeholder = '' }: { label: string; field: string; type?: string; placeholder?: string }) => (
-    <div><label className="text-xs text-slate-400 mb-1 block">{label}</label>
-      <input type={type} value={(editing as any)?.[field] || ''} onChange={e => setField(field, e.target.value)} placeholder={placeholder}
-        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-cyan-500" /></div>
-  );
-
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-4">
@@ -145,25 +150,25 @@ export default function ClubsAdmin() {
         <div className="fixed inset-0 bg-black/60 z-50 flex items-start justify-center p-6 overflow-y-auto" onClick={e => { if (e.target === e.currentTarget) setEditing(null); }}>
           <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-2xl">
             <h2 className="text-lg font-bold text-cyan-400 mb-4">{editing.id ? `Edit: ${editing.n}` : '➕ Add Club'}</h2>
-            <div className="grid grid-cols-2 gap-3 mb-3"><Input label="Club Name *" field="n" />
+            <div className="grid grid-cols-2 gap-3 mb-3"><Input label="Club Name *" field="n" editing={editing} setField={setField} />
               <div><label className="text-xs text-slate-400 mb-1 block">Classification</label>
                 <select value={editing.cl || 'club'} onChange={e => setField('cl', e.target.value)}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white outline-none">
                   {CLASSIFICATIONS.map(c => <option key={c} value={c}>{c}</option>)}
                 </select></div>
             </div>
-            <div className="grid grid-cols-2 gap-3 mb-3"><Input label="Address" field="a" /><Input label="City" field="ci" /></div>
-            <div className="grid grid-cols-2 gap-3 mb-3"><Input label="State" field="st" /><Input label="Country" field="co" /></div>
-            <div className="grid grid-cols-2 gap-3 mb-3"><Input label="Latitude" field="la" type="number" /><Input label="Longitude" field="lo" type="number" /></div>
-            <div className="grid grid-cols-2 gap-3 mb-3"><Input label="Phone" field="p" /><Input label="Email" field="e" /></div>
-            <Input label="Website" field="w" placeholder="https://..." />
+            <div className="grid grid-cols-2 gap-3 mb-3"><Input label="Address" field="a" editing={editing} setField={setField} /><Input label="City" field="ci" editing={editing} setField={setField} /></div>
+            <div className="grid grid-cols-2 gap-3 mb-3"><Input label="State" field="st" editing={editing} setField={setField} /><Input label="Country" field="co" editing={editing} setField={setField} /></div>
+            <div className="grid grid-cols-2 gap-3 mb-3"><Input label="Latitude" field="la" type="number" editing={editing} setField={setField} /><Input label="Longitude" field="lo" type="number" editing={editing} setField={setField} /></div>
+            <div className="grid grid-cols-2 gap-3 mb-3"><Input label="Phone" field="p" editing={editing} setField={setField} /><Input label="Email" field="e" editing={editing} setField={setField} /></div>
+            <Input label="Website" field="w" placeholder="https://..." editing={editing} setField={setField} />
             <div className="mt-3"><label className="text-xs text-slate-400 mb-1 block">Description</label>
               <textarea value={editing.d || ''} onChange={e => setField('d', e.target.value)}
                 className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white outline-none min-h-[50px]" /></div>
-            <div className="grid grid-cols-2 gap-3 mt-3 mb-3"><Input label="Craft Types" field="ct" placeholder="kayak,canoe,sup" /><Input label="Disciplines" field="di" /></div>
-            <div className="grid grid-cols-2 gap-3 mb-3"><Input label="Federation" field="fe" /><Input label="Season" field="se" placeholder="year-round" /></div>
-            <div className="grid grid-cols-2 gap-3 mb-3"><Input label="Facebook" field="fb" /><Input label="Instagram" field="ig" /></div>
-            <div className="grid grid-cols-2 gap-3 mb-3"><Input label="Google Rating" field="gr" type="number" /><Input label="Google Reviews" field="gc" type="number" /></div>
+            <div className="grid grid-cols-2 gap-3 mt-3 mb-3"><Input label="Craft Types" field="ct" placeholder="kayak,canoe,sup" editing={editing} setField={setField} /><Input label="Disciplines" field="di" editing={editing} setField={setField} /></div>
+            <div className="grid grid-cols-2 gap-3 mb-3"><Input label="Federation" field="fe" editing={editing} setField={setField} /><Input label="Season" field="se" placeholder="year-round" editing={editing} setField={setField} /></div>
+            <div className="grid grid-cols-2 gap-3 mb-3"><Input label="Facebook" field="fb" editing={editing} setField={setField} /><Input label="Instagram" field="ig" editing={editing} setField={setField} /></div>
+            <div className="grid grid-cols-2 gap-3 mb-3"><Input label="Google Rating" field="gr" type="number" editing={editing} setField={setField} /><Input label="Google Reviews" field="gc" type="number" editing={editing} setField={setField} /></div>
             <div className="grid grid-cols-3 gap-3 mb-3">
               {[['yp','Youth Program'],['mp','Masters Program'],['ol','Offers Lessons']].map(([f, l]) => (
                 <div key={f}><label className="text-xs text-slate-400 mb-1 block">{l}</label>
