@@ -1,6 +1,20 @@
 {
   "framework": "nextjs",
   "buildCommand": "next build",
+  "crons": [
+    {
+      "path": "/api/cron/scrape",
+      "schedule": "0 6 */2 * *"
+    }
+  ],
+  "functions": {
+    "api/cron/scrape.js": {
+      "maxDuration": 300
+    },
+    "api/scrape-events.js": {
+      "maxDuration": 300
+    }
+  },
   "rewrites": [
     {
       "source": "/clubs-data.json",
