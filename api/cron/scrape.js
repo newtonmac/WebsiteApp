@@ -241,15 +241,22 @@ module.exports = async (req, res) => {
   // Step 1: PaddleGuru direct scrape (fast, runs first)
   summary.paddleguru = await runPaddleGuruScrape();
 
-  // Step 2: AI federation scrape, with elapsed-time guard
-  for (let i = 0; i < SOURCES.length; i++) {
+  // Step 2: AI federation scrape, with elapsed-time guard.
+  // Rotate starting offset by day-since-epoch so all 23 sources get covered
+  // over multiple runs (only ~8 fit in the 4m30s budget per single run).
+  const dayKey = Math.floor(startedAt / 86400000);
+  const startOffset = (dayKey * 8) % SOURCES.length;
+  for (let n = 0; n < SOURCES.length; n++) {
     const elapsed = Date.now() - startedAt;
     if (elapsed > TIME_BUDGET_MS) {
-      summary.skipped.push(...SOURCES.slice(i).map(s => s.name));
+      for (let k = n; k < SOURCES.length; k++) {
+        summary.skipped.push(SOURCES[(startOffset + k) % SOURCES.length].name);
+      }
       break;
     }
+    const i = (startOffset + n) % SOURCES.length;
     const src = SOURCES[i];
-    if (i > 0) await delay(1500); // shorter delay than admin UI; cron has tighter budget
+    if (n > 0) await delay(1500); // shorter delay than admin UI; cron has tighter budget
     try {
       const result = await scrapeOneSource(src, apiKey);
       summary.federations.push(result);
