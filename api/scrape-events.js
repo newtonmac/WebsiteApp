@@ -3,37 +3,43 @@ const { query } = require('./_db');
 const { requireAdmin } = require('./_auth');
 const API_TOKEN = 'pp-clubs-7742-v1';
 
+// Dynamic year window — covers current year and next, so queries stay evergreen
+const NOW = new Date();
+const YEAR = NOW.getFullYear();
+const YEAR_NEXT = YEAR + 1;
+const YEARS = `${YEAR} ${YEAR_NEXT}`;
+
 const SOURCES = [
   // NORTH AMERICA
-  { name: 'American Canoe Association', url: 'americancanoe.org', country: 'US', query: 'ACA American Canoe Association 2026 events races sprint slalom' },
-  { name: 'USA SUP', url: 'usasup.org', country: 'US', query: 'USA SUP 2026 national championships regional race series events' },
-  { name: 'Canoe Kayak Canada', url: 'canoekayak.ca', country: 'CA', query: 'Canoe Kayak Canada 2026 events competitions sprint slalom' },
-  { name: 'US Dragon Boat Federation', url: 'usdbf.org', country: 'US', query: 'US Dragon Boat Federation 2026 events races festivals' },
-  { name: 'Dragon Boat Canada', url: 'dragonboat.ca', country: 'CA', query: 'Dragon Boat Canada 2026 festivals races events' },
-  { name: 'USA Surfing (SUP)', url: 'usasurfing.org', country: 'US', query: 'USA Surfing SUP 2026 events championships paddleboard' },
+  { name: 'American Canoe Association', url: 'americancanoe.org', country: 'US', query: `ACA American Canoe Association ${YEARS} events races sprint slalom` },
+  { name: 'USA SUP', url: 'usasup.org', country: 'US', query: `usasup.org ${YEAR} regional race series schedule national championships SUP race calendar` },
+  { name: 'Canoe Kayak Canada', url: 'canoekayak.ca', country: 'CA', query: `Canoe Kayak Canada ${YEARS} events competitions sprint slalom` },
+  { name: 'US Dragon Boat Federation', url: 'usdbf.org', country: 'US', query: `usdbf.org ${YEAR} dragon boat events club crew nationals festivals calendar United States` },
+  { name: 'Dragon Boat Canada', url: 'dragonboat.ca', country: 'CA', query: `Dragon Boat Canada ${YEARS} festivals races events` },
+  { name: 'USA Surfing (SUP)', url: 'usasurfing.org', country: 'US', query: `USA Surfing SUP ${YEARS} events championships paddleboard` },
   // INTERNATIONAL
-  { name: 'ICF', url: 'canoeicf.com', country: 'INT', query: 'ICF International Canoe Federation 2026 world championships world cup calendar' },
-  { name: 'European Canoe Association', url: 'canoe-europe.org', country: 'EU', query: 'European Canoe Association ECA 2026 European championships events' },
+  { name: 'ICF', url: 'canoeicf.com', country: 'INT', query: `ICF International Canoe Federation ${YEARS} world championships world cup calendar` },
+  { name: 'European Canoe Association', url: 'canoe-europe.org', country: 'EU', query: `European Canoe Association ECA ${YEARS} European championships events` },
   // EUROPE
-  { name: 'British Canoeing', url: 'britishcanoeing.org.uk', country: 'GB', query: 'British Canoeing 2026 events races national championships calendar' },
-  { name: 'French Canoe Federation (FFCK)', url: 'ffck.org', country: 'FR', query: 'FFCK Federation Francaise Canoe Kayak 2026 events competitions' },
-  { name: 'Deutscher Kanu-Verband', url: 'kanu.de', country: 'DE', query: 'Deutscher Kanu-Verband DKV Germany 2026 canoe kayak events' },
-  { name: 'Spanish Canoe Federation', url: 'rfep.es', country: 'ES', query: 'Real Federacion Espanola Piragüismo 2026 events races Spain' },
-  { name: 'Italian Canoe Federation', url: 'federcanoa.it', country: 'IT', query: 'Federazione Italiana Canoa Kayak 2026 events competitions Italy' },
+  { name: 'British Canoeing', url: 'britishcanoeing.org.uk', country: 'GB', query: `British Canoeing ${YEAR} national championships marathon sprint slalom freestyle wildwater calendar UK` },
+  { name: 'French Canoe Federation (FFCK)', url: 'ffck.org', country: 'FR', query: `FFCK Federation Francaise Canoe Kayak ${YEARS} events competitions` },
+  { name: 'Deutscher Kanu-Verband', url: 'kanu.de', country: 'DE', query: `Deutscher Kanu-Verband DKV Germany ${YEARS} canoe kayak events` },
+  { name: 'Spanish Canoe Federation', url: 'rfep.es', country: 'ES', query: `Real Federacion Espanola Piragüismo ${YEARS} events races Spain` },
+  { name: 'Italian Canoe Federation', url: 'federcanoa.it', country: 'IT', query: `Federazione Italiana Canoa Kayak ${YEARS} events competitions Italy` },
   // OCEANIA
-  { name: 'Paddle Australia', url: 'paddle.org.au', country: 'AU', query: 'Paddle Australia 2026 events competitions nationals calendar' },
-  { name: 'Paddle New Zealand', url: 'canoenz.org.nz', country: 'NZ', query: 'Canoe Racing New Zealand Paddle NZ 2026 events competitions' },
+  { name: 'Paddle Australia', url: 'paddle.org.au', country: 'AU', query: `paddle.org.au ${YEAR} national championships sprint marathon slalom ocean racing SUP canoe polo Australian schedule` },
+  { name: 'Paddle New Zealand', url: 'canoenz.org.nz', country: 'NZ', query: `Canoe Racing New Zealand canoeracing.org.nz ${YEAR} sprint slalom marathon SUP nationals events schedule` },
   // SUP CIRCUITS
-  { name: 'European SUP League', url: 'standupmagazin.com', country: 'EU', query: 'European SUP League ESL 2026 calendar race series events' },
-  { name: 'TotalSUP Events', url: 'totalsup.com', country: 'INT', query: 'TotalSUP 2026 SUP race events calendar worldwide' },
-  { name: 'PaddleGuru Races', url: 'paddleguru.com', country: 'US', query: 'PaddleGuru 2026 paddle races SUP kayak outrigger events calendar' },
-  { name: 'PaddleGuru SUP/OC', url: 'paddleguru.com', country: 'US', query: 'paddleguru 2026 SUP stand up paddle outrigger ocean race' },
-  { name: 'PaddleGuru Kayak', url: 'paddleguru.com', country: 'US', query: 'paddleguru 2026 kayak surfski canoe sprint race regatta results' },
+  { name: 'European SUP League', url: 'standupmagazin.com', country: 'EU', query: `European SUP League ESL ${YEARS} calendar race series events` },
+  { name: 'TotalSUP Events', url: 'totalsup.com', country: 'INT', query: `TotalSUP ${YEARS} SUP race events calendar worldwide` },
+  { name: 'PaddleGuru Races', url: 'paddleguru.com', country: 'US', query: `PaddleGuru ${YEARS} paddle races SUP kayak outrigger events calendar` },
+  { name: 'PaddleGuru SUP/OC', url: 'paddleguru.com', country: 'US', query: `paddleguru ${YEARS} SUP stand up paddle outrigger ocean race` },
+  { name: 'PaddleGuru Kayak', url: 'paddleguru.com', country: 'US', query: `paddleguru ${YEARS} kayak surfski canoe sprint race regatta results` },
   // OUTRIGGER
-  { name: 'IVF (Va\'a)', url: 'ivf.org.fj', country: 'INT', query: 'International Va\'a Federation IVF 2026 outrigger world sprints championships' },
-  { name: 'USAORCA', url: 'usaorca.org', country: 'US', query: 'USAORCA USA Outrigger 2026 national championships events races' },
+  { name: 'IVF (Va\'a)', url: 'ivfiv.org', country: 'INT', query: `International Va'a Federation ivfiv.org ${YEAR} World Sprint Championships Singapore world distance outrigger calendar` },
+  { name: 'USAORCA', url: 'usaorca.org', country: 'US', query: `usaorca.org ${YEAR} US Nationals OC1 OC2 V1 V6 sprint distance championship World Sprints Singapore qualifier outrigger` },
   // DRAGON BOAT INTERNATIONAL
-  { name: 'IDBF', url: 'idbf.org', country: 'INT', query: 'International Dragon Boat Federation IDBF 2026 world championships events races' },
+  { name: 'IDBF', url: 'idbf.org', country: 'INT', query: `IDBF International Dragon Boat Federation ${YEAR} Club Crew World Championships CCWC Hualien Taiwan world racing championships nations calendar` },
 ];
 
 module.exports = async (req, res) => {
@@ -66,7 +72,7 @@ module.exports = async (req, res) => {
           model: 'claude-sonnet-4-20250514',
           max_tokens: 8000,
           tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-          messages: [{ role: 'user', content: `Search for upcoming paddling events from ${src.name} (${src.url}) for 2026. Find races, regattas, championships, festivals.
+          messages: [{ role: 'user', content: `Search for upcoming paddling events from ${src.name} (${src.url}) for ${YEAR} and ${YEAR_NEXT}. Find races, regattas, championships, festivals.
 
 For each event found, return ONLY a JSON array (no markdown, no backticks) with objects containing:
 - name (string)
